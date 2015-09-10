@@ -31,30 +31,25 @@ namespace kafka_tests.Unit
 
                 var response = producer.SendMessageAsync("UnitTest", messages).Result;
 
-                Assert.That(response.Count, Is.EqualTo(2));
+                Assert.That(response.Length, Is.EqualTo(2));
                 Assert.That(routerProxy.BrokerConn0.ProduceRequestCallCount, Is.EqualTo(1));
                 Assert.That(routerProxy.BrokerConn1.ProduceRequestCallCount, Is.EqualTo(1));
             }
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
-        public void ShouldSendAsyncToAllConnectionsEvenWhenExceptionOccursOnOne()
+        public async Task ShouldSendAsyncToAllConnectionsEvenWhenExceptionOccursOnOne()
         {
             var routerProxy = new FakeBrokerRouter();
-            routerProxy.BrokerConn1.ProduceResponseFunction = () => { throw new ApplicationException("some exception"); };
+            routerProxy.BrokerConn1.ProduceResponseFunction = () => { throw new KafkaApplicationException("some exception"); };
             var router = routerProxy.Create();
 
             using (var producer = new Producer(router))
             {
-                var messages = new List<Message>
-                {
-                    new Message("1"), new Message("2")
-                };
+                var messages = new List<Message> { new Message("1"), new Message("2") };
 
-                Assert.Throws<KafkaApplicationException>(async () =>
-                {
-                    await producer.SendMessageAsync("UnitTest", messages).ConfigureAwait(false);
-                });
+                var sendTask = producer.SendMessageAsync("UnitTest", messages).ConfigureAwait(false);
+                Assert.Throws<KafkaApplicationException>(async () => await sendTask);
 
                 Assert.That(routerProxy.BrokerConn0.ProduceRequestCallCount, Is.EqualTo(1));
                 Assert.That(routerProxy.BrokerConn1.ProduceRequestCallCount, Is.EqualTo(1));
@@ -64,9 +59,7 @@ namespace kafka_tests.Unit
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         public async Task ProducerShouldReportCorrectAmountOfAsyncRequests()
         {
-            //     var log = new ConsoleLog();
-            //    for (int i = 0; i < 100; i++)
-            //    {
+            // var log = new ConsoleLog(); for (int i = 0; i < 100; i++) {
             var semaphore = new SemaphoreSlim(0);
             var routerProxy = new FakeBrokerRouter();
             //block the second call returning from send message async
@@ -93,8 +86,7 @@ namespace kafka_tests.Unit
                 await Task.Delay(2);
                 Assert.That(sendTask.IsCompleted, Is.True, "Send task should be marked as completed.");
                 Assert.That(producer.AsyncCount, Is.EqualTo(0), "Async should now show zero count.");
-                //     }
-                //     log.DebugFormat(i.ToString());
+                // } log.DebugFormat(i.ToString());
             }
         }
 
@@ -371,16 +363,15 @@ namespace kafka_tests.Unit
         //{
         //    var fakeRouter = new FakeBrokerRouter();
 
-        //    using (var producer = new Producer(fakeRouter.Create()) { BatchDelayTime = TimeSpan.FromMilliseconds(500) })
-        //    {
-        //        var sendTask =  producer.SendMessageAsync(FakeBrokerRouter.TestTopic, new[] { new Message() });
-        //        Assert.That(producer.BufferCount, Is.EqualTo(1));
+        // using (var producer = new Producer(fakeRouter.Create()) { BatchDelayTime =
+        // TimeSpan.FromMilliseconds(500) }) { var sendTask =
+        // producer.SendMessageAsync(FakeBrokerRouter.TestTopic, new[] { new Message() });
+        // Assert.That(producer.BufferCount, Is.EqualTo(1));
 
-        //        producer.Stop(true, TimeSpan.FromSeconds(5));
+        // producer.Stop(true, TimeSpan.FromSeconds(5));
 
-        //        sendTask;
-        //        Assert.That(producer.BufferCount, Is.EqualTo(0));
-        //        Assert.That(sendTask.IsCompleted, Is.True);
+        // sendTask; Assert.That(producer.BufferCount, Is.EqualTo(0));
+        // Assert.That(sendTask.IsCompleted, Is.True);
 
         //        Console.WriteLine("Unwinding test...");
         //    }

@@ -11,9 +11,8 @@ namespace KafkaNet
 {
     /// <summary>
     /// Provides a basic consumer of one Topic across all partitions or over a given whitelist of partitions.
-    ///
-    /// TODO: provide automatic offset saving when the feature is available in 0.8.2
-    /// https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
+    /// 
+    /// TODO: provide automatic offset saving when the feature is available in 0.8.2 https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
     /// </summary>
     public class Consumer : IMetadataQueries, IDisposable
     {
@@ -124,7 +123,9 @@ namespace KafkaNet
                     _options.Log.DebugFormat("Consumer: Creating polling task for topic: {0} on parition: {1}", topic, partitionId);
                     while (_disposeToken.IsCancellationRequested == false)
                     {
-                        if (refreshMetaData)
+                        await _options.Router.RefreshMissingTopicMetadata(topic);
+
+                        if (refreshMetaData)//after error
                         {
                             await _options.Router.RefreshTopicMetadata(topic);
                             EnsurePartitionPollingThreads();

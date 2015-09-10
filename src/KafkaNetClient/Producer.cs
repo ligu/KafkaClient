@@ -46,7 +46,8 @@ namespace KafkaNet
         public int AsyncCount { get { return _maximumAsyncRequests - _semaphoreMaximumAsync.CurrentCount; } }
 
         /// <summary>
-        /// The number of messages to wait for before sending to kafka.  Will wait <see cref="BatchDelayTime"/> before sending whats received.
+        /// The number of messages to wait for before sending to kafka. Will wait <see
+        /// cref="BatchDelayTime"/> before sending whats received.
         /// </summary>
         public int BatchSize { get; set; }
 
@@ -60,25 +61,6 @@ namespace KafkaNet
         /// </summary>
         public IBrokerRouter BrokerRouter { get; private set; }
 
-        /// <summary>
-        /// Construct a Producer class.
-        /// </summary>
-        /// <param name="brokerRouter">The router used to direct produced messages to the correct partition.</param>
-        /// <param name="maximumAsyncRequests">The maximum async calls allowed before blocking new requests.  -1 indicates unlimited.</param>
-        /// <param name="maximumMessageBuffer">The maximum amount of messages to buffer if the async calls are blocking from sending.</param>
-        /// <remarks>
-        /// The maximumAsyncRequests parameter provides a mechanism for minimizing the amount of async requests in flight at any one time
-        /// by blocking the caller requesting the async call.  This affectively puts an upper limit on the amount of times a caller can
-        /// call SendMessageAsync before the caller is blocked.
-        ///
-        /// The MaximumMessageBuffer parameter provides a way to limit the max amount of memory the driver uses should the send pipeline get
-        /// overwhelmed and the buffer starts to fill up.  This is an inaccurate limiting memory use as the amount of memory actually used is
-        /// dependant on the general message size being buffered.
-        ///
-        /// A message will start its timeout countdown as soon as it is added to the producer async queue.  If there are a large number of
-        /// messages sitting in the async queue then a message may spend its entire timeout cycle waiting in this queue and never getting
-        /// attempted to send to Kafka before a timeout exception is thrown.
-        /// </remarks>
         public Producer(IBrokerRouter brokerRouter, int maximumAsyncRequests = MaximumAsyncRequests, int maximumMessageBuffer = MaximumMessageBuffer)
         {
             BrokerRouter = brokerRouter;
@@ -103,11 +85,19 @@ namespace KafkaNet
         /// </summary>
         /// <param name="topic">The name of the kafka topic to send the messages to.</param>
         /// <param name="messages">The enumerable of messages that will be sent to the given topic.</param>
-        /// <param name="acks">The required level of acknowlegment from the kafka server.  0=none, 1=writen to leader, 2+=writen to replicas, -1=writen to all replicas.</param>
-        /// <param name="timeout">Interal kafka timeout to wait for the requested level of ack to occur before returning. Defaults to 1000ms.</param>
-        /// <param name="codec">The codec to apply to the message collection.  Defaults to none.</param>
-        /// <returns>List of ProduceResponses from each partition sent to or empty list if acks = 0.</returns>
-        public async Task<List<ProduceResponse>> SendMessageAsync(string topic, IEnumerable<Message> messages, Int16 acks = 1,
+        /// <param name="acks">
+        /// The required level of acknowlegment from the kafka server. 0=none, 1=writen to leader,
+        /// 2+=writen to replicas, -1=writen to all replicas.
+        /// </param>
+        /// <param name="timeout">
+        /// Interal kafka timeout to wait for the requested level of ack to occur before returning.
+        /// Defaults to 1000ms.
+        /// </param>
+        /// <param name="codec">The codec to apply to the message collection. Defaults to none.</param>
+        /// <returns>
+        /// List of ProduceResponses from each partition sent to or empty list if acks = 0.
+        /// </returns>
+        public Task<ProduceResponse[]> SendMessageAsync(string topic, IEnumerable<Message> messages, Int16 acks = 1,
             TimeSpan? timeout = null, MessageCodec codec = MessageCodec.CodecNone, int? partition = null)
         {
             if (_stopToken.IsCancellationRequested)
@@ -122,23 +112,19 @@ namespace KafkaNet
                 Topic = topic,
                 Message = message,
                 Partition = partition
-            }).ToList();
+            }).ToArray();
 
             _asyncCollection.AddRange(batch);
 
-            await Task.WhenAll(batch.Select(x => x.Tcs.Task));
-
-            return batch.Select(topicMessage => topicMessage.Tcs.Task.Result)
-                                .Distinct()
-                                .ToList();
+            return Task.WhenAll(batch.Select(x => x.Tcs.Task));
         }
 
-        public Task<List<ProduceResponse>> SendMessageAsync(string topic, int partition, params Message[] messages)
+        public Task<ProduceResponse[]> SendMessageAsync(string topic, int partition, params Message[] messages)
         {
             return SendMessageAsync(topic, messages, partition: partition);
         }
 
-        public Task<List<ProduceResponse>> SendMessageAsync(string topic, params Message[] messages)
+        public Task<ProduceResponse[]> SendMessageAsync(string topic, params Message[] messages)
         {
             return SendMessageAsync(topic, messages, acks: 1);
         }
@@ -159,10 +145,16 @@ namespace KafkaNet
         }
 
         /// <summary>
-        /// Stops the producer from accepting new messages, and optionally waits for in-flight messages to be sent before returning.
+        /// Stops the producer from accepting new messages, and optionally waits for in-flight
+        /// messages to be sent before returning.
         /// </summary>
-        /// <param name="waitForRequestsToComplete">True to wait for in-flight requests to complete, false otherwise.</param>
-        /// <param name="maxWait">Maximum time to wait for in-flight requests to complete. Has no effect if <c>waitForRequestsToComplete</c> is false</param>
+        /// <param name="waitForRequestsToComplete">
+        /// True to wait for in-flight requests to complete, false otherwise.
+        /// </param>
+        /// <param name="maxWait">
+        /// Maximum time to wait for in-flight requests to complete. Has no effect if
+        /// <c>waitForRequestsToComplete</c> is false
+        /// </param>
         public void Stop(bool waitForRequestsToComplete = true, TimeSpan? maxWait = null)
         {
             //block incoming data
@@ -203,8 +195,8 @@ namespace KafkaNet
                         //Drain any messages remaining in the queue and add them to the send batch
                         batch.AddRange(_asyncCollection.Drain());
                     }
-
-                    await ProduceAndSendBatchAsync(batch, _stopToken.Token);
+                    if (batch != null)
+                        await ProduceAndSendBatchAsync(batch, _stopToken.Token);
                 }
                 catch (Exception ex)
                 {
@@ -233,9 +225,9 @@ namespace KafkaNet
                 var messageByRouter = ackLevelBatch.Select(batch => new
                 {
                     TopicMessage = batch,
+                    AckLevel = ackLevelBatch.Key.Acks,
                     Route = batch.Partition.HasValue ? BrokerRouter.SelectBrokerRouteFromLocalCache(batch.Topic, batch.Partition.Value) : BrokerRouter.SelectBrokerRouteFromLocalCache(batch.Topic, batch.Message.Key)
-                })
-                                         .GroupBy(x => new { x.Route, x.TopicMessage.Topic, x.TopicMessage.Codec });
+                }).GroupBy(x => new { x.Route, x.TopicMessage.Topic, x.TopicMessage.Codec, x.AckLevel });
 
                 var sendTasks = new List<BrokerRouteSendBatch>();
                 foreach (var group in messageByRouter)
@@ -262,10 +254,11 @@ namespace KafkaNet
                     {
                         Route = group.Key.Route,
                         Task = sendGroupTask,
-                        MessagesSent = group.Select(x => x.TopicMessage).ToList()
+                        MessagesSent = group.Select(x => x.TopicMessage).ToList(),
+                        AckLevel = group.Key.AckLevel
                     };
 
-                    //ensure the async is released as soon as each task is completed
+                    //ensure the async is released as soon as each task is completed //TODO: remove it from ack level 0 , don't like
                     brokerSendTask.Task.ContinueWith(t => { _semaphoreMaximumAsync.Release(); }, cancellationToken);
 
                     sendTasks.Add(brokerSendTask);
@@ -274,32 +267,40 @@ namespace KafkaNet
                 try
                 {
                     await Task.WhenAll(sendTasks.Select(x => x.Task)).ConfigureAwait(false);
-
-                    foreach (var task in sendTasks)
-                    {
-                        //TODO when we dont ask for an ACK, result is an empty list.  Which FirstOrDefault returns null.  Dont like this...
-                        task.MessagesSent.ForEach(async x => x.Tcs.TrySetResult(await task.Task));
-                    }
                 }
-                catch
+                catch (Exception)
                 {
-                    //if an error occurs here, all we know is some or all of the messages in this ackBatch failed.
-                    var failedTask = sendTasks.FirstOrDefault(t => t.Task.IsFaulted);
-                    if (failedTask != null)
+                    //TODO:Add more log
+                }
+
+                foreach (var sendTask in sendTasks)
+                {
+                    try
                     {
-                        foreach (var topicMessageBatch in ackLevelBatch)
+                        var batchResult = await sendTask.Task;
+                        var numberOfMessage = sendTask.MessagesSent.Count;
+                        for (int i = 0; i < numberOfMessage; i++)
                         {
-                            topicMessageBatch.Tcs.TrySetException(
-                                new KafkaApplicationException(
-                                    "An exception occured while executing a send operation against {0}.  Exception:{1}",
-                                    failedTask.Route, failedTask.Task.Exception));
+                            bool isAckLevel0 = sendTask.AckLevel == 0;
+                            if (isAckLevel0)
+                            {
+                                var responce = new ProduceResponse() { Error = (short)ErrorResponseCode.NoError, PartitionId = sendTask.Route.PartitionId, Topic = sendTask.Route.Topic, Offset = -1 };
+                                sendTask.MessagesSent[i].Tcs.SetResult(responce);
+                            }
+                            else
+                            {
+                                var responce = new ProduceResponse() { Error = batchResult.Error, PartitionId = batchResult.PartitionId, Topic = batchResult.Topic, Offset = batchResult.Offset + i };
+                                sendTask.MessagesSent[i].Tcs.SetResult(responce);
+                            }
                         }
                     }
+                    catch (Exception ex)
+                    {
+                        //TODO:Add more log
+                        sendTask.MessagesSent.ForEach((x) => x.Tcs.TrySetException(ex));
+                    }
                 }
-                finally
-                {
-                    Interlocked.Add(ref _inFlightMessageCount, messages.Count * -1);
-                }
+                Interlocked.Add(ref _inFlightMessageCount, messages.Count * -1);
             }
         }
 
@@ -338,6 +339,7 @@ namespace KafkaNet
 
     internal class BrokerRouteSendBatch
     {
+        public short AckLevel { get; set; }
         public BrokerRoute Route { get; set; }
         public Task<ProduceResponse> Task { get; set; }
         public List<TopicMessage> MessagesSent { get; set; }

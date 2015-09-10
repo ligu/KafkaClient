@@ -25,7 +25,7 @@ namespace kafka_tests.Integration
             using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri)))
             using (var producer = new Producer(router, maxAsync) { BatchSize = amount / 2 })
             {
-                var tasks = new Task<List<ProduceResponse>>[amount];
+                var tasks = new Task<ProduceResponse[]>[amount];
 
                 for (var i = 0; i < amount; i++)
                 {
