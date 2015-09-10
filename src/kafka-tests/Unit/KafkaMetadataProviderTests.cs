@@ -28,7 +28,7 @@ namespace kafka_tests.Unit
             var conn = Substitute.For<IKafkaConnection>();
 
             conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>())
-                .Returns(x => CreateMetadataResponse(errorCode), x => CreateMetadataResponse(ErrorResponseCode.NoError));
+                .Returns(x => CreateMetadataResponse(errorCode), x => CreateMetadataResponse(errorCode));
 
             using (var provider = new KafkaMetadataProvider(_log))
             {
