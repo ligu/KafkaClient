@@ -20,18 +20,18 @@ namespace kafka_tests.Unit
         private MoqMockingKernel _kernel;
         private Mock<IKafkaConnection> _mockKafkaConnection1;
         private Mock<IKafkaConnectionFactory> _mockKafkaConnectionFactory;
-        private Mock<IPartitionSelector> _mockPartitionSelector;
+        private int _partitionId = 0;
 
         [SetUp]
         public void Setup()
         {
             _kernel = new MoqMockingKernel();
-
-            //setup mock IKafkaConnection
-            _mockPartitionSelector = _kernel.GetMock<IPartitionSelector>();
             _mockKafkaConnection1 = _kernel.GetMock<IKafkaConnection>();
             _mockKafkaConnectionFactory = _kernel.GetMock<IKafkaConnectionFactory>();
-            _mockKafkaConnectionFactory.Setup(x => x.Create(It.Is<KafkaEndpoint>(e => e.Endpoint.Port == 1), It.IsAny<TimeSpan>(), It.IsAny<IKafkaLog>(), null)).Returns(() => _mockKafkaConnection1.Object);
+            _mockKafkaConnectionFactory.Setup(
+                x =>
+                    x.Create(It.Is<KafkaEndpoint>(e => e.Endpoint.Port == 1), It.IsAny<TimeSpan>(),
+                        It.IsAny<IKafkaLog>(), null)).Returns(() => _mockKafkaConnection1.Object);
             _mockKafkaConnectionFactory.Setup(x => x.Resolve(It.IsAny<Uri>(), It.IsAny<IKafkaLog>()))
                 .Returns<Uri, IKafkaLog>((uri, log) => new KafkaEndpoint
                 {
@@ -50,28 +50,12 @@ namespace kafka_tests.Unit
             var routerProxy = new BrokerRouterProxy(_kernel);
             routerProxy._cacheExpiration = new TimeSpan(10);
             var router = routerProxy.Create();
-
-            int partitionId = 0;
-
             ProtocolGateway protocolGateway = new ProtocolGateway(router);
-            var fetchRequest = new FetchRequest();
-            bool sendExOnFirstTime = true;
 
-            Func<Task<FetchResponse>> ShouldReturnErrorAndThenNoError = async () =>
-            {
-                Task.Delay(routerProxy._cacheExpiration).Wait();
-                Task.Delay(1).Wait();
-                if (sendExOnFirstTime)
-                {
-                    sendExOnFirstTime = false;
-                    return new FetchResponse() { Error = (short)code };
-                }
-                return new FetchResponse() { Error = (short)ErrorResponseCode.NoError };
-            };
-            routerProxy.BrokerConn0.FetchResponseFunction = ShouldReturnErrorAndThenNoError;
-            routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.DefaultMetadataResponse;
+            routerProxy.BrokerConn0.FetchResponseFunction = FailedInFirstMessageError(code, routerProxy._cacheExpiration);
+            routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.CreateMetaResponseWith2Broker;
 
-            await protocolGateway.SendProtocolRequest(fetchRequest, BrokerRouterProxy.TestTopic, partitionId);
+            await protocolGateway.SendProtocolRequest(new FetchRequest(), BrokerRouterProxy.TestTopic, _partitionId);
 
             Assert.That(routerProxy.BrokerConn0.MetadataRequestCallCount, Is.EqualTo(2));
             Assert.That(routerProxy.BrokerConn0.FetchRequestCallCount, Is.EqualTo(2));
@@ -95,28 +79,12 @@ namespace kafka_tests.Unit
             var routerProxy = new BrokerRouterProxy(_kernel);
             routerProxy._cacheExpiration = TimeSpan.FromMilliseconds(10);
             var router = routerProxy.Create();
-
-            int partitionId = 0;
-
             ProtocolGateway protocolGateway = new ProtocolGateway(router);
-            var fetchRequest = new FetchRequest();
-            bool sendExOnFirstTime = true;
 
-            Func<Task<FetchResponse>> ShouldReturnNotLeaderForPartitionAndThenNoError = async () =>
-            {
-                Task.Delay(routerProxy._cacheExpiration).Wait();
-                Task.Delay(1).Wait();
-                if (sendExOnFirstTime)
-                {
-                    sendExOnFirstTime = false;
-                    throw new SocketException();
-                }
-                return new FetchResponse() { Error = (short)ErrorResponseCode.NoError };
-            };
-            routerProxy.BrokerConn0.FetchResponseFunction = ShouldReturnNotLeaderForPartitionAndThenNoError;
-            routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.DefaultMetadataResponse;
+            routerProxy.BrokerConn0.FetchResponseFunction = FailedInFirstMessageException(typeof(SocketException), routerProxy._cacheExpiration);
+            routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.CreateMetaResponseWith2Broker;
 
-            await protocolGateway.SendProtocolRequest(fetchRequest, BrokerRouterProxy.TestTopic, partitionId);
+            await protocolGateway.SendProtocolRequest(new FetchRequest(), BrokerRouterProxy.TestTopic, _partitionId);
 
             Assert.That(routerProxy.BrokerConn0.MetadataRequestCallCount, Is.EqualTo(2));
             Assert.That(routerProxy.BrokerConn0.FetchRequestCallCount, Is.EqualTo(2));
@@ -129,29 +97,13 @@ namespace kafka_tests.Unit
             var routerProxy = new BrokerRouterProxy(_kernel);
             routerProxy._cacheExpiration = TimeSpan.FromMilliseconds(10);
             var router = routerProxy.Create();
-
-            int partitionId = 0;
             ProtocolGateway protocolGateway = new ProtocolGateway(router);
-            var fetchRequest = new FetchRequest();
 
-            bool firstTime = true;
-            Func<Task<FetchResponse>> ShouldReturnError = async () =>
-            {
-                if (firstTime)
-                {
-                    firstTime = !firstTime;
-                    object[] args = new object[1];
-                    args[0] = "error Test";
-                    throw (Exception)Activator.CreateInstance(exceptionType, args);
-                }
-                return new FetchResponse() { Error = (short)ErrorResponseCode.NoError };
-            };
-
-            routerProxy.BrokerConn0.FetchResponseFunction = ShouldReturnError;
-            routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.DefaultMetadataResponse;
+            routerProxy.BrokerConn0.FetchResponseFunction = FailedInFirstMessageException(exceptionType, routerProxy._cacheExpiration);
+            routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.CreateMetaResponseWith2Broker;
             try
             {
-                await protocolGateway.SendProtocolRequest(fetchRequest, BrokerRouterProxy.TestTopic, partitionId);
+                await protocolGateway.SendProtocolRequest(new FetchRequest(), BrokerRouterProxy.TestTopic, _partitionId);
                 Assert.IsTrue(false, "Should throw exception");
             }
             catch (Exception ex)
@@ -174,29 +126,17 @@ namespace kafka_tests.Unit
         [TestCase(ErrorResponseCode.Unknown)]
         [TestCase(ErrorResponseCode.StaleControllerEpochCode)]
         [TestCase(ErrorResponseCode.ReplicaNotAvailable)]
-        public async Task SendProtocolRequestShouldNoTryToRefreshMataDataIfCanNotRecoverByRefreshMetadata(ErrorResponseCode code)
+        public async Task SendProtocolRequestShouldNoTryToRefreshMataDataIfCanNotRecoverByRefreshMetadata(
+            ErrorResponseCode code)
         {
             var routerProxy = new BrokerRouterProxy(_kernel);
             routerProxy._cacheExpiration = TimeSpan.FromMilliseconds(10);
             var router = routerProxy.Create();
-
-            int partitionId = 0;
             ProtocolGateway protocolGateway = new ProtocolGateway(router);
-            var fetchRequest = new FetchRequest();
 
-            bool firstTime = true;
-            Func<Task<FetchResponse>> ShouldReturnError = async () =>
-            {
-                if (firstTime)
-                {
-                    firstTime = !firstTime;
-                    return new FetchResponse() { Error = (short)code };
-                }
-                return new FetchResponse() { Error = (short)ErrorResponseCode.NoError };
-            };
-            routerProxy.BrokerConn0.FetchResponseFunction = ShouldReturnError;
-            routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.DefaultMetadataResponse;
-            await protocolGateway.SendProtocolRequest(fetchRequest, BrokerRouterProxy.TestTopic, partitionId);
+            routerProxy.BrokerConn0.FetchResponseFunction = FailedInFirstMessageError(code, routerProxy._cacheExpiration);
+            routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.CreateMetaResponseWith2Broker;
+            await protocolGateway.SendProtocolRequest(new FetchRequest(), BrokerRouterProxy.TestTopic, _partitionId);
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
@@ -205,30 +145,21 @@ namespace kafka_tests.Unit
             var routerProxy = new BrokerRouterProxy(_kernel);
             routerProxy._cacheExpiration = TimeSpan.FromMilliseconds(10);
             var router = routerProxy.Create();
-
-            int partitionId = 0;
             ProtocolGateway protocolGateway = new ProtocolGateway(router);
-            var fetchRequest = new FetchRequest();
 
-            bool firstTime = true;
-            Func<Task<FetchResponse>> ShouldReturnError = async () =>
-            {
-                return new FetchResponse() { Error = (short)ErrorResponseCode.NoError };
-            };
-
-            routerProxy.BrokerConn0.FetchResponseFunction = ShouldReturnError;
-            routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.DefaultMetadataResponse;
+            routerProxy.BrokerConn0.FetchResponseFunction = ShouldReturnValidMessage;
+            routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.CreateMetaResponseWith2Broker;
             int numberOfCall = 1000;
             Task[] tasks = new Task[numberOfCall];
             for (int i = 0; i < numberOfCall / 2; i++)
             {
-                tasks[i] = protocolGateway.SendProtocolRequest(fetchRequest, BrokerRouterProxy.TestTopic, partitionId);
+                tasks[i] = protocolGateway.SendProtocolRequest(new FetchRequest(), BrokerRouterProxy.TestTopic, _partitionId);
             }
             await Task.Delay(routerProxy._cacheExpiration);
             await Task.Delay(1);
             for (int i = 0; i < numberOfCall / 2; i++)
             {
-                tasks[i + numberOfCall / 2] = protocolGateway.SendProtocolRequest(fetchRequest, BrokerRouterProxy.TestTopic, partitionId);
+                tasks[i + numberOfCall / 2] = protocolGateway.SendProtocolRequest(new FetchRequest(), BrokerRouterProxy.TestTopic, _partitionId);
             }
 
             await Task.WhenAll(tasks);
@@ -243,35 +174,28 @@ namespace kafka_tests.Unit
             routerProxy._cacheExpiration = TimeSpan.FromMilliseconds(10);
             var router = routerProxy.Create();
 
-            int partitionId = 0;
             ProtocolGateway protocolGateway = new ProtocolGateway(router);
             var fetchRequest = new FetchRequest();
 
-            bool firstTime = true;
-            Func<Task<FetchResponse>> ShouldReturnError = async () =>
-             {
-                 return new FetchResponse() { Error = (short)ErrorResponseCode.NoError };
-             };
-
-            routerProxy.BrokerConn0.FetchResponseFunction = ShouldReturnError;
-            routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.DefaultMetadataResponse;
+            routerProxy.BrokerConn0.FetchResponseFunction = ShouldReturnValidMessage;
+            routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.CreateMetaResponseWith2Broker;
             int numberOfCall = 1000;
             Task[] tasks = new Task[numberOfCall];
             for (int i = 0; i < numberOfCall / 2; i++)
             {
-                tasks[i] = protocolGateway.SendProtocolRequest(fetchRequest, BrokerRouterProxy.TestTopic, partitionId);
+                tasks[i] = protocolGateway.SendProtocolRequest(fetchRequest, BrokerRouterProxy.TestTopic, _partitionId);
             }
-            //change MetadataResponseFunction
+
             routerProxy.BrokerConn0.MetadataResponseFunction = async () =>
             {
-                var response = await BrokerRouterProxy.DefaultMetadataResponse();
+                var response = await BrokerRouterProxy.CreateMetaResponseWith2Broker();
                 response.Topics[0].Name = "test2";
                 return response;
             };
 
             for (int i = 0; i < numberOfCall / 2; i++)
             {
-                tasks[i + numberOfCall / 2] = protocolGateway.SendProtocolRequest(fetchRequest, "test2", partitionId);
+                tasks[i + numberOfCall / 2] = protocolGateway.SendProtocolRequest(fetchRequest, "test2", _partitionId);
             }
 
             await Task.WhenAll(tasks);
@@ -280,7 +204,7 @@ namespace kafka_tests.Unit
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
-        public async Task ShouldRecoverFromFailerByUpdateMetadataOnce()//Do not debug this test !!
+        public async Task ShouldRecoverFromFailerByUpdateMetadataOnce() //Do not debug this test !!
         {
             var log = new DefaultTraceLog();
             var routerProxy = new BrokerRouterProxy(_kernel);
@@ -317,7 +241,7 @@ namespace kafka_tests.Unit
             };
 
             routerProxy.BrokerConn0.FetchResponseFunction = ShouldReturnNotLeaderForPartitionAndThenNoError;
-            routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.DefaultMetadataResponse;
+            routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.CreateMetaResponseWith2Broker;
 
             Task[] tasks = new Task[numberOfCall];
 
@@ -328,8 +252,143 @@ namespace kafka_tests.Unit
 
             await Task.WhenAll(tasks);
             Assert.That(numberOfErrorSend, Is.GreaterThan(1), "numberOfErrorSend");
-            Assert.That(routerProxy.BrokerConn0.FetchRequestCallCount, Is.EqualTo(numberOfCall + numberOfErrorSend), "FetchRequestCallCount");
+            Assert.That(routerProxy.BrokerConn0.FetchRequestCallCount, Is.EqualTo(numberOfCall + numberOfErrorSend),
+                "FetchRequestCallCount");
             Assert.That(routerProxy.BrokerConn0.MetadataRequestCallCount, Is.EqualTo(2), "MetadataRequestCallCount");
+        }
+
+        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        public async Task ShouldRecoverFromFailerByUpdateMetadataOnceFullScenario() //Do not debug this test !!
+        {
+            var routerProxy = new BrokerRouterProxy(_kernel);
+            routerProxy._cacheExpiration = TimeSpan.FromMilliseconds(0);
+            var router = routerProxy.Create();
+            int partitionId = 0;
+            ProtocolGateway protocolGateway = new ProtocolGateway(router);
+            var fetchRequest = new FetchRequest();
+
+            CreateSuccessfulSendMock(routerProxy);
+
+            //Send Successful Message
+            await protocolGateway.SendProtocolRequest(fetchRequest, BrokerRouterProxy.TestTopic, partitionId);
+
+            Assert.That(routerProxy.BrokerConn0.FetchRequestCallCount, Is.EqualTo(1), "FetchRequestCallCount");
+            Assert.That(routerProxy.BrokerConn0.MetadataRequestCallCount, Is.EqualTo(1), "MetadataRequestCallCount");
+            Assert.That(routerProxy.BrokerConn1.MetadataRequestCallCount, Is.EqualTo(0), "MetadataRequestCallCount");
+
+            routerProxy.BrokerConn0.FetchResponseFunction = FailedInFirstMessageException(typeof(SocketException), TimeSpan.Zero);
+            //triger to update metadata
+            routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.CreateMetaResponseWithException;
+            routerProxy.BrokerConn1.MetadataResponseFunction = BrokerRouterProxy.CreateMetaResponseWith1Broker;
+
+            //Reset variables
+            routerProxy.BrokerConn0.FetchRequestCallCount = 0;
+            routerProxy.BrokerConn1.FetchRequestCallCount = 0;
+            routerProxy.BrokerConn0.MetadataRequestCallCount = 0;
+            routerProxy.BrokerConn1.MetadataRequestCallCount = 0;
+
+            //Send Successful Message that was recover from exception
+            await protocolGateway.SendProtocolRequest(fetchRequest, BrokerRouterProxy.TestTopic, partitionId);
+
+            Assert.That(routerProxy.BrokerConn0.FetchRequestCallCount, Is.EqualTo(1), "FetchRequestCallCount");
+            Assert.That(routerProxy.BrokerConn0.MetadataRequestCallCount, Is.EqualTo(1), "MetadataRequestCallCount");
+
+            Assert.That(routerProxy.BrokerConn1.FetchRequestCallCount, Is.EqualTo(1), "FetchRequestCallCount");
+            Assert.That(routerProxy.BrokerConn1.MetadataRequestCallCount, Is.EqualTo(1), "MetadataRequestCallCount");
+        }
+
+        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        public async Task ShouldRecoverFromFailerByUpdateMetadataOnceFullScenario1()
+        {
+            var routerProxy = new BrokerRouterProxy(_kernel);
+            routerProxy._cacheExpiration = TimeSpan.FromMilliseconds(0);
+            var router = routerProxy.Create();
+            int partitionId = 0;
+            ProtocolGateway protocolGateway = new ProtocolGateway(router);
+            var fetchRequest = new FetchRequest();
+
+            CreateSuccessfulSendMock(routerProxy);
+
+            //Send Successful Message
+            await protocolGateway.SendProtocolRequest(fetchRequest, BrokerRouterProxy.TestTopic, partitionId);
+
+            Assert.That(routerProxy.BrokerConn0.FetchRequestCallCount, Is.EqualTo(1), "FetchRequestCallCount");
+            Assert.That(routerProxy.BrokerConn0.MetadataRequestCallCount, Is.EqualTo(1), "MetadataRequestCallCount");
+            Assert.That(routerProxy.BrokerConn1.MetadataRequestCallCount, Is.EqualTo(0), "MetadataRequestCallCount");
+
+            routerProxy.BrokerConn0.FetchResponseFunction = FailedInFirstMessageError(ErrorResponseCode.LeaderNotAvailable, TimeSpan.Zero);
+
+            routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.CreateMetaResponseWith1Broker;
+            routerProxy.BrokerConn1.MetadataResponseFunction = BrokerRouterProxy.CreateMetaResponseWith1Broker;
+
+            //Reset variables
+            routerProxy.BrokerConn0.FetchRequestCallCount = 0;
+            routerProxy.BrokerConn1.FetchRequestCallCount = 0;
+            routerProxy.BrokerConn0.MetadataRequestCallCount = 0;
+            routerProxy.BrokerConn1.MetadataRequestCallCount = 0;
+
+            //Send Successful Message that was recover from exception
+            await protocolGateway.SendProtocolRequest(fetchRequest, BrokerRouterProxy.TestTopic, partitionId);
+
+            Assert.That(routerProxy.BrokerConn0.FetchRequestCallCount, Is.EqualTo(1), "FetchRequestCallCount");
+            Assert.That(routerProxy.BrokerConn0.MetadataRequestCallCount, Is.EqualTo(1), "MetadataRequestCallCount");
+
+            Assert.That(routerProxy.BrokerConn1.FetchRequestCallCount, Is.EqualTo(1), "FetchRequestCallCount");
+            Assert.That(routerProxy.BrokerConn1.MetadataRequestCallCount, Is.EqualTo(0), "MetadataRequestCallCount");
+        }
+
+        private static Func<Task<FetchResponse>> FailedInFirstMessageError(ErrorResponseCode errorResponseCode,
+            TimeSpan delay)
+        {
+            bool firstTime = true;
+            Func<Task<FetchResponse>> result = async () =>
+            {
+                if (firstTime)
+                {
+                    await Task.Delay(delay);
+                    await Task.Delay(1);
+                    firstTime = false;
+                    return new FetchResponse() { Error = (short)errorResponseCode };
+                }
+                return new FetchResponse() { Error = (short)ErrorResponseCode.NoError };
+            };
+            return result;
+        }
+
+        private Func<Task<FetchResponse>> FailedInFirstMessageException(Type exceptionType, TimeSpan delay)
+        {
+            bool firstTime = true;
+            Func<Task<FetchResponse>> result = async () =>
+            {
+                if (firstTime)
+                {
+                    await Task.Delay(delay);
+                    await Task.Delay(1);
+                    firstTime = false;
+                    if (exceptionType == typeof(SocketException))
+                    {
+                        throw new SocketException();
+                    }
+                    object[] args = new object[1];
+                    args[0] = "error Test";
+                    throw (Exception)Activator.CreateInstance(exceptionType, args);
+                }
+                return new FetchResponse() { Error = (short)ErrorResponseCode.NoError };
+            };
+            return result;
+        }
+
+        private void CreateSuccessfulSendMock(BrokerRouterProxy routerProxy)
+        {
+            routerProxy.BrokerConn0.FetchResponseFunction = ShouldReturnValidMessage;
+            routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.CreateMetaResponseWith2Broker;
+            routerProxy.BrokerConn1.FetchResponseFunction = ShouldReturnValidMessage;
+            routerProxy.BrokerConn1.MetadataResponseFunction = BrokerRouterProxy.CreateMetaResponseWith2Broker;
+        }
+
+        private Task<FetchResponse> ShouldReturnValidMessage()
+        {
+            return Task.FromResult(new FetchResponse() { Error = (short)ErrorResponseCode.NoError });
         }
     }
 }
