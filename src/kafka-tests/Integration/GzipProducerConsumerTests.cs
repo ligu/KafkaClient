@@ -21,7 +21,7 @@ namespace kafka_tests.Integration
         private KafkaConnection GetKafkaConnection()
         {
             var endpoint = new DefaultKafkaConnectionFactory().Resolve(_options.KafkaServerUri.First(), _options.Log);
-            return new KafkaConnection(new KafkaTcpSocket(new DefaultTraceLog(), endpoint), _options.ResponseTimeoutMs, _options.Log);
+            return new KafkaConnection(new KafkaTcpSocket(new DefaultTraceLog(), endpoint, 5), _options.ResponseTimeoutMs, _options.Log);
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]

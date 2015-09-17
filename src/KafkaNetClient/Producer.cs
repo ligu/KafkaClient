@@ -196,7 +196,7 @@ namespace KafkaNet
                         batch.AddRange(_asyncCollection.Drain());
                     }
                     if (batch != null)
-                        await ProduceAndSendBatchAsync(batch, _stopToken.Token);
+                        await ProduceAndSendBatchAsync(batch, _stopToken.Token).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
@@ -216,8 +216,9 @@ namespace KafkaNet
         private async Task ProduceAndSendBatchAsync(List<TopicMessage> messages, CancellationToken cancellationToken)
         {
             Interlocked.Add(ref _inFlightMessageCount, messages.Count);
+
             var topics = messages.GroupBy(batch => batch.Topic).Select(batch => batch.Key).ToArray();
-            await BrokerRouter.RefreshMissingTopicMetadata(topics);
+            await BrokerRouter.RefreshMissingTopicMetadata(topics).ConfigureAwait(false);
 
             //we must send a different produce request for each ack level and timeout combination.
             foreach (var ackLevelBatch in messages.GroupBy(batch => new { batch.Acks, batch.Timeout }))
@@ -249,7 +250,7 @@ namespace KafkaNet
 
                     await _semaphoreMaximumAsync.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-                    var sendGroupTask = _protocolGateway.SendProtocolRequest(request, group.Key.Topic, group.Key.Route.PartitionId);// group.Key.Route.Connection.SendAsync(request);
+                    var sendGroupTask = _protocolGateway.SendProtocolRequest(request, group.Key.Topic, group.Key.Route.PartitionId);
                     var brokerSendTask = new BrokerRouteSendBatch
                     {
                         Route = group.Key.Route,
@@ -273,34 +274,52 @@ namespace KafkaNet
                     //TODO:Add more log
                 }
 
-                foreach (var sendTask in sendTasks)
+                await SetResult(sendTasks);
+                Interlocked.Add(ref _inFlightMessageCount, messages.Count * -1);
+            }
+        }
+
+        private static async Task SetResult(List<BrokerRouteSendBatch> sendTasks)
+        {
+            foreach (var sendTask in sendTasks)
+            {
+                try
                 {
-                    try
+                    //all ready done don't need to await but it none blocking syntext
+                    var batchResult = await sendTask.Task;
+                    var numberOfMessage = sendTask.MessagesSent.Count;
+                    for (int i = 0; i < numberOfMessage; i++)
                     {
-                        var batchResult = await sendTask.Task;
-                        var numberOfMessage = sendTask.MessagesSent.Count;
-                        for (int i = 0; i < numberOfMessage; i++)
+                        bool isAckLevel0 = sendTask.AckLevel == 0;
+                        if (isAckLevel0)
                         {
-                            bool isAckLevel0 = sendTask.AckLevel == 0;
-                            if (isAckLevel0)
+                            var responce = new ProduceResponse()
                             {
-                                var responce = new ProduceResponse() { Error = (short)ErrorResponseCode.NoError, PartitionId = sendTask.Route.PartitionId, Topic = sendTask.Route.Topic, Offset = -1 };
-                                sendTask.MessagesSent[i].Tcs.SetResult(responce);
-                            }
-                            else
+                                Error = (short)ErrorResponseCode.NoError,
+                                PartitionId = sendTask.Route.PartitionId,
+                                Topic = sendTask.Route.Topic,
+                                Offset = -1
+                            };
+                            sendTask.MessagesSent[i].Tcs.SetResult(responce);
+                        }
+                        else
+                        {
+                            var responce = new ProduceResponse()
                             {
-                                var responce = new ProduceResponse() { Error = batchResult.Error, PartitionId = batchResult.PartitionId, Topic = batchResult.Topic, Offset = batchResult.Offset + i };
-                                sendTask.MessagesSent[i].Tcs.SetResult(responce);
-                            }
+                                Error = batchResult.Error,
+                                PartitionId = batchResult.PartitionId,
+                                Topic = batchResult.Topic,
+                                Offset = batchResult.Offset + i
+                            };
+                            sendTask.MessagesSent[i].Tcs.SetResult(responce);
                         }
                     }
-                    catch (Exception ex)
-                    {
-                        //TODO:Add more log
-                        sendTask.MessagesSent.ForEach((x) => x.Tcs.TrySetException(ex));
-                    }
                 }
-                Interlocked.Add(ref _inFlightMessageCount, messages.Count * -1);
+                catch (Exception ex)
+                {
+                    //TODO:Add more log
+                    sendTask.MessagesSent.ForEach((x) => x.Tcs.TrySetException(ex));
+                }
             }
         }
 

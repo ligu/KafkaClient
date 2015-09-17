@@ -31,7 +31,7 @@ namespace kafka_tests.Unit
             _mockKafkaConnectionFactory.Setup(
                 x =>
                     x.Create(It.Is<KafkaEndpoint>(e => e.Endpoint.Port == 1), It.IsAny<TimeSpan>(),
-                        It.IsAny<IKafkaLog>(), null)).Returns(() => _mockKafkaConnection1.Object);
+                        It.IsAny<IKafkaLog>(), It.IsAny<int>(), null)).Returns(() => _mockKafkaConnection1.Object);
             _mockKafkaConnectionFactory.Setup(x => x.Resolve(It.IsAny<Uri>(), It.IsAny<IKafkaLog>()))
                 .Returns<Uri, IKafkaLog>((uri, log) => new KafkaEndpoint
                 {

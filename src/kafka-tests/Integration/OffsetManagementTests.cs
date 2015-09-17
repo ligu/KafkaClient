@@ -23,41 +23,42 @@ namespace kafka_tests.Integration
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         [Ignore("Not supported currently in 8.1.2?")]
-        public void OffsetFetchRequestOfNonExistingGroupShouldReturnNoError()
+        public async Task OffsetFetchRequestOfNonExistingGroupShouldReturnNoError()
         {
             //From documentation: https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+ProtocolTests#AGuideToTheKafkaProtocol-OffsetFetchRequest
             //Note that if there is no offset associated with a topic-partition under that consumer group the broker does not set an error code
             //(since it is not really an error), but returns empty metadata and sets the offset field to -1.
             const int partitionId = 0;
-            using (var router = new BrokerRouter(Options))
-            {
-                var request = CreateOffsetFetchRequest(Guid.NewGuid().ToString(), partitionId);
+            var router = new BrokerRouter(Options);
 
-                var conn = router.SelectBrokerRouteFromLocalCache(IntegrationConfig.IntegrationTopic, partitionId);
+            var request = CreateOffsetFetchRequest(Guid.NewGuid().ToString(), partitionId);
+            await router.RefreshMissingTopicMetadata(IntegrationConfig.IntegrationTopic);
+            var conn = router.SelectBrokerRouteFromLocalCache(IntegrationConfig.IntegrationTopic, partitionId);
 
-                var response = conn.Connection.SendAsync(request).Result.FirstOrDefault();
+            var response = (await conn.Connection.SendAsync(request)).FirstOrDefault();
 
-                Assert.That(response, Is.Not.Null);
-                Assert.That(response.Error, Is.EqualTo((int)ErrorResponseCode.NoError));
-                Assert.That(response.Offset, Is.EqualTo(-1));
-            }
+            Assert.That(response, Is.Not.Null);
+            Assert.That(response.Error, Is.EqualTo((int)ErrorResponseCode.NoError));
+            Assert.That(response.Offset, Is.EqualTo(-1));
+            router.Dispose();
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         public async Task OffsetCommitShouldStoreAndReturnSuccess()
         {
             const int partitionId = 0;
-            using (var router = new BrokerRouter(Options))
-            {
-                await router.RefreshMissingTopicMetadata(IntegrationConfig.IntegrationTopic);
-                var conn = router.SelectBrokerRouteFromLocalCache(IntegrationConfig.IntegrationTopic, partitionId);
+            var router = new BrokerRouter(Options);
 
-                var commit = CreateOffsetCommitRequest(IntegrationConfig.IntegrationConsumer, partitionId, 10);
-                var response = conn.Connection.SendAsync(commit).Result.FirstOrDefault();
+            await router.RefreshMissingTopicMetadata(IntegrationConfig.IntegrationTopic);
+            var conn = router.SelectBrokerRouteFromLocalCache(IntegrationConfig.IntegrationTopic, partitionId);
 
-                Assert.That(response, Is.Not.Null);
-                Assert.That(response.Error, Is.EqualTo((int)ErrorResponseCode.NoError));
-            }
+            var commit = CreateOffsetCommitRequest(IntegrationConfig.IntegrationConsumer, partitionId, 10);
+            var response = (await conn.Connection.SendAsync(commit)).FirstOrDefault();
+
+            Assert.That(response, Is.Not.Null);
+            Assert.That(response.Error, Is.EqualTo((int)ErrorResponseCode.NoError));
+
+            router.Dispose();
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
@@ -66,24 +67,24 @@ namespace kafka_tests.Integration
             const int partitionId = 0;
             const long offset = 99;
 
-            using (var router = new BrokerRouter(Options))
-            {
-                await router.RefreshMissingTopicMetadata(IntegrationConfig.IntegrationTopic);
-                var conn = router.SelectBrokerRouteFromLocalCache(IntegrationConfig.IntegrationTopic, partitionId);
+            var router = new BrokerRouter(Options);
 
-                var commit = CreateOffsetCommitRequest(IntegrationConfig.IntegrationConsumer, partitionId, offset);
-                var commitResponse = conn.Connection.SendAsync(commit).Result.FirstOrDefault();
+            await router.RefreshMissingTopicMetadata(IntegrationConfig.IntegrationTopic);
+            var conn = router.SelectBrokerRouteFromLocalCache(IntegrationConfig.IntegrationTopic, partitionId);
 
-                Assert.That(commitResponse, Is.Not.Null);
-                Assert.That(commitResponse.Error, Is.EqualTo((int)ErrorResponseCode.NoError));
+            var commit = CreateOffsetCommitRequest(IntegrationConfig.IntegrationConsumer, partitionId, offset);
+            var commitResponse = (await conn.Connection.SendAsync(commit)).FirstOrDefault();
 
-                var fetch = CreateOffsetFetchRequest(IntegrationConfig.IntegrationConsumer, partitionId);
-                var fetchResponse = conn.Connection.SendAsync(fetch).Result.FirstOrDefault();
+            Assert.That(commitResponse, Is.Not.Null);
+            Assert.That(commitResponse.Error, Is.EqualTo((int)ErrorResponseCode.NoError));
 
-                Assert.That(fetchResponse, Is.Not.Null);
-                Assert.That(fetchResponse.Error, Is.EqualTo((int)ErrorResponseCode.NoError));
-                Assert.That(fetchResponse.Offset, Is.EqualTo(offset));
-            }
+            var fetch = CreateOffsetFetchRequest(IntegrationConfig.IntegrationConsumer, partitionId);
+            var fetchResponse = (await conn.Connection.SendAsync(fetch)).FirstOrDefault();
+
+            Assert.That(fetchResponse, Is.Not.Null);
+            Assert.That(fetchResponse.Error, Is.EqualTo((int)ErrorResponseCode.NoError));
+            Assert.That(fetchResponse.Offset, Is.EqualTo(offset));
+            router.Dispose();
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
@@ -94,24 +95,24 @@ namespace kafka_tests.Integration
             const long offset = 101;
             const string metadata = "metadata";
 
-            using (var router = new BrokerRouter(Options))
-            {
-                var conn = router.SelectBrokerRouteFromLocalCache(IntegrationConfig.IntegrationTopic, partitionId);
+            var router = new BrokerRouter(Options);
 
-                var commit = CreateOffsetCommitRequest(IntegrationConfig.IntegrationConsumer, partitionId, offset, metadata);
-                var commitResponse = conn.Connection.SendAsync(commit).Result.FirstOrDefault();
+            var conn = router.SelectBrokerRouteFromLocalCache(IntegrationConfig.IntegrationTopic, partitionId);
 
-                Assert.That(commitResponse, Is.Not.Null);
-                Assert.That(commitResponse.Error, Is.EqualTo((int)ErrorResponseCode.NoError));
+            var commit = CreateOffsetCommitRequest(IntegrationConfig.IntegrationConsumer, partitionId, offset, metadata);
+            var commitResponse = conn.Connection.SendAsync(commit).Result.FirstOrDefault();
 
-                var fetch = CreateOffsetFetchRequest(IntegrationConfig.IntegrationConsumer, partitionId);
-                var fetchResponse = conn.Connection.SendAsync(fetch).Result.FirstOrDefault();
+            Assert.That(commitResponse, Is.Not.Null);
+            Assert.That(commitResponse.Error, Is.EqualTo((int)ErrorResponseCode.NoError));
 
-                Assert.That(fetchResponse, Is.Not.Null);
-                Assert.That(fetchResponse.Error, Is.EqualTo((int)ErrorResponseCode.NoError));
-                Assert.That(fetchResponse.Offset, Is.EqualTo(offset));
-                Assert.That(fetchResponse.MetaData, Is.EqualTo(metadata));
-            }
+            var fetch = CreateOffsetFetchRequest(IntegrationConfig.IntegrationConsumer, partitionId);
+            var fetchResponse = conn.Connection.SendAsync(fetch).Result.FirstOrDefault();
+
+            Assert.That(fetchResponse, Is.Not.Null);
+            Assert.That(fetchResponse.Error, Is.EqualTo((int)ErrorResponseCode.NoError));
+            Assert.That(fetchResponse.Offset, Is.EqualTo(offset));
+            Assert.That(fetchResponse.MetaData, Is.EqualTo(metadata));
+            router.Dispose();
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]

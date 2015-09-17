@@ -30,6 +30,7 @@ namespace KafkaNet
         private SemaphoreSlim _taskLocker = new SemaphoreSlim(1);
 
         /// <exception cref="ServerUnreachableException">None of the provided Kafka servers are resolvable.</exception>
+
         public BrokerRouter(KafkaOptions kafkaOptions)
         {
             _kafkaOptions = kafkaOptions;
@@ -37,7 +38,7 @@ namespace KafkaNet
 
             foreach (var endpoint in _kafkaOptions.KafkaServerEndpoints)
             {
-                var conn = _kafkaOptions.KafkaConnectionFactory.Create(endpoint, _kafkaOptions.ResponseTimeoutMs, _kafkaOptions.Log, _kafkaOptions.MaximumReconnectionTimeout);
+                var conn = _kafkaOptions.KafkaConnectionFactory.Create(endpoint, _kafkaOptions.ResponseTimeoutMs, _kafkaOptions.Log, _kafkaOptions.MaxRetry, _kafkaOptions.MaximumReconnectionTimeout);
                 _defaultConnectionIndex.AddOrUpdate(endpoint, e => conn, (e, c) => conn);
             }
 
@@ -79,9 +80,14 @@ namespace KafkaNet
         /// Select a broker for a given topic using the IPartitionSelector function.
         /// </summary>
         /// <param name="topic">The topic to retreive a broker route for.</param>
-        /// <param name="key">The key used by the IPartitionSelector to collate to a consistent partition. Null value means key will be ignored in selection process.</param>
+        /// <param name="key">
+        /// The key used by the IPartitionSelector to collate to a consistent partition. Null value
+        /// means key will be ignored in selection process.
+        /// </param>
         /// <returns>A broker route for the given topic.</returns>
-        /// <exception cref="InvalidTopicNotExistsInCache">Thrown if the topic metadata does not exist in the cache.</exception>
+        /// <exception cref="InvalidTopicNotExistsInCache">
+        /// Thrown if the topic metadata does not exist in the cache.
+        /// </exception>
         public BrokerRoute SelectBrokerRouteFromLocalCache(string topic, byte[] key = null)
         {
             //get topic either from cache or server.
@@ -103,10 +109,13 @@ namespace KafkaNet
         /// <param name="topics">Collection of topics to request metadata for.</param>
         /// <returns>List of Topics as provided by Kafka.</returns>
         /// <remarks>
-        /// The topic metadata will by default check the cache first and then if it does not exist it will then
-        /// request metadata from the server.  To force querying the metadata from the server use <see cref="RefreshTopicMetadata"/>
+        /// The topic metadata will by default check the cache first and then if it does not exist
+        /// it will then request metadata from the server. To force querying the metadata from the
+        /// server use <see cref="RefreshTopicMetadata"/>
         /// </remarks>
-        /// <exception cref="InvalidTopicNotExistsInCache">Thrown if the topic metadata does not exist in the cache.</exception>
+        /// <exception cref="InvalidTopicNotExistsInCache">
+        /// Thrown if the topic metadata does not exist in the cache.
+        /// </exception>
         public List<Topic> GetTopicMetadataFromLocalCache(params string[] topics)
         {
             var topicSearchResult = SearchCacheForTopics(topics, null);
@@ -124,8 +133,10 @@ namespace KafkaNet
         /// </summary>
         /// <param name="topics">List of topics to update metadata for.</param>
         /// <remarks>
-        /// This method will ignore the cache and initiate a call to the kafka servers for all given topics, updating the cache with the resulting metadata.
-        /// Only call this method to force a metadata update.  For all other queries use <see cref="GetTopicMetadataFromLocalCache"/> which uses cached values.
+        /// This method will ignore the cache and initiate a call to the kafka servers for all given
+        /// topics, updating the cache with the resulting metadata. Only call this method to force a
+        /// metadata update. For all other queries use <see cref="GetTopicMetadataFromLocalCache"/>
+        /// which uses cached values.
         /// </remarks>
 
         public Task<bool> RefreshTopicMetadata(params string[] topics)
@@ -134,14 +145,15 @@ namespace KafkaNet
         }
 
         /// <summary>
-        /// Refresh metadata Request will try to refresh only the topics that were expired in the cache.
-        /// If cacheExpiration is null: refresh metadata Request will try to refresh only topics that are not in the cache.
+        /// Refresh metadata Request will try to refresh only the topics that were expired in the
+        /// cache. If cacheExpiration is null: refresh metadata Request will try to refresh only
+        /// topics that are not in the cache.
         /// </summary>
         private async Task<bool> RefreshTopicMetadata(TimeSpan? cacheExpiration, TimeSpan timeout, params string[] topics)
         {
             try
             {
-                await _taskLocker.WaitAsync(timeout);
+                await _taskLocker.WaitAsync(timeout).ConfigureAwait(false);
                 int missingFromCache = SearchCacheForTopics(topics, cacheExpiration).Missing.Count;
                 if (missingFromCache == 0)
                 {
@@ -153,14 +165,14 @@ namespace KafkaNet
                 //get the connections to query against and get metadata
                 var connections = _defaultConnectionIndex.Values.Union(_brokerConnectionIndex.Values).ToArray();
                 var taskMetadata = _kafkaMetadataProvider.Get(connections, topics);
-                await Task.WhenAny(Task.Delay(timeout), taskMetadata);
+                await Task.WhenAny(Task.Delay(timeout), taskMetadata).ConfigureAwait(false);
                 if (!taskMetadata.IsCompleted)
                 {
                     var ex = new Exception("Metadata refresh operation timed out");
 
                     throw ex;
                 }
-                var metadataResponse = await taskMetadata;
+                var metadataResponse = await taskMetadata.ConfigureAwait(false);
 
                 UpdateInternalMetadataCache(metadataResponse);
             }
@@ -242,7 +254,6 @@ namespace KafkaNet
 
             foreach (var broker in brokerEndpoints)
             {
-
                 //if the connection is in our default connection index already, remove it and assign it to the broker index.
                 IKafkaConnection connection;
                 if (_defaultConnectionIndex.TryRemove(broker.Endpoint, out connection))
@@ -251,7 +262,7 @@ namespace KafkaNet
                 }
                 else
                 {
-                    connection = _kafkaOptions.KafkaConnectionFactory.Create(broker.Endpoint, _kafkaOptions.ResponseTimeoutMs, _kafkaOptions.Log);
+                    connection = _kafkaOptions.KafkaConnectionFactory.Create(broker.Endpoint, _kafkaOptions.ResponseTimeoutMs, _kafkaOptions.Log, _kafkaOptions.MaxRetry);
                     UpsertConnectionToBrokerConnectionIndex(broker.Broker.BrokerId, connection);
                 }
             }
@@ -270,7 +281,6 @@ namespace KafkaNet
                     i => newConnection,
                     (i, existingConnection) =>
                     {
-
                         //if a connection changes for a broker close old connection and create a new one
                         if (existingConnection.Endpoint.Equals(newConnection.Endpoint)) return existingConnection;
                         _kafkaOptions.Log.WarnFormat("Broker:{0} Uri changed from:{1} to {2}", brokerId, existingConnection.Endpoint, newConnection.Endpoint);
@@ -294,9 +304,8 @@ namespace KafkaNet
             //update metadata for all missing topics
             if (topicSearchResult.Missing.Count > 0)
             {
-
                 //double check for missing topics and query
-                await RefreshTopicMetadata(null, _kafkaOptions.RefreshMetadataTimeout, topicSearchResult.Missing.Where(x => _topicIndex.ContainsKey(x) == false).ToArray());
+                await RefreshTopicMetadata(null, _kafkaOptions.RefreshMetadataTimeout, topicSearchResult.Missing.Where(x => _topicIndex.ContainsKey(x) == false).ToArray()).ConfigureAwait(false);
             }
         }
 

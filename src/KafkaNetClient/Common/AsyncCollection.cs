@@ -79,7 +79,7 @@ namespace KafkaNet.Common
                         Interlocked.Increment(ref _dataInBufferCount);
                         if (--count <= 0 || timeoutTask.IsCompleted) return batch;
                     }
-                } while (await Task.WhenAny(_dataAvailableEvent.WaitAsync(), timeoutTask) != timeoutTask);
+                } while (await Task.WhenAny(_dataAvailableEvent.WaitAsync(), timeoutTask).ConfigureAwait(false) != timeoutTask);
 
                 return batch;
             }

@@ -49,7 +49,7 @@ namespace KafkaNet
             if (offset < 0) throw new ArgumentOutOfRangeException("offset", "offset must be positive or zero");
 
             OffsetCommitRequest request = CreateOffsetCommitRequest(offset, consumerGroup);
-            await _gateway.SendProtocolRequest(request, _topic, _partitionId);
+            await _gateway.SendProtocolRequest(request, _topic, _partitionId).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -59,7 +59,7 @@ namespace KafkaNet
         public async Task<long> FetchLastOffset()
         {
             var request = CreateFetchLastOffsetRequest();
-            var response = await _gateway.SendProtocolRequest(request, _topic, _partitionId);
+            var response = await _gateway.SendProtocolRequest(request, _topic, _partitionId).ConfigureAwait(false);
             return response.Offsets.Count > 0 ? response.Offsets.First() : NoOffsetFound;
         }
 
@@ -74,14 +74,17 @@ namespace KafkaNet
 
             OffsetFetchRequest offsetFetchRequest = CreateOffsetFetchRequest(consumerGroup);
 
-            var response = await _gateway.SendProtocolRequest(offsetFetchRequest, _topic, _partitionId);
+            var response = await _gateway.SendProtocolRequest(offsetFetchRequest, _topic, _partitionId).ConfigureAwait(false);
             return response.Offset;
         }
 
         /// <summary>
         /// Getting messages from the kafka queue
         /// </summary>
-        /// <param name="maxCount">The maximum amount of messages wanted. The function will return at most the wanted number of messages</param>
+        /// <param name="maxCount">
+        /// The maximum amount of messages wanted. The function will return at most the wanted
+        /// number of messages
+        /// </param>
         /// <param name="offset">The offset to start from</param>
         /// <returns>An enumerable of the messages</returns>
         public async Task<IEnumerable<Message>> FetchMessages(int maxCount, long offset)
@@ -102,7 +105,7 @@ namespace KafkaNet
             // If we arrived here, then we need to make a new fetch request and work with it
             FetchRequest request = CreateFetchRequest(offset);
 
-            var response = await _gateway.SendProtocolRequest(request, _topic, _partitionId);
+            var response = await _gateway.SendProtocolRequest(request, _topic, _partitionId).ConfigureAwait(false);
 
             if (response.Messages.Count == 0)
             {
