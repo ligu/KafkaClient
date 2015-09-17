@@ -7,15 +7,18 @@ using System.Threading.Tasks;
 namespace KafkaNet
 {
     /// <summary>
-    /// This provider blocks while it attempts to get the MetaData configuration of the Kafka
-    /// servers. If any retry errors occurs it will continue to block the downstream call and then
-    /// repeatedly query kafka until the retry errors subside. This repeat call happens in a backoff
-    /// manner, which each subsequent call waiting longer before a requery.
-    /// 
-    /// Error Codes: LeaderNotAvailable = 5 NotLeaderForPartition = 6
-    /// ConsumerCoordinatorNotAvailableCode = 15 BrokerId = -1
-    /// 
-    /// Documentation: https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-MetadataResponse
+    /// This provider blocks while it attempts to get the MetaData configuration of the Kafka servers.  If any retry errors occurs it will
+    /// continue to block the downstream call and then repeatedly query kafka until the retry errors subside.  This repeat call happens in
+    /// a backoff manner, which each subsequent call waiting longer before a requery.
+    ///
+    /// Error Codes:
+    /// LeaderNotAvailable = 5
+    /// NotLeaderForPartition = 6
+    /// ConsumerCoordinatorNotAvailableCode = 15
+    /// BrokerId = -1
+    ///
+    /// Documentation:
+    /// https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-MetadataResponse
     /// </summary>
     public class KafkaMetadataProvider : IDisposable
     {
@@ -33,10 +36,7 @@ namespace KafkaNet
         /// <summary>
         /// Given a collection of server connections, query for the topic metadata.
         /// </summary>
-        /// <param name="connections">
-        /// The server connections to query. Will cycle through the collection, starting at zero
-        /// until a response is received.
-        /// </param>
+        /// <param name="connections">The server connections to query.  Will cycle through the collection, starting at zero until a response is received.</param>
         /// <param name="topics">The collection of topics to get metadata for.</param>
         /// <returns>MetadataResponse validated to be complete.</returns>
         public async Task<MetadataResponse> Get(IKafkaConnection[] connections, IEnumerable<string> topics)

@@ -54,9 +54,7 @@ namespace KafkaNet
         /// </summary>
         /// <param name="log">Logging facility for verbose messaging of actions.</param>
         /// <param name="endpoint">The IP endpoint to connect to.</param>
-        /// <param name="maximumReconnectionTimeout">
-        /// The maximum time to wait when backing off on reconnection attempts.
-        /// </param>
+        /// <param name="maximumReconnectionTimeout">The maximum time to wait when backing off on reconnection attempts.</param>
         public KafkaTcpSocket(IKafkaLog log, KafkaEndpoint endpoint, int maxRetry, TimeSpan? maximumReconnectionTimeout = null)
         {
             _log = log;
@@ -214,7 +212,7 @@ namespace KafkaNet
             //between read and write threads and no synchronization is required.
             //https://msdn.microsoft.com/en-us/library/z2xae4f4.aspx
 
-            //exception need to throwen immediately and not depend on the next task
+            //Exception need to thrown immediately and not depend on the next task
             var readTask = ProcessNetworkstreamsSendTask(netStream);
             var sendTask = ProcessNetworkstreamTasksReadTask(netStream);
             await Task.WhenAny(readTask, sendTask);

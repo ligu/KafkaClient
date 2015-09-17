@@ -46,8 +46,7 @@ namespace KafkaNet
         public int AsyncCount { get { return _maximumAsyncRequests - _semaphoreMaximumAsync.CurrentCount; } }
 
         /// <summary>
-        /// The number of messages to wait for before sending to kafka. Will wait <see
-        /// cref="BatchDelayTime"/> before sending whats received.
+        /// The number of messages to wait for before sending to kafka.  Will wait <see cref="BatchDelayTime"/> before sending whats received.
         /// </summary>
         public int BatchSize { get; set; }
 
@@ -61,6 +60,25 @@ namespace KafkaNet
         /// </summary>
         public IBrokerRouter BrokerRouter { get; private set; }
 
+        /// <summary>
+        /// Construct a Producer class.
+        /// </summary>
+        /// <param name="brokerRouter">The router used to direct produced messages to the correct partition.</param>
+        /// <param name="maximumAsyncRequests">The maximum async calls allowed before blocking new requests.  -1 indicates unlimited.</param>
+        /// <param name="maximumMessageBuffer">The maximum amount of messages to buffer if the async calls are blocking from sending.</param>
+        /// <remarks>
+        /// The maximumAsyncRequests parameter provides a mechanism for minimizing the amount of async requests in flight at any one time
+        /// by blocking the caller requesting the async call.  This affectively puts an upper limit on the amount of times a caller can
+        /// call SendMessageAsync before the caller is blocked.
+        ///
+        /// The MaximumMessageBuffer parameter provides a way to limit the max amount of memory the driver uses should the send pipeline get
+        /// overwhelmed and the buffer starts to fill up.  This is an inaccurate limiting memory use as the amount of memory actually used is
+        /// dependant on the general message size being buffered.
+        ///
+        /// A message will start its timeout countdown as soon as it is added to the producer async queue.  If there are a large number of
+        /// messages sitting in the async queue then a message may spend its entire timeout cycle waiting in this queue and never getting
+        /// attempted to send to Kafka before a timeout exception is thrown.
+        /// </remarks>
         public Producer(IBrokerRouter brokerRouter, int maximumAsyncRequests = MaximumAsyncRequests, int maximumMessageBuffer = MaximumMessageBuffer)
         {
             BrokerRouter = brokerRouter;
@@ -85,18 +103,10 @@ namespace KafkaNet
         /// </summary>
         /// <param name="topic">The name of the kafka topic to send the messages to.</param>
         /// <param name="messages">The enumerable of messages that will be sent to the given topic.</param>
-        /// <param name="acks">
-        /// The required level of acknowlegment from the kafka server. 0=none, 1=writen to leader,
-        /// 2+=writen to replicas, -1=writen to all replicas.
-        /// </param>
-        /// <param name="timeout">
-        /// Interal kafka timeout to wait for the requested level of ack to occur before returning.
-        /// Defaults to 1000ms.
-        /// </param>
-        /// <param name="codec">The codec to apply to the message collection. Defaults to none.</param>
-        /// <returns>
-        /// List of ProduceResponses from each partition sent to or empty list if acks = 0.
-        /// </returns>
+        /// <param name="acks">The required level of acknowlegment from the kafka server.  0=none, 1=writen to leader, 2+=writen to replicas, -1=writen to all replicas.</param>
+        /// <param name="timeout">Interal kafka timeout to wait for the requested level of ack to occur before returning. Defaults to 1000ms.</param>
+        /// <param name="codec">The codec to apply to the message collection.  Defaults to none.</param>
+        /// <returns>List of ProduceResponses from each partition sent to or empty list if acks = 0.</returns>
         public Task<ProduceResponse[]> SendMessageAsync(string topic, IEnumerable<Message> messages, Int16 acks = 1,
             TimeSpan? timeout = null, MessageCodec codec = MessageCodec.CodecNone, int? partition = null)
         {
@@ -151,16 +161,10 @@ namespace KafkaNet
         }
 
         /// <summary>
-        /// Stops the producer from accepting new messages, and optionally waits for in-flight
-        /// messages to be sent before returning.
+        /// Stops the producer from accepting new messages, and optionally waits for in-flight messages to be sent before returning.
         /// </summary>
-        /// <param name="waitForRequestsToComplete">
-        /// True to wait for in-flight requests to complete, false otherwise.
-        /// </param>
-        /// <param name="maxWait">
-        /// Maximum time to wait for in-flight requests to complete. Has no effect if
-        /// <c>waitForRequestsToComplete</c> is false
-        /// </param>
+        /// <param name="waitForRequestsToComplete">True to wait for in-flight requests to complete, false otherwise.</param>
+        /// <param name="maxWait">Maximum time to wait for in-flight requests to complete. Has no effect if <c>waitForRequestsToComplete</c> is false</param>
         public void Stop(bool waitForRequestsToComplete = true, TimeSpan? maxWait = null)
         {
             //block incoming data

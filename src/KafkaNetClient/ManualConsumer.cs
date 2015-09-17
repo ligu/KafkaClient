@@ -81,10 +81,7 @@ namespace KafkaNet
         /// <summary>
         /// Getting messages from the kafka queue
         /// </summary>
-        /// <param name="maxCount">
-        /// The maximum amount of messages wanted. The function will return at most the wanted
-        /// number of messages
-        /// </param>
+        /// <param name="maxCount">The maximum amount of messages wanted. The function will return at most the wanted number of messages</param>
         /// <param name="offset">The offset to start from</param>
         /// <returns>An enumerable of the messages</returns>
         public async Task<IEnumerable<Message>> FetchMessages(int maxCount, long offset)
