@@ -18,7 +18,7 @@ namespace kafka_tests.Unit
     public class ConsumerTests
     {
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
-        public void CancellationShouldInterruptConsumption()
+        public async Task CancellationShouldInterruptConsumption()
         {
             var routerProxy = new BrokerRouterProxy(new MoqMockingKernel());
             routerProxy.BrokerConn0.FetchResponseFunction = async () => { return new FetchResponse(); };
@@ -31,7 +31,7 @@ namespace kafka_tests.Unit
             {
                 var tokenSrc = new CancellationTokenSource();
 
-                var consumeTask = Task.Run(() => consumer.Consume(tokenSrc.Token).FirstOrDefault());
+                var consumeTask = Task.Run(() => consumer.Take(tokenSrc.Token));
 
                 //wait until the fake broker is running and requesting fetches
                 TaskTest.WaitFor(() => routerProxy.BrokerConn0.FetchRequestCallCount > 10);
@@ -54,7 +54,7 @@ namespace kafka_tests.Unit
             options.PartitionWhitelist = new List<int> { 0 };
             using (var consumer = new Consumer(options))
             {
-                var test = consumer.Consume();
+                var test = consumer.Consume(async m=> { });
 
                 await TaskTest.WaitFor(() => consumer.ConsumerTaskCount > 0);
                 await TaskTest.WaitFor(() => routerProxy.BrokerConn0.FetchRequestCallCount > 0);
@@ -77,7 +77,7 @@ namespace kafka_tests.Unit
 
             using (var consumer = new Consumer(options))
             {
-                var test = consumer.Consume();
+                var test = consumer.Consume(async m => { });
 
                 await TaskTest.WaitFor(() => consumer.ConsumerTaskCount > 0);
                 await TaskTest.WaitFor(() => routerProxy.BrokerConn0.FetchRequestCallCount > 0);
@@ -102,7 +102,7 @@ namespace kafka_tests.Unit
             options.PartitionWhitelist = new List<int>();
             using (var consumer = new Consumer(options))
             {
-                var test = consumer.Consume();
+                var test = consumer.Consume(async m => { });
                 TaskTest.WaitFor(() => consumer.ConsumerTaskCount >= 2);
 
                 Assert.That(consumer.ConsumerTaskCount, Is.EqualTo(2));
@@ -119,7 +119,7 @@ namespace kafka_tests.Unit
             options.PartitionWhitelist = new List<int>();
             using (var consumer = new Consumer(options))
             {
-                var test = consumer.Consume();
+                var test = consumer.Consume(async m => { });
                 TaskTest.WaitFor(() => consumer.ConsumerTaskCount >= 2);
 
                 Assert.That(consumer.ConsumerTaskCount, Is.EqualTo(2));
@@ -147,7 +147,7 @@ namespace kafka_tests.Unit
             var consumer = new Consumer(options);
             using (consumer)
             {
-                var test = consumer.Consume();
+                var test = consumer.Consume(async m => { });
                 TaskTest.WaitFor(() => consumer.ConsumerTaskCount >= 2);
             }
 

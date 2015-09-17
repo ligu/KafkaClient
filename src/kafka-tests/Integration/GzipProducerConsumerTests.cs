@@ -74,7 +74,7 @@ namespace kafka_tests.Integration
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
-        public void EnsureGzipCanDecompressMessageFromKafka()
+        public async Task EnsureGzipCanDecompressMessageFromKafka()
         {
             var router = new BrokerRouter(_options);
             var producer = new Producer(router);
@@ -90,7 +90,7 @@ namespace kafka_tests.Integration
               partition: 0);
             }
 
-            var results = consumer.Consume(new CancellationTokenSource(TimeSpan.FromMinutes(1)).Token).Take(numberOfmessage).ToList();
+            var results = await consumer.Take(numberOfmessage);
 
             for (int i = 0; i < numberOfmessage; i++)
             {

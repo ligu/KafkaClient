@@ -21,18 +21,19 @@ namespace TestHarness
             };
 
             //start an out of process thread that runs a consumer that will write all received messages to the console
-            Task.Run(() =>
+            Task.Run(async () =>
             {
                 var consumer = new Consumer(new ConsumerOptions(topicName, new BrokerRouter(options)) { Log = new DefaultTraceLog() });
-                foreach (var data in consumer.Consume())
+            await     consumer.Consume(async (data) =>
                 {
                     Console.WriteLine("Response: P{0},O{1} : {2}", data.Meta.PartitionId, data.Meta.Offset, data.Value.ToUtf8String());
-                }
+                });
+
             });
 
             //create a producer to send messages with
-            var producer = new Producer(new BrokerRouter(options)) 
-            { 
+            var producer = new Producer(new BrokerRouter(options))
+            {
                 BatchSize = 100,
                 BatchDelayTime = TimeSpan.FromMilliseconds(2000)
             };
@@ -66,7 +67,7 @@ namespace TestHarness
         {
             //send multiple messages
             var sendTask = producer.SendMessageAsync(topicName, Enumerable.Range(0, count).Select(x => new Message(x.ToString())));
-            
+
             Console.WriteLine("Posted #{0} messages.  Buffered:{1} AsyncCount:{2}", count, producer.BufferCount, producer.AsyncCount);
 
             var response = await sendTask;
@@ -76,7 +77,7 @@ namespace TestHarness
             {
                 Console.WriteLine("Topic:{0} PartitionId:{1} Offset:{2}", result.Topic, result.PartitionId, result.Offset);
             }
-            
+
         }
     }
 }
