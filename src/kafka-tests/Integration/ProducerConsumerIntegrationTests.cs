@@ -45,7 +45,7 @@ namespace kafka_tests.Integration
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
-        public async Task ProduserAckLevel()
+        public async Task ProducerAckLevel()
         {
             using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri) { Log = IntegrationConfig.NoDebugLog }))
             using (var producer = new Producer(router))
@@ -54,6 +54,53 @@ namespace kafka_tests.Integration
                 Assert.AreEqual(responseAckLevel0.Offset, -1);
                 var responseAckLevel1 = await producer.SendMessageAsync(new Message("Ack Level 1"), IntegrationConfig.IntegrationTopic, acks: 1, partition: 0);
                 Assert.That(responseAckLevel1.Offset, Is.GreaterThan(-1));
+            }
+        }
+
+        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        public async Task ProducerAckLevel1ResponseOffsetShouldBeEqualToLastOffset()
+        {
+            using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri) { Log = IntegrationConfig.NoDebugLog }))
+            using (var producer = new Producer(router))
+            {
+                var responseAckLevel1 = await producer.SendMessageAsync(new Message("Ack Level 1"), IntegrationConfig.IntegrationTopic, acks: 1, partition: 0);
+                var offsetResponse = await producer.GetTopicOffsetAsync(IntegrationConfig.IntegrationTopic);
+                var maxOffset = offsetResponse.Find(x => x.PartitionId == 0);
+                Assert.AreEqual(responseAckLevel1.Offset, maxOffset.Offsets.Max() - 1);
+            }
+        }
+
+        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        public async Task ProducerLastResposeOffsetAckLevel1ShouldBeEqualsToLastOffset()
+        {
+            using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri) { Log = IntegrationConfig.NoDebugLog }))
+            using (var producer = new Producer(router))
+            {
+                ProduceResponse[] responseAckLevel1 = await producer.SendMessageAsync(IntegrationConfig.IntegrationTopic, 0, new Message("Ack Level 1"), new Message("Ack Level 1"));
+                var offsetResponse = await producer.GetTopicOffsetAsync(IntegrationConfig.IntegrationTopic);
+                var maxOffset = offsetResponse.Find(x => x.PartitionId == 0);
+
+                Assert.AreEqual(responseAckLevel1.Last().Offset, maxOffset.Offsets.Max() - 1);
+            }
+        }
+
+        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        public async Task ConsumeByOffsetShouldGetSameMessageProducedAtSameOffset()
+        {
+            long offsetResponse;
+            Guid messge = Guid.NewGuid();
+
+            using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri) { Log = IntegrationConfig.NoDebugLog }))
+            using (var producer = new Producer(router))
+            {
+                ProduceResponse responseAckLevel1 = await producer.SendMessageAsync(new Message(messge.ToString()), IntegrationConfig.IntegrationTopic, acks: 1, partition: 0);
+                offsetResponse = responseAckLevel1.Offset;
+            }
+            using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri) { Log = IntegrationConfig.NoDebugLog }))
+            using (var consumer = new Consumer(new ConsumerOptions(IntegrationConfig.IntegrationTopic, router) { MaxWaitTimeForMinimumBytes = TimeSpan.Zero }, new OffsetPosition[] { new OffsetPosition(0, offsetResponse) }))
+            {
+                var result = consumer.Consume().Take(1).ToList().FirstOrDefault();
+                Assert.AreEqual(messge.ToString(), result.Value.ToUtf8String());
             }
         }
 
