@@ -10,6 +10,8 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -349,6 +351,28 @@ namespace kafka_tests.Unit
                 Assert.That(resultTask.IsFaulted, Is.True);
                 Assert.That(resultTask.Exception.InnerException, Is.TypeOf<ServerDisconnectedException>());
             }
+        }
+
+        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [ExpectedException(typeof(SocketException))]
+        public async Task WhenNoConnectionThrowSocketException()
+        {
+            var socket = new KafkaTcpSocket(_log, new KafkaEndpoint() { ServeUri = new Uri("http://not.com") }, _maxRetry);
+
+            var resultTask = socket.ReadAsync(4);
+            await resultTask;
+        }
+
+        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [ExpectedException(typeof(SocketException))]
+        public async Task WhenNoConnectionThrowSocketExceptionAfterMaxRetry()
+        {
+            var reconnectionAttempt = 0;
+            var socket = new KafkaTcpSocket(_log, new KafkaEndpoint() { ServeUri = new Uri("http://not.com") }, _maxRetry);
+            socket.OnReconnectionAttempt += (x) => Interlocked.Increment(ref reconnectionAttempt);
+            var resultTask = socket.ReadAsync(4);
+            await resultTask;
+            Assert.Equals(reconnectionAttempt, _maxRetry);
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]

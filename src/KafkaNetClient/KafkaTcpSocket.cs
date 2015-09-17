@@ -166,12 +166,13 @@ namespace KafkaNet
                         if (OnServerDisconnected != null) OnServerDisconnected();
                         return;
                     }
+                    await netStreamTask.ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
                     _log.ErrorFormat("Exception occured in Socket handler task.  Exception: {0}", ex);
 
-                    SetDisposeExceptonToPenndingTasks(ex);
+                    SetDisposeExceptonToPenndingTasks(new SocketException());
                     if (OnServerDisconnected != null) OnServerDisconnected();
                 }
                 try
@@ -190,15 +191,16 @@ namespace KafkaNet
 
         private void SetDisposeExceptonToPenndingTasks(Exception exception = null)
         {
-            _log.WarnFormat("KafkaTcpSocket thread shutting down because of a dispose call.");
             var disposeException = new ObjectDisposedException("Object is disposing.");
             if (exception == null)
             {
+                _log.WarnFormat("KafkaTcpSocket thread shutting down because of a dispose call.");
                 _sendTaskQueue.DrainAndApply(t => t.Tcp.TrySetException(disposeException));
                 _readTaskQueue.DrainAndApply(t => t.Tcp.TrySetException(disposeException));
             }
             else
             {
+                _log.WarnFormat("KafkaTcpSocket not able to connect cancel all PenndingTasks.");
                 _sendTaskQueue.DrainAndApply(t => t.Tcp.TrySetException(exception));
                 _readTaskQueue.DrainAndApply(t => t.Tcp.TrySetException(exception));
             }
@@ -394,9 +396,10 @@ namespace KafkaNet
 
             while (_disposeToken.IsCancellationRequested == false && _maxRetry > attempts)
             {
+                attempts++;
                 try
                 {
-                    if (OnReconnectionAttempt != null) OnReconnectionAttempt(attempts++);
+                    if (OnReconnectionAttempt != null) OnReconnectionAttempt(attempts);
                     _client = new TcpClient();
 
                     var connectTask = _client.ConnectAsync(_endpoint.Endpoint.Address, _endpoint.Endpoint.Port);
