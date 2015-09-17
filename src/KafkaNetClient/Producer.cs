@@ -124,6 +124,12 @@ namespace KafkaNet
             return SendMessageAsync(topic, messages, partition: partition);
         }
 
+        public async Task<ProduceResponse> SendMessageAsync(Message messages, string topic, int partition, Int16 acks = 1)
+        {
+            var result = await SendMessageAsync(topic, new Message[] { messages }, partition: partition, acks: acks);
+            return result.FirstOrDefault();
+        }
+
         public Task<ProduceResponse[]> SendMessageAsync(string topic, params Message[] messages)
         {
             return SendMessageAsync(topic, messages, acks: 1);

@@ -45,6 +45,19 @@ namespace kafka_tests.Integration
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        public async Task ProduserAckLevel()
+        {
+            using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri) { Log = IntegrationConfig.NoDebugLog }))
+            using (var producer = new Producer(router))
+            {
+                var responseAckLevel0 = await producer.SendMessageAsync(new Message("Ack Level 0"), IntegrationConfig.IntegrationTopic, acks: 0, partition: 0);
+                Assert.AreEqual(responseAckLevel0.Offset, -1);
+                var responseAckLevel1 = await producer.SendMessageAsync(new Message("Ack Level 1"), IntegrationConfig.IntegrationTopic, acks: 1, partition: 0);
+                Assert.That(responseAckLevel1.Offset, Is.GreaterThan(-1));
+            }
+        }
+
+        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         public void ConsumerShouldConsumeInSameOrderAsProduced()
         {
             var expected = new List<string> { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19" };
