@@ -20,7 +20,7 @@ namespace KafkaNet
     public class Consumer : IMetadataQueries, IDisposable
     {
         private readonly ConsumerOptions _options;
-        private readonly Nito.AsyncEx.AsyncCollection<Message> _fetchResponseQueue;
+        private readonly BlockingCollection<Message> _fetchResponseQueue;
         private readonly CancellationTokenSource _disposeToken = new CancellationTokenSource();
         private TaskCompletionSource<int> _disposeTask;
         private readonly ConcurrentDictionary<int, Task> _partitionPollingIndex = new ConcurrentDictionary<int, Task>();
@@ -34,7 +34,7 @@ namespace KafkaNet
         public Consumer(ConsumerOptions options, params OffsetPosition[] positions)
         {
             _options = options;
-            _fetchResponseQueue = new Nito.AsyncEx.AsyncCollection<Message>(_options.ConsumerBufferSize);
+            _fetchResponseQueue = new BlockingCollection<Message>(_options.ConsumerBufferSize);
             _metadataQueries = new MetadataQueries(_options.Router);
             _disposeTask = new TaskCompletionSource<int>();
             SetOffsetPosition(positions);
@@ -49,40 +49,12 @@ namespace KafkaNet
         /// Returns a blocking enumerable of messages received from Kafka.
         /// </summary>
         /// <returns>Blocking enumberable of messages from Kafka.</returns>
-
-        public async Task<Message> Take(CancellationToken? cancellationToken = null)
+        public IEnumerable<Message> Consume(CancellationToken? cancellationToken = null)
         {
-            if (cancellationToken.HasValue)
-            {
-                await _fetchResponseQueue.OutputAvailableAsync(cancellationToken.Value);
-            }
-            return await _fetchResponseQueue.TakeAsync(cancellationToken ?? CancellationToken.None);
+            _options.Log.DebugFormat("Consumer: Beginning consumption of topic: {0}", _options.Topic);
+            EnsurePartitionPollingThreads();
+            return _fetchResponseQueue.GetConsumingEnumerable(cancellationToken ?? CancellationToken.None);
         }
-
-        public async Task<List<Message>> Take(int numberOfMessage, CancellationToken? cancellationToken = null)
-        {
-            List<Message> result = new List<Message>(numberOfMessage);
-            await Consume(async m => result.Add(m),numberOfMessage,cancellationToken);
-            return result;
-        }
-        //TODO add allowing to run gest 1 at a time
-        public async Task Consume(Func<Message, Task> onMessagereceived, int? numberOfMessage=null, CancellationToken? cancellationToken = null)
-        {
-            int messageIndex = 0;
-            Message lastMessage = null;
-            while (!!numberOfMessage.HasValue || messageIndex < numberOfMessage.Value)
-                if (lastMessage == null)
-                {
-                    if (cancellationToken.HasValue)
-                    {
-                        await _fetchResponseQueue.OutputAvailableAsync(cancellationToken.Value);
-                    }
-                }
-            lastMessage = await _fetchResponseQueue.TakeAsync(cancellationToken ?? CancellationToken.None);
-            await onMessagereceived(lastMessage);
-            messageIndex++;
-        }
-
 
         /// <summary>
         /// Force reset the offset position for a specific partition to a specific offset value.
