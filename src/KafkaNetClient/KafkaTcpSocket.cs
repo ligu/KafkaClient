@@ -217,8 +217,8 @@ namespace KafkaNet
             var sendTask = ProcessNetworkstreamTasksReadTask(netStream);
             await Task.WhenAny(readTask, sendTask);
             if (_disposeToken.IsCancellationRequested) return;
-            await ThrowTaskException(readTask);
-            await ThrowTaskException(sendTask);
+            await ThrowTaskExceptionIfFaulted(readTask);
+            await ThrowTaskExceptionIfFaulted(sendTask);
         }
 
         private async Task ProcessNetworkstreamsSendTask(NetworkStream netStream)
@@ -245,7 +245,7 @@ namespace KafkaNet
             }
         }
 
-        private async Task ThrowTaskException(Task task)
+        private async Task ThrowTaskExceptionIfFaulted(Task task)
         {
             if (task.IsFaulted || task.IsCanceled) await task;
         }
@@ -413,18 +413,17 @@ namespace KafkaNet
                 }
                 catch (Exception ex)
                 {
-                    currentException = ExceptionDispatchInfo.Capture(ex);
                     reconnectionDelay = reconnectionDelay * DefaultReconnectionTimeoutMultiplier;
                     reconnectionDelay = Math.Min(reconnectionDelay, (int)_maximumReconnectionTimeout.TotalMilliseconds);
 
-                    _log.WarnFormat("Failed connection to:{0}.  Will retry in:{1}", _endpoint, reconnectionDelay);
+                    _log.WarnFormat("Failed connection to:{0}.  Will retry in:{1} Exception{2}", _endpoint, reconnectionDelay, ex);
+                    if (_maxRetry < attempts)
+                    {
+                        throw;
+                    }
                 }
 
                 await Task.Delay(TimeSpan.FromMilliseconds(reconnectionDelay), _disposeToken.Token).ConfigureAwait(false);
-                if (_maxRetry < attempts)
-                {
-                    currentException.Throw();
-                }
             }
 
             return _client;

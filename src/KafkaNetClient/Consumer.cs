@@ -116,7 +116,7 @@ namespace KafkaNet
 
         private Task ConsumeTopicPartitionAsync(string topic, int partitionId)
         {
-            bool refreshMetaData = false;
+            bool needToRefreshMetadata = false;
             return Task.Run(async () =>
             {
                 try
@@ -129,11 +129,11 @@ namespace KafkaNet
                         try
                         {
                             //after error
-                            if (refreshMetaData)
+                            if (needToRefreshMetadata)
                             {
                                 await _options.Router.RefreshTopicMetadata(topic).ConfigureAwait(false);
                                 EnsurePartitionPollingThreads();
-                                refreshMetaData = false;
+                                needToRefreshMetadata = false;
                             }
                             //get the current offset, or default to zero if not there.
                             long offset = 0;
@@ -176,7 +176,7 @@ namespace KafkaNet
                                 //we only asked for one response
                                 var response = responses.FirstOrDefault();
 
-                                if (response != null && response.Messages.Count > 0)
+                                if (response != null && response.Messages.Any())
                                 {
                                     HandleResponseErrors(fetch, response);
 
@@ -191,7 +191,7 @@ namespace KafkaNet
                                         if (_disposeToken.IsCancellationRequested) return;
                                     }
 
-                                    var nextOffset = response.Messages[response.Messages.Count - 1].Meta.Offset + 1;
+                                    var nextOffset = response.Messages.Last().Meta.Offset + 1;
                                     _partitionOffsetIndex.AddOrUpdate(partitionId, i => nextOffset, (i, l) => nextOffset);
 
                                     // sleep is not needed if responses were received
@@ -218,7 +218,7 @@ namespace KafkaNet
                         catch (InvalidMetadataException ex)
                         {
                             //refresh our metadata and ensure we are polling the correct partitions
-                            refreshMetaData = true;
+                            needToRefreshMetadata = true;
                             _options.Log.ErrorFormat(ex.Message);
                         }
                         catch (TaskCanceledException ex)

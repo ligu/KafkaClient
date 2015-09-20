@@ -53,7 +53,7 @@ namespace kafka_tests.Unit
             ProtocolGateway protocolGateway = new ProtocolGateway(router);
 
             routerProxy.BrokerConn0.FetchResponseFunction = FailedInFirstMessageError(code, routerProxy._cacheExpiration);
-            routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.CreateMetaResponseWith2Broker;
+            routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers;
 
             await protocolGateway.SendProtocolRequest(new FetchRequest(), BrokerRouterProxy.TestTopic, _partitionId);
 
@@ -82,7 +82,7 @@ namespace kafka_tests.Unit
             ProtocolGateway protocolGateway = new ProtocolGateway(router);
 
             routerProxy.BrokerConn0.FetchResponseFunction = FailedInFirstMessageException(typeof(SocketException), routerProxy._cacheExpiration);
-            routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.CreateMetaResponseWith2Broker;
+            routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers;
 
             await protocolGateway.SendProtocolRequest(new FetchRequest(), BrokerRouterProxy.TestTopic, _partitionId);
 
@@ -100,7 +100,7 @@ namespace kafka_tests.Unit
             ProtocolGateway protocolGateway = new ProtocolGateway(router);
 
             routerProxy.BrokerConn0.FetchResponseFunction = FailedInFirstMessageException(exceptionType, routerProxy._cacheExpiration);
-            routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.CreateMetaResponseWith2Broker;
+            routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers;
             try
             {
                 await protocolGateway.SendProtocolRequest(new FetchRequest(), BrokerRouterProxy.TestTopic, _partitionId);
@@ -135,7 +135,7 @@ namespace kafka_tests.Unit
             ProtocolGateway protocolGateway = new ProtocolGateway(router);
 
             routerProxy.BrokerConn0.FetchResponseFunction = FailedInFirstMessageError(code, routerProxy._cacheExpiration);
-            routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.CreateMetaResponseWith2Broker;
+            routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers;
             await protocolGateway.SendProtocolRequest(new FetchRequest(), BrokerRouterProxy.TestTopic, _partitionId);
         }
 
@@ -148,7 +148,7 @@ namespace kafka_tests.Unit
             ProtocolGateway protocolGateway = new ProtocolGateway(router);
 
             routerProxy.BrokerConn0.FetchResponseFunction = ShouldReturnValidMessage;
-            routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.CreateMetaResponseWith2Broker;
+            routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers;
             int numberOfCall = 1000;
             Task[] tasks = new Task[numberOfCall];
             for (int i = 0; i < numberOfCall / 2; i++)
@@ -178,7 +178,7 @@ namespace kafka_tests.Unit
             var fetchRequest = new FetchRequest();
 
             routerProxy.BrokerConn0.FetchResponseFunction = ShouldReturnValidMessage;
-            routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.CreateMetaResponseWith2Broker;
+            routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers;
             int numberOfCall = 1000;
             Task[] tasks = new Task[numberOfCall];
             for (int i = 0; i < numberOfCall / 2; i++)
@@ -188,7 +188,7 @@ namespace kafka_tests.Unit
 
             routerProxy.BrokerConn0.MetadataResponseFunction = async () =>
             {
-                var response = await BrokerRouterProxy.CreateMetaResponseWith2Broker();
+                var response = await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers();
                 response.Topics[0].Name = "test2";
                 return response;
             };
@@ -241,7 +241,7 @@ namespace kafka_tests.Unit
             };
 
             routerProxy.BrokerConn0.FetchResponseFunction = ShouldReturnNotLeaderForPartitionAndThenNoError;
-            routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.CreateMetaResponseWith2Broker;
+            routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers;
 
             Task[] tasks = new Task[numberOfCall];
 
@@ -279,7 +279,7 @@ namespace kafka_tests.Unit
             routerProxy.BrokerConn0.FetchResponseFunction = FailedInFirstMessageException(typeof(SocketException), TimeSpan.Zero);
             //triger to update metadata
             routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.CreateMetaResponseWithException;
-            routerProxy.BrokerConn1.MetadataResponseFunction = BrokerRouterProxy.CreateMetaResponseWith1Broker;
+            routerProxy.BrokerConn1.MetadataResponseFunction = BrokerRouterProxy.CreateMetadataResponseWithSingleBroker;
 
             //Reset variables
             routerProxy.BrokerConn0.FetchRequestCallCount = 0;
@@ -318,8 +318,8 @@ namespace kafka_tests.Unit
 
             routerProxy.BrokerConn0.FetchResponseFunction = FailedInFirstMessageError(ErrorResponseCode.LeaderNotAvailable, TimeSpan.Zero);
 
-            routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.CreateMetaResponseWith1Broker;
-            routerProxy.BrokerConn1.MetadataResponseFunction = BrokerRouterProxy.CreateMetaResponseWith1Broker;
+            routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.CreateMetadataResponseWithSingleBroker;
+            routerProxy.BrokerConn1.MetadataResponseFunction = BrokerRouterProxy.CreateMetadataResponseWithSingleBroker;
 
             //Reset variables
             routerProxy.BrokerConn0.FetchRequestCallCount = 0;
@@ -381,9 +381,9 @@ namespace kafka_tests.Unit
         private void CreateSuccessfulSendMock(BrokerRouterProxy routerProxy)
         {
             routerProxy.BrokerConn0.FetchResponseFunction = ShouldReturnValidMessage;
-            routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.CreateMetaResponseWith2Broker;
+            routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers;
             routerProxy.BrokerConn1.FetchResponseFunction = ShouldReturnValidMessage;
-            routerProxy.BrokerConn1.MetadataResponseFunction = BrokerRouterProxy.CreateMetaResponseWith2Broker;
+            routerProxy.BrokerConn1.MetadataResponseFunction = BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers;
         }
 
         private Task<FetchResponse> ShouldReturnValidMessage()

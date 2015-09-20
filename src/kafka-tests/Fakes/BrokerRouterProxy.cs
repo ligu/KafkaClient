@@ -27,7 +27,7 @@ namespace kafka_tests
         public FakeKafkaConnection BrokerConn1 { get { return _fakeConn1; } }
         public Mock<IKafkaConnectionFactory> KafkaConnectionMockKafkaConnectionFactory { get { return _mockKafkaConnectionFactory; } }
 
-        public Func<Task<MetadataResponse>> MetadataResponse = CreateMetaResponseWith2Broker;
+        public Func<Task<MetadataResponse>> MetadataResponse = CreateMetadataResponseWithMultipleBrokers;
 
         public IPartitionSelector PartitionSelector = new DefaultPartitionSelector();
 
@@ -70,7 +70,7 @@ namespace kafka_tests
             });
         }
 
-        public static async Task<MetadataResponse> CreateMetaResponseWith2Broker()
+        public static async Task<MetadataResponse> CreateMetadataResponseWithMultipleBrokers()
         {
             return new MetadataResponse
                 {
@@ -120,7 +120,7 @@ namespace kafka_tests
                 };
         }
 
-        public static async Task<MetadataResponse> CreateMetaResponseWith1Broker()
+        public static async Task<MetadataResponse> CreateMetadataResponseWithSingleBroker()
         {
             return new MetadataResponse
             {

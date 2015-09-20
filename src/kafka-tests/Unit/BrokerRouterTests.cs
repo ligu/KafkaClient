@@ -82,7 +82,7 @@ namespace kafka_tests.Unit
             });
 
             _mockKafkaConnection1.Setup(x => x.SendAsync(It.IsAny<IKafkaRequest<MetadataResponse>>()))
-                      .Returns(() => Task.Run(async () => new List<MetadataResponse> { await BrokerRouterProxy.CreateMetaResponseWith2Broker() }));
+                      .Returns(() => Task.Run(async () => new List<MetadataResponse> { await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers() }));
             await router.RefreshMissingTopicMetadata(TestTopic);
             var topics = router.GetTopicMetadataFromLocalCache(TestTopic);
             _mockKafkaConnectionFactory.Verify(x => x.Create(It.Is<KafkaEndpoint>(e => e.Endpoint.Port == 2), It.IsAny<TimeSpan>(), It.IsAny<IKafkaLog>(), It.IsAny<int>(), null), Times.Once());
@@ -162,7 +162,7 @@ namespace kafka_tests.Unit
 
             var router = routerProxy.Create();
 
-            routerProxy.MetadataResponse = BrokerRouterProxy.CreateMetaResponseWith2Broker;
+            routerProxy.MetadataResponse = BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers;
             await router.RefreshTopicMetadata(TestTopic);
 
             var router1 = router.SelectBrokerRouteFromLocalCache(TestTopic, 0);
@@ -170,7 +170,7 @@ namespace kafka_tests.Unit
             Assert.That(routerProxy.BrokerConn0.MetadataRequestCallCount, Is.EqualTo(1));
             await Task.Delay(routerProxy._cacheExpiration);
             await Task.Delay(1);//After cache is expair
-            routerProxy.MetadataResponse = BrokerRouterProxy.CreateMetaResponseWith1Broker;
+            routerProxy.MetadataResponse = BrokerRouterProxy.CreateMetadataResponseWithSingleBroker;
             await router.RefreshTopicMetadata(TestTopic);
             var router2 = router.SelectBrokerRouteFromLocalCache(TestTopic, 0);
 
@@ -224,7 +224,7 @@ namespace kafka_tests.Unit
         [ExpectedException(typeof(InvalidTopicNotExistsInCache))]
         public async Task SelectExactPartitionShouldThrowWhenTopicsCollectionIsEmpty()
         {
-            var metadataResponse = await BrokerRouterProxy.CreateMetaResponseWith2Broker();
+            var metadataResponse = await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers();
             metadataResponse.Topics.Clear();
 
             var routerProxy = new BrokerRouterProxy(_kernel);
@@ -237,7 +237,7 @@ namespace kafka_tests.Unit
         [ExpectedException(typeof(LeaderNotFoundException))]
         public async Task SelectExactPartitionShouldThrowWhenBrokerCollectionIsEmpty()
         {
-            var metadataResponse = await BrokerRouterProxy.CreateMetaResponseWith2Broker();
+            var metadataResponse = await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers();
             metadataResponse.Brokers.Clear();
 
             var routerProxy = new BrokerRouterProxy(_kernel);
@@ -281,7 +281,7 @@ namespace kafka_tests.Unit
         [ExpectedException(typeof(InvalidTopicNotExistsInCache))]
         public async Task SelectPartitionShouldThrowWhenTopicsCollectionIsEmpty()
         {
-            var metadataResponse = await BrokerRouterProxy.CreateMetaResponseWith2Broker();
+            var metadataResponse = await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers();
             metadataResponse.Topics.Clear();
 
             var routerProxy = new BrokerRouterProxy(_kernel);
@@ -294,7 +294,7 @@ namespace kafka_tests.Unit
         [ExpectedException(typeof(LeaderNotFoundException))]
         public async Task SelectPartitionShouldThrowWhenBrokerCollectionIsEmpty()
         {
-            var metadataResponse = await BrokerRouterProxy.CreateMetaResponseWith2Broker();
+            var metadataResponse = await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers();
             metadataResponse.Brokers.Clear();
 
             var routerProxy = new BrokerRouterProxy(_kernel);

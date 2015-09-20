@@ -38,7 +38,7 @@ namespace kafka_tests.Unit
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         public async Task ShouldStartReadPollingOnConstruction()
         {
-            using (var socket = new KafkaTcpSocket(_log, _kafkaEndpoint, 5))
+            using (var socket = new KafkaTcpSocket(_log, _kafkaEndpoint, _maxRetry))
             using (var conn = new KafkaConnection(socket, log: _log))
             {
                 await TaskTest.WaitFor(() => conn.ReadPolling);
@@ -50,7 +50,7 @@ namespace kafka_tests.Unit
         public void ShouldReportServerUriOnConstruction()
         {
             var expectedUrl = _kafkaEndpoint;
-            using (var socket = new KafkaTcpSocket(_log, expectedUrl, 5))
+            using (var socket = new KafkaTcpSocket(_log, expectedUrl, _maxRetry))
             using (var conn = new KafkaConnection(socket, log: _log))
             {
                 Assert.That(conn.Endpoint, Is.EqualTo(expectedUrl));
