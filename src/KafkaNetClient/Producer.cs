@@ -94,7 +94,7 @@ namespace KafkaNet
             _postTask = Task.Run(() =>
             {
                 BatchSendAsync();
-                //TODO add log for ending the sending thread.
+                BrokerRouter.Log.InfoFormat("ending the sending thread");
             });
         }
 
@@ -269,7 +269,7 @@ namespace KafkaNet
                         AckLevel = group.Key.AckLevel
                     };
 
-                    //ensure the async is released as soon as each task is completed //TODO: remove it from ack level 0 , don't like
+                    //ensure the async is released as soon as each task is completed //TODO: remove it from ack level 0 , don't like it
                     brokerSendTask.Task.ContinueWith(t => { _semaphoreMaximumAsync.Release(); }, cancellationToken);
 
                     sendTasks.Add(brokerSendTask);
@@ -279,9 +279,9 @@ namespace KafkaNet
                 {
                     await Task.WhenAll(sendTasks.Select(x => x.Task)).ConfigureAwait(false);
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    //TODO:Add more log
+                    BrokerRouter.Log.ErrorFormat("Exception[{0}] stacktrace[{1}]", ex.Message, ex.StackTrace);
                 }
 
                 await SetResult(sendTasks);
@@ -289,7 +289,7 @@ namespace KafkaNet
             }
         }
 
-        private static async Task SetResult(List<BrokerRouteSendBatch> sendTasks)
+        private async Task SetResult(List<BrokerRouteSendBatch> sendTasks)
         {
             foreach (var sendTask in sendTasks)
             {
@@ -327,7 +327,7 @@ namespace KafkaNet
                 }
                 catch (Exception ex)
                 {
-                    //TODO:Add more log
+                    BrokerRouter.Log.ErrorFormat("failed to send bach Topic[{0}] ackLevel[{1}] partition[{2}] EndPoint[{3}] Exception[{4}] stacktrace[{5}]", sendTask.Route.Topic, sendTask.AckLevel, sendTask.Route.PartitionId, sendTask.Route.Connection.Endpoint, ex.Message, ex.StackTrace);
                     sendTask.MessagesSent.ForEach((x) => x.Tcs.TrySetException(ex));
                 }
             }

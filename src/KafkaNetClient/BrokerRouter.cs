@@ -303,6 +303,11 @@ namespace KafkaNet
         {
             return _topicIndex[topic].Item2;
         }
+
+        public IKafkaLog Log
+        {
+            get { return _kafkaOptions.Log; }
+        }
     }
 
     #region BrokerCache Class...

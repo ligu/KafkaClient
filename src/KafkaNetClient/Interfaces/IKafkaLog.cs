@@ -1,5 +1,7 @@
 ﻿namespace KafkaNet
 {
+    //TODO add  [CallerMemberName], [CallerFilePath], [CallerLineNumber] .
+    //TODO add log Exception.
     public interface IKafkaLog
     {
         /// <summary>
