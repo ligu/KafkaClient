@@ -40,7 +40,7 @@ namespace kafka_tests.Unit
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         public void KafkaTcpSocketShouldConstruct()
         {
-            using (var test = new KafkaTcpSocket(_log, _fakeServerUrl, 5))
+            using (var test = new KafkaTcpSocket(_log, _fakeServerUrl, _maxRetry))
             {
                 Assert.That(test, Is.Not.Null);
                 Assert.That(test.Endpoint, Is.EqualTo(_fakeServerUrl));
