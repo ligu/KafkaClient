@@ -230,7 +230,8 @@ namespace KafkaNet
             while (_disposeToken.IsCancellationRequested == false && netStream != null)
             {
                 await lastSendTask;
-                await _sendTaskQueue.OnHasDataAvailable(_disposeToken.Token);
+                bool hasAvailableData = await _sendTaskQueue.OnHasDataAvailablebool(_disposeToken.Token);
+                if (!hasAvailableData) return;
                 var send = _sendTaskQueue.Pop();
                 lastSendTask = ProcessSentTasksAsync(netStream, send);
             }
@@ -242,7 +243,8 @@ namespace KafkaNet
             while (_disposeToken.IsCancellationRequested == false && netStream != null)
             {
                 await lastReadTask;
-                await _readTaskQueue.OnHasDataAvailable(_disposeToken.Token);
+                bool hasAvailableData = await _readTaskQueue.OnHasDataAvailablebool(_disposeToken.Token);
+                if (!hasAvailableData) return;
                 var read = _readTaskQueue.Pop();
                 lastReadTask = ProcessReadTaskAsync(netStream, read);
             }
@@ -274,8 +276,7 @@ namespace KafkaNet
 
                         if (OnReadFromSocketAttempt != null) OnReadFromSocketAttempt(readSize);
 
-                        bytesReceived = await netStream.ReadAsync(buffer, 0, readSize, readTask.CancellationToken)
-                            .WithCancellation(readTask.CancellationToken).ConfigureAwait(false);
+                        bytesReceived = await netStream.ReadAsync(buffer, 0, readSize, readTask.CancellationToken).ConfigureAwait(false);
 
                         if (OnBytesReceived != null) OnBytesReceived(bytesReceived);
 
