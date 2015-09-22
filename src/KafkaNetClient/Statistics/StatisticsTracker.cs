@@ -11,6 +11,8 @@ namespace KafkaNet.Statistics
     /// <summary>
     /// Statistics tracker uses circular buffers to capture a maximum set of current statistics.
     /// </summary>
+    //TODO: remove static StatisticsTracker and create one for each tcp socket
+    //TODO:all it's operation need to be on different thread pool with one thread
     public static class StatisticsTracker
     {
         public static event Action<StatisticsSummary> OnStatisticsHeartbeat;
@@ -85,6 +87,7 @@ namespace KafkaNet.Statistics
         public static void QueueNetworkWrite(KafkaEndpoint endpoint, KafkaDataPayload payload)
         {
             if (payload.TrackPayload == false) return;
+            if (payload.Buffer.Length > 64) return;
 
             var stat = new NetworkWriteStatistic(endpoint, payload);
             NetworkWriteQueuedIndex.TryAdd(payload.CorrelationId, stat);
@@ -94,6 +97,7 @@ namespace KafkaNet.Statistics
         public static void CompleteNetworkWrite(KafkaDataPayload payload, long milliseconds, bool failed)
         {
             if (payload.TrackPayload == false) return;
+            if (payload.Buffer.Length > 64) return;
 
             NetworkWriteStatistic stat;
             if (NetworkWriteQueuedIndex.TryRemove(payload.CorrelationId, out stat))

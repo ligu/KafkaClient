@@ -2,6 +2,7 @@
 using KafkaNet.Common;
 using NUnit.Framework;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace kafka_tests.Unit
 {
@@ -66,6 +67,19 @@ namespace kafka_tests.Unit
             var buffer = new ConcurrentCircularBuffer<int>(2);
             buffer.Enqueue(1);
             Assert.That(buffer.First(), Is.EqualTo(1));
+        }
+
+        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        public void EnqueueCanBeUseFromDefferantThread()
+        {
+            var buffer = new ConcurrentCircularBuffer<int>(2);
+
+            Parallel.For(0, 1000, (i) =>
+            {
+                buffer.Enqueue(i);
+                Assert.That(buffer.Count, Is.LessThanOrEqualTo(2));
+            });
+            Assert.That(buffer.Count, Is.EqualTo(2));
         }
     }
 }

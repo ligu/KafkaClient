@@ -42,7 +42,7 @@ namespace KafkaNet
         private readonly Task _disposeTask;
         private readonly AsyncCollection<SocketPayloadSendTask> _sendTaskQueue;
         private readonly AsyncCollection<SocketPayloadReadTask> _readTaskQueue;
-
+        private readonly StatisticsTrackerOptions _statisticsTrackerOptions;
         private readonly Task _socketTask;
         private readonly AsyncLock _clientLock = new AsyncLock();
         private TcpClient _client;
@@ -55,13 +55,13 @@ namespace KafkaNet
         /// <param name="log">Logging facility for verbose messaging of actions.</param>
         /// <param name="endpoint">The IP endpoint to connect to.</param>
         /// <param name="maximumReconnectionTimeout">The maximum time to wait when backing off on reconnection attempts.</param>
-        public KafkaTcpSocket(IKafkaLog log, KafkaEndpoint endpoint, int maxRetry, TimeSpan? maximumReconnectionTimeout = null)
+        public KafkaTcpSocket(IKafkaLog log, KafkaEndpoint endpoint, int maxRetry, TimeSpan? maximumReconnectionTimeout = null, StatisticsTrackerOptions statisticsTrackerOptions = null)
         {
             _log = log;
             _endpoint = endpoint;
             _maximumReconnectionTimeout = maximumReconnectionTimeout ?? TimeSpan.FromMinutes(MaxReconnectionTimeoutMinutes);
             _maxRetry = maxRetry;
-
+            _statisticsTrackerOptions = statisticsTrackerOptions;
             _sendTaskQueue = new AsyncCollection<SocketPayloadSendTask>();
             _readTaskQueue = new AsyncCollection<SocketPayloadReadTask>();
 
@@ -131,7 +131,10 @@ namespace KafkaNet
         {
             var sendTask = new SocketPayloadSendTask(payload, cancellationToken);
             _sendTaskQueue.Add(sendTask);
-            StatisticsTracker.QueueNetworkWrite(_endpoint, payload);
+            if (UseStatisticsTracker())
+            {
+                StatisticsTracker.QueueNetworkWrite(_endpoint, payload);
+            }
             return sendTask.Tcp.Task;
         }
 
@@ -256,7 +259,10 @@ namespace KafkaNet
             {
                 try
                 {
-                    StatisticsTracker.IncrementGauge(StatisticGauge.ActiveReadOperation);
+                    if (UseStatisticsTracker())
+                    {
+                        StatisticsTracker.IncrementGauge(StatisticGauge.ActiveReadOperation);
+                    }
                     var readSize = readTask.ReadSize;
                     var result = new List<byte>(readSize);
                     var bytesReceived = 0;
@@ -320,9 +326,17 @@ namespace KafkaNet
                 }
                 finally
                 {
-                    StatisticsTracker.DecrementGauge(StatisticGauge.ActiveReadOperation);
+                    if (UseStatisticsTracker())
+                    {
+                        StatisticsTracker.DecrementGauge(StatisticGauge.ActiveReadOperation);
+                    }
                 }
             }
+        }
+
+        private bool UseStatisticsTracker()
+        {
+            return _statisticsTrackerOptions == null || _statisticsTrackerOptions.Enable;
         }
 
         private async Task ProcessSentTasksAsync(NetworkStream netStream, SocketPayloadSendTask sendTask)
@@ -336,8 +350,10 @@ namespace KafkaNet
                 try
                 {
                     sw.Restart();
-                    StatisticsTracker.IncrementGauge(StatisticGauge.ActiveWriteOperation);
-
+                    if (UseStatisticsTracker())
+                    {
+                        StatisticsTracker.IncrementGauge(StatisticGauge.ActiveWriteOperation);
+                    }
                     if (OnWriteToSocketAttempt != null) OnWriteToSocketAttempt(sendTask.Payload);
                     _log.DebugFormat("Sending data for CorrelationId:{0} Connection:{1}", sendTask.Payload.CorrelationId, Endpoint);
                     await netStream.WriteAsync(sendTask.Payload.Buffer, 0, sendTask.Payload.Buffer.Length).ConfigureAwait(false);
@@ -359,8 +375,11 @@ namespace KafkaNet
                 }
                 finally
                 {
-                    StatisticsTracker.DecrementGauge(StatisticGauge.ActiveWriteOperation);
-                    StatisticsTracker.CompleteNetworkWrite(sendTask.Payload, sw.ElapsedMilliseconds, failed);
+                    if (UseStatisticsTracker())
+                    {
+                        StatisticsTracker.DecrementGauge(StatisticGauge.ActiveWriteOperation);
+                        StatisticsTracker.CompleteNetworkWrite(sendTask.Payload, sw.ElapsedMilliseconds, failed);
+                    }
                 }
             }
         }

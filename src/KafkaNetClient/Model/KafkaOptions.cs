@@ -1,4 +1,5 @@
 ﻿using KafkaNet.Protocol;
+using KafkaNet.Statistics;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,6 +16,7 @@ namespace KafkaNet.Model
         /// Refresh metadata Request will try to refresh only the topics that were expired in the cache.
         /// </summary>
 
+        public StatisticsTrackerOptions StatisticsTrackerOptions { get; set; }
         public TimeSpan CacheExpiration { get; set; }
         public TimeSpan RefreshMetadataTimeout { get; set; }
         public int MaxRetry { get; set; }
@@ -83,6 +85,7 @@ namespace KafkaNet.Model
             CacheExpiration = TimeSpan.FromMilliseconds(DefaultCacheExpirationTimeoutMS);
             RefreshMetadataTimeout = TimeSpan.FromMilliseconds(DefaultRefreshMetadataTimeout);
             MaxRetry = DefaultMaxRetry;
+            StatisticsTrackerOptions = new StatisticsTrackerOptions();
         }
     }
 }
