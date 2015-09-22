@@ -156,7 +156,6 @@ namespace KafkaNet
             while (_disposeToken.IsCancellationRequested == false)
             {
                 //block here until we can get connections then start loop pushing data through network stream
-                bool hasException = false;
                 var netStreamTask = GetStreamAsync();
                 try
                 {
@@ -164,7 +163,7 @@ namespace KafkaNet
 
                     if (_disposeToken.IsCancellationRequested)
                     {
-                        await SetDisposeExceptonToPenndingTasks();
+                        SetDisposeExceptonToPenndingTasks();
                         if (OnServerDisconnected != null) OnServerDisconnected();
                         return;
                     }
@@ -173,14 +172,10 @@ namespace KafkaNet
                 catch (Exception ex)
                 {
                     _log.ErrorFormat("Exception occured in Socket handler task.  Exception: {0}", ex);
-                    hasException = true;
-                }
-                if (hasException)
-                {
-                    await SetDisposeExceptonToPenndingTasks(new SocketException());
+
+                    SetDisposeExceptonToPenndingTasks(new SocketException());
                     if (OnServerDisconnected != null) OnServerDisconnected();
                 }
-
                 try
                 {
                     var netStream = await netStreamTask.ConfigureAwait(false);
@@ -195,7 +190,7 @@ namespace KafkaNet
             }
         }
 
-        private async Task SetDisposeExceptonToPenndingTasks(Exception exception = null)
+        private void SetDisposeExceptonToPenndingTasks(Exception exception = null)
         {
             var disposeException = new ObjectDisposedException("Object is disposing.");
             if (exception == null)
@@ -207,18 +202,8 @@ namespace KafkaNet
             else
             {
                 _log.WarnFormat("KafkaTcpSocket not able to connect cancel all PenndingTasks.");
-                int pendingSendTasksCount = _sendTaskQueue.Count;
-                if (pendingSendTasksCount > 0)
-                {
-                    var pendingSendTasks = await _sendTaskQueue.TakeAsync(pendingSendTasksCount, TimeSpan.FromMinutes(2), new CancellationToken());
-                    pendingSendTasks.ForEach(t => t.Tcp.TrySetException(exception));
-                }
-                int pendingReadTasksCount = _readTaskQueue.Count;
-                if (pendingReadTasksCount > 0)
-                {
-                    var pendingReadTasks = await _readTaskQueue.TakeAsync(pendingReadTasksCount, TimeSpan.FromMinutes(2), new CancellationToken());
-                    pendingReadTasks.ForEach(t => t.Tcp.TrySetException(exception));
-                }
+                _sendTaskQueue.DrainAndApply(t => t.Tcp.TrySetException(exception));
+                _readTaskQueue.DrainAndApply(t => t.Tcp.TrySetException(exception));
             }
         }
 
@@ -235,7 +220,6 @@ namespace KafkaNet
             var sendTask = ProcessNetworkstreamTasksReadTask(netStream);
             await Task.WhenAny(readTask, sendTask);
             if (_disposeToken.IsCancellationRequested) return;
-
             await ThrowTaskExceptionIfFaulted(readTask);
             await ThrowTaskExceptionIfFaulted(sendTask);
         }
