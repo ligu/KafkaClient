@@ -45,8 +45,8 @@ namespace kafka_tests
             _fakeConn1.FetchResponseFunction = async () => { Thread.Sleep(500); return null; };
 
             _mockKafkaConnectionFactory = Substitute.For<IKafkaConnectionFactory>();
-            _mockKafkaConnectionFactory.Create(Arg.Is<KafkaEndpoint>(e => e.Endpoint.Port == 1), Arg.Any<TimeSpan>(), Arg.Any<IKafkaLog>()).Returns(_fakeConn0);
-            _mockKafkaConnectionFactory.Create(Arg.Is<KafkaEndpoint>(e => e.Endpoint.Port == 2), Arg.Any<TimeSpan>(), Arg.Any<IKafkaLog>()).Returns(_fakeConn1);
+            _mockKafkaConnectionFactory.Create(Arg.Is<KafkaEndpoint>(e => e.Endpoint.Port == 1), Arg.Any<TimeSpan>(), Arg.Any<IKafkaLog>(), Arg.Any<int>(), Arg.Any<TimeSpan?>(), Arg.Any<StatisticsTrackerOptions>()).Returns(_fakeConn0);
+            _mockKafkaConnectionFactory.Create(Arg.Is<KafkaEndpoint>(e => e.Endpoint.Port == 2), Arg.Any<TimeSpan>(), Arg.Any<IKafkaLog>(), Arg.Any<int>(), Arg.Any<TimeSpan?>(), Arg.Any<StatisticsTrackerOptions>()).Returns(_fakeConn1);
             _mockKafkaConnectionFactory.Resolve(Arg.Any<Uri>(), Arg.Any<IKafkaLog>())
                                        .Returns(info => new KafkaEndpoint
                                         {

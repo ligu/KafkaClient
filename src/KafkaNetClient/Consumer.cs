@@ -12,9 +12,11 @@ namespace KafkaNet
     /// <summary>
     /// Provides a basic consumer of one Topic across all partitions or over a given whitelist of partitions.
     ///
-    /// TODO: provide automatic offset saving when the feature is available in 0.8.2
-    /// https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
+    /// TODO: provide automatic offset saving when the feature is available in 0.8.2 https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
+    /// TODO: replace _fetchResponseQueue to AsyncCollection!! it is not recommended to  use async and blocking code together look on https://github.com/StephenCleary/AsyncEx/blob/77b9711c2c5fd4ca28b220ce4c93d209eeca2b4a/Source/Nito.AsyncEx.Concurrent%20(NET4%2C%20Win8)/AsyncCollection.cs
+    /// I don't use this consumer so i stop develop it i am using manual consumer instend
     /// </summary>
+
     public class Consumer : IMetadataQueries, IDisposable
     {
         private readonly ConsumerOptions _options;
@@ -114,7 +116,7 @@ namespace KafkaNet
 
         private Task ConsumeTopicPartitionAsync(string topic, int partitionId)
         {
-            bool refreshMetaData = false;
+            bool needToRefreshMetadata = false;
             return Task.Run(async () =>
             {
                 try
@@ -124,15 +126,15 @@ namespace KafkaNet
                     _options.Log.DebugFormat("Consumer: Creating polling task for topic: {0} on parition: {1}", topic, partitionId);
                     while (_disposeToken.IsCancellationRequested == false)
                     {
-                        if (refreshMetaData)
-                        {
-                            await _options.Router.RefreshTopicMetadata(topic);
-                            EnsurePartitionPollingThreads();
-                            refreshMetaData = false;
-                        }
-
                         try
                         {
+                            //after error
+                            if (needToRefreshMetadata)
+                            {
+                                await _options.Router.RefreshTopicMetadata(topic).ConfigureAwait(false);
+                                EnsurePartitionPollingThreads();
+                                needToRefreshMetadata = false;
+                            }
                             //get the current offset, or default to zero if not there.
                             long offset = 0;
                             _partitionOffsetIndex.AddOrUpdate(partitionId, i => offset, (i, currentOffset) =>
@@ -167,12 +169,14 @@ namespace KafkaNet
                             await Task.WhenAny(taskSend, _disposeTask.Task).ConfigureAwait(false);
                             if (_disposeTask.Task.IsCompleted) return;
 
-                            var responses = await taskSend; //already done
+                            //already done
+                            var responses = await taskSend;
                             if (responses.Count > 0)
                             {
-                                var response = responses.FirstOrDefault(); //we only asked for one response
+                                //we only asked for one response
+                                var response = responses.FirstOrDefault();
 
-                                if (response != null && response.Messages.Count > 0)
+                                if (response != null && response.Messages.Any())
                                 {
                                     HandleResponseErrors(fetch, response);
 
@@ -180,13 +184,14 @@ namespace KafkaNet
                                     {
                                         await Task.Run(() =>
                                         {
-                                            _fetchResponseQueue.Add(message, _disposeToken.Token);//this is a block!!!
-                                        }, _disposeToken.Token);
+                                            //this is a block operation
+                                            _fetchResponseQueue.Add(message, _disposeToken.Token);
+                                        }, _disposeToken.Token).ConfigureAwait(false);
 
                                         if (_disposeToken.IsCancellationRequested) return;
                                     }
 
-                                    var nextOffset = response.Messages.Max(x => x.Meta.Offset) + 1;
+                                    var nextOffset = response.Messages.Last().Meta.Offset + 1;
                                     _partitionOffsetIndex.AddOrUpdate(partitionId, i => nextOffset, (i, l) => nextOffset);
 
                                     // sleep is not needed if responses were received
@@ -213,7 +218,7 @@ namespace KafkaNet
                         catch (InvalidMetadataException ex)
                         {
                             //refresh our metadata and ensure we are polling the correct partitions
-                            refreshMetaData = true;
+                            needToRefreshMetadata = true;
                             _options.Log.ErrorFormat(ex.Message);
                         }
                         catch (TaskCanceledException ex)

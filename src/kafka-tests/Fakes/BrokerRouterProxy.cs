@@ -27,7 +27,7 @@ namespace kafka_tests
         public FakeKafkaConnection BrokerConn1 { get { return _fakeConn1; } }
         public Mock<IKafkaConnectionFactory> KafkaConnectionMockKafkaConnectionFactory { get { return _mockKafkaConnectionFactory; } }
 
-        public Func<Task<MetadataResponse>> MetadataResponse = DefaultMetadataResponse;
+        public Func<Task<MetadataResponse>> MetadataResponse = CreateMetadataResponseWithMultipleBrokers;
 
         public IPartitionSelector PartitionSelector = new DefaultPartitionSelector();
 
@@ -49,8 +49,8 @@ namespace kafka_tests
             _fakeConn1.FetchResponseFunction = async () => { Thread.Sleep(500); return null; };
 
             _mockKafkaConnectionFactory = _kernel.GetMock<IKafkaConnectionFactory>();
-            _mockKafkaConnectionFactory.Setup(x => x.Create(It.Is<KafkaEndpoint>(e => e.Endpoint.Port == 1), It.IsAny<TimeSpan>(), It.IsAny<IKafkaLog>(), null)).Returns(() => _fakeConn0);
-            _mockKafkaConnectionFactory.Setup(x => x.Create(It.Is<KafkaEndpoint>(e => e.Endpoint.Port == 2), It.IsAny<TimeSpan>(), It.IsAny<IKafkaLog>(), null)).Returns(() => _fakeConn1);
+            _mockKafkaConnectionFactory.Setup(x => x.Create(It.Is<KafkaEndpoint>(e => e.Endpoint.Port == 1), It.IsAny<TimeSpan>(), It.IsAny<IKafkaLog>(), It.IsAny<int>(), It.IsAny<TimeSpan?>(), It.IsAny<StatisticsTrackerOptions>())).Returns(() => _fakeConn0);
+            _mockKafkaConnectionFactory.Setup(x => x.Create(It.Is<KafkaEndpoint>(e => e.Endpoint.Port == 2), It.IsAny<TimeSpan>(), It.IsAny<IKafkaLog>(), It.IsAny<int>(), It.IsAny<TimeSpan?>(), It.IsAny<StatisticsTrackerOptions>())).Returns(() => _fakeConn1);
             _mockKafkaConnectionFactory.Setup(x => x.Resolve(It.IsAny<Uri>(), It.IsAny<IKafkaLog>()))
                 .Returns<Uri, IKafkaLog>((uri, log) => new KafkaEndpoint
                 {
@@ -70,7 +70,7 @@ namespace kafka_tests
             });
         }
 
-        public static async Task<MetadataResponse> DefaultMetadataResponse()
+        public static async Task<MetadataResponse> CreateMetadataResponseWithMultipleBrokers()
         {
             return new MetadataResponse
                 {
@@ -118,6 +118,55 @@ namespace kafka_tests
                                 }
                         }
                 };
+        }
+
+        public static async Task<MetadataResponse> CreateMetadataResponseWithSingleBroker()
+        {
+            return new MetadataResponse
+            {
+                CorrelationId = 1,
+                Brokers = new List<Broker>
+                        {
+                            new Broker
+                                {
+                                    Host = "localhost",
+                                    Port = 2,
+                                    BrokerId = 1
+                                },
+                        },
+                Topics = new List<Topic>
+                        {
+                            new Topic
+                                {
+                                    ErrorCode = 0,
+                                    Name = TestTopic,
+                                    Partitions = new List<Partition>
+                                        {
+                                            new Partition
+                                                {
+                                                    ErrorCode = 0,
+                                                    Isrs = new List<int> {1},
+                                                    PartitionId = 0,
+                                                    LeaderId = 1,
+                                                    Replicas = new List<int> {1},
+                                                },
+                                            new Partition
+                                                {
+                                                    ErrorCode = 0,
+                                                    Isrs = new List<int> {1},
+                                                    PartitionId = 1,
+                                                    LeaderId = 1,
+                                                    Replicas = new List<int> {1},
+                                                }
+                                        }
+                                }
+                        }
+            };
+        }
+
+        public static async Task<MetadataResponse> CreateMetaResponseWithException()
+        {
+            throw new Exception();
         }
     }
 }

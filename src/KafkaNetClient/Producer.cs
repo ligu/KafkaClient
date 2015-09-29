@@ -94,7 +94,7 @@ namespace KafkaNet
             _postTask = Task.Run(() =>
             {
                 BatchSendAsync();
-                //TODO add log for ending the sending thread.
+                BrokerRouter.Log.InfoFormat("ending the sending thread");
             });
         }
 
@@ -107,7 +107,7 @@ namespace KafkaNet
         /// <param name="timeout">Interal kafka timeout to wait for the requested level of ack to occur before returning. Defaults to 1000ms.</param>
         /// <param name="codec">The codec to apply to the message collection.  Defaults to none.</param>
         /// <returns>List of ProduceResponses from each partition sent to or empty list if acks = 0.</returns>
-        public async Task<List<ProduceResponse>> SendMessageAsync(string topic, IEnumerable<Message> messages, Int16 acks = 1,
+        public Task<ProduceResponse[]> SendMessageAsync(string topic, IEnumerable<Message> messages, Int16 acks = 1,
             TimeSpan? timeout = null, MessageCodec codec = MessageCodec.CodecNone, int? partition = null)
         {
             if (_stopToken.IsCancellationRequested)
@@ -122,23 +122,25 @@ namespace KafkaNet
                 Topic = topic,
                 Message = message,
                 Partition = partition
-            }).ToList();
+            }).ToArray();
 
             _asyncCollection.AddRange(batch);
 
-            await Task.WhenAll(batch.Select(x => x.Tcs.Task));
-
-            return batch.Select(topicMessage => topicMessage.Tcs.Task.Result)
-                                .Distinct()
-                                .ToList();
+            return Task.WhenAll(batch.Select(x => x.Tcs.Task));
         }
 
-        public Task<List<ProduceResponse>> SendMessageAsync(string topic, int partition, params Message[] messages)
+        public Task<ProduceResponse[]> SendMessageAsync(string topic, int partition, params Message[] messages)
         {
             return SendMessageAsync(topic, messages, partition: partition);
         }
 
-        public Task<List<ProduceResponse>> SendMessageAsync(string topic, params Message[] messages)
+        public async Task<ProduceResponse> SendMessageAsync(Message messages, string topic, int partition, Int16 acks = 1)
+        {
+            var result = await SendMessageAsync(topic, new Message[] { messages }, partition: partition, acks: acks);
+            return result.FirstOrDefault();
+        }
+
+        public Task<ProduceResponse[]> SendMessageAsync(string topic, params Message[] messages)
         {
             return SendMessageAsync(topic, messages, acks: 1);
         }
@@ -203,8 +205,8 @@ namespace KafkaNet
                         //Drain any messages remaining in the queue and add them to the send batch
                         batch.AddRange(_asyncCollection.Drain());
                     }
-
-                    await ProduceAndSendBatchAsync(batch, _stopToken.Token);
+                    if (batch != null)
+                        await ProduceAndSendBatchAsync(batch, _stopToken.Token).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
@@ -224,8 +226,9 @@ namespace KafkaNet
         private async Task ProduceAndSendBatchAsync(List<TopicMessage> messages, CancellationToken cancellationToken)
         {
             Interlocked.Add(ref _inFlightMessageCount, messages.Count);
+
             var topics = messages.GroupBy(batch => batch.Topic).Select(batch => batch.Key).ToArray();
-            await BrokerRouter.RefreshMissingTopicMetadata(topics);
+            await BrokerRouter.RefreshMissingTopicMetadata(topics).ConfigureAwait(false);
 
             //we must send a different produce request for each ack level and timeout combination.
             foreach (var ackLevelBatch in messages.GroupBy(batch => new { batch.Acks, batch.Timeout }))
@@ -233,9 +236,9 @@ namespace KafkaNet
                 var messageByRouter = ackLevelBatch.Select(batch => new
                 {
                     TopicMessage = batch,
+                    AckLevel = ackLevelBatch.Key.Acks,
                     Route = batch.Partition.HasValue ? BrokerRouter.SelectBrokerRouteFromLocalCache(batch.Topic, batch.Partition.Value) : BrokerRouter.SelectBrokerRouteFromLocalCache(batch.Topic, batch.Message.Key)
-                })
-                                         .GroupBy(x => new { x.Route, x.TopicMessage.Topic, x.TopicMessage.Codec });
+                }).GroupBy(x => new { x.Route, x.TopicMessage.Topic, x.TopicMessage.Codec, x.AckLevel });
 
                 var sendTasks = new List<BrokerRouteSendBatch>();
                 foreach (var group in messageByRouter)
@@ -257,15 +260,16 @@ namespace KafkaNet
 
                     await _semaphoreMaximumAsync.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-                    var sendGroupTask = _protocolGateway.SendProtocolRequest(request, group.Key.Topic, group.Key.Route.PartitionId);// group.Key.Route.Connection.SendAsync(request);
+                    var sendGroupTask = _protocolGateway.SendProtocolRequest(request, group.Key.Topic, group.Key.Route.PartitionId);
                     var brokerSendTask = new BrokerRouteSendBatch
                     {
                         Route = group.Key.Route,
                         Task = sendGroupTask,
-                        MessagesSent = group.Select(x => x.TopicMessage).ToList()
+                        MessagesSent = group.Select(x => x.TopicMessage).ToList(),
+                        AckLevel = group.Key.AckLevel
                     };
 
-                    //ensure the async is released as soon as each task is completed
+                    //ensure the async is released as soon as each task is completed //TODO: remove it from ack level 0 , don't like it
                     brokerSendTask.Task.ContinueWith(t => { _semaphoreMaximumAsync.Release(); }, cancellationToken);
 
                     sendTasks.Add(brokerSendTask);
@@ -274,31 +278,57 @@ namespace KafkaNet
                 try
                 {
                     await Task.WhenAll(sendTasks.Select(x => x.Task)).ConfigureAwait(false);
-
-                    foreach (var task in sendTasks)
-                    {
-                        //TODO when we dont ask for an ACK, result is an empty list.  Which FirstOrDefault returns null.  Dont like this...
-                        task.MessagesSent.ForEach(async x => x.Tcs.TrySetResult(await task.Task));
-                    }
                 }
-                catch
+                catch (Exception ex)
                 {
-                    //if an error occurs here, all we know is some or all of the messages in this ackBatch failed.
-                    var failedTask = sendTasks.FirstOrDefault(t => t.Task.IsFaulted);
-                    if (failedTask != null)
+                    BrokerRouter.Log.ErrorFormat("Exception[{0}] stacktrace[{1}]", ex.Message, ex.StackTrace);
+                }
+
+                await SetResult(sendTasks);
+                Interlocked.Add(ref _inFlightMessageCount, messages.Count * -1);
+            }
+        }
+
+        private async Task SetResult(List<BrokerRouteSendBatch> sendTasks)
+        {
+            foreach (var sendTask in sendTasks)
+            {
+                try
+                {
+                    //all ready done don't need to await but it none blocking syntext
+                    var batchResult = await sendTask.Task;
+                    var numberOfMessage = sendTask.MessagesSent.Count;
+                    for (int i = 0; i < numberOfMessage; i++)
                     {
-                        foreach (var topicMessageBatch in ackLevelBatch)
+                        bool isAckLevel0 = sendTask.AckLevel == 0;
+                        if (isAckLevel0)
                         {
-                            topicMessageBatch.Tcs.TrySetException(
-                                new KafkaApplicationException(
-                                    "An exception occured while executing a send operation against {0}.  Exception:{1}",
-                                    failedTask.Route, failedTask.Task.Exception));
+                            var responce = new ProduceResponse()
+                            {
+                                Error = (short)ErrorResponseCode.NoError,
+                                PartitionId = sendTask.Route.PartitionId,
+                                Topic = sendTask.Route.Topic,
+                                Offset = -1
+                            };
+                            sendTask.MessagesSent[i].Tcs.SetResult(responce);
+                        }
+                        else
+                        {
+                            var responce = new ProduceResponse()
+                            {
+                                Error = batchResult.Error,
+                                PartitionId = batchResult.PartitionId,
+                                Topic = batchResult.Topic,
+                                Offset = batchResult.Offset + i
+                            };
+                            sendTask.MessagesSent[i].Tcs.SetResult(responce);
                         }
                     }
                 }
-                finally
+                catch (Exception ex)
                 {
-                    Interlocked.Add(ref _inFlightMessageCount, messages.Count * -1);
+                    BrokerRouter.Log.ErrorFormat("failed to send bach Topic[{0}] ackLevel[{1}] partition[{2}] EndPoint[{3}] Exception[{4}] stacktrace[{5}]", sendTask.Route.Topic, sendTask.AckLevel, sendTask.Route.PartitionId, sendTask.Route.Connection.Endpoint, ex.Message, ex.StackTrace);
+                    sendTask.MessagesSent.ForEach((x) => x.Tcs.TrySetException(ex));
                 }
             }
         }
@@ -338,6 +368,7 @@ namespace KafkaNet
 
     internal class BrokerRouteSendBatch
     {
+        public short AckLevel { get; set; }
         public BrokerRoute Route { get; set; }
         public Task<ProduceResponse> Task { get; set; }
         public List<TopicMessage> MessagesSent { get; set; }

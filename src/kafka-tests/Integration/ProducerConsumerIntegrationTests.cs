@@ -3,6 +3,7 @@ using KafkaNet;
 using KafkaNet.Common;
 using KafkaNet.Model;
 using KafkaNet.Protocol;
+using Moq;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
@@ -25,7 +26,7 @@ namespace kafka_tests.Integration
             using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri)))
             using (var producer = new Producer(router, maxAsync) { BatchSize = amount / 2 })
             {
-                var tasks = new Task<List<ProduceResponse>>[amount];
+                var tasks = new Task<ProduceResponse[]>[amount];
 
                 for (var i = 0; i < amount; i++)
                 {
@@ -40,6 +41,66 @@ namespace kafka_tests.Integration
 
                 Assert.That(results.Any(x => x.Any(y => y.Error != 0)), Is.False,
                     "Should not have received any results as failures.");
+            }
+        }
+
+        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        public async Task ProducerAckLevel()
+        {
+            using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri) { Log = IntegrationConfig.NoDebugLog }))
+            using (var producer = new Producer(router))
+            {
+                var responseAckLevel0 = await producer.SendMessageAsync(new Message("Ack Level 0"), IntegrationConfig.IntegrationTopic, acks: 0, partition: 0);
+                Assert.AreEqual(responseAckLevel0.Offset, -1);
+                var responseAckLevel1 = await producer.SendMessageAsync(new Message("Ack Level 1"), IntegrationConfig.IntegrationTopic, acks: 1, partition: 0);
+                Assert.That(responseAckLevel1.Offset, Is.GreaterThan(-1));
+            }
+        }
+
+        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        public async Task ProducerAckLevel1ResponseOffsetShouldBeEqualToLastOffset()
+        {
+            using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri) { Log = IntegrationConfig.NoDebugLog }))
+            using (var producer = new Producer(router))
+            {
+                var responseAckLevel1 = await producer.SendMessageAsync(new Message("Ack Level 1"), IntegrationConfig.IntegrationTopic, acks: 1, partition: 0);
+                var offsetResponse = await producer.GetTopicOffsetAsync(IntegrationConfig.IntegrationTopic);
+                var maxOffset = offsetResponse.Find(x => x.PartitionId == 0);
+                Assert.AreEqual(responseAckLevel1.Offset, maxOffset.Offsets.Max() - 1);
+            }
+        }
+
+        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        public async Task ProducerLastResposeOffsetAckLevel1ShouldBeEqualsToLastOffset()
+        {
+            using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri) { Log = IntegrationConfig.NoDebugLog }))
+            using (var producer = new Producer(router))
+            {
+                ProduceResponse[] responseAckLevel1 = await producer.SendMessageAsync(IntegrationConfig.IntegrationTopic, 0, new Message("Ack Level 1"), new Message("Ack Level 1"));
+                var offsetResponse = await producer.GetTopicOffsetAsync(IntegrationConfig.IntegrationTopic);
+                var maxOffset = offsetResponse.Find(x => x.PartitionId == 0);
+
+                Assert.AreEqual(responseAckLevel1.Last().Offset, maxOffset.Offsets.Max() - 1);
+            }
+        }
+
+        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        public async Task ConsumeByOffsetShouldGetSameMessageProducedAtSameOffset()
+        {
+            long offsetResponse;
+            Guid messge = Guid.NewGuid();
+
+            using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri) { Log = IntegrationConfig.NoDebugLog }))
+            using (var producer = new Producer(router))
+            {
+                ProduceResponse responseAckLevel1 = await producer.SendMessageAsync(new Message(messge.ToString()), IntegrationConfig.IntegrationTopic, acks: 1, partition: 0);
+                offsetResponse = responseAckLevel1.Offset;
+            }
+            using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri) { Log = IntegrationConfig.NoDebugLog }))
+            using (var consumer = new Consumer(new ConsumerOptions(IntegrationConfig.IntegrationTopic, router) { MaxWaitTimeForMinimumBytes = TimeSpan.Zero }, new OffsetPosition[] { new OffsetPosition(0, offsetResponse) }))
+            {
+                var result = consumer.Consume().Take(1).ToList().FirstOrDefault();
+                Assert.AreEqual(messge.ToString(), result.Value.ToUtf8String());
             }
         }
 
@@ -130,10 +191,11 @@ namespace kafka_tests.Integration
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [TestCase(1, 70)]
         [TestCase(1000, 70)]
-        [TestCase(30000, 600)]
-        [TestCase(50000, 950)]
-        [TestCase(200000, 7300)]
+        [TestCase(30000, 450)]
+        [TestCase(50000, 750)]
+        [TestCase(200000, 6000)]
         public async Task ConsumerShouldConsumeInSameOrderAsAsyncProduced_dataLoad(int numberOfMessage, int timeoutInMs)
         {
             int partition = 0;
@@ -192,15 +254,17 @@ namespace kafka_tests.Integration
                 expected++;
             }
             stopwatch.Restart();
-            producer.Dispose();
-            IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("start producer Dispose ,time Milliseconds:{0}", stopwatch.ElapsedMilliseconds));
 
-            consumer.Dispose();
+            IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("start producer Dispose ,time Milliseconds:{0}", stopwatch.ElapsedMilliseconds));
+            producer.Dispose();
+
             IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("start consumer Dispose ,time Milliseconds:{0}", stopwatch.ElapsedMilliseconds));
+            consumer.Dispose();
+
             stopwatch.Restart();
 
-            router.Dispose();
             IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("start router Dispose,time Milliseconds:{0}", stopwatch.ElapsedMilliseconds));
+            router.Dispose();
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
@@ -278,48 +342,35 @@ namespace kafka_tests.Integration
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
-        public void ProducerShouldUsePartitionIdInsteadOfMessageKeyToChoosePartition()
+        public async Task ProducerShouldUsePartitionIdInsteadOfMessageKeyToChoosePartition()
         {
-            using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri)))
-            using (var producer = new Producer(router))
+            Mock<IPartitionSelector> partitionSelector = new Mock<IPartitionSelector>();
+            partitionSelector.Setup(x => x.Select(It.IsAny<Topic>(), It.IsAny<byte[]>())).Returns((Topic y, byte[] y1) => { return y.Partitions.Find(p => p.PartitionId == 1); });
+
+            var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri) { PartitionSelector = partitionSelector.Object });
+            var producer = new Producer(router);
+
+            var offsets = await producer.GetTopicOffsetAsync(IntegrationConfig.IntegrationTopic);
+            int partitionId = 0;
+
+            //message should send to PartitionId and not use the key to Select Broker Route !!
+            for (int i = 0; i < 20; i++)
             {
-                var offsets = producer.GetTopicOffsetAsync(IntegrationConfig.IntegrationTopic).Result;
-                int partitionId = 0;
-                string key = GetKey_PartitionIdChosenByKeyIsNotEqualToPartitionId(router, partitionId);
-
-                //message should send to PartitionId and not use the key to Select Broker Route !!
-                for (int i = 0; i < 20; i++)
-                {
-                    producer.SendMessageAsync(IntegrationConfig.IntegrationTopic, new[] { new Message(i.ToString(), key) }, 1, null, MessageCodec.CodecNone, partitionId).Wait();
-                }
-
-                //consume form partitionId to verify that date is send to currect partion !!.
-                using (var consumer = new Consumer(new ConsumerOptions(IntegrationConfig.IntegrationTopic, router) { PartitionWhitelist = { partitionId } },
-                    offsets.Select(x => new OffsetPosition(x.PartitionId, x.Offsets.Max())).ToArray()))
-                {
-                    for (int i = 0; i < 20; i++)
-                    {
-                        var result = consumer.Consume().Take(1).First();
-                        Assert.That(result.Key.ToUtf8String(), Is.EqualTo(key));
-                        Assert.That(result.Value.ToUtf8String(), Is.EqualTo(i.ToString()));
-                    }
-                }
+                await producer.SendMessageAsync(IntegrationConfig.IntegrationTopic, new[] { new Message(i.ToString(), "key") }, 1, null, MessageCodec.CodecNone, partitionId);
             }
-        }
 
-        private static string GetKey_PartitionIdChosenByKeyIsNotEqualToPartitionId(BrokerRouter router,
-            int partitionId)
-        {
-            string key = null;
-            bool partitionEqualsPartitionIdChoosesByKey = true;
-            while (partitionEqualsPartitionIdChoosesByKey)
+            //consume form partitionId to verify that date is send to currect partion !!.
+            var consumer = new Consumer(new ConsumerOptions(IntegrationConfig.IntegrationTopic, router) { PartitionWhitelist = { partitionId } }, offsets.Select(x => new OffsetPosition(x.PartitionId, x.Offsets.Max())).ToArray());
+
+            for (int i = 0; i < 20; i++)
             {
-                var guidKey = Guid.NewGuid();
-                key = guidKey.ToString();
-                int partitionIdChoosesByKey = router.SelectBrokerRouteFromLocalCache(IntegrationConfig.IntegrationTopic, guidKey.ToByteArray()).PartitionId;
-                partitionEqualsPartitionIdChoosesByKey = partitionId == partitionIdChoosesByKey;
+                Message result = null;// = consumer.Consume().Take(1).First();
+                await Task.Run(() => result = consumer.Consume().Take(1).First());
+                Assert.That(result.Value.ToUtf8String(), Is.EqualTo(i.ToString()));
             }
-            return key;
+
+            consumer.Dispose();
+            producer.Dispose();
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
@@ -379,6 +430,7 @@ namespace kafka_tests.Integration
                     var data = stream.Take(expectedCount).ToList();
 
                     var consumerOffset = consumer.GetOffsetPosition().OrderBy(x => x.PartitionId).ToList();
+
                     var serverOffset = await producer.GetTopicOffsetAsync(IntegrationConfig.IntegrationTopic).ConfigureAwait(false);
                     var positionOffset = serverOffset.Select(x => new OffsetPosition(x.PartitionId, x.Offsets.Max()))
                         .OrderBy(x => x.PartitionId)

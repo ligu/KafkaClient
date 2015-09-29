@@ -30,6 +30,11 @@ namespace KafkaNet.Common
             return _dataAvailableEvent.WaitAsync().WithCancellation(token);
         }
 
+        public Task<bool> OnHasDataAvailablebool(CancellationToken token)
+        {
+            return _dataAvailableEvent.WaitAsync().WithCancellationBool(token);
+        }
+
         public void Add(T data)
         {
             if (IsCompleted)
@@ -79,7 +84,7 @@ namespace KafkaNet.Common
                         Interlocked.Increment(ref _dataInBufferCount);
                         if (--count <= 0 || timeoutTask.IsCompleted) return batch;
                     }
-                } while (await Task.WhenAny(_dataAvailableEvent.WaitAsync(), timeoutTask) != timeoutTask);
+                } while (await Task.WhenAny(_dataAvailableEvent.WaitAsync(), timeoutTask).ConfigureAwait(false) != timeoutTask);
 
                 return batch;
             }
@@ -95,9 +100,12 @@ namespace KafkaNet.Common
 
         public void DrainAndApply(Action<T> appliedFunc)
         {
-            T data;
-            while (_queue.TryDequeue(out data))
+            var nb = _queue.Count;
+            for (int i = 0; i < nb; i++)
             {
+                T data;
+                if (!_queue.TryDequeue(out data))
+                    break;
                 appliedFunc(data);
             }
 

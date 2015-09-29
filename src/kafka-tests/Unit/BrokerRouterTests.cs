@@ -17,7 +17,7 @@ namespace kafka_tests.Unit
     [Category("Unit")]
     public class BrokerRouterTests
     {
-        private const string TestTopic = "UnitTest";
+        private const string TestTopic = BrokerRouterProxy.TestTopic;
         private MoqMockingKernel _kernel;
         private Mock<IKafkaConnection> _mockKafkaConnection1;
         private Mock<IKafkaConnectionFactory> _mockKafkaConnectionFactory;
@@ -32,7 +32,7 @@ namespace kafka_tests.Unit
             _mockPartitionSelector = _kernel.GetMock<IPartitionSelector>();
             _mockKafkaConnection1 = _kernel.GetMock<IKafkaConnection>();
             _mockKafkaConnectionFactory = _kernel.GetMock<IKafkaConnectionFactory>();
-            _mockKafkaConnectionFactory.Setup(x => x.Create(It.Is<KafkaEndpoint>(e => e.Endpoint.Port == 1), It.IsAny<TimeSpan>(), It.IsAny<IKafkaLog>(), null)).Returns(() => _mockKafkaConnection1.Object);
+            _mockKafkaConnectionFactory.Setup(x => x.Create(It.Is<KafkaEndpoint>(e => e.Endpoint.Port == 1), It.IsAny<TimeSpan>(), It.IsAny<IKafkaLog>(), It.IsAny<int>(), It.IsAny<TimeSpan?>(), It.IsAny<StatisticsTrackerOptions>())).Returns(() => _mockKafkaConnection1.Object);
             _mockKafkaConnectionFactory.Setup(x => x.Resolve(It.IsAny<Uri>(), It.IsAny<IKafkaLog>()))
                 .Returns<Uri, IKafkaLog>((uri, log) => new KafkaEndpoint
                 {
@@ -82,10 +82,10 @@ namespace kafka_tests.Unit
             });
 
             _mockKafkaConnection1.Setup(x => x.SendAsync(It.IsAny<IKafkaRequest<MetadataResponse>>()))
-                      .Returns(() => Task.Run(() => new List<MetadataResponse> { CreateMetaResponse() }));
+                      .Returns(() => Task.Run(async () => new List<MetadataResponse> { await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers() }));
             await router.RefreshMissingTopicMetadata(TestTopic);
             var topics = router.GetTopicMetadataFromLocalCache(TestTopic);
-            _mockKafkaConnectionFactory.Verify(x => x.Create(It.Is<KafkaEndpoint>(e => e.Endpoint.Port == 2), It.IsAny<TimeSpan>(), It.IsAny<IKafkaLog>(), null), Times.Once());
+            _mockKafkaConnectionFactory.Verify(x => x.Create(It.Is<KafkaEndpoint>(e => e.Endpoint.Port == 2), It.IsAny<TimeSpan>(), It.IsAny<IKafkaLog>(), It.IsAny<int>(), It.IsAny<TimeSpan?>(), It.IsAny<StatisticsTrackerOptions>()), Times.Once());
         }
 
         #region MetadataRequest Tests...
@@ -156,6 +156,31 @@ namespace kafka_tests.Unit
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        public async Task SelectBrokerRouteShouldChange()
+        {
+            var routerProxy = new BrokerRouterProxy(_kernel);
+
+            var router = routerProxy.Create();
+
+            routerProxy.MetadataResponse = BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers;
+            await router.RefreshTopicMetadata(TestTopic);
+
+            var router1 = router.SelectBrokerRouteFromLocalCache(TestTopic, 0);
+
+            Assert.That(routerProxy.BrokerConn0.MetadataRequestCallCount, Is.EqualTo(1));
+            await Task.Delay(routerProxy._cacheExpiration);
+            await Task.Delay(1);//After cache is expair
+            routerProxy.MetadataResponse = BrokerRouterProxy.CreateMetadataResponseWithSingleBroker;
+            await router.RefreshTopicMetadata(TestTopic);
+            var router2 = router.SelectBrokerRouteFromLocalCache(TestTopic, 0);
+
+            Assert.That(routerProxy.BrokerConn0.MetadataRequestCallCount, Is.EqualTo(2));
+            Assert.That(router1.Connection.Endpoint, Is.EqualTo(routerProxy.BrokerConn0.Endpoint));
+            Assert.That(router2.Connection.Endpoint, Is.EqualTo(routerProxy.BrokerConn1.Endpoint));
+            Assert.That(router1.Connection.Endpoint, Is.Not.EqualTo(router2.Connection.Endpoint));
+        }
+
+        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         public async Task SimultaneouslyRefreshTopicMetadataShouldGetDataFromCacheOnSameRequest()
         {
             var routerProxy = new BrokerRouterProxy(_kernel);
@@ -197,9 +222,9 @@ namespace kafka_tests.Unit
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         [ExpectedException(typeof(InvalidTopicNotExistsInCache))]
-        public void SelectExactPartitionShouldThrowWhenTopicsCollectionIsEmpty()
+        public async Task SelectExactPartitionShouldThrowWhenTopicsCollectionIsEmpty()
         {
-            var metadataResponse = CreateMetaResponse();
+            var metadataResponse = await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers();
             metadataResponse.Topics.Clear();
 
             var routerProxy = new BrokerRouterProxy(_kernel);
@@ -212,7 +237,7 @@ namespace kafka_tests.Unit
         [ExpectedException(typeof(LeaderNotFoundException))]
         public async Task SelectExactPartitionShouldThrowWhenBrokerCollectionIsEmpty()
         {
-            var metadataResponse = CreateMetaResponse();
+            var metadataResponse = await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers();
             metadataResponse.Brokers.Clear();
 
             var routerProxy = new BrokerRouterProxy(_kernel);
@@ -254,9 +279,9 @@ namespace kafka_tests.Unit
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         [ExpectedException(typeof(InvalidTopicNotExistsInCache))]
-        public void SelectPartitionShouldThrowWhenTopicsCollectionIsEmpty()
+        public async Task SelectPartitionShouldThrowWhenTopicsCollectionIsEmpty()
         {
-            var metadataResponse = CreateMetaResponse();
+            var metadataResponse = await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers();
             metadataResponse.Topics.Clear();
 
             var routerProxy = new BrokerRouterProxy(_kernel);
@@ -269,7 +294,7 @@ namespace kafka_tests.Unit
         [ExpectedException(typeof(LeaderNotFoundException))]
         public async Task SelectPartitionShouldThrowWhenBrokerCollectionIsEmpty()
         {
-            var metadataResponse = CreateMetaResponse();
+            var metadataResponse = await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers();
             metadataResponse.Brokers.Clear();
 
             var routerProxy = new BrokerRouterProxy(_kernel);
@@ -281,59 +306,5 @@ namespace kafka_tests.Unit
         }
 
         #endregion SelectBrokerRouteAsync Select Tests...
-
-        #region Private Methods...
-
-        private MetadataResponse CreateMetaResponse()
-        {
-            return new MetadataResponse
-                {
-                    CorrelationId = 1,
-                    Brokers = new List<Broker>
-                        {
-                            new Broker
-                                {
-                                    Host = "localhost",
-                                    Port = 1,
-                                    BrokerId = 0
-                                },
-                            new Broker
-                                {
-                                    Host = "localhost",
-                                    Port = 2,
-                                    BrokerId = 1
-                                },
-                        },
-                    Topics = new List<Topic>
-                        {
-                            new Topic
-                                {
-                                    ErrorCode = 0,
-                                    Name = TestTopic,
-                                    Partitions = new List<Partition>
-                                        {
-                                            new Partition
-                                                {
-                                                    ErrorCode = 0,
-                                                    Isrs = new List<int> {1},
-                                                    PartitionId = 0,
-                                                    LeaderId = 0,
-                                                    Replicas = new List<int> {1},
-                                                },
-                                            new Partition
-                                                {
-                                                    ErrorCode = 0,
-                                                    Isrs = new List<int> {1},
-                                                    PartitionId = 1,
-                                                    LeaderId = 1,
-                                                    Replicas = new List<int> {1},
-                                                }
-                                        }
-                                }
-                        }
-                };
-        }
-
-        #endregion Private Methods...
     }
 }

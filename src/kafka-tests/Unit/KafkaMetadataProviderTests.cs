@@ -28,7 +28,7 @@ namespace kafka_tests.Unit
             var conn = Substitute.For<IKafkaConnection>();
 
             conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>())
-                .Returns(x => CreateMetadataResponse(errorCode), x => CreateMetadataResponse(ErrorResponseCode.NoError));
+                .Returns(x => CreateMetadataResponse(errorCode), x => CreateMetadataResponse(errorCode));
 
             using (var provider = new KafkaMetadataProvider(_log))
             {
@@ -40,35 +40,6 @@ namespace kafka_tests.Unit
                 conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>());
                 _log.WarnFormat("Backing off metadata request retry.  Waiting for {0}ms.", 100);
                 conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>());
-            });
-        }
-
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
-        [TestCase(ErrorResponseCode.LeaderNotAvailable)]
-        public async Task ShouldBackoffRequestOnMultipleFailures(ErrorResponseCode errorCode)
-        {
-            var conn = Substitute.For<IKafkaConnection>();
-
-            conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>())
-                .Returns(x => CreateMetadataResponse(errorCode),
-                            x => CreateMetadataResponse(errorCode),
-                            x => CreateMetadataResponse(errorCode),
-                            x => CreateMetadataResponse(ErrorResponseCode.NoError));
-
-            using (var provider = new KafkaMetadataProvider(_log))
-            {
-                var response = await provider.Get(new[] { conn }, new[] { "Test" });
-            }
-
-            Received.InOrder(() =>
-            {
-                conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>()).Wait();
-                _log.WarnFormat("Backing off metadata request retry.  Waiting for {0}ms.", 100);
-                conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>()).Wait();
-                _log.WarnFormat("Backing off metadata request retry.  Waiting for {0}ms.", 400);
-                conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>()).Wait();
-                _log.WarnFormat("Backing off metadata request retry.  Waiting for {0}ms.", 900);
-                conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>()).Wait();
             });
         }
 

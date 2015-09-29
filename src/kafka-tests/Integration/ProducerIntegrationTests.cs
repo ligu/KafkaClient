@@ -4,6 +4,7 @@ using KafkaNet.Model;
 using KafkaNet.Protocol;
 using NUnit.Framework;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -35,7 +36,7 @@ namespace kafka_tests.Integration
             {
                 var result = await producer.SendMessageAsync(IntegrationConfig.IntegrationTopic, new[] { new Message(Guid.NewGuid().ToString()) });
 
-                Assert.That(result.Count, Is.EqualTo(1));
+                Assert.That(result.Length, Is.EqualTo(1));
             }
         }
 
@@ -48,7 +49,9 @@ namespace kafka_tests.Integration
                 var messages = new[] { new Message("1"), new Message("2"), new Message("3") };
                 var result = await producer.SendMessageAsync(IntegrationConfig.IntegrationTopic, messages);
 
-                Assert.That(result.Count, Is.EqualTo(messages.Count()));
+                Assert.That(result.Length, Is.EqualTo(messages.Distinct().Count()));
+
+                Assert.That(result.Length, Is.EqualTo(messages.Count()));
             }
         }
 
@@ -68,7 +71,6 @@ namespace kafka_tests.Integration
                 await Task.WhenAll(tasks);
 
                 var result = tasks.SelectMany(x => x.Result).Distinct().ToList();
-
                 Assert.That(result.Count, Is.EqualTo(tasks.Count()));
             }
         }

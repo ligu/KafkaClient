@@ -4,11 +4,14 @@ using KafkaNet;
 using KafkaNet.Common;
 using KafkaNet.Model;
 using KafkaNet.Protocol;
+using NSubstitute;
 using NUnit.Framework;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -26,6 +29,7 @@ namespace kafka_tests.Unit
         private readonly KafkaEndpoint _fakeServerUrl;
         private readonly KafkaEndpoint _badServerUrl;
         private IKafkaLog _log = new DefaultTraceLog(LogLevel.Info);
+        private int _maxRetry = 5;
 
         public KafkaTcpSocketTests()
         {
@@ -36,7 +40,7 @@ namespace kafka_tests.Unit
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         public void KafkaTcpSocketShouldConstruct()
         {
-            using (var test = new KafkaTcpSocket(_log, _fakeServerUrl))
+            using (var test = new KafkaTcpSocket(_log, _fakeServerUrl, _maxRetry))
             {
                 Assert.That(test, Is.Not.Null);
                 Assert.That(test.Endpoint, Is.EqualTo(_fakeServerUrl));
@@ -50,7 +54,7 @@ namespace kafka_tests.Unit
         {
             var count = 0;
 
-            using (var test = new KafkaTcpSocket(_log, _fakeServerUrl))
+            using (var test = new KafkaTcpSocket(_log, _fakeServerUrl, _maxRetry))
             {
                 test.OnReconnectionAttempt += x => Interlocked.Increment(ref count);
                 await TaskTest.WaitFor(() => count > 0);
@@ -62,7 +66,7 @@ namespace kafka_tests.Unit
         public async Task ConnectionShouldAttemptMultipleTimesWhenConnectionFails()
         {
             var count = 0;
-            using (var test = new KafkaTcpSocket(_log, _badServerUrl))
+            using (var test = new KafkaTcpSocket(_log, _badServerUrl, _maxRetry))
             {
                 test.WriteAsync(1.ToBytes().ToPayload()); //will force a connection
                 test.OnReconnectionAttempt += x => Interlocked.Increment(ref count);
@@ -79,7 +83,7 @@ namespace kafka_tests.Unit
         public async Task KafkaTcpSocketShouldDisposeEvenWhilePollingToReconnect()
         {
             int connectionAttempt = 0;
-            using (var test = new KafkaTcpSocket(_log, _fakeServerUrl))
+            using (var test = new KafkaTcpSocket(_log, _fakeServerUrl, _maxRetry))
             {
                 test.OnReconnectionAttempt += i => connectionAttempt = i;
 
@@ -99,7 +103,7 @@ namespace kafka_tests.Unit
         public async Task KafkaTcpSocketShouldDisposeEvenWhileAwaitingReadAndThrowException()
         {
             using (var server = new FakeTcpServer(_log, FakeServerPort))
-            using (var test = new KafkaTcpSocket(_log, _fakeServerUrl))
+            using (var test = new KafkaTcpSocket(_log, _fakeServerUrl, _maxRetry))
             {
                 int readSize = 0;
 
@@ -121,7 +125,7 @@ namespace kafka_tests.Unit
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         public void KafkaTcpSocketShouldDisposeEvenWhileWriting()
         {
-            using (var test = new KafkaTcpSocket(_log, _fakeServerUrl))
+            using (var test = new KafkaTcpSocket(_log, _fakeServerUrl, _maxRetry))
             {
                 int writeSize = 0;
                 test.OnWriteToSocketAttempt += payload => writeSize = payload.Buffer.Length;
@@ -151,7 +155,7 @@ namespace kafka_tests.Unit
         public void ReadShouldCancelWhileAwaitingResponse()
         {
             using (var server = new FakeTcpServer(_log, FakeServerPort))
-            using (var test = new KafkaTcpSocket(_log, _fakeServerUrl))
+            using (var test = new KafkaTcpSocket(_log, _fakeServerUrl, _maxRetry))
             {
                 var count = 0;
                 var semaphore = new SemaphoreSlim(0);
@@ -176,7 +180,7 @@ namespace kafka_tests.Unit
         public async Task ReadShouldCancelWhileAwaitingReconnection()
         {
             int connectionAttempt = 0;
-            using (var test = new KafkaTcpSocket(_log, _fakeServerUrl))
+            using (var test = new KafkaTcpSocket(_log, _fakeServerUrl, _maxRetry))
             using (var token = new CancellationTokenSource())
             {
                 test.OnReconnectionAttempt += i => connectionAttempt = i;
@@ -197,7 +201,7 @@ namespace kafka_tests.Unit
         public async Task SocketShouldReconnectEvenAfterCancelledRead()
         {
             int connectionAttempt = 0;
-            using (var test = new KafkaTcpSocket(_log, _fakeServerUrl))
+            using (var test = new KafkaTcpSocket(_log, _fakeServerUrl, _maxRetry))
             using (var token = new CancellationTokenSource())
             {
                 test.OnReconnectionAttempt += i => Interlocked.Exchange(ref connectionAttempt, i);
@@ -220,7 +224,7 @@ namespace kafka_tests.Unit
         public async Task ReadShouldBlockUntilAllBytesRequestedAreReceived()
         {
             using (var server = new FakeTcpServer(_log, FakeServerPort))
-            using (var test = new KafkaTcpSocket(_log, _fakeServerUrl))
+            using (var test = new KafkaTcpSocket(_log, _fakeServerUrl, _maxRetry))
             {
                 var sendCompleted = 0;
                 var bytesReceived = 0;
@@ -261,7 +265,7 @@ namespace kafka_tests.Unit
         public void ReadShouldBeAbleToReceiveMoreThanOnce()
         {
             using (var server = new FakeTcpServer(_log, FakeServerPort))
-            using (var test = new KafkaTcpSocket(_log, _fakeServerUrl))
+            using (var test = new KafkaTcpSocket(_log, _fakeServerUrl, _maxRetry))
             {
                 const int firstMessage = 99;
                 const string secondMessage = "testmessage";
@@ -284,7 +288,7 @@ namespace kafka_tests.Unit
         public void ReadShouldBeAbleToReceiveMoreThanOnceAsyncronously()
         {
             using (var server = new FakeTcpServer(_log, FakeServerPort))
-            using (var test = new KafkaTcpSocket(_log, _fakeServerUrl))
+            using (var test = new KafkaTcpSocket(_log, _fakeServerUrl, _maxRetry))
             {
                 const int firstMessage = 99;
                 const int secondMessage = 100;
@@ -306,7 +310,7 @@ namespace kafka_tests.Unit
         public void ReadShouldNotLoseDataFromStreamOverMultipleReads()
         {
             using (var server = new FakeTcpServer(_log, FakeServerPort))
-            using (var test = new KafkaTcpSocket(_log, _fakeServerUrl))
+            using (var test = new KafkaTcpSocket(_log, _fakeServerUrl, _maxRetry))
             {
                 const int firstMessage = 99;
                 const string secondMessage = "testmessage";
@@ -331,7 +335,7 @@ namespace kafka_tests.Unit
         {
             using (var server = new FakeTcpServer(_log, FakeServerPort))
             {
-                var socket = new KafkaTcpSocket(_log, _fakeServerUrl);
+                var socket = new KafkaTcpSocket(_log, _fakeServerUrl, _maxRetry);
 
                 var resultTask = socket.ReadAsync(4);
 
@@ -350,52 +354,61 @@ namespace kafka_tests.Unit
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
-        public async Task ReadShouldReconnectAfterLosingConnection()
+        [ExpectedException(typeof(SocketException))]
+        public async Task WhenNoConnectionThrowSocketException()
+        {
+            var socket = new KafkaTcpSocket(_log, new KafkaEndpoint() { ServeUri = new Uri("http://not.com") }, _maxRetry);
+
+            var resultTask = socket.ReadAsync(4);
+            await resultTask;
+        }
+
+        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [ExpectedException(typeof(SocketException))]
+        public async Task WhenNoConnectionThrowSocketExceptionAfterMaxRetry()
+        {
+            var reconnectionAttempt = 0;
+            var socket = new KafkaTcpSocket(_log, new KafkaEndpoint() { ServeUri = new Uri("http://not.com") }, _maxRetry);
+            socket.OnReconnectionAttempt += (x) => Interlocked.Increment(ref reconnectionAttempt);
+            var resultTask = socket.ReadAsync(4);
+            await resultTask;
+            Assert.Equals(reconnectionAttempt, _maxRetry);
+        }
+
+        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        public async Task ShouldReconnectAfterLosingConnectionAndBeAbleToStartNewRead()
         {
             using (var server = new FakeTcpServer(_log, FakeServerPort))
             {
                 var disconnects = 0;
                 var connects = 0;
+                TaskCompletionSource<int> disconnectEvent = new TaskCompletionSource<int>();
+
                 server.OnClientConnected += () => Interlocked.Increment(ref connects);
                 server.OnClientDisconnected += () => Interlocked.Increment(ref disconnects);
-                var socket = new KafkaTcpSocket(_log, _fakeServerUrl);
-
-                var resultTask = ReadFromSocketWithRetry(socket, 4);
+                var socket = new KafkaTcpSocket(_log, _fakeServerUrl, _maxRetry);
+                socket.OnServerDisconnected += () => disconnectEvent.TrySetResult(1);
 
                 //wait till connected
                 await TaskTest.WaitFor(() => connects > 0);
+                var readTask = socket.ReadAsync(4);
 
-                //drop connection
                 server.DropConnection();
-                await TaskTest.WaitFor(() => disconnects > 0);
-                Assert.That(disconnects, Is.EqualTo(1), "Server should have disconnected the client.");
 
-                //wait for reconnection
-                await TaskTest.WaitFor(() => connects > 1);
+                //wait till Disconnected
+                await Task.WhenAny(disconnectEvent.Task, Task.Delay(100000));
+                Assert.IsTrue(disconnectEvent.Task.IsCompleted, "Server should have disconnected the client.");
+                Assert.Throws<ServerDisconnectedException>(async () => await readTask);
+
+                await TaskTest.WaitFor(() => connects == 2, 6000);
                 Assert.That(connects, Is.EqualTo(2), "Socket should have reconnected.");
 
-                //send data and get result
-                server.SendDataAsync(99.ToBytes());
-                var result = await resultTask;
+                var readTask2 = socket.ReadAsync(4);
+
+                await server.SendDataAsync(99.ToBytes());
+                var result = await readTask2;
                 Assert.That(result.ToInt32(), Is.EqualTo(99), "Socket should have received the 4 bytes.");
             }
-        }
-
-        private async Task<byte[]> ReadFromSocketWithRetry(KafkaTcpSocket socket, int readSize)
-        {
-            byte[] buffer;
-            try
-            {
-                buffer = await socket.ReadAsync(readSize);
-                return buffer;
-            }
-            catch (Exception ex)
-            {
-                Assert.That(ex, Is.TypeOf<ServerDisconnectedException>());
-            }
-
-            buffer = await socket.ReadAsync(4);
-            return buffer;
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
@@ -408,7 +421,7 @@ namespace kafka_tests.Unit
 
                 var payload = new KafkaMessagePacker().Pack(messages);
 
-                var socket = new KafkaTcpSocket(new DefaultTraceLog(LogLevel.Warn), _fakeServerUrl);
+                var socket = new KafkaTcpSocket(new DefaultTraceLog(LogLevel.Warn), _fakeServerUrl, _maxRetry);
 
                 var tasks = messages.Select(x => socket.ReadAsync(x.Length)).ToArray();
 
@@ -431,7 +444,7 @@ namespace kafka_tests.Unit
         public async Task WriteAsyncShouldSendData()
         {
             using (var server = new FakeTcpServer(_log, FakeServerPort))
-            using (var test = new KafkaTcpSocket(new DefaultTraceLog(LogLevel.Warn), _fakeServerUrl))
+            using (var test = new KafkaTcpSocket(new DefaultTraceLog(LogLevel.Warn), _fakeServerUrl, _maxRetry))
             {
                 const int testData = 99;
                 int result = 0;
@@ -448,7 +461,7 @@ namespace kafka_tests.Unit
         public async Task WriteAsyncShouldAllowMoreThanOneWrite()
         {
             using (var server = new FakeTcpServer(_log, FakeServerPort))
-            using (var test = new KafkaTcpSocket(_log, _fakeServerUrl))
+            using (var test = new KafkaTcpSocket(_log, _fakeServerUrl, _maxRetry))
             {
                 const int testData = 99;
                 var results = new List<byte>();
@@ -473,7 +486,7 @@ namespace kafka_tests.Unit
             AutoResetEvent allEventAreArrived = new AutoResetEvent(false);
             AutoResetEvent allrReadEventAreArrived = new AutoResetEvent(false);
             using (var server = new FakeTcpServer(_log, FakeServerPort))
-            using (var test = new KafkaTcpSocket(_log, _fakeServerUrl))
+            using (var test = new KafkaTcpSocket(_log, _fakeServerUrl, _maxRetry))
             {
                 server.OnBytesReceived += data =>
                 {
@@ -530,7 +543,7 @@ namespace kafka_tests.Unit
             var write = new ConcurrentBag<int>();
             int percent = 0;
             using (var server = new FakeTcpServer(_log, FakeServerPort))
-            using (var test = new KafkaTcpSocket(new DefaultTraceLog(LogLevel.Warn), _fakeServerUrl))
+            using (var test = new KafkaTcpSocket(new DefaultTraceLog(LogLevel.Warn), _fakeServerUrl, _maxRetry))
             {
                 int numberOfWrite = 10000;
                 server.OnBytesReceived += data =>
@@ -564,7 +577,7 @@ namespace kafka_tests.Unit
         {
             var writeAttempts = 0;
             using (var server = new FakeTcpServer(_log, FakeServerPort))
-            using (var test = new KafkaTcpSocket(_log, _fakeServerUrl))
+            using (var test = new KafkaTcpSocket(_log, _fakeServerUrl, _maxRetry))
             using (var token = new CancellationTokenSource())
             {
                 test.OnWriteToSocketAttempt += payload => Interlocked.Increment(ref writeAttempts);
@@ -592,7 +605,7 @@ namespace kafka_tests.Unit
         public void WriteShouldCancelWhileAwaitingReconnection()
         {
             int connectionAttempt = 0;
-            using (var test = new KafkaTcpSocket(_log, _fakeServerUrl))
+            using (var test = new KafkaTcpSocket(_log, _fakeServerUrl, _maxRetry))
             using (var token = new CancellationTokenSource())
             {
                 test.OnReconnectionAttempt += i => connectionAttempt = i;
@@ -613,7 +626,7 @@ namespace kafka_tests.Unit
         public async Task SocketShouldReconnectEvenAfterCancelledWrite()
         {
             int connectionAttempt = 0;
-            using (var test = new KafkaTcpSocket(_log, _fakeServerUrl))
+            using (var test = new KafkaTcpSocket(_log, _fakeServerUrl, _maxRetry))
             using (var token = new CancellationTokenSource())
             {
                 test.OnReconnectionAttempt += i => Interlocked.Exchange(ref connectionAttempt, i);

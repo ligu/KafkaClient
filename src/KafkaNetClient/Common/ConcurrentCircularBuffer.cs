@@ -1,15 +1,17 @@
-﻿using System;
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
 
 namespace KafkaNet.Common
 {
+    /// <summary>
+    /// don't use this class out side the StatisticsTracker has unexpected behavior
+    /// </summary>
     public class ConcurrentCircularBuffer<T> : IEnumerable<T>
     {
         private readonly int _maxSize;
-        private long _count = 0;
-        private int _head = -1;
+
+        private long _head = -1;
         private readonly T[] _values;
 
         public ConcurrentCircularBuffer(int max)
@@ -24,28 +26,28 @@ namespace KafkaNet.Common
         {
             get
             {
-                return Interlocked.Read(ref _count);
+                long head = Interlocked.Read(ref _head);
+                if (head == -1) return 0;
+                if (head >= MaxSize) return MaxSize;
+                return head + 1;
             }
         }
 
         public ConcurrentCircularBuffer<T> Enqueue(T obj)
         {
-            if (Interlocked.Increment(ref _head) > (_maxSize - 1))
-                Interlocked.Exchange(ref _head, 0);
-
-            _values[_head] = obj;
-
-            Interlocked.Exchange(ref _count,
-                Math.Min(Interlocked.Increment(ref _count), _maxSize));
-
+            //if more then MaxSize thread will do Enqueue the order in not guaranteed and with object may erase each other
+            var currentHead = Interlocked.Increment(ref _head);
+            long index = currentHead % MaxSize;
+            _values[index] = obj;
             return this;
         }
 
         public IEnumerator<T> GetEnumerator()
         {
+            long head = Interlocked.Read(ref _head);
             for (int i = 0; i < Count; i++)
             {
-                yield return _values[i];
+                yield return _values[(head % MaxSize) + i];
             }
         }
 

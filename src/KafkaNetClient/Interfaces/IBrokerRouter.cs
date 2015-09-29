@@ -52,5 +52,7 @@ namespace KafkaNet
         Task RefreshMissingTopicMetadata(params string[] topics);
 
         DateTime GetTopicMetadataRefreshTime(string topic);
+
+        IKafkaLog Log { get; }
     }
 }

@@ -6,12 +6,13 @@ namespace kafka_tests.Helpers
 {
     public static class IntegrationConfig
     {
-        public static string IntegrationCompressionTopic = Environment.MachineName + "IntegrationCompressionTopic";
-        public static string IntegrationTopic = Environment.MachineName + "IntegrationCompressionTopic";
-        public static string IntegrationConsumer = Environment.MachineName + "IntegrationConsumer";
+        public static string IntegrationCompressionTopic = Environment.MachineName + "IntegrationCompressionTopic1";
+        public static string IntegrationTopic = Environment.MachineName + "IntegrationCompressionTopic1";
+        public static string IntegrationConsumer = Environment.MachineName + "IntegrationConsumer1";
         public const int NumberOfRepeat = 1;
 
-        // Some of the tests measured performance.my log is too slow so i change the log level to only critical  message
+        // Some of the tests measured performance.my log is too slow so i change the log level to
+        // only critical message
         public static IKafkaLog NoDebugLog = new DefaultTraceLog(LogLevel.Info);
 
         public static IKafkaLog AllLog = new DefaultTraceLog();

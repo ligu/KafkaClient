@@ -43,7 +43,7 @@ namespace KafkaNet
         {
             var request = new MetadataRequest { Topics = topics.ToList() };
             if (request.Topics.Count <= 0) return null;
-
+            var maxRetryAttempt = 2;
             var performRetry = false;
             var retryAttempt = 0;
             MetadataResponse metadataResponse = null;
@@ -68,8 +68,8 @@ namespace KafkaNet
                     }
                 }
 
-                await BackoffOnRetry(++retryAttempt, performRetry);
-            } while (_interrupted == false && performRetry);
+                await BackoffOnRetry(++retryAttempt, performRetry).ConfigureAwait(false);
+            } while (retryAttempt < maxRetryAttempt && _interrupted == false && performRetry);
 
             return metadataResponse;
         }
@@ -80,7 +80,7 @@ namespace KafkaNet
             {
                 var backoff = retryAttempt * retryAttempt * BackoffMilliseconds;
                 _log.WarnFormat("Backing off metadata request retry.  Waiting for {0}ms.", backoff);
-                await Task.Delay(TimeSpan.FromMilliseconds(backoff));
+                await Task.Delay(TimeSpan.FromMilliseconds(backoff)).ConfigureAwait(false);
             }
         }
 

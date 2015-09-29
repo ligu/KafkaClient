@@ -1,4 +1,5 @@
 ﻿using KafkaNet.Protocol;
+using KafkaNet.Statistics;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,13 +11,15 @@ namespace KafkaNet.Model
         private const int DefaultResponseTimeout = 60000;
         private const int DefaultCacheExpirationTimeoutMS = 10;
         private const int DefaultRefreshMetadataTimeout = 200000;
-
+        private const int DefaultMaxRetry = 5;
         /// <summary>
         /// Refresh metadata Request will try to refresh only the topics that were expired in the cache.
         /// </summary>
 
+        public StatisticsTrackerOptions StatisticsTrackerOptions { get; set; }
         public TimeSpan CacheExpiration { get; set; }
         public TimeSpan RefreshMetadataTimeout { get; set; }
+        public int MaxRetry { get; set; }
 
         /// <summary>
         /// List of Uri connections to kafka servers.  The are used to query for metadata from Kafka.  More than one is recommended.
@@ -81,6 +84,8 @@ namespace KafkaNet.Model
             ResponseTimeoutMs = TimeSpan.FromMilliseconds(DefaultResponseTimeout);
             CacheExpiration = TimeSpan.FromMilliseconds(DefaultCacheExpirationTimeoutMS);
             RefreshMetadataTimeout = TimeSpan.FromMilliseconds(DefaultRefreshMetadataTimeout);
+            MaxRetry = DefaultMaxRetry;
+            StatisticsTrackerOptions = new StatisticsTrackerOptions();
         }
     }
 }
