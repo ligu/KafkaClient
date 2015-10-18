@@ -163,6 +163,7 @@ namespace KafkaNet.Protocol
 
     #region Exceptions...
 
+    [Serializable]
     public class FailCrcCheckException : ApplicationException
     {
         public FailCrcCheckException(string message, params object[] args)
@@ -171,6 +172,7 @@ namespace KafkaNet.Protocol
         }
     }
 
+    [Serializable]
     public class ResponseTimeoutException : ApplicationException
     {
         public ResponseTimeoutException(string message, params object[] args)
@@ -179,6 +181,7 @@ namespace KafkaNet.Protocol
         }
     }
 
+    [Serializable]
     public class InvalidPartitionException : ApplicationException
     {
         public InvalidPartitionException(string message, params object[] args)
@@ -187,6 +190,7 @@ namespace KafkaNet.Protocol
         }
     }
 
+    [Serializable]
     public class ServerDisconnectedException : ApplicationException
     {
         public ServerDisconnectedException(string message, params object[] args)
@@ -195,6 +199,7 @@ namespace KafkaNet.Protocol
         }
     }
 
+    [Serializable]
     public class ServerUnreachableException : ApplicationException
     {
         public ServerUnreachableException(string message, params object[] args)
@@ -203,6 +208,7 @@ namespace KafkaNet.Protocol
         }
     }
 
+    [Serializable]
     public class InvalidTopicMetadataException : ApplicationException
     {
         public InvalidTopicMetadataException(ErrorResponseCode code, string message, params object[] args)
@@ -214,6 +220,7 @@ namespace KafkaNet.Protocol
         public ErrorResponseCode ErrorResponseCode { get; private set; }
     }
 
+    [Serializable]
     public class InvalidTopicNotExistsInCache : Exception
     {
         public InvalidTopicNotExistsInCache(string info)
@@ -222,6 +229,7 @@ namespace KafkaNet.Protocol
         }
     }
 
+    [Serializable]
     public class LeaderNotFoundException : ApplicationException
     {
         public LeaderNotFoundException(string message, params object[] args)
@@ -230,6 +238,7 @@ namespace KafkaNet.Protocol
         }
     }
 
+    [Serializable]
     public class UnresolvedHostnameException : ApplicationException
     {
         public UnresolvedHostnameException(string message, params object[] args)
@@ -238,6 +247,7 @@ namespace KafkaNet.Protocol
         }
     }
 
+    [Serializable]
     public class InvalidMetadataException : ApplicationException
     {
         public int ErrorCode { get; set; }
@@ -248,6 +258,7 @@ namespace KafkaNet.Protocol
         }
     }
 
+    [Serializable]
     public class OffsetOutOfRangeException : ApplicationException
     {
         public Fetch FetchRequest { get; set; }
@@ -258,6 +269,7 @@ namespace KafkaNet.Protocol
         }
     }
 
+    [Serializable]
     public class BufferUnderRunException : ApplicationException
     {
         public int MessageHeaderSize { get; set; }
@@ -271,6 +283,7 @@ namespace KafkaNet.Protocol
         }
     }
 
+    [Serializable]
     public class KafkaApplicationException : ApplicationException
     {
         public int ErrorCode { get; set; }
