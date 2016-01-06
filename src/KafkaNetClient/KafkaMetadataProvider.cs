@@ -43,6 +43,22 @@ namespace KafkaNet
         {
             var request = new MetadataRequest { Topics = topics.ToList() };
             if (request.Topics.Count <= 0) return null;
+            return await Get(connections, request);
+        }
+
+        /// <summary>
+        /// Given a collection of server connections, query for all topics metadata.
+        /// </summary>
+        /// <param name="connections">The server connections to query.  Will cycle through the collection, starting at zero until a response is received.</param>
+        /// <returns>MetadataResponse validated to be complete.</returns>
+        public async Task<MetadataResponse> Get(IKafkaConnection[] connections)
+        {
+            var request = new MetadataRequest();
+            return await Get(connections, request);
+        }
+
+        private async Task<MetadataResponse> Get(IKafkaConnection[] connections, MetadataRequest request)
+        {
             var maxRetryAttempt = 2;
             var performRetry = false;
             var retryAttempt = 0;
