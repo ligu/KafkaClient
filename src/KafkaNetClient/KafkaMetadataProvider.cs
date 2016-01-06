@@ -39,11 +39,11 @@ namespace KafkaNet
         /// <param name="connections">The server connections to query.  Will cycle through the collection, starting at zero until a response is received.</param>
         /// <param name="topics">The collection of topics to get metadata for.</param>
         /// <returns>MetadataResponse validated to be complete.</returns>
-        public async Task<MetadataResponse> Get(IKafkaConnection[] connections, IEnumerable<string> topics)
+        public Task<MetadataResponse> Get(IKafkaConnection[] connections, IEnumerable<string> topics)
         {
             var request = new MetadataRequest { Topics = topics.ToList() };
             if (request.Topics.Count <= 0) return null;
-            return await Get(connections, request);
+            return Get(connections, request);
         }
 
         /// <summary>
@@ -51,10 +51,10 @@ namespace KafkaNet
         /// </summary>
         /// <param name="connections">The server connections to query.  Will cycle through the collection, starting at zero until a response is received.</param>
         /// <returns>MetadataResponse validated to be complete.</returns>
-        public async Task<MetadataResponse> Get(IKafkaConnection[] connections)
+        public Task<MetadataResponse> Get(IKafkaConnection[] connections)
         {
             var request = new MetadataRequest();
-            return await Get(connections, request);
+            return Get(connections, request);
         }
 
         private async Task<MetadataResponse> Get(IKafkaConnection[] connections, MetadataRequest request)
