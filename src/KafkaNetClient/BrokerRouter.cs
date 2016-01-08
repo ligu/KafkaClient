@@ -1,4 +1,5 @@
-﻿using KafkaNet.Model;
+﻿using KafkaNet.Common;
+using KafkaNet.Model;
 using KafkaNet.Protocol;
 using System;
 using System.Collections.Concurrent;
@@ -27,7 +28,7 @@ namespace KafkaNet
         private readonly ConcurrentDictionary<KafkaEndpoint, IKafkaConnection> _defaultConnectionIndex = new ConcurrentDictionary<KafkaEndpoint, IKafkaConnection>();
         private readonly ConcurrentDictionary<int, IKafkaConnection> _brokerConnectionIndex = new ConcurrentDictionary<int, IKafkaConnection>();
         private readonly ConcurrentDictionary<string, Tuple<Topic, DateTime>> _topicIndex = new ConcurrentDictionary<string, Tuple<Topic, DateTime>>();
-        private SemaphoreSlim _taskLocker = new SemaphoreSlim(1);
+        private readonly AsyncLock _taskLocker = new AsyncLock();
 
         /// <exception cref="ServerUnreachableException">None of the provided Kafka servers are resolvable.</exception>
 
@@ -145,9 +146,8 @@ namespace KafkaNet
         /// </summary>
         private async Task<bool> RefreshTopicMetadata(TimeSpan? cacheExpiration, TimeSpan timeout, params string[] topics)
         {
-            try
+            using (await _taskLocker.LockAsync().ConfigureAwait(false))
             {
-                await _taskLocker.WaitAsync(timeout).ConfigureAwait(false);
                 int missingFromCache = SearchCacheForTopics(topics, cacheExpiration).Missing.Count;
                 if (missingFromCache == 0)
                 {
@@ -157,21 +157,10 @@ namespace KafkaNet
                 _kafkaOptions.Log.DebugFormat("BrokerRouter: Refreshing metadata for topics: {0}", string.Join(",", topics));
                               
                 var connections = GetConnections();
-                var taskMetadata = _kafkaMetadataProvider.Get(connections, topics);
-                await Task.WhenAny(Task.Delay(timeout), taskMetadata).ConfigureAwait(false);
-                if (!taskMetadata.IsCompleted)
-                {
-                    var ex = new Exception("Metadata refresh operation timed out");
-
-                    throw ex;
-                }
-                var metadataResponse = await taskMetadata.ConfigureAwait(false);
+                var metadataRequestTask = _kafkaMetadataProvider.Get(connections, topics);
+                var metadataResponse = await RequestTopicMetadata(metadataRequestTask, timeout).ConfigureAwait(false);
 
                 UpdateInternalMetadataCache(metadataResponse);
-            }
-            finally
-            {
-                _taskLocker.Release();
             }
             return true;
         }
@@ -195,7 +184,7 @@ namespace KafkaNet
         /// This method will ignore the cache and initiate a call to the kafka servers for all topics, updating the cache with the resulting metadata.
         /// Only call this method to force a metadata update. For all other queries use <see cref="GetAllTopicMetadataFromLocalCache"/> which uses cached values.
         /// </remarks>
-        public Task<bool> RefreshAllTopicMetadata()
+        public Task RefreshAllTopicMetadata()
         {
             return RefreshAllTopicMetadata(_kafkaOptions.RefreshMetadataTimeout);
         }
@@ -203,30 +192,38 @@ namespace KafkaNet
         /// <summary>
         /// Force refresh each topic metadata that exists on kafka servers.
         /// </summary>
-        private async Task<bool> RefreshAllTopicMetadata(TimeSpan timeout)
+        private async Task RefreshAllTopicMetadata(TimeSpan timeout)
         {
-            try
+            using (await _taskLocker.LockAsync().ConfigureAwait(false))
             {
-                await _taskLocker.WaitAsync(timeout).ConfigureAwait(false);
                 _kafkaOptions.Log.DebugFormat("BrokerRouter: Refreshing metadata for all topics");
 
                 var connections = GetConnections();
-                var taskMetadata = _kafkaMetadataProvider.Get(connections);
-                await Task.WhenAny(Task.Delay(timeout), taskMetadata).ConfigureAwait(false);
-                if (!taskMetadata.IsCompleted)
-                {
-                    var ex = new Exception("Metadata refresh operation timed out");
-                    throw ex;
-                }
-                var metadataResponse = await taskMetadata.ConfigureAwait(false);
+                var metadataRequestTask = _kafkaMetadataProvider.Get(connections);
+                var metadataResponse = await RequestTopicMetadata(metadataRequestTask, timeout).ConfigureAwait(false);
 
                 UpdateInternalMetadataCache(metadataResponse);
             }
-            finally
+        }
+
+        private async Task<MetadataResponse> RequestTopicMetadata(Task<MetadataResponse> requestTask, TimeSpan timeout)
+        {
+            if (requestTask.IsCompleted)
             {
-                _taskLocker.Release();
+                return await requestTask.ConfigureAwait(false);              
             }
-            return true;
+
+            var timeoutCancellationTokenSource = new CancellationTokenSource();
+            Task completedTask = await Task.WhenAny(requestTask, Task.Delay(timeout, timeoutCancellationTokenSource.Token)).ConfigureAwait(false);
+            if (completedTask == requestTask)
+            {
+                timeoutCancellationTokenSource.Cancel(); // cancel timeout task
+                return await requestTask.ConfigureAwait(false);
+            }
+            else
+            {
+                throw new Exception("Metadata refresh operation timed out.");
+            }
         }
 
         private TopicSearchResult SearchCacheForTopics(IEnumerable<string> topics, TimeSpan? expiration)

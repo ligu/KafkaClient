@@ -63,7 +63,7 @@ namespace KafkaNet
         /// <remarks>
         /// This method will ignore the cache and initiate a call to the kafka servers for all topics, updating the cache with the resulting metadata.
         /// </remarks>
-        Task<bool> RefreshAllTopicMetadata();
+        Task RefreshAllTopicMetadata();
 
         Task RefreshMissingTopicMetadata(params string[] topics);
 
