@@ -142,7 +142,23 @@ namespace kafka_tests.Unit
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
-        public async Task RefreshTopicMetadataShouldIgnoreCacheAndAlwayCauseMetadataRequestAfterExpertionDate()
+        public async Task BrokerRouteShouldReturnAllTopicsFromCache()
+        {
+            var routerProxy = new BrokerRouterProxy(_kernel);
+            var router = routerProxy.Create();
+            await router.RefreshAllTopicMetadata();
+            var result1 = router.GetAllTopicMetadataFromLocalCache();
+            var result2 = router.GetAllTopicMetadataFromLocalCache();
+
+            Assert.That(routerProxy.BrokerConn0.MetadataRequestCallCount, Is.EqualTo(1));
+            Assert.That(result1.Count, Is.EqualTo(1));
+            Assert.That(result1[0].Name, Is.EqualTo(TestTopic));
+            Assert.That(result2.Count, Is.EqualTo(1));
+            Assert.That(result2[0].Name, Is.EqualTo(TestTopic));
+        }
+
+        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        public async Task RefreshTopicMetadataShouldIgnoreCacheAndAlwaysCauseMetadataRequestAfterExpertionDate()
         {
             var routerProxy = new BrokerRouterProxy(_kernel);
             var router = routerProxy.Create();
@@ -152,6 +168,17 @@ namespace kafka_tests.Unit
             await Task.Delay(routerProxy._cacheExpiration);
             await Task.Delay(1);//After cache is expair
             await router.RefreshTopicMetadata(TestTopic);
+            Assert.That(routerProxy.BrokerConn0.MetadataRequestCallCount, Is.EqualTo(2));
+        }
+
+        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        public async Task RefreshAllTopicMetadataShouldAlwaysDoRequest()
+        {
+            var routerProxy = new BrokerRouterProxy(_kernel);
+            var router = routerProxy.Create();
+            await router.RefreshAllTopicMetadata();
+            Assert.That(routerProxy.BrokerConn0.MetadataRequestCallCount, Is.EqualTo(1));
+            await router.RefreshAllTopicMetadata();
             Assert.That(routerProxy.BrokerConn0.MetadataRequestCallCount, Is.EqualTo(2));
         }
 
