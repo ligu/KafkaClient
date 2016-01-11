@@ -81,6 +81,22 @@ namespace kafka_tests.Unit
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        public void ShouldReturnWhenNoErrorReceivedAndTopicsNotSpecified()
+        {
+            var conn = Substitute.For<IKafkaConnection>();
+
+            conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>())
+                .Returns(x => CreateMetadataResponse(ErrorResponseCode.NoError));
+
+            using (var provider = new KafkaMetadataProvider(_log))
+            {
+                var response = provider.Get(new[] { conn });
+            }
+
+            conn.Received(1).SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>());
+        }
+
+        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         [TestCase(ErrorResponseCode.Unknown)]
         [TestCase(ErrorResponseCode.RequestTimedOut)]
         [TestCase(ErrorResponseCode.InvalidMessage)]

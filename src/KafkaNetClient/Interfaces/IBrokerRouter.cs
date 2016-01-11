@@ -34,7 +34,7 @@ namespace KafkaNet
         /// <summary>
         /// Returns Topic metadata for each topic requested.
         /// </summary>
-        /// <param name="topics">Collection of topids to request metadata for.</param>
+        /// <param name="topics">Collection of topics to request metadata for.</param>
         /// <returns>List of Topics as provided by Kafka.</returns>
         /// <remarks>The topic metadata will by default check the cache first and then request metadata from the server if it does not exist in cache.</remarks>
         List<Topic> GetTopicMetadataFromLocalCache(params string[] topics);
@@ -46,8 +46,24 @@ namespace KafkaNet
         /// <remarks>
         /// This method will initiate a call to the kafka servers and retrieve metadata for all given topics, updating the broke cache in the process.
         /// </remarks>
-
         Task<bool> RefreshTopicMetadata(params string[] topics);
+
+        /// <summary>
+        /// Returns Topic metadata for each topic.
+        /// </summary>
+        /// <returns>List of topics as provided by Kafka.</returns>
+        /// <remarks>
+        /// The topic metadata will by default check the cache.
+        /// </remarks>
+        List<Topic> GetAllTopicMetadataFromLocalCache();
+
+        /// <summary>
+        /// Force a call to the kafka servers to refresh metadata for all topics.
+        /// </summary>
+        /// <remarks>
+        /// This method will ignore the cache and initiate a call to the kafka servers for all topics, updating the cache with the resulting metadata.
+        /// </remarks>
+        Task RefreshAllTopicMetadata();
 
         Task RefreshMissingTopicMetadata(params string[] topics);
 
