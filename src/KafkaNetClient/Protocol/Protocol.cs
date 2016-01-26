@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.IO.Compression;
+using System.Runtime.Serialization;
 
 namespace KafkaNet.Protocol
 {
@@ -170,6 +171,16 @@ namespace KafkaNet.Protocol
             : base(string.Format(message, args))
         {
         }
+
+        public FailCrcCheckException(SerializationInfo info, StreamingContext context)
+            : base(info, context)
+        {
+        }
+
+        public FailCrcCheckException(string message, Exception innerException)
+            : base(message, innerException)
+        {
+        }
     }
 
     [Serializable]
@@ -177,6 +188,16 @@ namespace KafkaNet.Protocol
     {
         public ResponseTimeoutException(string message, params object[] args)
             : base(string.Format(message, args))
+        {
+        }
+
+        public ResponseTimeoutException(SerializationInfo info, StreamingContext context)
+            : base(info, context)
+        {
+        }
+
+        public ResponseTimeoutException(string message, Exception innerException)
+            : base(message, innerException)
         {
         }
     }
@@ -188,6 +209,16 @@ namespace KafkaNet.Protocol
             : base(string.Format(message, args))
         {
         }
+
+        public InvalidPartitionException(SerializationInfo info, StreamingContext context)
+            : base(info, context)
+        {
+        }
+
+        public InvalidPartitionException(string message, Exception innerException)
+            : base(message, innerException)
+        {
+        }
     }
 
     [Serializable]
@@ -195,6 +226,16 @@ namespace KafkaNet.Protocol
     {
         public ServerDisconnectedException(string message, params object[] args)
             : base(string.Format(message, args))
+        {
+        }
+
+        public ServerDisconnectedException(SerializationInfo info, StreamingContext context)
+            : base(info, context)
+        {
+        }
+
+        public ServerDisconnectedException(string message, Exception innerException)
+            : base(message, innerException)
         {
         }
     }
@@ -206,18 +247,45 @@ namespace KafkaNet.Protocol
             : base(string.Format(message, args))
         {
         }
+
+        public ServerUnreachableException(SerializationInfo info, StreamingContext context)
+            : base(info, context)
+        {
+        }
+
+        public ServerUnreachableException(string message, Exception innerException)
+            : base(message, innerException)
+        {
+        }
     }
 
     [Serializable]
     public class InvalidTopicMetadataException : ApplicationException
     {
+        public ErrorResponseCode ErrorResponseCode { get; private set; }
+
         public InvalidTopicMetadataException(ErrorResponseCode code, string message, params object[] args)
             : base(string.Format(message, args))
         {
             ErrorResponseCode = code;
         }
 
-        public ErrorResponseCode ErrorResponseCode { get; private set; }
+        public InvalidTopicMetadataException(string message, Exception innerException)
+            : base(message, innerException)
+        {
+        }
+
+        public InvalidTopicMetadataException(SerializationInfo info, StreamingContext context)
+            : base(info, context)
+        {
+            ErrorResponseCode = (ErrorResponseCode)info.GetInt16("ErrorResponseCode");
+        }
+
+        public override void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            base.GetObjectData(info, context);
+            info.AddValue("ErrorResponseCode", (short)ErrorResponseCode);
+        }
     }
 
     [Serializable]
@@ -225,6 +293,16 @@ namespace KafkaNet.Protocol
     {
         public InvalidTopicNotExistsInCache(string info)
             : base(info)
+        {
+        }
+
+        public InvalidTopicNotExistsInCache(SerializationInfo info, StreamingContext context)
+            : base(info, context)
+        {
+        }
+
+        public InvalidTopicNotExistsInCache(string message, Exception innerException)
+            : base(message, innerException)
         {
         }
     }
@@ -236,6 +314,16 @@ namespace KafkaNet.Protocol
             : base(string.Format(message, args))
         {
         }
+
+        public LeaderNotFoundException(SerializationInfo info, StreamingContext context)
+            : base(info, context)
+        {
+        }
+
+        public LeaderNotFoundException(string message, Exception innerException)
+            : base(message, innerException)
+        {
+        }
     }
 
     [Serializable]
@@ -243,6 +331,16 @@ namespace KafkaNet.Protocol
     {
         public UnresolvedHostnameException(string message, params object[] args)
             : base(string.Format(message, args))
+        {
+        }
+
+        public UnresolvedHostnameException(SerializationInfo info, StreamingContext context)
+            : base(info, context)
+        {
+        }
+
+        public UnresolvedHostnameException(string message, Exception innerException)
+            : base(message, innerException)
         {
         }
     }
@@ -256,6 +354,23 @@ namespace KafkaNet.Protocol
             : base(string.Format(message, args))
         {
         }
+
+        public InvalidMetadataException(SerializationInfo info, StreamingContext context)
+            : base(info, context)
+        {
+            ErrorCode = info.GetInt32("ErrorCode");
+        }
+
+        public InvalidMetadataException(string message, Exception innerException)
+            : base(message, innerException)
+        {
+        }
+
+        public override void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            base.GetObjectData(info, context);
+            info.AddValue("ErrorCode", ErrorCode);
+        }
     }
 
     [Serializable]
@@ -266,6 +381,41 @@ namespace KafkaNet.Protocol
         public OffsetOutOfRangeException(string message, params object[] args)
             : base(string.Format(message, args))
         {
+        }
+
+        public OffsetOutOfRangeException(string message, Exception innerException)
+            : base(message, innerException)
+        {
+        }
+
+        public OffsetOutOfRangeException(SerializationInfo info, StreamingContext context)
+            : base(info, context)
+        {
+            bool hasFetch = info.GetByte("HasFetch") == 1;
+            if (hasFetch)
+            {
+                FetchRequest = new Fetch
+                {
+                    MaxBytes = info.GetInt32("MaxBytes"),
+                    Offset = info.GetInt64("Offset"),
+                    PartitionId = info.GetInt32("PartitionId"),
+                    Topic = info.GetString("Topic")
+                };
+            }
+        }
+
+        public override void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            base.GetObjectData(info, context);
+            bool hasValue = FetchRequest != null;
+            info.AddValue("HasFetch", (byte)(hasValue ? 1 : 0));
+            if (hasValue)
+            {
+                info.AddValue("MaxBytes", FetchRequest.MaxBytes);
+                info.AddValue("Offset", FetchRequest.Offset);
+                info.AddValue("PartitionId", FetchRequest.PartitionId);
+                info.AddValue("Topic", FetchRequest.Topic);
+            }
         }
     }
 
@@ -281,6 +431,25 @@ namespace KafkaNet.Protocol
             MessageHeaderSize = messageHeaderSize;
             RequiredBufferSize = requiredBufferSize;
         }
+
+        public BufferUnderRunException(string message, Exception innerException)
+            : base(message, innerException)
+        {
+        }
+
+        public BufferUnderRunException(SerializationInfo info, StreamingContext context)
+            : base(info, context)
+        {
+            MessageHeaderSize = info.GetInt32("MessageHeaderSize");
+            RequiredBufferSize = info.GetInt32("RequiredBufferSize");
+        }
+
+        public override void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            base.GetObjectData(info, context);
+            info.AddValue("MessageHeaderSize", MessageHeaderSize);
+            info.AddValue("RequiredBufferSize", RequiredBufferSize);
+        }
     }
 
     [Serializable]
@@ -291,6 +460,23 @@ namespace KafkaNet.Protocol
         public KafkaApplicationException(string message, params object[] args)
             : base(string.Format(message, args))
         {
+        }
+
+        public KafkaApplicationException(string message, Exception innerException)
+            : base(message, innerException)
+        {
+        }
+
+        public KafkaApplicationException(SerializationInfo info, StreamingContext context)
+            : base(info, context)
+        {
+            ErrorCode = info.GetInt32("ErrorCode");
+        }
+
+        public override void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            base.GetObjectData(info, context);
+            info.AddValue("ErrorCode", ErrorCode);
         }
     }
 
