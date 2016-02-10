@@ -1,5 +1,4 @@
 ﻿using KafkaNet.Protocol;
-using KafkaNet.Statistics;
 using System;
 using System.Collections.Generic;
 using System.Linq;

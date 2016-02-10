@@ -23,6 +23,12 @@ namespace KafkaNet
     public class KafkaConnection : IKafkaConnection
     {
         private const int DefaultResponseTimeoutMs = 60000;
+        bool _isInErrorState = false;
+
+        public bool IsOnErrorState()
+        {
+            return _isInErrorState;
+        }
 
         private readonly ConcurrentDictionary<int, AsyncRequestItem> _requestIndex = new ConcurrentDictionary<int, AsyncRequestItem>();
         private readonly TimeSpan _responseTimeoutMs;
@@ -96,7 +102,7 @@ namespace KafkaNet
             //assign unique correlationId
             request.CorrelationId = NextCorrelationId();
 
-            _log.DebugFormat("Entered SendAsync for CorrelationId:{0} Connection:{1}", request.CorrelationId, this.Endpoint);
+            _log.DebugFormat("Entered SendAsync for CorrelationId:{0} Connection:{1} ", request.CorrelationId,Endpoint);
             //if response is expected, register a receive data task and send request
             if (request.ExpectResponse)
             {
@@ -163,43 +169,54 @@ namespace KafkaNet
             //This thread will poll the receive stream for data, parce a message out
             //and trigger an event with the message payload
             _connectionReadPollingTask = Task.Run(async () =>
+            {
+              
+                try
                 {
-                    try
+                    //only allow one reader to execute, dump out all other requests
+                    if (Interlocked.Increment(ref _ensureOneActiveReader) != 1) return;
+
+                    while (_disposeToken.IsCancellationRequested == false)
                     {
-                        //only allow one reader to execute, dump out all other requests
-                        if (Interlocked.Increment(ref _ensureOneActiveReader) != 1) return;
-
-                        while (_disposeToken.IsCancellationRequested == false)
+                        try
                         {
-                            try
-                            {
-                                _log.DebugFormat("Awaiting message from: {0}", _client.Endpoint);
-                                var messageSizeResult = await _client.ReadAsync(4, _disposeToken.Token).ConfigureAwait(false);
-                                var messageSize = messageSizeResult.ToInt32();
+                            _log.DebugFormat("Awaiting message from: {0}", _client.Endpoint);
+                            var messageSizeResult = await _client.ReadAsync(4, _disposeToken.Token).ConfigureAwait(false);
+                            var messageSize = messageSizeResult.ToInt32();
 
-                                _log.DebugFormat("Received message of size: {0} From: {1}", messageSize, _client.Endpoint);
-                                var message = await _client.ReadAsync(messageSize, _disposeToken.Token).ConfigureAwait(false);
+                            _log.DebugFormat("Received message of size: {0} From: {1}", messageSize, _client.Endpoint);
+                            var message = await _client.ReadAsync(messageSize, _disposeToken.Token).ConfigureAwait(false);
 
-                                CorrelatePayloadToRequest(message);
-                            }
-                            catch (Exception ex)
+                            CorrelatePayloadToRequest(message);
+                            if (_isInErrorState)
+                                _log.InfoFormat("Polling read thread has recovered: {0}", _client.Endpoint);
+
+                            _isInErrorState = false;
+                        }
+                        catch (Exception ex)
+                        {
+                            //don't record the exception if we are disposing
+                            if (_disposeToken.IsCancellationRequested == false)
                             {
-                                //don't record the exception if we are disposing
-                                if (_disposeToken.IsCancellationRequested == false)
+                                //TODO being in sync with the byte order on read is important.  What happens if this exception causes us to be out of sync?
+                                //record exception and continue to scan for data.
+
+                                //TODO create an event on kafkaTcpSocket and resume only when the connection is online
+                                if (!_isInErrorState)
                                 {
-                                    //TODO being in sync with the byte order on read is important.  What happens if this exception causes us to be out of sync?
-                                    //record exception and continue to scan for data.
-                                    _log.ErrorFormat("Exception occured in polling read thread.  Exception={0}", ex);
+                                    _log.ErrorFormat("Exception occured in polling read thread {0}: {1}", _client.Endpoint, ex);
+                                    _isInErrorState = true;
                                 }
                             }
                         }
                     }
-                    finally
-                    {
-                        Interlocked.Decrement(ref _ensureOneActiveReader);
-                        _log.DebugFormat("Closed down connection to: {0}", _client.Endpoint);
-                    }
-                });
+                }
+                finally
+                {
+                    Interlocked.Decrement(ref _ensureOneActiveReader);
+                    _log.DebugFormat("Closed down connection to: {0}", _client.Endpoint);
+                }
+            });
         }
 
         private void CorrelatePayloadToRequest(byte[] payload)
@@ -253,8 +270,8 @@ namespace KafkaNet
             else
             {
                 asyncRequestItem.ReceiveTask.TrySetException(new ResponseTimeoutException(
-                    string.Format("Timeout Expired. Client failed to receive a response from server after waiting {0}ms.",
-                        _responseTimeoutMs)));
+                    string.Format("Timeout reached for endpoint {0} (after waiting {1})",
+                       _client.Endpoint, _responseTimeoutMs)));
             }
         }
 

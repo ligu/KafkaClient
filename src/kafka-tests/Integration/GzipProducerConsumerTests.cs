@@ -25,6 +25,7 @@ namespace kafka_tests.Integration
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Ignore]
         public async Task EnsureGzipCompressedMessageCanSend()
         {
             IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("start EnsureGzipCompressedMessageCanSend"));

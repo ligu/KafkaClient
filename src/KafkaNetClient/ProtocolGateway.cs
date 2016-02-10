@@ -2,7 +2,6 @@
 using KafkaNet.Protocol;
 using System;
 using System.Linq;
-using System.Net.Sockets;
 using System.Runtime.ExceptionServices;
 using System.Threading.Tasks;
 
@@ -29,25 +28,26 @@ namespace KafkaNet
             _brokerRouter = new BrokerRouter(kafkaOptions);
         }
 
-        private readonly int _maxRetry = 2;
+        private readonly int _maxRetry = 3;
 
         /// <exception cref="InvalidTopicMetadataException">Thrown if the returned metadata for the given topic is invalid or missing</exception>
         /// <exception cref="InvalidPartitionException">Thrown if the give partitionId does not exist for the given topic.</exception>
         /// <exception cref="ServerUnreachableException">Thrown if none of the default brokers can be contacted</exception>
         /// <exception cref="ResponseTimeoutException">Thrown if there request times out</exception>
-        /// <exception cref="SocketException">Thrown in case of network error contacting broker (after retries)</exception>
+        /// <exception cref="BrokerConnectionException">Thrown in case of network error contacting broker (after retries)</exception>
         /// <exception cref="KafkaApplicationException">Thrown in case of an unexpected error in the request</exception>
         /// <exception cref="FormatException">Thrown in case the topic name is invalid</exception>
-        public async Task<T> SendProtocolRequest<T>(IKafkaRequest<T> request, string topic, int partition) where T : class,IBaseResponse
+        public async Task<T> SendProtocolRequest<T>(IKafkaRequest<T> request, string topic, int partition) where T : class, IBaseResponse
         {
             ValidateTopic(topic);
             T response = null;
             int retryTime = 0;
-
             while (retryTime < _maxRetry)
             {
                 bool needToRefreshTopicMetadata;
                 ExceptionDispatchInfo exception = null;
+                string errorDetails;
+
                 try
                 {
                     await _brokerRouter.RefreshMissingTopicMetadata(topic);
@@ -70,38 +70,46 @@ namespace KafkaNet
                     }
 
                     //It means we had an error
-
+                    errorDetails = error.ToString();
                     needToRefreshTopicMetadata = CanRecoverByRefreshMetadata(error);
                 }
                 catch (ResponseTimeoutException ex)
                 {
                     exception = ExceptionDispatchInfo.Capture(ex);
                     needToRefreshTopicMetadata = true;
+                    errorDetails = ex.GetType().Name;
                 }
-                catch (SocketException ex)
+                catch (BrokerConnectionException ex)
                 {
                     exception = ExceptionDispatchInfo.Capture(ex);
                     needToRefreshTopicMetadata = true;
+                    errorDetails = ex.GetType().Name;
                 }
-                bool hasMoreRetry = retryTime + 1 < _maxRetry;
 
+                retryTime++;
+                bool hasMoreRetry = retryTime < _maxRetry;
+
+                _brokerRouter.Log.WarnFormat("ProtocolGateway error sending request, retrying (attempt number {0}): {1}", retryTime, errorDetails);
                 if (needToRefreshTopicMetadata && hasMoreRetry)
                 {
-                    retryTime++;
                     await _brokerRouter.RefreshTopicMetadata(topic);
                 }
                 else
                 {
+                    _brokerRouter.Log.ErrorFormat("ProtocolGateway sending request failed");
+
+                    // If an exception was thrown, we want to propagate it
                     if (exception != null)
                     {
                         exception.Throw();
                     }
-
-                    throw new KafkaApplicationException("FetchResponse returned error condition.  ErrorCode:{0}", response.Error) { ErrorCode = response.Error };
+                    
+                    // Otherwise, the error was from Kafka, throwing application exception
+                    throw new KafkaApplicationException("FetchResponse received an error from Kafka: {0}", errorDetails) { ErrorCode = response.Error };
                 }
             }
 
-            throw new KafkaApplicationException("FetchResponse returned error condition.  ErrorCode:{0}", response.Error);
+            return response;
         }
 
         private static bool CanRecoverByRefreshMetadata(ErrorResponseCode error)

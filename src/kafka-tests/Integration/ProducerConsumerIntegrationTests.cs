@@ -193,9 +193,8 @@ namespace kafka_tests.Integration
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         [TestCase(1, 70)]
         [TestCase(1000, 70)]
-        [TestCase(30000, 450)]
-        [TestCase(50000, 750)]
-        [TestCase(200000, 6000)]
+        [TestCase(30000, 550)]
+        [TestCase(50000, 850)]
         public async Task ConsumerShouldConsumeInSameOrderAsAsyncProduced_dataLoad(int numberOfMessage, int timeoutInMs)
         {
             int partition = 0;

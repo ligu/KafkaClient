@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Net.Sockets;
-using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -21,13 +20,9 @@ namespace KafkaNet
     public class KafkaTcpSocket : IKafkaTcpSocket
     {
         public event Action OnServerDisconnected;
-
         public event Action<int> OnReconnectionAttempt;
-
         public event Action<int> OnReadFromSocketAttempt;
-
         public event Action<int> OnBytesReceived;
-
         public event Action<KafkaDataPayload> OnWriteToSocketAttempt;
 
         private const int DefaultReconnectionTimeout = 100;
@@ -156,55 +151,41 @@ namespace KafkaNet
             while (_disposeToken.IsCancellationRequested == false)
             {
                 //block here until we can get connections then start loop pushing data through network stream
-                var netStreamTask = GetStreamAsync();
                 try
                 {
+                    var netStreamTask = GetStreamAsync();
                     await Task.WhenAny(_disposeTask, netStreamTask).ConfigureAwait(false);
 
                     if (_disposeToken.IsCancellationRequested)
                     {
-                        SetDisposeExceptonToPenndingTasks();
-                        if (OnServerDisconnected != null) OnServerDisconnected();
+                        SetExceptionToAllPendingTasks(new ObjectDisposedException(string.Format("Object is disposing (KafkaTcpSocket for endpoint: {0})", Endpoint)));
+                        RaiseServerDisconnectedEvent();
                         return;
                     }
-                    await netStreamTask.ConfigureAwait(false);
-                }
-                catch (Exception ex)
-                {
-                    _log.ErrorFormat("Exception occured in Socket handler task.  Exception: {0}", ex);
 
-                    SetDisposeExceptonToPenndingTasks(new SocketException());
-                    if (OnServerDisconnected != null) OnServerDisconnected();
-                }
-                try
-                {
                     var netStream = await netStreamTask.ConfigureAwait(false);
                     await ProcessNetworkstreamTasks(netStream).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
-                    //it handel the Pennding task inside so we don't need to SetDisposeExceptonToPenndingTasks
-                    _log.ErrorFormat("Exception occured in Socket handler task.  Exception: {0}", ex);
-                    if (OnServerDisconnected != null) OnServerDisconnected();
+                    SetExceptionToAllPendingTasks(ex);
+                    RaiseServerDisconnectedEvent();
                 }
             }
         }
-
-        private void SetDisposeExceptonToPenndingTasks(Exception exception = null)
+        private void RaiseServerDisconnectedEvent()
         {
-            var disposeException = new ObjectDisposedException("Object is disposing.");
-            if (exception == null)
-            {
-                _log.WarnFormat("KafkaTcpSocket thread shutting down because of a dispose call.");
-                _sendTaskQueue.DrainAndApply(t => t.Tcp.TrySetException(disposeException));
-                _readTaskQueue.DrainAndApply(t => t.Tcp.TrySetException(disposeException));
-            }
-            else
-            {
-                _log.WarnFormat("KafkaTcpSocket not able to connect cancel all PenndingTasks.");
-                _sendTaskQueue.DrainAndApply(t => t.Tcp.TrySetException(exception));
-                _readTaskQueue.DrainAndApply(t => t.Tcp.TrySetException(exception));
-            }
+            if (OnServerDisconnected != null) OnServerDisconnected();
+        }
+
+        private void SetExceptionToAllPendingTasks(Exception ex)
+        {
+            if (_sendTaskQueue.Count > 0)
+                _log.ErrorFormat("KafkaTcpSocket received an exception, cancelling all pending tasks: {0}", ex);
+
+            var wrappedException = WrappedException(ex);
+            _sendTaskQueue.DrainAndApply(t => t.Tcp.TrySetException(wrappedException));
+            _readTaskQueue.DrainAndApply(t => t.Tcp.TrySetException(wrappedException));
         }
 
         private async Task ProcessNetworkstreamTasks(NetworkStream netStream)
@@ -287,7 +268,7 @@ namespace KafkaNet
                                 _client = null;
                                 if (_disposeToken.IsCancellationRequested) { return; }
 
-                                throw new ServerDisconnectedException(string.Format("Lost connection to server: {0}", _endpoint));
+                                throw new BrokerConnectionException(string.Format("Lost connection to server: {0}", _endpoint), _endpoint);
                             }
                         }
 
@@ -300,12 +281,12 @@ namespace KafkaNet
                 {
                     if (_disposeToken.IsCancellationRequested)
                     {
-                        var exception = new ObjectDisposedException("Object is disposing.");
+                        var exception = new ObjectDisposedException(string.Format("Object is disposing (KafkaTcpSocket for endpoint: {0})", Endpoint));
                         readTask.Tcp.TrySetException(exception);
                         throw exception;
                     }
 
-                    if (ex is ServerDisconnectedException)
+                    if (ex is BrokerConnectionException)
                     {
                         readTask.Tcp.TrySetException(ex);
                         if (_disposeToken.IsCancellationRequested) return;
@@ -315,7 +296,7 @@ namespace KafkaNet
                     //if an exception made us lose a connection throw disconnected exception
                     if (_client == null || _client.Connected == false)
                     {
-                        var exception = new ServerDisconnectedException(string.Format("Lost connection to server: {0}", _endpoint));
+                        var exception = new BrokerConnectionException(string.Format("Lost connection to server: {0}", _endpoint), _endpoint);
                         readTask.Tcp.TrySetException(exception);
                         throw exception;
                     }
@@ -356,22 +337,17 @@ namespace KafkaNet
                         StatisticsTracker.IncrementGauge(StatisticGauge.ActiveWriteOperation);
                     }
                     if (OnWriteToSocketAttempt != null) OnWriteToSocketAttempt(sendTask.Payload);
+
                     _log.DebugFormat("Sending data for CorrelationId:{0} Connection:{1}", sendTask.Payload.CorrelationId, Endpoint);
-                    await netStream.WriteAsync(sendTask.Payload.Buffer, 0, sendTask.Payload.Buffer.Length).ConfigureAwait(false);
+                    await netStream.WriteAsync(sendTask.Payload.Buffer, 0, sendTask.Payload.Buffer.Length, _disposeToken.Token).ConfigureAwait(false);
                     _log.DebugFormat("Data sent to CorrelationId:{0} Connection:{1}", sendTask.Payload.CorrelationId, Endpoint);
                     sendTask.Tcp.TrySetResult(sendTask.Payload);
                 }
                 catch (Exception ex)
                 {
                     failed = true;
-                    if (_disposeToken.IsCancellationRequested)
-                    {
-                        var exception = new ObjectDisposedException("Object is disposing.");
-                        sendTask.Tcp.TrySetException(exception);
-                        throw exception;
-                    }
-
-                    sendTask.Tcp.TrySetException(ex);
+                    var wrappedException = WrappedException(ex);
+                    sendTask.Tcp.TrySetException(wrappedException);
                     throw;
                 }
                 finally
@@ -383,6 +359,17 @@ namespace KafkaNet
                     }
                 }
             }
+        }
+
+        private Exception WrappedException(Exception ex)
+        {
+            Exception wrappedException;
+            if (_disposeToken.IsCancellationRequested)
+                wrappedException = new ObjectDisposedException(string.Format("Object is disposing (KafkaTcpSocket for endpoint: {0})", Endpoint));
+            else
+                wrappedException = new BrokerConnectionException(string.Format("Lost connection to server: {0}", _endpoint), _endpoint, ex);
+
+            return wrappedException;
         }
 
         private async Task<NetworkStream> GetStreamAsync()
@@ -407,10 +394,9 @@ namespace KafkaNet
         {
             var attempts = 1;
             var reconnectionDelay = DefaultReconnectionTimeout;
-            _log.WarnFormat("No connection to:{0}.  Attempting to connect...", _endpoint);
+            _log.DebugFormat("No connection to:{0}.  Attempting to connect...", _endpoint);
 
             _client = null;
-            ExceptionDispatchInfo currentException = null;
 
             while (_disposeToken.IsCancellationRequested == false && _maxRetry > attempts)
             {
@@ -422,13 +408,14 @@ namespace KafkaNet
 
                     var connectTask = _client.ConnectAsync(_endpoint.Endpoint.Address, _endpoint.Endpoint.Port);
                     await Task.WhenAny(connectTask, _disposeTask).ConfigureAwait(false);
+
                     if (_disposeToken.IsCancellationRequested)
-                        throw new ObjectDisposedException(" on ReEstablishConnectionAsync Object is disposing.");
+                        throw new ObjectDisposedException(string.Format("Object is disposing (KafkaTcpSocket for endpoint: {0})", Endpoint));
 
-                    _log.WarnFormat("Connection established to:{0}.", _endpoint);
-
-                    //to throw connectTask exception(WhenAny don't throw exception).
                     await connectTask;
+                    if (!_client.Connected) throw new BrokerConnectionException(string.Format("Lost connection to server: {0}", _endpoint), _endpoint);
+                    _log.DebugFormat("Connection established to:{0}.", _endpoint);
+
                     return _client;
                 }
                 catch (Exception ex)
@@ -436,7 +423,7 @@ namespace KafkaNet
                     reconnectionDelay = reconnectionDelay * DefaultReconnectionTimeoutMultiplier;
                     reconnectionDelay = Math.Min(reconnectionDelay, (int)_maximumReconnectionTimeout.TotalMilliseconds);
 
-                    _log.WarnFormat("Failed connection to:{0}.  Will retry in:{1} Exception{2}", _endpoint, reconnectionDelay, ex);
+                    _log.WarnFormat("Failed connection to:{0}.  Will retry in:{1} Exception{2}", _endpoint, reconnectionDelay, ex.Message);
                     if (_maxRetry < attempts)
                     {
                         throw;
@@ -456,11 +443,7 @@ namespace KafkaNet
 
             using (_disposeToken)
             using (_disposeRegistration)
-            using (_client)
-            using (_socketTask)
-            {
-                _socketTask.SafeWait(TimeSpan.FromSeconds(30));
-            }
+            using (_client) { }
         }
     }
 

@@ -314,20 +314,20 @@ namespace KafkaNet
                         }
                         else
                         {
-                            var responce = new ProduceResponse()
+                            var response = new ProduceResponse()
                             {
                                 Error = batchResult.Error,
                                 PartitionId = batchResult.PartitionId,
                                 Topic = batchResult.Topic,
                                 Offset = batchResult.Offset + i
                             };
-                            sendTask.MessagesSent[i].Tcs.SetResult(responce);
+                            sendTask.MessagesSent[i].Tcs.SetResult(response);
                         }
                     }
                 }
                 catch (Exception ex)
                 {
-                    BrokerRouter.Log.ErrorFormat("failed to send bach Topic[{0}] ackLevel[{1}] partition[{2}] EndPoint[{3}] Exception[{4}] stacktrace[{5}]", sendTask.Route.Topic, sendTask.AckLevel, sendTask.Route.PartitionId, sendTask.Route.Connection.Endpoint, ex.Message, ex.StackTrace);
+                    BrokerRouter.Log.ErrorFormat("failed to send batch Topic[{0}] ackLevel[{1}] partition[{2}] EndPoint[{3}] Exception[{4}] stacktrace[{5}]", sendTask.Route.Topic, sendTask.AckLevel, sendTask.Route.PartitionId, sendTask.Route.Connection.Endpoint, ex.Message, ex.StackTrace);
                     sendTask.MessagesSent.ForEach((x) => x.Tcs.TrySetException(ex));
                 }
             }

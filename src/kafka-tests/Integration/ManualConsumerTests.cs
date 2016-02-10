@@ -155,7 +155,7 @@ namespace kafka_tests.Integration
         }
 
         [Test]
-        [ExpectedException(typeof(KafkaApplicationException), ExpectedMessage = "FetchResponse returned error condition.  ErrorCode:1")]
+       [ExpectedException(typeof(KafkaApplicationException), ExpectedMessage = "FetchResponse received an error from Kafka: OffsetOutOfRange")]
         public async Task FetchMessagesOffsetBiggerThanLastOffsetInQueueTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
@@ -165,10 +165,8 @@ namespace kafka_tests.Integration
 
             var offset = await consumer.FetchLastOffset();
 
-            // Now let's consume
-            var result = (await consumer.FetchMessages(5, offset + 1)).ToList();
-
-            Assert.AreEqual(0, result.Count, "Should not get any messages");
+            // Now let's consume throw KafkaApplicationException
+            await consumer.FetchMessages(5, offset + 1);
         }
 
         [Test]
@@ -187,7 +185,7 @@ namespace kafka_tests.Integration
         }
 
         [Test]
-        [Ignore]
+        [ExpectedException(typeof(KafkaNet.Protocol.InvalidTopicMetadataException))]
         public async Task FetchMessagesTopicDoesntExist()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
@@ -248,7 +246,7 @@ namespace kafka_tests.Integration
         }
 
         [Test]
-        [ExpectedException(typeof(KafkaApplicationException), ExpectedMessage = "FetchResponse returned error condition.  ErrorCode:3")]
+        [ExpectedException(typeof(KafkaApplicationException), ExpectedMessage = "FetchResponse received an error from Kafka: UnknownTopicOrPartition")]
         public async Task FetchOffsetConsumerGroupDoesntExistTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
@@ -276,7 +274,7 @@ namespace kafka_tests.Integration
         }
 
         [Test]
-        [ExpectedException(typeof(KafkaApplicationException), ExpectedMessage = "FetchResponse returned error condition.  ErrorCode:3")]
+        [ExpectedException(typeof(InvalidTopicMetadataException))]
         public async Task FetchOffsetTopicDoesntExistTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
@@ -496,7 +494,7 @@ namespace kafka_tests.Integration
         }
 
         [Test]
-        [Ignore]
+        [ExpectedException(typeof(InvalidTopicMetadataException ))]
         public async Task FetchLastOffsetTopicDoesntExistTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer

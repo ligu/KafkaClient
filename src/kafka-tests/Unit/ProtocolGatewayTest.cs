@@ -79,7 +79,7 @@ namespace kafka_tests.Unit
             var router = routerProxy.Create();
             ProtocolGateway protocolGateway = new ProtocolGateway(router);
 
-            routerProxy.BrokerConn0.FetchResponseFunction = FailedInFirstMessageException(typeof(SocketException), routerProxy._cacheExpiration);
+            routerProxy.BrokerConn0.FetchResponseFunction = FailedInFirstMessageException(typeof(BrokerConnectionException), routerProxy._cacheExpiration);
             routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers;
 
             await protocolGateway.SendProtocolRequest(new FetchRequest(), BrokerRouterProxy.TestTopic, _partitionId);
@@ -231,7 +231,7 @@ namespace kafka_tests.Unit
 
                     await x.Task;
                     log.DebugFormat("SocketException ");
-                    throw new SocketException();
+                    throw new BrokerConnectionException("",new KafkaEndpoint());
                 }
                 log.DebugFormat("Completed ");
 
@@ -274,7 +274,7 @@ namespace kafka_tests.Unit
             Assert.That(routerProxy.BrokerConn0.MetadataRequestCallCount, Is.EqualTo(1), "MetadataRequestCallCount");
             Assert.That(routerProxy.BrokerConn1.MetadataRequestCallCount, Is.EqualTo(0), "MetadataRequestCallCount");
 
-            routerProxy.BrokerConn0.FetchResponseFunction = FailedInFirstMessageException(typeof(SocketException), TimeSpan.Zero);
+            routerProxy.BrokerConn0.FetchResponseFunction = FailedInFirstMessageException(typeof(BrokerConnectionException), TimeSpan.Zero);
             //triger to update metadata
             routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.CreateMetaResponseWithException;
             routerProxy.BrokerConn1.MetadataResponseFunction = BrokerRouterProxy.CreateMetadataResponseWithSingleBroker;
@@ -363,9 +363,9 @@ namespace kafka_tests.Unit
                     await Task.Delay(delay);
                     await Task.Delay(1);
                     firstTime = false;
-                    if (exceptionType == typeof(SocketException))
+                    if (exceptionType == typeof(BrokerConnectionException))
                     {
-                        throw new SocketException();
+                        throw new BrokerConnectionException("",new KafkaEndpoint());
                     }
                     object[] args = new object[1];
                     args[0] = "error Test";

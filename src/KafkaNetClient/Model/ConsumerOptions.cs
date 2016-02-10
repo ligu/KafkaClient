@@ -73,7 +73,7 @@ namespace KafkaNet.Model
             Topic = topic;
             Router = router;
             PartitionWhitelist = new List<int>();
-            Log = new DefaultTraceLog();
+            Log = router.Log;
             TopicPartitionQueryTimeMs = (int)TimeSpan.FromMinutes(15).TotalMilliseconds;
             ConsumerBufferSize = DefaultMaxConsumerBufferSize;
             BackoffInterval = TimeSpan.FromMilliseconds(DefaultBackoffIntervalMS);
