@@ -107,7 +107,7 @@ namespace KafkaNet
             {
                 try
                 {
-                    var response = await conn.SendAsync(request);
+                    var response = await conn.SendAsync(request).ConfigureAwait(false);
                     if (response != null && response.Count > 0)
                     {
                         return response.FirstOrDefault();

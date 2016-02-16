@@ -136,7 +136,7 @@ namespace KafkaNet
 
         public async Task<ProduceResponse> SendMessageAsync(Message messages, string topic, int partition, Int16 acks = 1)
         {
-            var result = await SendMessageAsync(topic, new Message[] { messages }, partition: partition, acks: acks);
+            var result = await SendMessageAsync(topic, new Message[] { messages }, partition: partition, acks: acks).ConfigureAwait(false);
             return result.FirstOrDefault();
         }
 
@@ -284,7 +284,7 @@ namespace KafkaNet
                     BrokerRouter.Log.ErrorFormat("Exception[{0}] stacktrace[{1}]", ex.Message, ex.StackTrace);
                 }
 
-                await SetResult(sendTasks);
+                await SetResult(sendTasks).ConfigureAwait(false);
                 Interlocked.Add(ref _inFlightMessageCount, messages.Count * -1);
             }
         }
@@ -296,7 +296,7 @@ namespace KafkaNet
                 try
                 {
                     //all ready done don't need to await but it none blocking syntext
-                    var batchResult = await sendTask.Task;
+                    var batchResult = await sendTask.Task.ConfigureAwait(false);
                     var numberOfMessage = sendTask.MessagesSent.Count;
                     for (int i = 0; i < numberOfMessage; i++)
                     {

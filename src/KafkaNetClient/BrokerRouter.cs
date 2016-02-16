@@ -5,7 +5,6 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace KafkaNet
@@ -158,7 +157,7 @@ namespace KafkaNet
 
                 var connections = GetConnections();
                 var metadataRequestTask = _kafkaMetadataProvider.Get(connections, topics);
-                var metadataResponse = await RequestTopicMetadata(metadataRequestTask, timeout).ConfigureAwait(false);
+                var metadataResponse = await metadataRequestTask.WithTimeout(timeout).ConfigureAwait(false);
 
                 UpdateInternalMetadataCache(metadataResponse);
             }
@@ -200,31 +199,13 @@ namespace KafkaNet
 
                 var connections = GetConnections();
                 var metadataRequestTask = _kafkaMetadataProvider.Get(connections);
-                var metadataResponse = await RequestTopicMetadata(metadataRequestTask, timeout).ConfigureAwait(false);
+                var metadataResponse = await metadataRequestTask.WithTimeout(timeout).ConfigureAwait(false);
 
                 UpdateInternalMetadataCache(metadataResponse);
             }
         }
 
-        private async Task<MetadataResponse> RequestTopicMetadata(Task<MetadataResponse> requestTask, TimeSpan timeout)
-        {
-            if (requestTask.IsCompleted)
-            {
-                return await requestTask.ConfigureAwait(false);
-            }
 
-            var timeoutCancellationTokenSource = new CancellationTokenSource();
-            Task completedTask = await Task.WhenAny(requestTask, Task.Delay(timeout, timeoutCancellationTokenSource.Token)).ConfigureAwait(false);
-            if (completedTask == requestTask)
-            {
-                timeoutCancellationTokenSource.Cancel(); // cancel timeout task
-                return await requestTask.ConfigureAwait(false);
-            }
-            else
-            {
-                throw new Exception("Metadata refresh operation timed out.");
-            }
-        }
 
         private TopicSearchResult SearchCacheForTopics(IEnumerable<string> topics, TimeSpan? expiration)
         {
