@@ -226,35 +226,35 @@ namespace KafkaNet.Protocol
     [Serializable]
     public class BrokerException : ApplicationException
     {
-
         public KafkaEndpoint BrokerEndPoint;
+
         public BrokerException(string message, KafkaEndpoint endPoint, params object[] args)
             : base(string.Format(message, args))
         {
             BrokerEndPoint = endPoint;
         }
 
-        public BrokerException(SerializationInfo info, StreamingContext context)
+        public BrokerException(SerializationInfo info, StreamingContext context) 
             : base(info, context)
         {
-
             bool hasFetch = info.GetByte("HasBrokerEndPoint") == 1;
             if (hasFetch)
-            { 
-                IPEndPoint ipEndPoint=null;
-            Uri uri=null;
-            if (info.GetByte("HasEndpoint") == 1)
             {
-                ipEndPoint = new IPEndPoint(info.GetInt64("Address"), info.GetInt32("Port"));
-            }
-            if (info.GetByte("HasServeUri") == 1)
-            {
-                uri = new Uri(info.GetString("ServeUri"));
-            }
-         
+                IPEndPoint ipEndPoint = null;
+                Uri uri = null;
+                if (info.GetByte("HasEndpoint") == 1)
+                {
+                    ipEndPoint = new IPEndPoint(info.GetInt64("Address"), info.GetInt32("Port"));
+                }
+
+                if (info.GetByte("HasServeUri") == 1)
+                {
+                    uri = new Uri(info.GetString("ServeUri"));
+                }
+
                 BrokerEndPoint = new KafkaEndpoint
                 {
-                   Endpoint = ipEndPoint,
+                    Endpoint = ipEndPoint,
                     ServeUri = uri
 
                 };
@@ -271,18 +271,21 @@ namespace KafkaNet.Protocol
         {
             base.GetObjectData(info, context);
             bool hasValue = BrokerEndPoint != null;
-            info.AddValue("HasBrokerEndPoint", (byte)(hasValue ? 1 : 0));
+            info.AddValue("HasBrokerEndPoint", (byte) (hasValue ? 1 : 0));
+
             if (hasValue)
             {
-                info.AddValue("HasEndpoint", (byte)(BrokerEndPoint .Endpoint!= null ? 1 : 0));
-                info.AddValue("HasServeUri", (byte)(BrokerEndPoint.ServeUri != null ? 1 : 0));
+                info.AddValue("HasEndpoint", (byte) (BrokerEndPoint.Endpoint != null ? 1 : 0));
+                info.AddValue("HasServeUri", (byte) (BrokerEndPoint.ServeUri != null ? 1 : 0));
+
                 if (BrokerEndPoint.Endpoint != null)
                 {
                     info.AddValue("Address", BrokerEndPoint.Endpoint.Address.Address);
                     info.AddValue("Port", BrokerEndPoint.Endpoint.Port);
                 }
-                if(BrokerEndPoint.ServeUri!=null)
-                info.AddValue("ServeUri", BrokerEndPoint.ServeUri.ToString());
+
+                if (BrokerEndPoint.ServeUri != null)
+                    info.AddValue("ServeUri", BrokerEndPoint.ServeUri.ToString());
             }
         }
     }
@@ -290,19 +293,14 @@ namespace KafkaNet.Protocol
     [Serializable]
     public class BrokerConnectionException : BrokerException
     {
-
-
         public BrokerConnectionException(string message, KafkaEndpoint endPoint, params object[] args)
             : base(string.Format(message, args), endPoint)
         {
-
         }
 
         public BrokerConnectionException(SerializationInfo info, StreamingContext context)
             : base(info, context)
         {
-
-
         }
 
         public BrokerConnectionException(string message, KafkaEndpoint endPoint, Exception innerException)
@@ -310,8 +308,6 @@ namespace KafkaNet.Protocol
         {
             BrokerEndPoint = endPoint;
         }
-
-
     }
 
     [Serializable]
