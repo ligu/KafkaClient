@@ -130,6 +130,7 @@ namespace kafka_tests.Unit
         public void EnsureConsumerDisposesRouter()
         {
             var router = new MoqMockingKernel().GetMock<IBrokerRouter>();
+            router.Setup(x => x.Log.DebugFormat(It.IsAny<string>()));
             var consumer = new Consumer(CreateOptions(router.Object));
             using (consumer) { }
             router.Verify(x => x.Dispose(), Times.Once());

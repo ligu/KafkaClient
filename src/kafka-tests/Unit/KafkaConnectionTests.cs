@@ -9,6 +9,7 @@ using Ninject.MockingKernel.Moq;
 using NUnit.Framework;
 using System;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace kafka_tests.Unit
@@ -89,34 +90,38 @@ namespace kafka_tests.Unit
 
         #region Read Tests...
 
-        //TODO fix has moc error
-        [Test, Repeat(1)]///  [Test, Repeat(100)]
-        public async Task ReadShouldLogDisconnectAndRecover()
+    
+        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        public async Task KafkaConnectionShouldLogDisconnectAndRecover()
         {
-            var mockLog = _kernel.GetMock<IKafkaLog>();
-
-            using (var server = new FakeTcpServer(_log, 8999))
-            using (var socket = new KafkaTcpSocket(mockLog.Object, _kafkaEndpoint, _maxRetry))
+            var mockLog =new Mock<IKafkaLog>();
+            var log= new DefaultTraceLog(LogLevel.Error);
+            using (var server = new FakeTcpServer(log, 8999))
+            using (var socket = new KafkaTcpSocket(log, _kafkaEndpoint, _maxRetry))
             using (var conn = new KafkaConnection(socket, log: mockLog.Object))
             {
-                var disconnected = false;
-                socket.OnServerDisconnected += () => disconnected = true;
+                var disconnected = 0;
+                socket.OnServerDisconnected += () => Interlocked.Increment(ref disconnected);
 
-                await TaskTest.WaitFor(() => server.ConnectionEventcount > 0);
-                Assert.That(server.ConnectionEventcount, Is.EqualTo(1));
+                for (int connectionAttempt = 1; connectionAttempt < 4; connectionAttempt++)
+                {
 
-                server.DropConnection();
-                await TaskTest.WaitFor(() => server.DisconnectionEventCount > 0);
-                Assert.That(server.DisconnectionEventCount, Is.EqualTo(1));
+                    await TaskTest.WaitFor(() => server.ConnectionEventcount == connectionAttempt);
+                    Assert.That(server.ConnectionEventcount, Is.EqualTo(connectionAttempt));
+                    server.SendDataAsync(CreateCorrelationMessage(1)).Wait(TimeSpan.FromSeconds(5));
+                    await TaskTest.WaitFor(() => !conn.IsOnErrorState());
 
-                //Wait a while for the client to notice the disconnect and log
-                await TaskTest.WaitFor(() => disconnected);
+                    Assert.IsFalse(conn.IsOnErrorState());
+                    mockLog.Verify(x => x.InfoFormat("Polling read thread has recovered: {0}", It.IsAny<object[]>()), Times.Exactly(connectionAttempt-1));
 
-                //should log an exception and keep going
-                mockLog.Verify(x => x.ErrorFormat(It.IsAny<string>(), It.IsAny<Exception>()));
+                    server.DropConnection();
+                    await TaskTest.WaitFor(() => conn.IsOnErrorState());
+                    Assert.AreEqual(disconnected,connectionAttempt);
+                    Assert.IsTrue(conn.IsOnErrorState());
 
-                await TaskTest.WaitFor(() => server.ConnectionEventcount > 1);
-                Assert.That(server.ConnectionEventcount, Is.EqualTo(2));
+                    mockLog.Verify(x => x.ErrorFormat("Exception occured in polling read thread {0}: {1}", It.IsAny<object[]>()), Times.Exactly(connectionAttempt ));
+                }
+
             }
         }
 

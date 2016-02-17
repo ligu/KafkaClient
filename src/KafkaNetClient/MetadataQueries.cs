@@ -26,7 +26,7 @@ namespace KafkaNet
         /// <returns></returns>
         public async Task<List<OffsetResponse>> GetTopicOffsetAsync(string topic, int maxOffsets = 2, int time = -1)
         {
-            await _brokerRouter.RefreshMissingTopicMetadata(topic);
+            await _brokerRouter.RefreshMissingTopicMetadata(topic).ConfigureAwait(false);
             var topicMetadata = GetTopicFromCache(topic);
 
             //send the offset request to each partition leader

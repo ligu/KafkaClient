@@ -1,7 +1,9 @@
 ﻿using System;
 using System.IO;
 using System.IO.Compression;
+using System.Net;
 using System.Runtime.Serialization;
+using KafkaNet.Model;
 
 namespace KafkaNet.Protocol
 {
@@ -222,21 +224,89 @@ namespace KafkaNet.Protocol
     }
 
     [Serializable]
-    public class ServerDisconnectedException : ApplicationException
+    public class BrokerException : ApplicationException
     {
-        public ServerDisconnectedException(string message, params object[] args)
+        public KafkaEndpoint BrokerEndPoint;
+
+        public BrokerException(string message, KafkaEndpoint endPoint, params object[] args)
             : base(string.Format(message, args))
+        {
+            BrokerEndPoint = endPoint;
+        }
+
+        public BrokerException(SerializationInfo info, StreamingContext context) 
+            : base(info, context)
+        {
+            bool hasFetch = info.GetByte("HasBrokerEndPoint") == 1;
+            if (hasFetch)
+            {
+                IPEndPoint ipEndPoint = null;
+                Uri uri = null;
+                if (info.GetByte("HasEndpoint") == 1)
+                {
+                    ipEndPoint = new IPEndPoint(info.GetInt64("Address"), info.GetInt32("Port"));
+                }
+
+                if (info.GetByte("HasServeUri") == 1)
+                {
+                    uri = new Uri(info.GetString("ServeUri"));
+                }
+
+                BrokerEndPoint = new KafkaEndpoint
+                {
+                    Endpoint = ipEndPoint,
+                    ServeUri = uri
+
+                };
+            }
+        }
+
+        public BrokerException(string message, KafkaEndpoint endPoint, Exception innerException)
+            : base(message, innerException)
+        {
+            BrokerEndPoint = endPoint;
+        }
+
+        public override void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            base.GetObjectData(info, context);
+            bool hasValue = BrokerEndPoint != null;
+            info.AddValue("HasBrokerEndPoint", (byte) (hasValue ? 1 : 0));
+
+            if (hasValue)
+            {
+                info.AddValue("HasEndpoint", (byte) (BrokerEndPoint.Endpoint != null ? 1 : 0));
+                info.AddValue("HasServeUri", (byte) (BrokerEndPoint.ServeUri != null ? 1 : 0));
+
+                if (BrokerEndPoint.Endpoint != null)
+                {
+                    info.AddValue("Address", BrokerEndPoint.Endpoint.Address.Address);
+                    info.AddValue("Port", BrokerEndPoint.Endpoint.Port);
+                }
+
+                if (BrokerEndPoint.ServeUri != null)
+                    info.AddValue("ServeUri", BrokerEndPoint.ServeUri.ToString());
+            }
+        }
+    }
+
+    [Serializable]
+    public class BrokerConnectionException : BrokerException
+    {
+        public BrokerConnectionException(string message, KafkaEndpoint endPoint, params object[] args)
+            : base(string.Format(message, args), endPoint)
         {
         }
 
-        public ServerDisconnectedException(SerializationInfo info, StreamingContext context)
+        public BrokerConnectionException(SerializationInfo info, StreamingContext context)
             : base(info, context)
         {
         }
 
-        public ServerDisconnectedException(string message, Exception innerException)
-            : base(message, innerException)
+        public BrokerConnectionException(string message, KafkaEndpoint endPoint, Exception innerException)
+            : base(message, endPoint, innerException)
         {
+            BrokerEndPoint = endPoint;
         }
     }
 

@@ -5,7 +5,6 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace KafkaNet
@@ -155,10 +154,10 @@ namespace KafkaNet
                 }
 
                 _kafkaOptions.Log.DebugFormat("BrokerRouter: Refreshing metadata for topics: {0}", string.Join(",", topics));
-                              
+
                 var connections = GetConnections();
                 var metadataRequestTask = _kafkaMetadataProvider.Get(connections, topics);
-                var metadataResponse = await RequestTopicMetadata(metadataRequestTask, timeout).ConfigureAwait(false);
+                var metadataResponse = await metadataRequestTask.WithTimeout(timeout).ConfigureAwait(false);
 
                 UpdateInternalMetadataCache(metadataResponse);
             }
@@ -200,31 +199,13 @@ namespace KafkaNet
 
                 var connections = GetConnections();
                 var metadataRequestTask = _kafkaMetadataProvider.Get(connections);
-                var metadataResponse = await RequestTopicMetadata(metadataRequestTask, timeout).ConfigureAwait(false);
+                var metadataResponse = await metadataRequestTask.WithTimeout(timeout).ConfigureAwait(false);
 
                 UpdateInternalMetadataCache(metadataResponse);
             }
         }
 
-        private async Task<MetadataResponse> RequestTopicMetadata(Task<MetadataResponse> requestTask, TimeSpan timeout)
-        {
-            if (requestTask.IsCompleted)
-            {
-                return await requestTask.ConfigureAwait(false);              
-            }
 
-            var timeoutCancellationTokenSource = new CancellationTokenSource();
-            Task completedTask = await Task.WhenAny(requestTask, Task.Delay(timeout, timeoutCancellationTokenSource.Token)).ConfigureAwait(false);
-            if (completedTask == requestTask)
-            {
-                timeoutCancellationTokenSource.Cancel(); // cancel timeout task
-                return await requestTask.ConfigureAwait(false);
-            }
-            else
-            {
-                throw new Exception("Metadata refresh operation timed out.");
-            }
-        }
 
         private TopicSearchResult SearchCacheForTopics(IEnumerable<string> topics, TimeSpan? expiration)
         {
@@ -299,15 +280,10 @@ namespace KafkaNet
             {
                 //if the connection is in our default connection index already, remove it and assign it to the broker index.
                 IKafkaConnection connection;
-                if (_defaultConnectionIndex.TryRemove(broker.Endpoint, out connection))
-                {
-                    UpsertConnectionToBrokerConnectionIndex(broker.Broker.BrokerId, connection);
-                }
-                else
-                {
-                    connection = _kafkaOptions.KafkaConnectionFactory.Create(broker.Endpoint, _kafkaOptions.ResponseTimeoutMs, _kafkaOptions.Log, _kafkaOptions.MaxRetry);
-                    UpsertConnectionToBrokerConnectionIndex(broker.Broker.BrokerId, connection);
-                }
+                _defaultConnectionIndex.TryRemove(broker.Endpoint, out connection);
+
+                Func<int, IKafkaConnection> connectionFactory = (i) => connection ?? _kafkaOptions.KafkaConnectionFactory.Create(broker.Endpoint, _kafkaOptions.ResponseTimeoutMs, _kafkaOptions.Log, _kafkaOptions.MaxRetry);
+                UpsertConnectionToBrokerConnectionIndex(broker.Broker.BrokerId, broker.Endpoint, connectionFactory);
             }
 
             foreach (var topic in metadata.Topics)
@@ -317,20 +293,18 @@ namespace KafkaNet
             }
         }
 
-        private void UpsertConnectionToBrokerConnectionIndex(int brokerId, IKafkaConnection newConnection)
+        private void UpsertConnectionToBrokerConnectionIndex(int brokerId, KafkaEndpoint brokerEndpoint, Func<int, IKafkaConnection> connectionFactory)
         {
             //associate the connection with the broker id, and add or update the reference
-            _brokerConnectionIndex.AddOrUpdate(brokerId,
-                    i => newConnection,
+            _brokerConnectionIndex.AddOrUpdate(brokerId, connectionFactory,
                     (i, existingConnection) =>
                     {
                         //if a connection changes for a broker close old connection and create a new one
-                        if (existingConnection.Endpoint.Equals(newConnection.Endpoint)) return existingConnection;
-                        _kafkaOptions.Log.WarnFormat("Broker:{0} Uri changed from:{1} to {2}", brokerId, existingConnection.Endpoint, newConnection.Endpoint);
-                        using (existingConnection)
-                        {
-                            return newConnection;
-                        }
+                        if (existingConnection.Endpoint.Equals(brokerEndpoint)) return existingConnection;
+                        _kafkaOptions.Log.WarnFormat("Broker:{0} Uri changed from:{1} to {2}", brokerId, existingConnection.Endpoint, brokerEndpoint);
+                        
+                        existingConnection.Dispose();
+                        return connectionFactory(i);
                     });
         }
 

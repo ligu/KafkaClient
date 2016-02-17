@@ -202,6 +202,11 @@ namespace KafkaNet
                             //no message received from server wait a while before we try another long poll
                             await Task.Delay(_options.BackoffInterval, _disposeToken.Token);
                         }
+                        catch (BrokerConnectionException ex)
+                        {
+                            needToRefreshMetadata = true;
+                            _options.Log.ErrorFormat(ex.Message);
+                        }
                         catch (BufferUnderRunException ex)
                         {
                             bufferSizeHighWatermark = (int)(ex.RequiredBufferSize * _options.FetchBufferMultiplier) +

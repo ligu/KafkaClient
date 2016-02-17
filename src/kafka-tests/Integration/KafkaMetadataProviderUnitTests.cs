@@ -22,6 +22,8 @@ namespace kafka_tests.Integration
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Ignore("Disable auto topic create in our server")]
+
         public async Task NewlyCreatedTopicShouldRetryUntilBrokerIsAssigned()
         {
             var expectedTopic = Guid.NewGuid().ToString();
