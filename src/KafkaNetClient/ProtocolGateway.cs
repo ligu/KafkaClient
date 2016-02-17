@@ -54,7 +54,7 @@ namespace KafkaNet
 
                     //find route it can chage after Metadata Refresh
                     var route = _brokerRouter.SelectBrokerRouteFromLocalCache(topic, partition);
-                    var responses = await route.Connection.SendAsync(request);
+                    var responses = await route.Connection.SendAsync(request).ConfigureAwait(false);
                     response = responses.FirstOrDefault();
 
                     //this can happened if you send ProduceRequest with ack level=0
@@ -92,7 +92,7 @@ namespace KafkaNet
                 _brokerRouter.Log.WarnFormat("ProtocolGateway error sending request, retrying (attempt number {0}): {1}", retryTime, errorDetails);
                 if (needToRefreshTopicMetadata && hasMoreRetry)
                 {
-                    await _brokerRouter.RefreshTopicMetadata(topic);
+                    await _brokerRouter.RefreshTopicMetadata(topic).ConfigureAwait(false);
                 }
                 else
                 {

@@ -199,7 +199,7 @@ namespace KafkaNet
             //Exception need to thrown immediately and not depend on the next task
             var readTask = ProcessNetworkstreamsSendTask(netStream);
             var sendTask = ProcessNetworkstreamTasksReadTask(netStream);
-            await Task.WhenAny(readTask, sendTask);
+            await Task.WhenAny(readTask, sendTask).ConfigureAwait(false);
             if (_disposeToken.IsCancellationRequested) return;
             await ThrowTaskExceptionIfFaulted(readTask);
             await ThrowTaskExceptionIfFaulted(sendTask);
