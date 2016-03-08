@@ -1,8 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.IO;
-using System.Linq;
 using System.Text;
 
 namespace KafkaNet.Common
@@ -25,8 +23,16 @@ namespace KafkaNet.Common
     {
         private const int KafkaNullSize = -1;
 
-        public BigEndianBinaryReader(IEnumerable<byte> payload)
-            : base(new MemoryStream(payload.ToArray()), Encoding.UTF8)
+        public BigEndianBinaryReader(byte[] payload, int offset, int count)
+            : base(new MemoryStream(payload, offset, count), Encoding.UTF8)
+        {
+        }
+
+        public BigEndianBinaryReader(byte[] payload, int offset) : this(payload, offset, payload.Length - offset)
+        {
+        }
+
+        public BigEndianBinaryReader(byte[] payload) : this(payload, 0, payload.Length)
         {
         }
 
