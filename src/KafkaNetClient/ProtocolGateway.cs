@@ -44,9 +44,9 @@ namespace KafkaNet
             int retryTime = 0;
             while (retryTime < _maxRetry)
             {
-                bool needToRefreshTopicMetadata;
-                ExceptionDispatchInfo exception = null;
-                string errorDetails;
+                bool needToRefreshTopicMetadata = false;
+                ExceptionDispatchInfo exceptionInfo = null;
+                string errorDetails = "";
 
                 try
                 {
@@ -63,7 +63,7 @@ namespace KafkaNet
                         return null;
                     }
 
-                    var error = (ErrorResponseCode)response.Error;
+                    var error = (ErrorResponseCode) response.Error;
                     if (error == ErrorResponseCode.NoError)
                     {
                         return response;
@@ -75,15 +75,25 @@ namespace KafkaNet
                 }
                 catch (ResponseTimeoutException ex)
                 {
-                    exception = ExceptionDispatchInfo.Capture(ex);
-                    needToRefreshTopicMetadata = true;
-                    errorDetails = ex.GetType().Name;
+                    exceptionInfo = ExceptionDispatchInfo.Capture(ex);
                 }
                 catch (BrokerConnectionException ex)
                 {
-                    exception = ExceptionDispatchInfo.Capture(ex);
+                    exceptionInfo = ExceptionDispatchInfo.Capture(ex);
+                }
+                catch (NoLeaderElectedForPartition ex)
+                {
+                    exceptionInfo = ExceptionDispatchInfo.Capture(ex);
+                }
+                catch (LeaderNotFoundException ex)//the numbar partition of can be change
+                {
+                    exceptionInfo = ExceptionDispatchInfo.Capture(ex);
+                }
+
+                if (exceptionInfo != null)
+                {
                     needToRefreshTopicMetadata = true;
-                    errorDetails = ex.GetType().Name;
+                    errorDetails = exceptionInfo.SourceException.GetType().Name;
                 }
 
                 retryTime++;
@@ -99,9 +109,9 @@ namespace KafkaNet
                     _brokerRouter.Log.ErrorFormat("ProtocolGateway sending request failed");
 
                     // If an exception was thrown, we want to propagate it
-                    if (exception != null)
+                    if (exceptionInfo != null)
                     {
-                        exception.Throw();
+                        exceptionInfo.Throw();
                     }
                     
                     // Otherwise, the error was from Kafka, throwing application exception
@@ -114,10 +124,10 @@ namespace KafkaNet
 
         private static bool CanRecoverByRefreshMetadata(ErrorResponseCode error)
         {
-            return error == ErrorResponseCode.BrokerNotAvailable ||
-                                         error == ErrorResponseCode.ConsumerCoordinatorNotAvailableCode ||
-                                         error == ErrorResponseCode.LeaderNotAvailable ||
-                                         error == ErrorResponseCode.NotLeaderForPartition;
+            return  error == ErrorResponseCode.BrokerNotAvailable ||
+                    error == ErrorResponseCode.ConsumerCoordinatorNotAvailableCode ||
+                    error == ErrorResponseCode.LeaderNotAvailable ||
+                    error == ErrorResponseCode.NotLeaderForPartition;
         }
 
         public void Dispose()

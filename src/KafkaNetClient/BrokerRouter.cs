@@ -248,7 +248,7 @@ namespace KafkaNet
             var route = TryGetRouteFromCache(topic, partition);
             if (route != null) return route;
 
-            throw new LeaderNotFoundException(string.Format("Lead broker cannot be found for parition: {0}, leader: {1}", partition.PartitionId, partition.LeaderId));
+            throw new LeaderNotFoundException(string.Format("Lead broker cannot be found for partition: {0}, leader: {1}", partition.PartitionId, partition.LeaderId));
         }
 
         private BrokerRoute TryGetRouteFromCache(string topic, Partition partition)
@@ -269,6 +269,14 @@ namespace KafkaNet
 
         private void UpdateInternalMetadataCache(MetadataResponse metadata)
         {
+            var noLeaderElectedForPartition =
+                metadata.Topics.Select(x => new {topic = x.Name, partition = x.Partitions.FirstOrDefault(i => i.LeaderId == -1)})
+                    .FirstOrDefault(x => x.partition != null);
+
+            if (noLeaderElectedForPartition != null)
+                throw new NoLeaderElectedForPartition(string.Format("topic:{0} partition:{1}",
+                    noLeaderElectedForPartition.topic, noLeaderElectedForPartition.partition));
+
             //resolve each broker
             var brokerEndpoints = metadata.Brokers.Select(broker => new
             {

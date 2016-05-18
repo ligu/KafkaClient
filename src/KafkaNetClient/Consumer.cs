@@ -226,6 +226,17 @@ namespace KafkaNet
                             needToRefreshMetadata = true;
                             _options.Log.ErrorFormat(ex.Message);
                         }
+                        catch (NoLeaderElectedForPartition ex)
+                        {
+                            needToRefreshMetadata = true;
+                            _options.Log.ErrorFormat(ex.Message);
+                        }
+                        catch (LeaderNotFoundException ex)//the numbar partition of can be change
+                        {
+                            needToRefreshMetadata = true;
+                            _options.Log.ErrorFormat(ex.Message);
+                        }
+
                         catch (TaskCanceledException ex)
                         {
                             //TODO :LOG

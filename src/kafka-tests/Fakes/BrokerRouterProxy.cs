@@ -120,6 +120,7 @@ namespace kafka_tests
                 };
         }
 
+
         public static async Task<MetadataResponse> CreateMetadataResponseWithSingleBroker()
         {
             return new MetadataResponse
@@ -164,6 +165,49 @@ namespace kafka_tests
             };
         }
 
+        public static async Task<MetadataResponse> CreateMetadataResponseWithNotEndToElectLeader()
+        {
+            return new MetadataResponse
+            {
+                CorrelationId = 1,
+                Brokers = new List<Broker>
+                        {
+                            new Broker
+                                {
+                                    Host = "localhost",
+                                    Port = 2,
+                                    BrokerId = 1
+                                },
+                        },
+                Topics = new List<Topic>
+                        {
+                            new Topic
+                                {
+                                    ErrorCode = 0,
+                                    Name = TestTopic,
+                                    Partitions = new List<Partition>
+                                        {
+                                            new Partition
+                                                {
+                                                    ErrorCode = 0,
+                                                    Isrs = new List<int> {1},
+                                                    PartitionId = 0,
+                                                    LeaderId = -1,
+                                                    Replicas = new List<int> {1},
+                                                },
+                                            new Partition
+                                                {
+                                                    ErrorCode = 0,
+                                                    Isrs = new List<int> {1},
+                                                    PartitionId = 1,
+                                                    LeaderId = 1,
+                                                    Replicas = new List<int> {1},
+                                                }
+                                        }
+                                }
+                        }
+            };
+        }
         public static async Task<MetadataResponse> CreateMetaResponseWithException()
         {
             throw new Exception();

@@ -224,6 +224,26 @@ namespace KafkaNet.Protocol
     }
 
     [Serializable]
+    public class NoLeaderElectedForPartition : ApplicationException
+    {
+         public NoLeaderElectedForPartition(string message, params object[] args)
+            : base(string.Format(message, args))
+        {
+        }
+
+        public NoLeaderElectedForPartition(SerializationInfo info, StreamingContext context)
+            : base(info, context)
+        {
+        }
+
+        public NoLeaderElectedForPartition(string message, Exception innerException)
+            : base(message, innerException)
+        {
+        }
+    }
+
+
+    [Serializable]
     public class BrokerException : ApplicationException
     {
         public KafkaEndpoint BrokerEndPoint;

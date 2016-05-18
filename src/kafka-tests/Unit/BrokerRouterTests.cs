@@ -134,11 +134,23 @@ namespace kafka_tests.Unit
             var result1 = router.GetTopicMetadataFromLocalCache(TestTopic);
             var result2 = router.GetTopicMetadataFromLocalCache(TestTopic);
 
+            Assert.AreEqual(1, router.GetAllTopicMetadataFromLocalCache().Count);
             Assert.That(routerProxy.BrokerConn0.MetadataRequestCallCount, Is.EqualTo(1));
             Assert.That(result1.Count, Is.EqualTo(1));
             Assert.That(result1[0].Name, Is.EqualTo(TestTopic));
             Assert.That(result2.Count, Is.EqualTo(1));
             Assert.That(result2[0].Name, Is.EqualTo(TestTopic));
+        }
+
+        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        public async Task BrokerRouteShouldThrowNoLeaderElectedForPartition()
+        {
+            var routerProxy = new BrokerRouterProxy(_kernel);
+            routerProxy.MetadataResponse = BrokerRouterProxy.CreateMetadataResponseWithNotEndToElectLeader;
+
+            var router = routerProxy.Create();
+            Assert.Throws<NoLeaderElectedForPartition>(async () =>await router.RefreshMissingTopicMetadata(TestTopic));
+            Assert.AreEqual(0, router.GetAllTopicMetadataFromLocalCache().Count);
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
