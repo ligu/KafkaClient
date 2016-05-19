@@ -58,7 +58,7 @@ namespace kafka_tests.Unit
             Assert.That(routerProxy.BrokerConn0.MetadataRequestCallCount, Is.EqualTo(2));
             Assert.That(routerProxy.BrokerConn0.FetchRequestCallCount, Is.EqualTo(2));
         }
-
+        
         [ExpectedException(typeof(FormatException))]
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         public async Task ShouldThrowFormatExceptionWhenTopicIsInvalid()
@@ -72,14 +72,18 @@ namespace kafka_tests.Unit
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
-        public async Task ShouldTryToRefreshMataDataIfSocketException()
+        [TestCase(typeof(BrokerConnectionException))]
+        [TestCase(typeof(ResponseTimeoutException))]
+        [TestCase(typeof(NoLeaderElectedForPartition))]
+        [TestCase(typeof(LeaderNotFoundException))]
+        public async Task ShouldTryToRefreshMataDataIfOnExceptions(Type exceptionType)
         {
             var routerProxy = new BrokerRouterProxy(_kernel);
             routerProxy._cacheExpiration = TimeSpan.FromMilliseconds(10);
             var router = routerProxy.Create();
             ProtocolGateway protocolGateway = new ProtocolGateway(router);
 
-            routerProxy.BrokerConn0.FetchResponseFunction = FailedInFirstMessageException(typeof(BrokerConnectionException), routerProxy._cacheExpiration);
+            routerProxy.BrokerConn0.FetchResponseFunction = FailedInFirstMessageException(exceptionType, routerProxy._cacheExpiration);
             routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers;
 
             await protocolGateway.SendProtocolRequest(new FetchRequest(), BrokerRouterProxy.TestTopic, _partitionId);
