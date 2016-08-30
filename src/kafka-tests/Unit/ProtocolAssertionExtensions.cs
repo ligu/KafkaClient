@@ -12,6 +12,26 @@ namespace kafka_tests.Unit
     public static class ProtocolAssertionExtensions
     {
         /// <summary>
+        /// ApiVersionsResponse => ErrorCode [ApiKey MinVersion MaxVersion]
+        ///  ErrorCode => int16  -- The error code.
+        ///  ApiKey => int16     -- The Api Key.
+        ///  MinVersion => int16 -- The minimum supported version.
+        ///  MaxVersion => int16 -- The maximum supported version.
+        ///
+        /// From http://kafka.apache.org/protocol.html#protocol_messages
+        /// </summary>
+        public static void AssertApiVersionsResponse(this BigEndianBinaryReader reader, ApiVersionsResponse response)
+        {
+            Assert.That(reader.ReadInt16(), Is.EqualTo((short)response.ErrorCode), "ErrorCode");
+            Assert.That(reader.ReadInt32(), Is.EqualTo(response.SupportedVersions.Count()), "[ApiVersions]");
+            foreach (var payload in response.SupportedVersions) {
+                Assert.That(reader.ReadInt16(), Is.EqualTo((short)payload.ApiKey), "ApiKey");
+                Assert.That(reader.ReadInt16(), Is.EqualTo(payload.MinVersion), "MinVersion");
+                Assert.That(reader.ReadInt16(), Is.EqualTo(payload.MaxVersion), "MaxVersion");
+            }
+        }
+
+        /// <summary>
         /// GroupCoordinatorResponse => ErrorCode CoordinatorId CoordinatorHost CoordinatorPort
         ///  ErrorCode => int16        -- The error code.
         ///  CoordinatorId => int32    -- The broker id.

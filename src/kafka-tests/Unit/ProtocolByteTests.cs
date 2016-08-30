@@ -813,6 +813,82 @@ namespace kafka_tests.Unit
                      });
         }
 
+        /// <summary>
+        /// ApiVersions => 
+        ///
+        /// From http://kafka.apache.org/protocol.html#protocol_messages
+        /// </summary>
+        [Test]
+        public void ApiVersionsApiRequest()
+        {
+            var clientId = "ApiVersionsApiRequest";
+
+            var request = new ApiVersionsRequest {
+                ClientId = clientId,
+                CorrelationId = clientId.GetHashCode(),
+                ApiVersion = 0
+            };
+
+            var data = request.Encode();
+
+            data.Buffer.AssertProtocol(
+                     reader =>
+                     {
+                         reader.AssertRequestHeader(request);
+                     });
+        }
+
+        /// <summary>
+        /// ApiVersionsResponse => ErrorCode [ApiKey MinVersion MaxVersion]
+        ///  ErrorCode => int16  -- The error code.
+        ///  ApiKey => int16     -- The Api Key.
+        ///  MinVersion => int16 -- The minimum supported version.
+        ///  MaxVersion => int16 -- The maximum supported version.
+        ///
+        /// From http://kafka.apache.org/protocol.html#protocol_messages
+        /// </summary>
+        [Test]
+        public void ApiVersionsApiResponse(
+            [Values(
+                 ErrorResponseCode.NoError,
+                 ErrorResponseCode.BrokerNotAvailable
+             )] ErrorResponseCode errorCode
+            )
+        {
+            var clientId = "ApiVersionsApiResponse";
+            var correlationId = clientId.GetHashCode();
+            var randomizer = new Randomizer();
+
+            byte[] data = null;
+            using (var stream = new MemoryStream()) {
+                var writer = new BigEndianBinaryWriter(stream);
+                writer.WriteResponseHeader(correlationId);
+                writer.Write((short)errorCode);
+
+                
+                writer.Write(19);
+                for (short apiKey = 0; apiKey <= 18; apiKey++) {
+                    writer.Write(apiKey);
+                    writer.Write((short)0);
+                    writer.Write((short)randomizer.Next(0, 2));
+                }
+
+                data = new byte[stream.Position];
+                Buffer.BlockCopy(stream.GetBuffer(), 0, data, 0, data.Length);
+            }
+
+            var request = new ApiVersionsRequest {ApiVersion = 0};
+            var responses = request.Decode(data).Single(); 
+                // doesn't include the size in the decode -- the framework deals with it, I'd assume
+            data.PrefixWithInt32Length().AssertProtocol(
+                     reader => {
+                         reader.AssertResponseHeader(correlationId);
+                         reader.AssertApiVersionsResponse(responses);
+                     });
+        }
+
+
+
         private List<Message> GenerateMessages(int count, byte version)
         {
             var randomizer = new Randomizer();
