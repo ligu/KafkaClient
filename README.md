@@ -94,6 +94,8 @@ A class which enables simple manual consuming of messages which encapsulates the
 
 Status
 -----------
+[![Build status](https://ci.appveyor.com/api/projects/status/e7ej2g9q77if8mkf/branch/master?svg=true)](https://ci.appveyor.com/project/AndrewRobinson/kafkanetclient/branch/master)
+
 Tested with Kafka 0.8.2.
 
 This library is still work in progress and was still not deployed to production. We will update when it does.
