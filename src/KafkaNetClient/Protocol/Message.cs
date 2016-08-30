@@ -77,7 +77,7 @@ namespace KafkaNet.Protocol
         /// <param name="value">The main content data of this message.</param>
         public Message(string value, string key = null)
         {
-            Key = key == null ? null : key.ToBytes();
+            Key = key?.ToBytes();
             Value = value.ToBytes();
         }
 
@@ -205,7 +205,7 @@ namespace KafkaNet.Protocol
                         break;
 
                     default:
-                        throw new NotSupportedException(string.Format("Codec type of {0} is not supported.", codec));
+                        throw new NotSupportedException($"Codec type of {codec} is not supported.");
                 }
             }
         }
