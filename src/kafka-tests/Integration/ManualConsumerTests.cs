@@ -155,7 +155,7 @@ namespace kafka_tests.Integration
         }
 
         [Test]
-       [ExpectedException(typeof(KafkaApplicationException), ExpectedMessage = "FetchResponse received an error from Kafka: OffsetOutOfRange")]
+       [ExpectedException(typeof(KafkaApplicationException), ExpectedMessage = "FetchResponse received an error from Kafka: OffsetOutOfRange", MatchType = MessageMatch.StartsWith)]
         public async Task FetchMessagesOffsetBiggerThanLastOffsetInQueueTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
@@ -246,7 +246,7 @@ namespace kafka_tests.Integration
         }
 
         [Test]
-        [ExpectedException(typeof(KafkaApplicationException), ExpectedMessage = "FetchResponse received an error from Kafka: UnknownTopicOrPartition")]
+        [ExpectedException(typeof(InvalidTopicMetadataException))]
         public async Task FetchOffsetConsumerGroupDoesntExistTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
@@ -494,7 +494,7 @@ namespace kafka_tests.Integration
         }
 
         [Test]
-        [ExpectedException(typeof(InvalidTopicMetadataException ))]
+        [ExpectedException(typeof(InvalidPartitionException))]
         public async Task FetchLastOffsetTopicDoesntExistTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer

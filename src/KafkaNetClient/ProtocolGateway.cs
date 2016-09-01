@@ -70,8 +70,11 @@ namespace KafkaNet
                     }
 
                     //It means we had an error
-                    errorDetails = error.ToString();
+                    errorDetails = $"{error}  ({route})";
                     needToRefreshTopicMetadata = CanRecoverByRefreshMetadata(error);
+                    if (error == ErrorResponseCode.UnknownTopicOrPartition) {
+                        exceptionInfo = ExceptionDispatchInfo.Capture(new InvalidTopicMetadataException(errorDetails, null));
+                    }
                 }
                 catch (ResponseTimeoutException ex)
                 {
