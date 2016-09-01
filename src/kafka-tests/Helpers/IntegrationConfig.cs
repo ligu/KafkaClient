@@ -7,7 +7,7 @@ namespace kafka_tests.Helpers
     public static class IntegrationConfig
     {
         public static string IntegrationCompressionTopic = Environment.MachineName + "IntegrationCompressionTopic1";
-        public static string IntegrationTopic = Environment.MachineName + "IntegrationCompressionTopic1";
+        public static string IntegrationTopic = Environment.MachineName + "IntegrationTopic1";
         public static string IntegrationConsumer = Environment.MachineName + "IntegrationConsumer1";
         public const int NumberOfRepeat = 1;
 
