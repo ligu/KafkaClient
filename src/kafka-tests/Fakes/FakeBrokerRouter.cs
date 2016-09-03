@@ -48,11 +48,7 @@ namespace kafka_tests
             _mockKafkaConnectionFactory.Create(Arg.Is<KafkaEndpoint>(e => e.Endpoint.Port == 1), Arg.Any<TimeSpan>(), Arg.Any<IKafkaLog>(), Arg.Any<int>(), Arg.Any<TimeSpan?>(), Arg.Any<StatisticsTrackerOptions>()).Returns(_fakeConn0);
             _mockKafkaConnectionFactory.Create(Arg.Is<KafkaEndpoint>(e => e.Endpoint.Port == 2), Arg.Any<TimeSpan>(), Arg.Any<IKafkaLog>(), Arg.Any<int>(), Arg.Any<TimeSpan?>(), Arg.Any<StatisticsTrackerOptions>()).Returns(_fakeConn1);
             _mockKafkaConnectionFactory.Resolve(Arg.Any<Uri>(), Arg.Any<IKafkaLog>())
-                                       .Returns(info => new KafkaEndpoint
-                                        {
-                                            Endpoint = new IPEndPoint(IPAddress.Parse("127.0.0.1"), ((Uri)info[0]).Port),
-                                            ServeUri = ((Uri)info[0])
-                                        });
+                                       .Returns(info => new KafkaEndpoint((Uri)info[0], new IPEndPoint(IPAddress.Parse("127.0.0.1"), ((Uri)info[0]).Port)));
         }
 
         public IBrokerRouter Create()

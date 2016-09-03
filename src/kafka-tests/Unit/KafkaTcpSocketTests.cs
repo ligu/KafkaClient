@@ -357,7 +357,7 @@ namespace kafka_tests.Unit
         [ExpectedException(typeof(KafkaConnectionException))]
         public async Task WhenNoConnectionThrowSocketException()
         {
-            var socket = new KafkaTcpSocket(_log, new KafkaEndpoint() { ServeUri = new Uri("http://not.com") }, _maxRetry);
+            var socket = new KafkaTcpSocket(_log, new KafkaEndpoint(new Uri("http://not.com"), null), _maxRetry);
 
             var resultTask = socket.ReadAsync(4);
             await resultTask;
@@ -368,7 +368,7 @@ namespace kafka_tests.Unit
         public async Task WhenNoConnectionThrowSocketExceptionAfterMaxRetry()
         {
             var reconnectionAttempt = 0;
-            var socket = new KafkaTcpSocket(_log, new KafkaEndpoint() { ServeUri = new Uri("http://not.com") }, _maxRetry);
+            var socket = new KafkaTcpSocket(_log, new KafkaEndpoint(new Uri("http://not.com"), null), _maxRetry);
             socket.OnReconnectionAttempt += (x) => Interlocked.Increment(ref reconnectionAttempt);
             var resultTask = socket.ReadAsync(4);
             await resultTask;

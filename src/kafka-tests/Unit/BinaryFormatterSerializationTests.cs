@@ -55,30 +55,33 @@ namespace kafka_tests.Unit
         [Test]
         public void ShouldSerializeOffsetKafkaEndpointInnerObjectAreNull()
         {
-            var expected = new BrokerException("a", null);
+            var expected = new KafkaRequestException("a");
             var actual = SerializeDeserialize(expected);
 
-            Assert.AreEqual(expected.BrokerEndPoint.ServeUri, actual.BrokerEndPoint.ServeUri);
-            Assert.AreEqual(expected.BrokerEndPoint.Endpoint, actual.BrokerEndPoint.Endpoint);
+            Assert.AreEqual(expected.Endpoint.ServeUri, actual.Endpoint.ServeUri);
+            Assert.AreEqual(expected.Endpoint.Endpoint, actual.Endpoint.Endpoint);
         }
 
         [Test]
         public void ShouldSerializeOffsetKafkaEndpoint()
         {
-            var expected = new BrokerException("a", new KafkaEndpoint(new Uri("http://S1.com"), new IPEndPoint(IPAddress.Parse("127.0.0.1"), 8888)));
+            var expected = new KafkaRequestException("a") {
+                Endpoint = new KafkaEndpoint(new Uri("http://S1.com"), 
+                new IPEndPoint(IPAddress.Parse("127.0.0.1"), 8888))
+            };
             var actual = SerializeDeserialize(expected);
 
-            Assert.AreEqual(expected.BrokerEndPoint.ServeUri, actual.BrokerEndPoint.ServeUri);
-            Assert.AreEqual(expected.BrokerEndPoint.Endpoint, actual.BrokerEndPoint.Endpoint);
+            Assert.AreEqual(expected.Endpoint.ServeUri, actual.Endpoint.ServeUri);
+            Assert.AreEqual(expected.Endpoint.Endpoint, actual.Endpoint.Endpoint);
         }
 
         [Test]
         public void ShouldSerializeOffsetKafkaEndpointNull()
         {
-            var expected = new BrokerException("a", null);
+            var expected = new KafkaRequestException("a", null);
             var actual = SerializeDeserialize(expected);
 
-            Assert.AreEqual(expected.BrokerEndPoint, actual.BrokerEndPoint);
+            Assert.AreEqual(expected.Endpoint, actual.Endpoint);
         }
 
         [Test]
