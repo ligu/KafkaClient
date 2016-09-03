@@ -246,7 +246,7 @@ namespace kafka_tests.Unit
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
-        [ExpectedException(typeof(InvalidPartitionException))]
+        [ExpectedException(typeof(CachedMetadataException))]
         public async Task SelectExactPartitionShouldThrowWhenPartitionDoesNotExist()
         {
             var routerProxy = new BrokerRouterProxy(_kernel);
@@ -256,7 +256,7 @@ namespace kafka_tests.Unit
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
-        [ExpectedException(typeof(InvalidTopicNotExistsInCache))]
+        [ExpectedException(typeof(CachedMetadataException))]
         public async Task SelectExactPartitionShouldThrowWhenTopicsCollectionIsEmpty()
         {
             var metadataResponse = await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers();
@@ -313,7 +313,7 @@ namespace kafka_tests.Unit
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
-        [ExpectedException(typeof(InvalidTopicNotExistsInCache))]
+        [ExpectedException(typeof(CachedMetadataException))]
         public async Task SelectPartitionShouldThrowWhenTopicsCollectionIsEmpty()
         {
             var metadataResponse = await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers();

@@ -220,9 +220,9 @@ namespace KafkaNet
                             _options.Log.ErrorFormat(ex.Message);
                             FixOffsetOutOfRangeExceptionAsync(ex.FetchRequest);
                         }
-                        catch (InvalidMetadataException ex)
+                        catch (CachedMetadataException ex)
                         {
-                            //refresh our metadata and ensure we are polling the correct partitions
+                            // refresh our metadata and ensure we are polling the correct partitions
                             needToRefreshMetadata = true;
                             _options.Log.ErrorFormat(ex.Message);
                         }
@@ -264,19 +264,26 @@ namespace KafkaNet
                     return;
 
                 case ErrorResponseCode.OffsetOutOfRange:
-                    throw new OffsetOutOfRangeException("FetchResponse indicated we requested an offset that is out of range.  Requested Offset:{0}", request.Offset) { FetchRequest = request };
+                    throw new OffsetOutOfRangeException("FetchResponse indicated we requested an offset that is out of range. Requested Offset:{0}", request.Offset) { FetchRequest = request };
                 case ErrorResponseCode.BrokerNotAvailable:
                 case ErrorResponseCode.ConsumerCoordinatorNotAvailableCode:
                 case ErrorResponseCode.LeaderNotAvailable:
                 case ErrorResponseCode.NotLeaderForPartition:
-                    throw new InvalidMetadataException("FetchResponse indicated we may have mismatched metadata. ErrorCode:{0}", response.Error) { ErrorCode = response.Error };
+                    throw new CachedMetadataException(
+                        $"FetchResponse indicated we may have mismatched metadata. ErrorCode:{response.Error}",
+                        FetchException(response, connection));
                 default:
-                    throw new KafkaRequestException($"FetchResponse returned error condition.  ErrorCode:{response.Error}") {
-                        ApiKey = ApiKeyRequestType.Fetch,
-                        ErrorCode = (ErrorResponseCode)response.Error,
-                        Endpoint = connection?.Endpoint
-                    };
+                    throw FetchException(response, connection);
             }
+        }
+
+        private static KafkaRequestException FetchException(FetchResponse response, IKafkaConnection connection)
+        {
+            return new KafkaRequestException($"FetchResponse returned error condition. ErrorCode:{response.Error}") {
+                ApiKey = ApiKeyRequestType.Fetch,
+                ErrorCode = (ErrorResponseCode)response.Error,
+                Endpoint = connection?.Endpoint
+            };
         }
 
         private void FixOffsetOutOfRangeExceptionAsync(Fetch request)

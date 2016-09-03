@@ -204,7 +204,7 @@ namespace kafka_tests.Integration
         }
 
         [Test]
-        [ExpectedException(typeof(InvalidPartitionException))]
+        [ExpectedException(typeof(CachedMetadataException))]
         public async Task FetchMessagesPartitionDoesntExist()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
@@ -260,7 +260,7 @@ namespace kafka_tests.Integration
         }
 
         [Test]
-        [ExpectedException(typeof(InvalidPartitionException))]
+        [ExpectedException(typeof(CachedMetadataException))]
         public async Task FetchOffsetPartitionDoesntExistTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
@@ -383,7 +383,7 @@ namespace kafka_tests.Integration
         }
 
         [Test]
-        [ExpectedException(typeof(InvalidPartitionException))]
+        [ExpectedException(typeof(CachedMetadataException))]
         public async Task UpdateOrCreateOffsetPartitionDoesntExistTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
@@ -480,7 +480,7 @@ namespace kafka_tests.Integration
         }
 
         [Test]
-        [ExpectedException(typeof(InvalidPartitionException))]
+        [ExpectedException(typeof(CachedMetadataException))]
         public async Task FetchLastOffsetPartitionDoesntExistTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
@@ -494,7 +494,7 @@ namespace kafka_tests.Integration
         }
 
         [Test]
-        [ExpectedException(typeof(InvalidPartitionException))]
+        [ExpectedException(typeof(CachedMetadataException))]
         public async Task FetchLastOffsetTopicDoesntExistTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer

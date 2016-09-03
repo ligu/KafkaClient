@@ -144,7 +144,7 @@ namespace kafka_tests.Unit
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
-        [ExpectedException(typeof(InvalidPartitionException))]
+        [ExpectedException(typeof(CachedMetadataException))]
         public void KeyHashShouldThrowExceptionWhenChoosesAPartitionIdThatDoesNotExist()
         {
             var selector = new DefaultPartitionSelector();

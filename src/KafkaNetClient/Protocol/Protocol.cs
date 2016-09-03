@@ -167,25 +167,6 @@ namespace KafkaNet.Protocol
     #region Exceptions...
 
     [Serializable]
-    public class InvalidPartitionException : ApplicationException
-    {
-        public InvalidPartitionException(string message, params object[] args)
-            : base(string.Format(message, args))
-        {
-        }
-
-        public InvalidPartitionException(SerializationInfo info, StreamingContext context)
-            : base(info, context)
-        {
-        }
-
-        public InvalidPartitionException(string message, Exception innerException)
-            : base(message, innerException)
-        {
-        }
-    }
-
-    [Serializable]
     public class NoLeaderElectedForPartition : ApplicationException
     {
          public NoLeaderElectedForPartition(string message, params object[] args)
@@ -234,25 +215,6 @@ namespace KafkaNet.Protocol
     }
 
     [Serializable]
-    public class InvalidTopicNotExistsInCache : Exception
-    {
-        public InvalidTopicNotExistsInCache(string info)
-            : base(info)
-        {
-        }
-
-        public InvalidTopicNotExistsInCache(SerializationInfo info, StreamingContext context)
-            : base(info, context)
-        {
-        }
-
-        public InvalidTopicNotExistsInCache(string message, Exception innerException)
-            : base(message, innerException)
-        {
-        }
-    }
-
-    [Serializable]
     public class LeaderNotFoundException : ApplicationException
     {
         public LeaderNotFoundException(string message, params object[] args)
@@ -268,34 +230,6 @@ namespace KafkaNet.Protocol
         public LeaderNotFoundException(string message, Exception innerException)
             : base(message, innerException)
         {
-        }
-    }
-
-    [Serializable]
-    public class InvalidMetadataException : ApplicationException
-    {
-        public int ErrorCode { get; set; }
-
-        public InvalidMetadataException(string message, params object[] args)
-            : base(string.Format(message, args))
-        {
-        }
-
-        public InvalidMetadataException(SerializationInfo info, StreamingContext context)
-            : base(info, context)
-        {
-            ErrorCode = info.GetInt32("ErrorCode");
-        }
-
-        public InvalidMetadataException(string message, Exception innerException)
-            : base(message, innerException)
-        {
-        }
-
-        public override void GetObjectData(SerializationInfo info, StreamingContext context)
-        {
-            base.GetObjectData(info, context);
-            info.AddValue("ErrorCode", ErrorCode);
         }
     }
 
