@@ -408,39 +408,5 @@ namespace KafkaNet.Protocol
         }
     }
 
-    /// <summary>
-    /// Base class for all exceptions driven by server responses (and associated with an <see cref="ErrorCode"/>)
-    /// </summary>
-    [Serializable]
-    public class KafkaServerException : KafkaException
-    {
-        public KafkaServerException(string message)
-            : base(message)
-        {
-        }
-
-        public KafkaServerException(string message, Exception innerException)
-            : base(message, innerException)
-        {
-        }
-
-        public KafkaServerException(SerializationInfo info, StreamingContext context)
-            : base(info, context)
-        {
-            ErrorCode = (ErrorResponseCode)info.GetInt16("ErrorCode");
-        }
-
-        public override void GetObjectData(SerializationInfo info, StreamingContext context)
-        {
-            base.GetObjectData(info, context);
-            info.AddValue("ErrorCode", (short)ErrorCode);
-        }
-
-        public ErrorResponseCode ErrorCode { get; set; }
-    }
-
-
-    
-
     #endregion Exceptions...
 }

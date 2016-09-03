@@ -103,8 +103,9 @@ namespace KafkaNet.Protocol
         public KafkaRequestException(SerializationInfo info, StreamingContext context)
             : base(info, context)
         {
-            ApiKey = (ApiKeyRequestType)info.GetInt64("ApiKey");
+            ApiKey = (ApiKeyRequestType)info.GetInt16("ApiKey");
             Endpoint = info.GetValue<KafkaEndpoint>("Endpoint");
+            ErrorCode = (ErrorResponseCode)info.GetInt16("ErrorCode");
         }
 
         public override void GetObjectData(SerializationInfo info, StreamingContext context)
@@ -112,10 +113,12 @@ namespace KafkaNet.Protocol
             base.GetObjectData(info, context);
             info.AddValue("ApiKey", (short)ApiKey);
             info.AddValue("Endpoint", Endpoint);
+            info.AddValue("ErrorCode", (short)ErrorCode);
         }
 
         public ApiKeyRequestType ApiKey { get; set; }
         public KafkaEndpoint Endpoint { get; set; }
+        public ErrorResponseCode ErrorCode { get; set; }
     }
 
     /// <summary>

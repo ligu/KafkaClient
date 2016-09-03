@@ -41,7 +41,7 @@ namespace kafka_tests.Unit
         public async Task ShouldSendAsyncToAllConnectionsEvenWhenExceptionOccursOnOne()
         {
             var routerProxy = new FakeBrokerRouter();
-            routerProxy.BrokerConn1.ProduceResponseFunction = () => { throw new KafkaServerException("some exception"); };
+            routerProxy.BrokerConn1.ProduceResponseFunction = () => { throw new KafkaRequestException("some exception"); };
             var router = routerProxy.Create();
 
             using (var producer = new Producer(router))
@@ -49,7 +49,7 @@ namespace kafka_tests.Unit
                 var messages = new List<Message> { new Message("1"), new Message("2") };
 
                 var sendTask = producer.SendMessageAsync("UnitTest", messages).ConfigureAwait(false);
-                Assert.Throws<KafkaServerException>(async () => await sendTask);
+                Assert.Throws<KafkaRequestException>(async () => await sendTask);
 
                 Assert.That(routerProxy.BrokerConn0.ProduceRequestCallCount, Is.EqualTo(1));
                 Assert.That(routerProxy.BrokerConn1.ProduceRequestCallCount, Is.EqualTo(1));

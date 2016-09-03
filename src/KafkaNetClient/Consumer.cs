@@ -178,7 +178,7 @@ namespace KafkaNet
 
                                 if (response != null && response.Messages.Any())
                                 {
-                                    HandleResponseErrors(fetch, response);
+                                    HandleResponseErrors(fetch, response, route.Connection);
 
                                     foreach (var message in response.Messages)
                                     {
@@ -256,7 +256,7 @@ namespace KafkaNet
             });
         }
 
-        private void HandleResponseErrors(Fetch request, FetchResponse response)
+        private void HandleResponseErrors(Fetch request, FetchResponse response, IKafkaConnection connection)
         {
             switch ((ErrorResponseCode)response.Error)
             {
@@ -269,9 +269,13 @@ namespace KafkaNet
                 case ErrorResponseCode.ConsumerCoordinatorNotAvailableCode:
                 case ErrorResponseCode.LeaderNotAvailable:
                 case ErrorResponseCode.NotLeaderForPartition:
-                    throw new InvalidMetadataException("FetchResponse indicated we may have mismatched metadata.  ErrorCode:{0}", response.Error) { ErrorCode = response.Error };
+                    throw new InvalidMetadataException("FetchResponse indicated we may have mismatched metadata. ErrorCode:{0}", response.Error) { ErrorCode = response.Error };
                 default:
-                    throw new KafkaServerException("FetchResponse returned error condition.  ErrorCode:{0}", response.Error) { ErrorCode = response.Error };
+                    throw new KafkaRequestException($"FetchResponse returned error condition.  ErrorCode:{response.Error}") {
+                        ApiKey = ApiKeyRequestType.Fetch,
+                        ErrorCode = (ErrorResponseCode)response.Error,
+                        Endpoint = connection?.Endpoint
+                    };
             }
         }
 

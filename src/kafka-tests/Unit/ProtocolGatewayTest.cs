@@ -93,7 +93,7 @@ namespace kafka_tests.Unit
         }
 
         [TestCase(typeof(Exception))]
-        [TestCase(typeof(KafkaServerException))]
+        [TestCase(typeof(KafkaRequestException))]
         public async Task SendProtocolRequestShouldThrowException(Type exceptionType)
         {
             var routerProxy = new BrokerRouterProxy(_kernel);
@@ -115,7 +115,7 @@ namespace kafka_tests.Unit
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
-        [ExpectedException(typeof(KafkaServerException))]
+        [ExpectedException(typeof(KafkaRequestException))]
         [TestCase(ErrorResponseCode.InvalidMessage)]
         [TestCase(ErrorResponseCode.InvalidMessageSize)]
         [TestCase(ErrorResponseCode.MessageSizeTooLarge)]

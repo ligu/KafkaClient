@@ -43,13 +43,14 @@ namespace KafkaNet
         /// <exception cref="InvalidPartitionException">Thrown if the give partitionId does not exist for the given topic.</exception>
         /// <exception cref="TimeoutException">Thrown if there request times out</exception>
         /// <exception cref="KafkaConnectionException">Thrown in case of network error contacting broker (after retries), or if none of the default brokers can be contacted.</exception>
-        /// <exception cref="KafkaServerException">Thrown in case of an unexpected error in the request</exception>
+        /// <exception cref="KafkaRequestException">Thrown in case of an unexpected error in the request</exception>
         /// <exception cref="FormatException">Thrown in case the topic name is invalid</exception>
         public async Task<T> SendProtocolRequest<T>(IKafkaRequest<T> request, string topic, int partition) where T : class, IBaseResponse
         {
             ValidateTopic(topic);
             T response = null;
             int retryTime = 0;
+            IKafkaConnection connection = null;
             while (retryTime < _maxRetry)
             {
                 bool needToRefreshTopicMetadata = false;
@@ -62,6 +63,7 @@ namespace KafkaNet
 
                     //find route it can chage after Metadata Refresh
                     var route = _brokerRouter.SelectBrokerRouteFromLocalCache(topic, partition);
+                    connection = route.Connection;
                     var responses = await route.Connection.SendAsync(request).ConfigureAwait(false);
                     response = responses.FirstOrDefault();
 
@@ -127,8 +129,10 @@ namespace KafkaNet
                     }
                     
                     // Otherwise, the error was from Kafka, throwing application exception
-                    throw new KafkaServerException($"FetchResponse received an error from Kafka: {errorDetails}") {
-                        ErrorCode = (ErrorResponseCode)response.Error
+                    throw new KafkaRequestException($"Response received an error from Kafka: {errorDetails}") {
+                        ErrorCode = (ErrorResponseCode)response.Error,
+                        ApiKey = request.ApiKey,
+                        Endpoint = connection?.Endpoint
                     };
                 }
             }

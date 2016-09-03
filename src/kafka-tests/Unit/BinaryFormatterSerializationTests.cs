@@ -24,7 +24,7 @@ namespace kafka_tests.Unit
         [Test]
         public void ShouldSerializeBufferUnderRunException()
         {
-            var expected = new BufferUnderRunException(44,44);
+            var expected = new BufferUnderRunException(44, 44, 43);
             var actual = SerializeDeserialize(expected);
 
             Assert.AreEqual(expected.MessageHeaderSize, actual.MessageHeaderSize);
@@ -55,7 +55,7 @@ namespace kafka_tests.Unit
         [Test]
         public void ShouldSerializeOffsetKafkaEndpointInnerObjectAreNull()
         {
-            var expected = new BrokerException("a",new KafkaEndpoint());
+            var expected = new BrokerException("a", null);
             var actual = SerializeDeserialize(expected);
 
             Assert.AreEqual(expected.BrokerEndPoint.ServeUri, actual.BrokerEndPoint.ServeUri);
@@ -65,7 +65,7 @@ namespace kafka_tests.Unit
         [Test]
         public void ShouldSerializeOffsetKafkaEndpoint()
         {
-            var expected = new BrokerException("a", new KafkaEndpoint() {Endpoint = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 8888),ServeUri = new Uri("http://S1.com")});
+            var expected = new BrokerException("a", new KafkaEndpoint(new Uri("http://S1.com"), new IPEndPoint(IPAddress.Parse("127.0.0.1"), 8888)));
             var actual = SerializeDeserialize(expected);
 
             Assert.AreEqual(expected.BrokerEndPoint.ServeUri, actual.BrokerEndPoint.ServeUri);
@@ -84,7 +84,7 @@ namespace kafka_tests.Unit
         [Test]
         public void ShouldSerializeKafkaApplicationException()
         {
-            var expected = new KafkaServerException("3"){ErrorCode = 1};
+            var expected = new KafkaRequestException("3"){ErrorCode = ErrorResponseCode.OffsetOutOfRange};
             var actual = SerializeDeserialize(expected);
 
             Assert.AreEqual(expected.ErrorCode, actual.ErrorCode);
