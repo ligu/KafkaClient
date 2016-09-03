@@ -115,13 +115,13 @@ namespace KafkaNet
                 }
                 catch (Exception ex)
                 {
-                    _log.WarnFormat("Failed to contact Kafka server={0}.  Trying next default server.  Exception={1}", conn.Endpoint, ex);
+                    _log.WarnFormat("Failed to contact Kafka server={0}. Trying next default server. Exception={1}", conn.Endpoint, ex);
                 }
             }
 
-            throw new ServerUnreachableException(
-                        "Unable to query for metadata from any of the default Kafka servers.  At least one provided server must be available.  Server list: {0}",
-                        string.Join(", ", connections.Select(x => x.ToString())));
+            throw new KafkaRequestException($"Unable to query for metadata from any of the provided Kafka servers. Server list: {string.Join(", ", connections.Select(x => x.ToString()))}") {
+                ApiKey = request.ApiKey,
+            };
         }
 
         private IEnumerable<MetadataValidationResult> ValidateResponse(MetadataResponse metadata)

@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 
 namespace kafka_tests.Unit
 {
+    [Category("Unit")]
     [TestFixture]
     public class AsyncCollectionTests
     {

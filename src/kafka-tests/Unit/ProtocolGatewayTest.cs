@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 namespace kafka_tests.Unit
 {
     [TestFixture]
-    [Category("unit")]
+    [Category("Unit")]
     public class ProtocolGatewayTest
     {
         private MoqMockingKernel _kernel;
@@ -72,8 +72,8 @@ namespace kafka_tests.Unit
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
-        [TestCase(typeof(BrokerConnectionException))]
-        [TestCase(typeof(ResponseTimeoutException))]
+        [TestCase(typeof(KafkaConnectionException))]
+        [TestCase(typeof(KafkaRequestException))]
         [TestCase(typeof(NoLeaderElectedForPartition))]
         [TestCase(typeof(LeaderNotFoundException))]
         public async Task ShouldTryToRefreshMataDataIfOnExceptions(Type exceptionType)
@@ -93,7 +93,7 @@ namespace kafka_tests.Unit
         }
 
         [TestCase(typeof(Exception))]
-        [TestCase(typeof(KafkaApplicationException))]
+        [TestCase(typeof(KafkaServerException))]
         public async Task SendProtocolRequestShouldThrowException(Type exceptionType)
         {
             var routerProxy = new BrokerRouterProxy(_kernel);
@@ -115,7 +115,7 @@ namespace kafka_tests.Unit
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
-        [ExpectedException(typeof(KafkaApplicationException))]
+        [ExpectedException(typeof(KafkaServerException))]
         [TestCase(ErrorResponseCode.InvalidMessage)]
         [TestCase(ErrorResponseCode.InvalidMessageSize)]
         [TestCase(ErrorResponseCode.MessageSizeTooLarge)]
@@ -235,7 +235,7 @@ namespace kafka_tests.Unit
 
                     await x.Task;
                     log.DebugFormat("SocketException ");
-                    throw new BrokerConnectionException("",new KafkaEndpoint());
+                    throw new KafkaConnectionException("");
                 }
                 log.DebugFormat("Completed ");
 
@@ -278,7 +278,7 @@ namespace kafka_tests.Unit
             Assert.That(routerProxy.BrokerConn0.MetadataRequestCallCount, Is.EqualTo(1), "MetadataRequestCallCount");
             Assert.That(routerProxy.BrokerConn1.MetadataRequestCallCount, Is.EqualTo(0), "MetadataRequestCallCount");
 
-            routerProxy.BrokerConn0.FetchResponseFunction = FailedInFirstMessageException(typeof(BrokerConnectionException), TimeSpan.Zero);
+            routerProxy.BrokerConn0.FetchResponseFunction = FailedInFirstMessageException(typeof(KafkaConnectionException), TimeSpan.Zero);
             //triger to update metadata
             routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.CreateMetaResponseWithException;
             routerProxy.BrokerConn1.MetadataResponseFunction = BrokerRouterProxy.CreateMetadataResponseWithSingleBroker;
@@ -367,9 +367,9 @@ namespace kafka_tests.Unit
                     await Task.Delay(delay);
                     await Task.Delay(1);
                     firstTime = false;
-                    if (exceptionType == typeof(BrokerConnectionException))
+                    if (exceptionType == typeof(KafkaConnectionException))
                     {
-                        throw new BrokerConnectionException("",new KafkaEndpoint());
+                        throw new KafkaConnectionException("");
                     }
                     object[] args = new object[1];
                     args[0] = "error Test";

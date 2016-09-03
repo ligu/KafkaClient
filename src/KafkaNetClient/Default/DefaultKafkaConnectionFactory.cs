@@ -20,12 +20,7 @@ namespace KafkaNet
             var ipAddress = GetFirstAddress(kafkaAddress.Host, log);
             var ipEndpoint = new IPEndPoint(ipAddress, kafkaAddress.Port);
 
-            var kafkaEndpoint = new KafkaEndpoint()
-            {
-                ServeUri = kafkaAddress,
-                Endpoint = ipEndpoint
-            };
-
+            var kafkaEndpoint = new KafkaEndpoint(kafkaAddress, ipEndpoint);
             return kafkaEndpoint;
         }
 

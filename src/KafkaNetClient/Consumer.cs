@@ -202,7 +202,7 @@ namespace KafkaNet
                             //no message received from server wait a while before we try another long poll
                             await Task.Delay(_options.BackoffInterval, _disposeToken.Token);
                         }
-                        catch (BrokerConnectionException ex)
+                        catch (KafkaConnectionException ex)
                         {
                             needToRefreshMetadata = true;
                             _options.Log.ErrorFormat(ex.Message);
@@ -271,7 +271,7 @@ namespace KafkaNet
                 case ErrorResponseCode.NotLeaderForPartition:
                     throw new InvalidMetadataException("FetchResponse indicated we may have mismatched metadata.  ErrorCode:{0}", response.Error) { ErrorCode = response.Error };
                 default:
-                    throw new KafkaApplicationException("FetchResponse returned error condition.  ErrorCode:{0}", response.Error) { ErrorCode = response.Error };
+                    throw new KafkaServerException("FetchResponse returned error condition.  ErrorCode:{0}", response.Error) { ErrorCode = response.Error };
             }
         }
 

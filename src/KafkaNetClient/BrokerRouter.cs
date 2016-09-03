@@ -43,7 +43,7 @@ namespace KafkaNet
             }
 
             if (_defaultConnectionIndex.Count <= 0)
-                throw new ServerUnreachableException("None of the provided Kafka servers are resolvable.");
+                throw new KafkaConnectionException("None of the provided Kafka servers are resolvable.");
         }
 
         private IKafkaConnection[] GetConnections()

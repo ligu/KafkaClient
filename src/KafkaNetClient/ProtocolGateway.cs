@@ -3,10 +3,19 @@ using KafkaNet.Protocol;
 using System;
 using System.Linq;
 using System.Runtime.ExceptionServices;
+using System.Runtime.Serialization;
 using System.Threading.Tasks;
 
 namespace KafkaNet
 {
+    public static class Extensions
+    {
+        public static T GetValue<T>(this SerializationInfo info, string name)
+        {
+            return (T)info.GetValue(name, typeof(T));
+        }
+    }
+
     public class ProtocolGateway : IDisposable
     {
         private readonly IBrokerRouter _brokerRouter;
@@ -32,10 +41,9 @@ namespace KafkaNet
 
         /// <exception cref="InvalidTopicMetadataException">Thrown if the returned metadata for the given topic is invalid or missing</exception>
         /// <exception cref="InvalidPartitionException">Thrown if the give partitionId does not exist for the given topic.</exception>
-        /// <exception cref="ServerUnreachableException">Thrown if none of the default brokers can be contacted</exception>
-        /// <exception cref="ResponseTimeoutException">Thrown if there request times out</exception>
-        /// <exception cref="BrokerConnectionException">Thrown in case of network error contacting broker (after retries)</exception>
-        /// <exception cref="KafkaApplicationException">Thrown in case of an unexpected error in the request</exception>
+        /// <exception cref="TimeoutException">Thrown if there request times out</exception>
+        /// <exception cref="KafkaConnectionException">Thrown in case of network error contacting broker (after retries), or if none of the default brokers can be contacted.</exception>
+        /// <exception cref="KafkaServerException">Thrown in case of an unexpected error in the request</exception>
         /// <exception cref="FormatException">Thrown in case the topic name is invalid</exception>
         public async Task<T> SendProtocolRequest<T>(IKafkaRequest<T> request, string topic, int partition) where T : class, IBaseResponse
         {
@@ -76,11 +84,12 @@ namespace KafkaNet
                         exceptionInfo = ExceptionDispatchInfo.Capture(new InvalidTopicMetadataException(errorDetails, null));
                     }
                 }
-                catch (ResponseTimeoutException ex)
+                catch (TimeoutException ex)
                 {
+                    // TODO: wrap this in another exception type?
                     exceptionInfo = ExceptionDispatchInfo.Capture(ex);
                 }
-                catch (BrokerConnectionException ex)
+                catch (KafkaConnectionException ex)
                 {
                     exceptionInfo = ExceptionDispatchInfo.Capture(ex);
                 }
@@ -118,7 +127,9 @@ namespace KafkaNet
                     }
                     
                     // Otherwise, the error was from Kafka, throwing application exception
-                    throw new KafkaApplicationException("FetchResponse received an error from Kafka: {0}", errorDetails) { ErrorCode = response.Error };
+                    throw new KafkaServerException($"FetchResponse received an error from Kafka: {errorDetails}") {
+                        ErrorCode = (ErrorResponseCode)response.Error
+                    };
                 }
             }
 

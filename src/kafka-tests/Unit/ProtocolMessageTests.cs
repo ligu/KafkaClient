@@ -14,7 +14,7 @@ namespace kafka_tests.Unit
     public class ProtocolMessageTests
     {
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
-        [ExpectedException(typeof(FailCrcCheckException))]
+        [ExpectedException(typeof(CrcValidationException))]
         public void DecodeMessageShouldThrowWhenCrcFails()
         {
             var testMessage = new Message(value: "kafka test message.", key: "test");

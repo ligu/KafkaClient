@@ -41,7 +41,7 @@ namespace KafkaNet.Protocol
     /// <summary>
     /// Enumeration of numeric codes that the ApiKey in the request can take for each request types.
     /// </summary>
-    public enum ApiKeyRequestType
+    public enum ApiKeyRequestType : short
     {
         Produce = 0,
         Fetch = 1,
@@ -167,44 +167,6 @@ namespace KafkaNet.Protocol
     #region Exceptions...
 
     [Serializable]
-    public class FailCrcCheckException : ApplicationException
-    {
-        public FailCrcCheckException(string message, params object[] args)
-            : base(string.Format(message, args))
-        {
-        }
-
-        public FailCrcCheckException(SerializationInfo info, StreamingContext context)
-            : base(info, context)
-        {
-        }
-
-        public FailCrcCheckException(string message, Exception innerException)
-            : base(message, innerException)
-        {
-        }
-    }
-
-    [Serializable]
-    public class ResponseTimeoutException : ApplicationException
-    {
-        public ResponseTimeoutException(string message, params object[] args)
-            : base(string.Format(message, args))
-        {
-        }
-
-        public ResponseTimeoutException(SerializationInfo info, StreamingContext context)
-            : base(info, context)
-        {
-        }
-
-        public ResponseTimeoutException(string message, Exception innerException)
-            : base(message, innerException)
-        {
-        }
-    }
-
-    [Serializable]
     public class InvalidPartitionException : ApplicationException
     {
         public InvalidPartitionException(string message, params object[] args)
@@ -272,12 +234,7 @@ namespace KafkaNet.Protocol
                     uri = new Uri(info.GetString("ServeUri"));
                 }
 
-                BrokerEndPoint = new KafkaEndpoint
-                {
-                    Endpoint = ipEndPoint,
-                    ServeUri = uri
-
-                };
+                BrokerEndPoint = new KafkaEndpoint(uri, ipEndPoint);
             }
         }
 
@@ -307,45 +264,6 @@ namespace KafkaNet.Protocol
                 if (BrokerEndPoint.ServeUri != null)
                     info.AddValue("ServeUri", BrokerEndPoint.ServeUri.ToString());
             }
-        }
-    }
-
-    [Serializable]
-    public class BrokerConnectionException : BrokerException
-    {
-        public BrokerConnectionException(string message, KafkaEndpoint endPoint, params object[] args)
-            : base(string.Format(message, args), endPoint)
-        {
-        }
-
-        public BrokerConnectionException(SerializationInfo info, StreamingContext context)
-            : base(info, context)
-        {
-        }
-
-        public BrokerConnectionException(string message, KafkaEndpoint endPoint, Exception innerException)
-            : base(message, endPoint, innerException)
-        {
-            BrokerEndPoint = endPoint;
-        }
-    }
-
-    [Serializable]
-    public class ServerUnreachableException : ApplicationException
-    {
-        public ServerUnreachableException(string message, params object[] args)
-            : base(string.Format(message, args))
-        {
-        }
-
-        public ServerUnreachableException(SerializationInfo info, StreamingContext context)
-            : base(info, context)
-        {
-        }
-
-        public ServerUnreachableException(string message, Exception innerException)
-            : base(message, innerException)
-        {
         }
     }
 
@@ -509,66 +427,39 @@ namespace KafkaNet.Protocol
         }
     }
 
+    /// <summary>
+    /// Base class for all exceptions driven by server responses (and associated with an <see cref="ErrorCode"/>)
+    /// </summary>
     [Serializable]
-    public class BufferUnderRunException : ApplicationException
+    public class KafkaServerException : KafkaException
     {
-        public int MessageHeaderSize { get; set; }
-        public int RequiredBufferSize { get; set; }
-
-        public BufferUnderRunException(int messageHeaderSize, int requiredBufferSize)
-            : base("The size of the message from Kafka exceeds the provide buffer size.")
+        public KafkaServerException(string message)
+            : base(message)
         {
-            MessageHeaderSize = messageHeaderSize;
-            RequiredBufferSize = requiredBufferSize;
         }
 
-        public BufferUnderRunException(string message, Exception innerException)
+        public KafkaServerException(string message, Exception innerException)
             : base(message, innerException)
         {
         }
 
-        public BufferUnderRunException(SerializationInfo info, StreamingContext context)
+        public KafkaServerException(SerializationInfo info, StreamingContext context)
             : base(info, context)
         {
-            MessageHeaderSize = info.GetInt32("MessageHeaderSize");
-            RequiredBufferSize = info.GetInt32("RequiredBufferSize");
+            ErrorCode = (ErrorResponseCode)info.GetInt16("ErrorCode");
         }
 
         public override void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             base.GetObjectData(info, context);
-            info.AddValue("MessageHeaderSize", MessageHeaderSize);
-            info.AddValue("RequiredBufferSize", RequiredBufferSize);
+            info.AddValue("ErrorCode", (short)ErrorCode);
         }
+
+        public ErrorResponseCode ErrorCode { get; set; }
     }
 
-    [Serializable]
-    public class KafkaApplicationException : ApplicationException
-    {
-        public int ErrorCode { get; set; }
 
-        public KafkaApplicationException(string message, params object[] args)
-            : base(string.Format(message, args))
-        {
-        }
-
-        public KafkaApplicationException(string message, Exception innerException)
-            : base(message, innerException)
-        {
-        }
-
-        public KafkaApplicationException(SerializationInfo info, StreamingContext context)
-            : base(info, context)
-        {
-            ErrorCode = info.GetInt32("ErrorCode");
-        }
-
-        public override void GetObjectData(SerializationInfo info, StreamingContext context)
-        {
-            base.GetObjectData(info, context);
-            info.AddValue("ErrorCode", ErrorCode);
-        }
-    }
+    
 
     #endregion Exceptions...
 }

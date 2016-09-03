@@ -22,7 +22,7 @@ namespace kafka_tests.Unit
     /// Note these integration tests require an actively running kafka server defined in the app.config file.
     /// </summary>
     [TestFixture]
-    [Category("unit")]
+    [Category("Integration")]
     public class KafkaTcpSocketTests
     {
         private const int FakeServerPort = 8999;
@@ -349,12 +349,12 @@ namespace kafka_tests.Unit
                 resultTask.ContinueWith(t => resultTask = t).Wait(TimeSpan.FromSeconds(1));
 
                 Assert.That(resultTask.IsFaulted, Is.True);
-                Assert.That(resultTask.Exception.InnerException, Is.TypeOf<BrokerConnectionException>());
+                Assert.That(resultTask.Exception.InnerException, Is.TypeOf<KafkaConnectionException>());
             }
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
-        [ExpectedException(typeof(BrokerConnectionException))]
+        [ExpectedException(typeof(KafkaConnectionException))]
         public async Task WhenNoConnectionThrowSocketException()
         {
             var socket = new KafkaTcpSocket(_log, new KafkaEndpoint() { ServeUri = new Uri("http://not.com") }, _maxRetry);
@@ -364,7 +364,7 @@ namespace kafka_tests.Unit
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
-        [ExpectedException(typeof(BrokerConnectionException))]
+        [ExpectedException(typeof(KafkaConnectionException))]
         public async Task WhenNoConnectionThrowSocketExceptionAfterMaxRetry()
         {
             var reconnectionAttempt = 0;
@@ -398,7 +398,7 @@ namespace kafka_tests.Unit
                 //wait till Disconnected
                 await Task.WhenAny(disconnectEvent.Task, Task.Delay(100000));
                 Assert.IsTrue(disconnectEvent.Task.IsCompleted, "Server should have disconnected the client.");
-                Assert.Throws<BrokerConnectionException>(async () => await readTask);
+                Assert.Throws<KafkaConnectionException>(async () => await readTask);
                 await TaskTest.WaitFor(() => connects == 2, 6000);
                 Assert.That(connects, Is.EqualTo(2), "Socket should have reconnected.");
 

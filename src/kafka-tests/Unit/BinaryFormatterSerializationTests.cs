@@ -8,6 +8,7 @@ using System.Runtime.Serialization.Formatters.Binary;
 
 namespace kafka_tests.Unit
 {
+    [Category("Unit")]
     [TestFixture]
     public class BinaryFormatterSerializationTests
     {
@@ -83,7 +84,7 @@ namespace kafka_tests.Unit
         [Test]
         public void ShouldSerializeKafkaApplicationException()
         {
-            var expected = new KafkaApplicationException("3"){ErrorCode = 1};
+            var expected = new KafkaServerException("3"){ErrorCode = 1};
             var actual = SerializeDeserialize(expected);
 
             Assert.AreEqual(expected.ErrorCode, actual.ErrorCode);
