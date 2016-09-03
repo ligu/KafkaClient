@@ -44,10 +44,10 @@ namespace KafkaNet
             }
             catch
             {
-                throw new UnresolvedHostnameException("Could not resolve the following hostname: {0}", hostname);
+                throw new KafkaConnectionException($"Could not resolve the following hostname: {hostname}");
             }
 
-            throw new UnresolvedHostnameException("Could not resolve the following hostname: {0}", hostname);
+            throw new KafkaConnectionException($"Could not resolve the following hostname: {hostname}");
         }
     }
 }

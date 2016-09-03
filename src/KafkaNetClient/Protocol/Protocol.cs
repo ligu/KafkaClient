@@ -335,25 +335,6 @@ namespace KafkaNet.Protocol
     }
 
     [Serializable]
-    public class UnresolvedHostnameException : ApplicationException
-    {
-        public UnresolvedHostnameException(string message, params object[] args)
-            : base(string.Format(message, args))
-        {
-        }
-
-        public UnresolvedHostnameException(SerializationInfo info, StreamingContext context)
-            : base(info, context)
-        {
-        }
-
-        public UnresolvedHostnameException(string message, Exception innerException)
-            : base(message, innerException)
-        {
-        }
-    }
-
-    [Serializable]
     public class InvalidMetadataException : ApplicationException
     {
         public int ErrorCode { get; set; }
