@@ -122,9 +122,7 @@ namespace KafkaNet
                     }
                     
                     // Otherwise, the error was from Kafka, throwing application exception
-                    throw new KafkaRequestException($"Response received an error from Kafka: {errorDetails}") {
-                        ErrorCode = (ErrorResponseCode)response.Error,
-                        ApiKey = request.ApiKey,
+                    throw new KafkaRequestException(request.ApiKey, (ErrorResponseCode)response.Error) {
                         Endpoint = connection?.Endpoint
                     };
                 }

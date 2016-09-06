@@ -37,6 +37,34 @@ namespace KafkaNet.Protocol
             return EncodeFetchRequest(this);
         }
 
+        public void DecodeRequest(byte[] payload)
+        {
+            using (var stream = new BigEndianBinaryReader(payload)) {
+                // header
+                var apiKey = stream.ReadInt16();                
+                var version = stream.ReadInt16();
+                var correlationId = stream.ReadInt32();
+                var clientId = stream.ReadInt16String();
+
+                var replicaId = stream.ReadInt32();
+                this.MaxWaitTime = stream.ReadInt32();
+                this.MinBytes = stream.ReadInt32();
+
+                var fetches = stream.ReadInt32();
+                this.Fetches = new List<Fetch>(fetches);
+                for (var i = 0; i < fetches; i++) {
+                    var fetch = new Fetch();
+                    fetch.Topic = stream.ReadInt16String();
+                    var partitions = stream.ReadInt32();
+                    fetch.PartitionId = stream.ReadInt32();
+                    fetch.Offset = stream.ReadInt64();
+                    fetch.MaxBytes = stream.ReadInt32();
+
+                    this.Fetches.Add(fetch);
+                }
+            }
+        }
+
         public IEnumerable<FetchResponse> Decode(byte[] payload)
         {
             return DecodeFetchResponse(payload);

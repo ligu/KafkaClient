@@ -2,6 +2,7 @@
 using KafkaNet.Protocol;
 using NUnit.Framework;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Runtime.Serialization.Formatters.Binary;
@@ -34,22 +35,27 @@ namespace kafka_tests.Unit
         [Test]
         public void ShouldSerializeOffsetOutOfRangeException()
         {
-            var expected = new FetchRequestException("a"){FetchRequest = new Fetch(){MaxBytes = 1,Topic = "aa",Offset = 2,PartitionId = 3}};
+            var expected = new FetchRequestException(
+                new FetchRequest {
+                    Fetches = new List<Fetch> {
+                        new Fetch(){MaxBytes = 1,Topic = "aa",Offset = 2,PartitionId = 3}
+                    }
+                }, ErrorResponseCode.OffsetOutOfRange);
             var actual = SerializeDeserialize(expected);
 
-            Assert.AreEqual(expected.FetchRequest.MaxBytes, actual.FetchRequest.MaxBytes);
-            Assert.AreEqual(expected.FetchRequest.Offset, actual.FetchRequest.Offset);
-            Assert.AreEqual(expected.FetchRequest.PartitionId, actual.FetchRequest.PartitionId);
-            Assert.AreEqual(expected.FetchRequest.Topic, actual.FetchRequest.Topic);
+            Assert.AreEqual(expected.Request.Fetches[0].MaxBytes, actual.Request.Fetches[0].MaxBytes);
+            Assert.AreEqual(expected.Request.Fetches[0].Offset, actual.Request.Fetches[0].Offset);
+            Assert.AreEqual(expected.Request.Fetches[0].PartitionId, actual.Request.Fetches[0].PartitionId);
+            Assert.AreEqual(expected.Request.Fetches[0].Topic, actual.Request.Fetches[0].Topic);
         }
 
         [Test]
         public void ShouldSerializeOffsetOutOfRangeExceptionNull()
         {
-            var expected = new FetchRequestException("a") {FetchRequest = null};
+            var expected = new FetchRequestException("a");
             var actual = SerializeDeserialize(expected);
 
-            Assert.AreEqual(expected.FetchRequest, actual.FetchRequest);
+            Assert.AreEqual(expected.Request, actual.Request);
         }
 
         [Test]
@@ -87,7 +93,7 @@ namespace kafka_tests.Unit
         [Test]
         public void ShouldSerializeKafkaApplicationException()
         {
-            var expected = new KafkaRequestException("3"){ErrorCode = ErrorResponseCode.OffsetOutOfRange};
+            var expected = new KafkaRequestException(ApiKeyRequestType.Fetch, ErrorResponseCode.OffsetOutOfRange, "3");
             var actual = SerializeDeserialize(expected);
 
             Assert.AreEqual(expected.ErrorCode, actual.ErrorCode);

@@ -82,10 +82,7 @@ namespace KafkaNet
                         case ValidationResult.Error:
                             if (validation.ErrorCode == ErrorResponseCode.NoError) throw new KafkaConnectionException(validation.Message);
 
-                            throw new KafkaRequestException(validation.Message) {
-                                ApiKey = request.ApiKey,
-                                ErrorCode = validation.ErrorCode
-                            };
+                            throw new KafkaRequestException(request.ApiKey, validation.ErrorCode, validation.Message);
                     }
                 }
 
@@ -124,9 +121,7 @@ namespace KafkaNet
                 }
             }
 
-            throw new KafkaRequestException($"Unable to query for metadata from any of the provided Kafka servers. Server list: {string.Join(", ", connections.Select(x => x.ToString()))}") {
-                ApiKey = request.ApiKey,
-            };
+            throw new KafkaRequestException(request.ApiKey, ErrorResponseCode.NoError, $"Unable to query for metadata from any of the provided Kafka servers. Server list: {string.Join(", ", connections.Select(x => x.ToString()))}");
         }
 
         private IEnumerable<MetadataValidationResult> ValidateResponse(MetadataResponse metadata)

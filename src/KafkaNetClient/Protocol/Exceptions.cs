@@ -127,8 +127,14 @@ namespace KafkaNet.Protocol
     [Serializable]
     public class FetchRequestException : KafkaRequestException
     {
-        public FetchRequestException(string message, params object[] args)
-            : base(string.Format(message, args))
+        public FetchRequestException(FetchRequest request, ErrorResponseCode errorCode, string message = null)
+            : base(request.ApiKey, errorCode, message)
+        {
+            Request = request;
+        }
+
+        public FetchRequestException(string message)
+            : base(message)
         {
         }
 
@@ -140,34 +146,33 @@ namespace KafkaNet.Protocol
         public FetchRequestException(SerializationInfo info, StreamingContext context)
             : base(info, context)
         {
-            bool hasFetch = info.GetByte("HasFetch") == 1;
-            if (hasFetch)
-            {
-                FetchRequest = new Fetch
-                {
-                    MaxBytes = info.GetInt32("MaxBytes"),
-                    Offset = info.GetInt64("Offset"),
-                    PartitionId = info.GetInt32("PartitionId"),
-                    Topic = info.GetString("Topic")
-                };
+            var bytes = info.GetInt32("Size");
+            if (bytes > 0) {
+                var buffer = info.GetValue<byte[]>("Request");
+                Request = new FetchRequest();
+                Request.DecodeRequest(buffer);
             }
         }
 
         public override void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             base.GetObjectData(info, context);
-            bool hasValue = FetchRequest != null;
-            info.AddValue("HasFetch", (byte)(hasValue ? 1 : 0));
-            if (hasValue)
-            {
-                info.AddValue("MaxBytes", FetchRequest.MaxBytes);
-                info.AddValue("Offset", FetchRequest.Offset);
-                info.AddValue("PartitionId", FetchRequest.PartitionId);
-                info.AddValue("Topic", FetchRequest.Topic);
+            var bytes = 0;
+            if (Request != null) {
+                var payload = Request.Encode();
+                bytes = payload.Buffer?.Length ?? 0;
+                if (bytes > 0) {
+                    info.AddValue("Size", bytes);
+                    info.AddValue("Request", payload.Buffer);
+                }
             }
+
+            if (bytes == 0) {
+                info.AddValue("Size", 0);
+            }            
         }
 
-        public Fetch FetchRequest { get; set; }
+        public FetchRequest Request { get; }
     }
 
     /// <summary>
@@ -176,6 +181,13 @@ namespace KafkaNet.Protocol
     [Serializable]
     public class KafkaRequestException : KafkaException
     {
+        public KafkaRequestException(ApiKeyRequestType apiKey, ErrorResponseCode errorCode, string message = null)
+            : base(message ?? $"Kafka returned error response for {apiKey}: {errorCode}")
+        {
+            ApiKey = apiKey;
+            ErrorCode = errorCode;
+        }
+
         public KafkaRequestException(string message)
             : base(message)
         {
@@ -190,21 +202,21 @@ namespace KafkaNet.Protocol
             : base(info, context)
         {
             ApiKey = (ApiKeyRequestType)info.GetInt16("ApiKey");
-            Endpoint = info.GetValue<KafkaEndpoint>("Endpoint");
             ErrorCode = (ErrorResponseCode)info.GetInt16("ErrorCode");
+            Endpoint = info.GetValue<KafkaEndpoint>("Endpoint");
         }
 
         public override void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             base.GetObjectData(info, context);
             info.AddValue("ApiKey", (short)ApiKey);
-            info.AddValue("Endpoint", Endpoint);
             info.AddValue("ErrorCode", (short)ErrorCode);
+            info.AddValue("Endpoint", Endpoint);
         }
 
-        public ApiKeyRequestType ApiKey { get; set; }
+        public ApiKeyRequestType ApiKey { get; }
+        public ErrorResponseCode ErrorCode { get; }
         public KafkaEndpoint Endpoint { get; set; }
-        public ErrorResponseCode ErrorCode { get; set; }
     }
 
     /// <summary>
@@ -213,6 +225,12 @@ namespace KafkaNet.Protocol
     [Serializable]
     public class KafkaConnectionException : KafkaException
     {
+        public KafkaConnectionException(KafkaEndpoint endpoint)
+            : base($"Lost connection to server: {endpoint}")
+        {
+            Endpoint = endpoint;
+        }
+
         public KafkaConnectionException(string message)
             : base(message)
         {

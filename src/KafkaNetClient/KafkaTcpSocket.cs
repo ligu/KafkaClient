@@ -268,7 +268,7 @@ namespace KafkaNet
                                 _client = null;
                                 if (_disposeToken.IsCancellationRequested) { return; }
 
-                                throw new KafkaConnectionException($"Lost connection to server: {_endpoint}") { Endpoint = _endpoint };
+                                throw new KafkaConnectionException(_endpoint);
                             }
                         }
 
@@ -296,7 +296,7 @@ namespace KafkaNet
                     //if an exception made us lose a connection throw disconnected exception
                     if (_client == null || _client.Connected == false)
                     {
-                        var exception = new KafkaConnectionException($"Lost connection to server: {_endpoint}") { Endpoint = _endpoint };
+                        var exception = new KafkaConnectionException(_endpoint);
                         readTask.Tcp.TrySetException(exception);
                         throw exception;
                     }
@@ -413,7 +413,7 @@ namespace KafkaNet
                         throw new ObjectDisposedException(string.Format("Object is disposing (KafkaTcpSocket for endpoint: {0})", Endpoint));
 
                     await connectTask;
-                    if (!_client.Connected) throw new KafkaConnectionException($"Lost connection to server: {_endpoint}") { Endpoint = _endpoint };
+                    if (!_client.Connected) throw new KafkaConnectionException(_endpoint);
                     _log.DebugFormat("Connection established to:{0}.", _endpoint);
 
                     return _client;
