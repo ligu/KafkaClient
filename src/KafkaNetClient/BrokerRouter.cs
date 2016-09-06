@@ -205,8 +205,6 @@ namespace KafkaNet
             }
         }
 
-
-
         private TopicSearchResult SearchCacheForTopics(IEnumerable<string> topics, TimeSpan? expiration)
         {
             var result = new TopicSearchResult();
@@ -248,7 +246,10 @@ namespace KafkaNet
             var route = TryGetRouteFromCache(topic, partition);
             if (route != null) return route;
 
-            throw new LeaderNotFoundException(string.Format("Lead broker cannot be found for partition: {0}, leader: {1}", partition.PartitionId, partition.LeaderId));
+            throw new CachedMetadataException($"Lead broker cannot be found for partition: {partition.PartitionId}, leader: {partition.LeaderId}") {
+                Topic = topic,
+                Partition = partition.PartitionId
+            };
         }
 
         private BrokerRoute TryGetRouteFromCache(string topic, Partition partition)
@@ -274,8 +275,10 @@ namespace KafkaNet
                     .FirstOrDefault(x => x.partition != null);
 
             if (noLeaderElectedForPartition != null)
-                throw new NoLeaderElectedForPartition(string.Format("topic:{0} partition:{1}",
-                    noLeaderElectedForPartition.topic, noLeaderElectedForPartition.partition));
+                throw new CachedMetadataException($"topic:{noLeaderElectedForPartition.topic} partition:{noLeaderElectedForPartition.partition}") {
+                    Topic = noLeaderElectedForPartition.topic,
+                    Partition = noLeaderElectedForPartition.partition?.PartitionId
+                };
 
             //resolve each broker
             var brokerEndpoints = metadata.Brokers.Select(broker => new

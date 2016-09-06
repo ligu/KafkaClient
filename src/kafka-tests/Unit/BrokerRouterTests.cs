@@ -145,7 +145,7 @@ namespace kafka_tests.Unit
             routerProxy.MetadataResponse = BrokerRouterProxy.CreateMetadataResponseWithNotEndToElectLeader;
 
             var router = routerProxy.Create();
-            Assert.Throws<NoLeaderElectedForPartition>(async () =>await router.RefreshMissingTopicMetadata(TestTopic));
+            Assert.Throws<CachedMetadataException>(async () =>await router.RefreshMissingTopicMetadata(TestTopic));
             Assert.AreEqual(0, router.GetAllTopicMetadataFromLocalCache().Count);
         }
 
@@ -269,7 +269,7 @@ namespace kafka_tests.Unit
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
-        [ExpectedException(typeof(LeaderNotFoundException))]
+        [ExpectedException(typeof(CachedMetadataException))]
         public async Task SelectExactPartitionShouldThrowWhenBrokerCollectionIsEmpty()
         {
             var metadataResponse = await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers();
@@ -326,7 +326,7 @@ namespace kafka_tests.Unit
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
-        [ExpectedException(typeof(LeaderNotFoundException))]
+        [ExpectedException(typeof(CachedMetadataException))]
         public async Task SelectPartitionShouldThrowWhenBrokerCollectionIsEmpty()
         {
             var metadataResponse = await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers();

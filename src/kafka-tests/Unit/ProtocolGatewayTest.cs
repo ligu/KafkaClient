@@ -70,8 +70,7 @@ namespace kafka_tests.Unit
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         [TestCase(typeof(KafkaConnectionException))]
         [TestCase(typeof(KafkaRequestException))]
-        [TestCase(typeof(NoLeaderElectedForPartition))]
-        [TestCase(typeof(LeaderNotFoundException))]
+        [TestCase(typeof(CachedMetadataException))]
         public async Task ShouldTryToRefreshMataDataIfOnExceptions(Type exceptionType)
         {
             var routerProxy = new BrokerRouterProxy(_kernel);

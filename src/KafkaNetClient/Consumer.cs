@@ -214,7 +214,7 @@ namespace KafkaNet
                             _options.Log.InfoFormat("Buffer underrun.  Increasing buffer size to: {0}",
                                 bufferSizeHighWatermark);
                         }
-                        catch (OffsetOutOfRangeException ex)
+                        catch (FetchRequestException ex)
                         {
                             //TODO this turned out really ugly.  Need to fix this section.
                             _options.Log.ErrorFormat(ex.Message);
@@ -223,16 +223,6 @@ namespace KafkaNet
                         catch (CachedMetadataException ex)
                         {
                             // refresh our metadata and ensure we are polling the correct partitions
-                            needToRefreshMetadata = true;
-                            _options.Log.ErrorFormat(ex.Message);
-                        }
-                        catch (NoLeaderElectedForPartition ex)
-                        {
-                            needToRefreshMetadata = true;
-                            _options.Log.ErrorFormat(ex.Message);
-                        }
-                        catch (LeaderNotFoundException ex)//the numbar partition of can be change
-                        {
                             needToRefreshMetadata = true;
                             _options.Log.ErrorFormat(ex.Message);
                         }
@@ -264,7 +254,8 @@ namespace KafkaNet
                     return;
 
                 case ErrorResponseCode.OffsetOutOfRange:
-                    throw new OffsetOutOfRangeException("FetchResponse indicated we requested an offset that is out of range. Requested Offset:{0}", request.Offset) { FetchRequest = request };
+                    throw new FetchRequestException("FetchResponse indicated we requested an offset that is out of range. Requested Offset:{0}", request.Offset) { FetchRequest = request };
+
                 case ErrorResponseCode.BrokerNotAvailable:
                 case ErrorResponseCode.ConsumerCoordinatorNotAvailableCode:
                 case ErrorResponseCode.LeaderNotAvailable:
@@ -272,6 +263,7 @@ namespace KafkaNet
                     throw new CachedMetadataException(
                         $"FetchResponse indicated we may have mismatched metadata. ErrorCode:{response.Error}",
                         FetchException(response, connection));
+
                 default:
                     throw FetchException(response, connection);
             }

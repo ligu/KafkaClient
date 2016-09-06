@@ -122,7 +122,56 @@ namespace KafkaNet.Protocol
     }
 
     /// <summary>
-    /// An exception cause by a Kafka Request
+    /// An exception caused by a FetchRequest
+    /// </summary>
+    [Serializable]
+    public class FetchRequestException : KafkaRequestException
+    {
+        public FetchRequestException(string message, params object[] args)
+            : base(string.Format(message, args))
+        {
+        }
+
+        public FetchRequestException(string message, Exception innerException)
+            : base(message, innerException)
+        {
+        }
+
+        public FetchRequestException(SerializationInfo info, StreamingContext context)
+            : base(info, context)
+        {
+            bool hasFetch = info.GetByte("HasFetch") == 1;
+            if (hasFetch)
+            {
+                FetchRequest = new Fetch
+                {
+                    MaxBytes = info.GetInt32("MaxBytes"),
+                    Offset = info.GetInt64("Offset"),
+                    PartitionId = info.GetInt32("PartitionId"),
+                    Topic = info.GetString("Topic")
+                };
+            }
+        }
+
+        public override void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            base.GetObjectData(info, context);
+            bool hasValue = FetchRequest != null;
+            info.AddValue("HasFetch", (byte)(hasValue ? 1 : 0));
+            if (hasValue)
+            {
+                info.AddValue("MaxBytes", FetchRequest.MaxBytes);
+                info.AddValue("Offset", FetchRequest.Offset);
+                info.AddValue("PartitionId", FetchRequest.PartitionId);
+                info.AddValue("Topic", FetchRequest.Topic);
+            }
+        }
+
+        public Fetch FetchRequest { get; set; }
+    }
+
+    /// <summary>
+    /// An exception caused by a Kafka Request
     /// </summary>
     [Serializable]
     public class KafkaRequestException : KafkaException

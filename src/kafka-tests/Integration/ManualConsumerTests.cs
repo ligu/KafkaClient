@@ -185,7 +185,7 @@ namespace kafka_tests.Integration
         }
 
         [Test]
-        [ExpectedException(typeof(KafkaNet.Protocol.InvalidTopicMetadataException))]
+        [ExpectedException(typeof(KafkaNet.Protocol.CachedMetadataException))]
         public async Task FetchMessagesTopicDoesntExist()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
@@ -246,7 +246,7 @@ namespace kafka_tests.Integration
         }
 
         [Test]
-        [ExpectedException(typeof(InvalidTopicMetadataException))]
+        [ExpectedException(typeof(CachedMetadataException))]
         public async Task FetchOffsetConsumerGroupDoesntExistTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
@@ -274,7 +274,7 @@ namespace kafka_tests.Integration
         }
 
         [Test]
-        [ExpectedException(typeof(InvalidTopicMetadataException))]
+        [ExpectedException(typeof(CachedMetadataException))]
         public async Task FetchOffsetTopicDoesntExistTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer

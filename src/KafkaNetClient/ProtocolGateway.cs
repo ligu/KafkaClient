@@ -82,9 +82,6 @@ namespace KafkaNet
                     //It means we had an error
                     errorDetails = $"{error}  ({route})";
                     needToRefreshTopicMetadata = CanRecoverByRefreshMetadata(error);
-                    if (error == ErrorResponseCode.UnknownTopicOrPartition) {
-                        exceptionInfo = ExceptionDispatchInfo.Capture(new InvalidTopicMetadataException(errorDetails, null));
-                    }
                 }
                 catch (TimeoutException ex)
                 {
@@ -95,11 +92,7 @@ namespace KafkaNet
                 {
                     exceptionInfo = ExceptionDispatchInfo.Capture(ex);
                 }
-                catch (NoLeaderElectedForPartition ex)
-                {
-                    exceptionInfo = ExceptionDispatchInfo.Capture(ex);
-                }
-                catch (LeaderNotFoundException ex)//the numbar partition of can be change
+                catch (CachedMetadataException ex)
                 {
                     exceptionInfo = ExceptionDispatchInfo.Capture(ex);
                 }

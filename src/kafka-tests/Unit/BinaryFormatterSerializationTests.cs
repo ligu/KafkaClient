@@ -13,12 +13,12 @@ namespace kafka_tests.Unit
     public class BinaryFormatterSerializationTests
     {
         [Test]
-        public void ShouldSerializeInvalidTopicMetadataException()
+        public void ShouldSerializeCachedMetadataException()
         {
-            var expected = new InvalidTopicMetadataException(ErrorResponseCode.RequestTimedOut, "blblb");
+            var expected = new CachedMetadataException("blblb") { Topic = "foobar"};
             var actual = SerializeDeserialize(expected);
 
-            Assert.AreEqual(expected.ErrorResponseCode, actual.ErrorResponseCode);
+            Assert.AreEqual(expected.Topic, actual.Topic);
         }
 
         [Test]
@@ -34,7 +34,7 @@ namespace kafka_tests.Unit
         [Test]
         public void ShouldSerializeOffsetOutOfRangeException()
         {
-            var expected = new OffsetOutOfRangeException("a"){FetchRequest = new Fetch(){MaxBytes = 1,Topic = "aa",Offset = 2,PartitionId = 3}};
+            var expected = new FetchRequestException("a"){FetchRequest = new Fetch(){MaxBytes = 1,Topic = "aa",Offset = 2,PartitionId = 3}};
             var actual = SerializeDeserialize(expected);
 
             Assert.AreEqual(expected.FetchRequest.MaxBytes, actual.FetchRequest.MaxBytes);
@@ -46,7 +46,7 @@ namespace kafka_tests.Unit
         [Test]
         public void ShouldSerializeOffsetOutOfRangeExceptionNull()
         {
-            var expected = new OffsetOutOfRangeException("a") {FetchRequest = null};
+            var expected = new FetchRequestException("a") {FetchRequest = null};
             var actual = SerializeDeserialize(expected);
 
             Assert.AreEqual(expected.FetchRequest, actual.FetchRequest);

@@ -80,7 +80,12 @@ namespace KafkaNet
                             break;
 
                         case ValidationResult.Error:
-                            throw validation.Exception;
+                            if (validation.ErrorCode == ErrorResponseCode.NoError) throw new KafkaConnectionException(validation.Message);
+
+                            throw new KafkaRequestException(validation.Message) {
+                                ApiKey = request.ApiKey,
+                                ErrorCode = validation.ErrorCode
+                            };
                     }
                 }
 
@@ -149,7 +154,8 @@ namespace KafkaNet
                 return new MetadataValidationResult
                 {
                     Status = ValidationResult.Error,
-                    Exception = new InvalidTopicMetadataException(ErrorResponseCode.NoError, "Broker missing host information.")
+                    ErrorCode = ErrorResponseCode.NoError,
+                    Message = "Broker missing host information."
                 };
             }
 
@@ -158,7 +164,8 @@ namespace KafkaNet
                 return new MetadataValidationResult
                 {
                     Status = ValidationResult.Error,
-                    Exception = new InvalidTopicMetadataException(ErrorResponseCode.NoError, "Broker missing port information.")
+                    ErrorCode = ErrorResponseCode.NoError,
+                    Message = "Broker missing port information."
                 };
             }
 
@@ -182,7 +189,7 @@ namespace KafkaNet
                         {
                             Status = ValidationResult.Retry,
                             ErrorCode = errorCode,
-                            Message = string.Format("Topic:{0} returned error code of {1}.  Retrying.", topic.Name, errorCode)
+                            Message = $"Topic:{topic.Name} returned error code of {errorCode}. Retrying."
                         };
                 }
 
@@ -190,7 +197,7 @@ namespace KafkaNet
                 {
                     Status = ValidationResult.Error,
                     ErrorCode = errorCode,
-                    Exception = new InvalidTopicMetadataException(errorCode, "Topic:{0} returned an error of {1}.", topic.Name, errorCode)
+                    Message = $"Topic:{topic.Name} returned an error of {errorCode}"
                 };
             }
             catch
@@ -199,7 +206,7 @@ namespace KafkaNet
                 {
                     Status = ValidationResult.Error,
                     ErrorCode = ErrorResponseCode.Unknown,
-                    Exception = new InvalidTopicMetadataException(ErrorResponseCode.Unknown, "Unknown error code returned in metadata response.  ErrorCode: {0}", topic.ErrorCode)
+                    Message = $"Unknown error code returned in metadata response.  ErrorCode: {topic.ErrorCode}"
                 };
             }
         }
@@ -217,7 +224,6 @@ namespace KafkaNet
         public ValidationResult Status { get; set; }
         public string Message { get; set; }
         public ErrorResponseCode ErrorCode { get; set; }
-        public Exception Exception { get; set; }
 
         public MetadataValidationResult()
         {
