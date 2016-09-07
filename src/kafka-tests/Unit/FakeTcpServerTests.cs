@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 namespace kafka_tests.Unit
 {
     [TestFixture]
-    [Category("unit")]
+    [Category("Integration")]
     public class FakeTcpServerTests
     {
         private readonly Uri _fakeServerUrl;

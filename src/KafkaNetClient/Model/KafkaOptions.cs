@@ -39,9 +39,9 @@ namespace KafkaNet.Model
                     {
                         endpoint = KafkaConnectionFactory.Resolve(uri, Log);
                     }
-                    catch (UnresolvedHostnameException ex)
+                    catch (KafkaConnectionException ex)
                     {
-                        Log.WarnFormat("Ignoring the following uri as it could not be resolved.  Uri:{0}  Exception:{1}", uri, ex);
+                        Log.WarnFormat("Ignoring the following uri as it could not be resolved. Uri:{0}  Exception:{1}", uri, ex);
                     }
 
                     if (endpoint != null) yield return endpoint;

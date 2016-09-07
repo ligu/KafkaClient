@@ -120,7 +120,7 @@ namespace KafkaNet.Protocol
 
                     //if messagessize is greater than the total payload, our max buffer is insufficient.
                     if ((stream.Length - MessageHeaderSize) < messageSize)
-                        throw new BufferUnderRunException(MessageHeaderSize, messageSize);
+                        throw new BufferUnderRunException(MessageHeaderSize, messageSize, stream.Length);
 
                     //if the stream does not have enough left in the payload, we got only a partial message
                     if (stream.Available(messageSize) == false)
@@ -167,11 +167,12 @@ namespace KafkaNet.Protocol
         /// <remarks>The return type is an Enumerable as the message could be a compressed message set.</remarks>
         public static IEnumerable<Message> DecodeMessage(long offset, byte[] payload)
         {
-            var crc = payload.Take(4).ToArray();
+            var crc = BitConverter.ToUInt32(payload.Take(4).ToArray(), 0);
             using (var stream = new BigEndianBinaryReader(payload, 4))
             {
-                if (crc.SequenceEqual(stream.CrcHash()) == false)
-                    throw new FailCrcCheckException("Buffer did not match CRC validation.");
+                var crcHash = BitConverter.ToUInt32(stream.CrcHash(), 0);
+                if (crc != crcHash)
+                    throw new CrcValidationException("Buffer did not match CRC validation.") { Crc = crc, CalculatedCrc = crcHash };
 
                 var message = new Message
                 {

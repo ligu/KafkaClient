@@ -5,6 +5,8 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using KafkaNet.Model;
+using KafkaNet.Protocol;
 
 namespace KafkaNet.Common
 {
@@ -267,6 +269,24 @@ namespace KafkaNet.Common
         public static DateTime FromUnixEpochMilliseconds(this long milliseconds)
         {
             return UnixEpoch.AddMilliseconds(milliseconds);
+        }
+
+        public static KafkaRequestException ExtractException<TRequest, TResponse>(this TRequest request, TResponse response, KafkaEndpoint endpoint = null) 
+            where TRequest : IKafkaRequest<TResponse>
+            where TResponse : IBaseResponse
+        {
+            var error = (ErrorResponseCode?) response?.Error;
+            if (error == ErrorResponseCode.OffsetOutOfRange) {
+                var fetchRequest = request as FetchRequest;
+                if (fetchRequest?.Fetches?.Count == 1) {
+                    var fetch = fetchRequest.Fetches.First();
+                    return new FetchOutOfRangeException(fetch, request.ApiKey, error.GetValueOrDefault());
+                }
+            }
+
+            return new KafkaRequestException(request.ApiKey, error.GetValueOrDefault()) {
+                Endpoint = endpoint
+            };
         }
     }
 }

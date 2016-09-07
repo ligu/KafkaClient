@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 
 namespace kafka_tests.Unit
 {
+    [Category("Unit")]
     [TestFixture]
     public class KafkaMetadataProviderTests
     {
@@ -100,7 +101,7 @@ namespace kafka_tests.Unit
         [TestCase(ErrorResponseCode.Unknown)]
         [TestCase(ErrorResponseCode.RequestTimedOut)]
         [TestCase(ErrorResponseCode.InvalidMessage)]
-        [ExpectedException(typeof(InvalidTopicMetadataException))]
+        [ExpectedException(typeof(KafkaRequestException))]
         public async Task ShouldThrowExceptionWhenNotARetriableErrorCode(ErrorResponseCode errorCode)
         {
             var conn = Substitute.For<IKafkaConnection>();
@@ -116,7 +117,7 @@ namespace kafka_tests.Unit
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         [TestCase(null)]
         [TestCase("")]
-        [ExpectedException(typeof(InvalidTopicMetadataException))]
+        [ExpectedException(typeof(KafkaConnectionException))]
         public async Task ShouldThrowExceptionWhenHostIsMissing(string host)
         {
             var conn = Substitute.For<IKafkaConnection>();
@@ -132,7 +133,7 @@ namespace kafka_tests.Unit
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         [TestCase(0)]
         [TestCase(-1)]
-        [ExpectedException(typeof(InvalidTopicMetadataException))]
+        [ExpectedException(typeof(KafkaConnectionException))]
         public async Task ShouldThrowExceptionWhenPortIsMissing(int port)
         {
             var conn = Substitute.For<IKafkaConnection>();

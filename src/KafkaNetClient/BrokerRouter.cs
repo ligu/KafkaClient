@@ -43,7 +43,7 @@ namespace KafkaNet
             }
 
             if (_defaultConnectionIndex.Count <= 0)
-                throw new ServerUnreachableException("None of the provided Kafka servers are resolvable.");
+                throw new KafkaConnectionException("None of the provided Kafka servers are resolvable.");
         }
 
         private IKafkaConnection[] GetConnections()
@@ -69,13 +69,13 @@ namespace KafkaNet
             var topicMetadata = cachedTopic.First();
             if (topicMetadata == null)
             {
-                throw new InvalidTopicNotExistsInCache(string.Format("The Metadata is invalid as it returned no data for the given topic:{0}", string.Join(",", topic)));
+                throw new CachedMetadataException($"No metadata defined for topic: {topic}") { Topic = topic };
             }
 
             var partition = topicMetadata.Partitions.FirstOrDefault(x => x.PartitionId == partitionId);
             if (partition == null)
             {
-                throw new InvalidPartitionException(string.Format("The topic:{0} does not have a partitionId:{1} defined.", topic, partitionId));
+                throw new CachedMetadataException($"The topic: {topic} has no partitionId: {partitionId} defined.") { Topic = topic, Partition = partitionId };
             }
 
             return GetCachedRoute(topicMetadata.Name, partition);
@@ -95,7 +95,7 @@ namespace KafkaNet
 
             if (cachedTopic == null)
             {
-                throw new InvalidTopicNotExistsInCache(String.Format("The Metadata is invalid as it returned no data for the given topic:{0}", topic));
+                throw new CachedMetadataException($"No metadata defined for topic: {topic}") { Topic = topic };
             }
 
             var partition = _kafkaOptions.PartitionSelector.Select(cachedTopic, key);
@@ -119,7 +119,7 @@ namespace KafkaNet
 
             if (topicSearchResult.Missing.Count > 0)
             {
-                throw new InvalidTopicNotExistsInCache(string.Format("The Metadata is invalid as it returned no data for the given topic:{0}", string.Join(",", topicSearchResult.Missing)));
+                throw new CachedMetadataException($"No metadata defined for topics: {string.Join(",", topicSearchResult.Missing)}");
             }
 
             return topicSearchResult.Topics;
@@ -205,8 +205,6 @@ namespace KafkaNet
             }
         }
 
-
-
         private TopicSearchResult SearchCacheForTopics(IEnumerable<string> topics, TimeSpan? expiration)
         {
             var result = new TopicSearchResult();
@@ -248,7 +246,10 @@ namespace KafkaNet
             var route = TryGetRouteFromCache(topic, partition);
             if (route != null) return route;
 
-            throw new LeaderNotFoundException(string.Format("Lead broker cannot be found for partition: {0}, leader: {1}", partition.PartitionId, partition.LeaderId));
+            throw new CachedMetadataException($"Lead broker cannot be found for partition: {partition.PartitionId}, leader: {partition.LeaderId}") {
+                Topic = topic,
+                Partition = partition.PartitionId
+            };
         }
 
         private BrokerRoute TryGetRouteFromCache(string topic, Partition partition)
@@ -274,8 +275,10 @@ namespace KafkaNet
                     .FirstOrDefault(x => x.partition != null);
 
             if (noLeaderElectedForPartition != null)
-                throw new NoLeaderElectedForPartition(string.Format("topic:{0} partition:{1}",
-                    noLeaderElectedForPartition.topic, noLeaderElectedForPartition.partition));
+                throw new CachedMetadataException($"topic:{noLeaderElectedForPartition.topic} partition:{noLeaderElectedForPartition.partition}") {
+                    Topic = noLeaderElectedForPartition.topic,
+                    Partition = noLeaderElectedForPartition.partition?.PartitionId
+                };
 
             //resolve each broker
             var brokerEndpoints = metadata.Brokers.Select(broker => new

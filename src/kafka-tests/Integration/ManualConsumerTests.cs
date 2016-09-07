@@ -155,7 +155,7 @@ namespace kafka_tests.Integration
         }
 
         [Test]
-       [ExpectedException(typeof(KafkaApplicationException), ExpectedMessage = "FetchResponse received an error from Kafka: OffsetOutOfRange")]
+       [ExpectedException(typeof(FetchOutOfRangeException), ExpectedMessage = "Kafka returned error response for Fetch: OffsetOutOfRange", MatchType = MessageMatch.StartsWith)]
         public async Task FetchMessagesOffsetBiggerThanLastOffsetInQueueTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
@@ -165,7 +165,7 @@ namespace kafka_tests.Integration
 
             var offset = await consumer.FetchLastOffset();
 
-            // Now let's consume throw KafkaApplicationException
+            // Now let's consume throw KafkaServerException
             await consumer.FetchMessages(5, offset + 1);
         }
 
@@ -185,7 +185,7 @@ namespace kafka_tests.Integration
         }
 
         [Test]
-        [ExpectedException(typeof(KafkaNet.Protocol.InvalidTopicMetadataException))]
+        [ExpectedException(typeof(KafkaNet.Protocol.KafkaRequestException))]
         public async Task FetchMessagesTopicDoesntExist()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
@@ -204,7 +204,7 @@ namespace kafka_tests.Integration
         }
 
         [Test]
-        [ExpectedException(typeof(InvalidPartitionException))]
+        [ExpectedException(typeof(CachedMetadataException))]
         public async Task FetchMessagesPartitionDoesntExist()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
@@ -246,7 +246,7 @@ namespace kafka_tests.Integration
         }
 
         [Test]
-        [ExpectedException(typeof(KafkaApplicationException), ExpectedMessage = "FetchResponse received an error from Kafka: UnknownTopicOrPartition")]
+        [ExpectedException(typeof(KafkaRequestException))]
         public async Task FetchOffsetConsumerGroupDoesntExistTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
@@ -260,7 +260,7 @@ namespace kafka_tests.Integration
         }
 
         [Test]
-        [ExpectedException(typeof(InvalidPartitionException))]
+        [ExpectedException(typeof(CachedMetadataException))]
         public async Task FetchOffsetPartitionDoesntExistTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
@@ -274,7 +274,7 @@ namespace kafka_tests.Integration
         }
 
         [Test]
-        [ExpectedException(typeof(InvalidTopicMetadataException))]
+        [ExpectedException(typeof(KafkaRequestException))]
         public async Task FetchOffsetTopicDoesntExistTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
@@ -383,7 +383,7 @@ namespace kafka_tests.Integration
         }
 
         [Test]
-        [ExpectedException(typeof(InvalidPartitionException))]
+        [ExpectedException(typeof(CachedMetadataException))]
         public async Task UpdateOrCreateOffsetPartitionDoesntExistTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
@@ -480,7 +480,7 @@ namespace kafka_tests.Integration
         }
 
         [Test]
-        [ExpectedException(typeof(InvalidPartitionException))]
+        [ExpectedException(typeof(CachedMetadataException))]
         public async Task FetchLastOffsetPartitionDoesntExistTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
@@ -494,7 +494,7 @@ namespace kafka_tests.Integration
         }
 
         [Test]
-        [ExpectedException(typeof(InvalidTopicMetadataException ))]
+        [ExpectedException(typeof(KafkaRequestException))]
         public async Task FetchLastOffsetTopicDoesntExistTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
