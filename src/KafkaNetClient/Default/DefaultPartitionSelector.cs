@@ -13,7 +13,7 @@ namespace KafkaNet
         public Partition Select(Topic topic, byte[] key)
         {
             if (topic == null) throw new ArgumentNullException("topic");
-            if (topic.Partitions.Count <= 0) throw new ApplicationException(string.Format("Topic ({0}) has no partitions.", topic.Name));
+            if (topic.Partitions.Count <= 0) throw new CachedMetadataException($"Topic: {topic.Name} has no partitions.") { Topic = topic.Name };
 
             //use round robin
             var partitions = topic.Partitions;
@@ -33,8 +33,10 @@ namespace KafkaNet
             var partition = partitions.FirstOrDefault(x => x.PartitionId == partitionId);
 
             if (partition == null)
-                throw new InvalidPartitionException(string.Format("Hash function return partition id: {0}, but the available partitions are:{1}",
-                                                                            partitionId, string.Join(",", partitions.Select(x => x.PartitionId))));
+                throw new CachedMetadataException($"Hash function return partition id: {partitionId}, but the available partitions are:{string.Join(",", partitions.Select(x => x.PartitionId))}") {
+                    Topic = topic.Name,
+                    Partition = (int)partitionId
+                };
 
             return partition;
         }

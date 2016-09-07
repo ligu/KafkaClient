@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using KafkaNet.Common;
 
 namespace KafkaNet
 {
@@ -178,7 +179,7 @@ namespace KafkaNet
 
                                 if (response != null && response.Messages.Any())
                                 {
-                                    HandleResponseErrors(fetch, response);
+                                    HandleResponseErrors(fetchRequest, response, route.Connection);
 
                                     foreach (var message in response.Messages)
                                     {
@@ -202,7 +203,7 @@ namespace KafkaNet
                             //no message received from server wait a while before we try another long poll
                             await Task.Delay(_options.BackoffInterval, _disposeToken.Token);
                         }
-                        catch (BrokerConnectionException ex)
+                        catch (KafkaConnectionException ex)
                         {
                             needToRefreshMetadata = true;
                             _options.Log.ErrorFormat(ex.Message);
@@ -214,25 +215,15 @@ namespace KafkaNet
                             _options.Log.InfoFormat("Buffer underrun.  Increasing buffer size to: {0}",
                                 bufferSizeHighWatermark);
                         }
-                        catch (OffsetOutOfRangeException ex)
+                        catch (FetchOutOfRangeException ex) when (ex.ErrorCode == ErrorResponseCode.OffsetOutOfRange)
                         {
                             //TODO this turned out really ugly.  Need to fix this section.
                             _options.Log.ErrorFormat(ex.Message);
-                            FixOffsetOutOfRangeExceptionAsync(ex.FetchRequest);
+                            await FixOffsetOutOfRangeExceptionAsync(ex.Fetch);
                         }
-                        catch (InvalidMetadataException ex)
+                        catch (CachedMetadataException ex)
                         {
-                            //refresh our metadata and ensure we are polling the correct partitions
-                            needToRefreshMetadata = true;
-                            _options.Log.ErrorFormat(ex.Message);
-                        }
-                        catch (NoLeaderElectedForPartition ex)
-                        {
-                            needToRefreshMetadata = true;
-                            _options.Log.ErrorFormat(ex.Message);
-                        }
-                        catch (LeaderNotFoundException ex)//the numbar partition of can be change
-                        {
+                            // refresh our metadata and ensure we are polling the correct partitions
                             needToRefreshMetadata = true;
                             _options.Log.ErrorFormat(ex.Message);
                         }
@@ -243,7 +234,7 @@ namespace KafkaNet
                         }
                         catch (Exception ex)
                         {
-                            _options.Log.ErrorFormat("Exception occured while polling topic:{0} partition:{1}.  Polling will continue.  Exception={2}", topic, partitionId, ex);
+                            _options.Log.ErrorFormat("Exception occured while polling topic:{0} partition:{1}. Polling will continue. Exception={2}", topic, partitionId, ex);
                         }
                     }
                 }
@@ -256,45 +247,46 @@ namespace KafkaNet
             });
         }
 
-        private void HandleResponseErrors(Fetch request, FetchResponse response)
+        private void HandleResponseErrors(FetchRequest request, FetchResponse response, IKafkaConnection connection)
         {
             switch ((ErrorResponseCode)response.Error)
             {
                 case ErrorResponseCode.NoError:
                     return;
 
-                case ErrorResponseCode.OffsetOutOfRange:
-                    throw new OffsetOutOfRangeException("FetchResponse indicated we requested an offset that is out of range.  Requested Offset:{0}", request.Offset) { FetchRequest = request };
                 case ErrorResponseCode.BrokerNotAvailable:
                 case ErrorResponseCode.ConsumerCoordinatorNotAvailableCode:
                 case ErrorResponseCode.LeaderNotAvailable:
                 case ErrorResponseCode.NotLeaderForPartition:
-                    throw new InvalidMetadataException("FetchResponse indicated we may have mismatched metadata.  ErrorCode:{0}", response.Error) { ErrorCode = response.Error };
+                    throw new CachedMetadataException(
+                        $"FetchResponse indicated we may have mismatched metadata. ErrorCode:{response.Error}",
+                        request.ExtractException(response, connection?.Endpoint));
+
                 default:
-                    throw new KafkaApplicationException("FetchResponse returned error condition.  ErrorCode:{0}", response.Error) { ErrorCode = response.Error };
+                    throw request.ExtractException(response, connection?.Endpoint);
             }
         }
 
-        private void FixOffsetOutOfRangeExceptionAsync(Fetch request)
+        private async Task FixOffsetOutOfRangeExceptionAsync(Fetch fetch)
         {
-            _metadataQueries.GetTopicOffsetAsync(request.Topic)
+            await _metadataQueries.GetTopicOffsetAsync(fetch.Topic)
                    .ContinueWith(t =>
                    {
                        try
                        {
-                           var offsets = t.Result.FirstOrDefault(x => x.PartitionId == request.PartitionId);
+                           var offsets = t.Result.FirstOrDefault(x => x.PartitionId == fetch.PartitionId);
                            if (offsets == null) return;
 
-                           if (offsets.Offsets.Min() > request.Offset)
-                               SetOffsetPosition(new OffsetPosition(request.PartitionId, offsets.Offsets.Min()));
+                           if (offsets.Offsets.Min() > fetch.Offset)
+                               SetOffsetPosition(new OffsetPosition(fetch.PartitionId, offsets.Offsets.Min()));
 
-                           if (offsets.Offsets.Max() < request.Offset)
-                               SetOffsetPosition(new OffsetPosition(request.PartitionId, offsets.Offsets.Max()));
+                           if (offsets.Offsets.Max() < fetch.Offset)
+                               SetOffsetPosition(new OffsetPosition(fetch.PartitionId, offsets.Offsets.Max()));
                        }
                        catch (Exception ex)
                        {
                            _options.Log.ErrorFormat("Failed to fix the offset out of range exception on topic:{0} partition:{1}.  Polling will continue.  Exception={2}",
-                               request.Topic, request.PartitionId, ex);
+                               fetch.Topic, fetch.PartitionId, ex);
                        }
                    });
         }

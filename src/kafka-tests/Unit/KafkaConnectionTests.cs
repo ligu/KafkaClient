@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 
 namespace kafka_tests.Unit
 {
+    [Category("Integration")]
     [TestFixture]
     public class KafkaConnectionTests
     {
@@ -172,7 +173,7 @@ namespace kafka_tests.Unit
                 taskResult.ContinueWith(t => taskResult = t).Wait(TimeSpan.FromMilliseconds(100));
 
                 Assert.That(taskResult.IsFaulted, Is.True, "Task should have reported an exception.");
-                Assert.That(taskResult.Exception.InnerException, Is.TypeOf<ResponseTimeoutException>());
+                Assert.That(taskResult.Exception.InnerException, Is.TypeOf<TimeoutException>());
             }
         }
 
@@ -230,8 +231,7 @@ namespace kafka_tests.Unit
                 foreach (var task in tasks)
                 {
                     Assert.That(task.IsFaulted, Is.True, "Task should have faulted.");
-                    Assert.That(task.Exception.InnerException, Is.TypeOf<ResponseTimeoutException>(),
-                        "Task fault should be of type ResponseTimeoutException.");
+                    Assert.That(task.Exception.InnerException, Is.TypeOf<TimeoutException>(), "Task fault has wrong type.");
                 }
             }
         }

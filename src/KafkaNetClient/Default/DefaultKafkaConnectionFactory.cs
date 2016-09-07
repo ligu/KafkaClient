@@ -20,12 +20,7 @@ namespace KafkaNet
             var ipAddress = GetFirstAddress(kafkaAddress.Host, log);
             var ipEndpoint = new IPEndPoint(ipAddress, kafkaAddress.Port);
 
-            var kafkaEndpoint = new KafkaEndpoint()
-            {
-                ServeUri = kafkaAddress,
-                Endpoint = ipEndpoint
-            };
-
+            var kafkaEndpoint = new KafkaEndpoint(kafkaAddress, ipEndpoint);
             return kafkaEndpoint;
         }
 
@@ -49,10 +44,10 @@ namespace KafkaNet
             }
             catch
             {
-                throw new UnresolvedHostnameException("Could not resolve the following hostname: {0}", hostname);
+                throw new KafkaConnectionException($"Could not resolve the following hostname: {hostname}");
             }
 
-            throw new UnresolvedHostnameException("Could not resolve the following hostname: {0}", hostname);
+            throw new KafkaConnectionException($"Could not resolve the following hostname: {hostname}");
         }
     }
 }

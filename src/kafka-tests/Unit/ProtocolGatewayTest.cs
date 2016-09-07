@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 namespace kafka_tests.Unit
 {
     [TestFixture]
-    [Category("unit")]
+    [Category("Unit")]
     public class ProtocolGatewayTest
     {
         private MoqMockingKernel _kernel;
@@ -31,11 +31,7 @@ namespace kafka_tests.Unit
             _mockKafkaConnectionFactory.Setup(x => x.Create(It.Is<KafkaEndpoint>(e => e.Endpoint.Port == 1), It.IsAny<TimeSpan>(),
                         It.IsAny<IKafkaLog>(), It.IsAny<int>(), It.IsAny<TimeSpan?>(), It.IsAny<StatisticsTrackerOptions>())).Returns(() => _mockKafkaConnection1.Object);
             _mockKafkaConnectionFactory.Setup(x => x.Resolve(It.IsAny<Uri>(), It.IsAny<IKafkaLog>()))
-                .Returns<Uri, IKafkaLog>((uri, log) => new KafkaEndpoint
-                {
-                    Endpoint = new IPEndPoint(IPAddress.Parse("127.0.0.1"), uri.Port),
-                    ServeUri = uri
-                });
+                .Returns<Uri, IKafkaLog>((uri, log) => new KafkaEndpoint(uri, new IPEndPoint(IPAddress.Parse("127.0.0.1"), uri.Port)));
         }
 
         [TestCase(ErrorResponseCode.NotLeaderForPartition)]
@@ -72,10 +68,9 @@ namespace kafka_tests.Unit
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
-        [TestCase(typeof(BrokerConnectionException))]
-        [TestCase(typeof(ResponseTimeoutException))]
-        [TestCase(typeof(NoLeaderElectedForPartition))]
-        [TestCase(typeof(LeaderNotFoundException))]
+        [TestCase(typeof(KafkaConnectionException))]
+        [TestCase(typeof(FetchOutOfRangeException))]
+        [TestCase(typeof(CachedMetadataException))]
         public async Task ShouldTryToRefreshMataDataIfOnExceptions(Type exceptionType)
         {
             var routerProxy = new BrokerRouterProxy(_kernel);
@@ -93,7 +88,7 @@ namespace kafka_tests.Unit
         }
 
         [TestCase(typeof(Exception))]
-        [TestCase(typeof(KafkaApplicationException))]
+        [TestCase(typeof(KafkaRequestException))]
         public async Task SendProtocolRequestShouldThrowException(Type exceptionType)
         {
             var routerProxy = new BrokerRouterProxy(_kernel);
@@ -115,7 +110,7 @@ namespace kafka_tests.Unit
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
-        [ExpectedException(typeof(KafkaApplicationException))]
+        [ExpectedException(typeof(KafkaRequestException))]
         [TestCase(ErrorResponseCode.InvalidMessage)]
         [TestCase(ErrorResponseCode.InvalidMessageSize)]
         [TestCase(ErrorResponseCode.MessageSizeTooLarge)]
@@ -235,7 +230,7 @@ namespace kafka_tests.Unit
 
                     await x.Task;
                     log.DebugFormat("SocketException ");
-                    throw new BrokerConnectionException("",new KafkaEndpoint());
+                    throw new KafkaConnectionException("");
                 }
                 log.DebugFormat("Completed ");
 
@@ -278,7 +273,7 @@ namespace kafka_tests.Unit
             Assert.That(routerProxy.BrokerConn0.MetadataRequestCallCount, Is.EqualTo(1), "MetadataRequestCallCount");
             Assert.That(routerProxy.BrokerConn1.MetadataRequestCallCount, Is.EqualTo(0), "MetadataRequestCallCount");
 
-            routerProxy.BrokerConn0.FetchResponseFunction = FailedInFirstMessageException(typeof(BrokerConnectionException), TimeSpan.Zero);
+            routerProxy.BrokerConn0.FetchResponseFunction = FailedInFirstMessageException(typeof(KafkaConnectionException), TimeSpan.Zero);
             //triger to update metadata
             routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.CreateMetaResponseWithException;
             routerProxy.BrokerConn1.MetadataResponseFunction = BrokerRouterProxy.CreateMetadataResponseWithSingleBroker;
@@ -367,9 +362,9 @@ namespace kafka_tests.Unit
                     await Task.Delay(delay);
                     await Task.Delay(1);
                     firstTime = false;
-                    if (exceptionType == typeof(BrokerConnectionException))
+                    if (exceptionType == typeof(KafkaConnectionException))
                     {
-                        throw new BrokerConnectionException("",new KafkaEndpoint());
+                        throw new KafkaConnectionException("");
                     }
                     object[] args = new object[1];
                     args[0] = "error Test";

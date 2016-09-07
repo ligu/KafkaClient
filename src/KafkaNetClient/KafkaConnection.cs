@@ -106,7 +106,7 @@ namespace KafkaNet
             //if response is expected, register a receive data task and send request
             if (request.ExpectResponse)
             {
-                using (var asyncRequest = new AsyncRequestItem(request.CorrelationId))
+                using (var asyncRequest = new AsyncRequestItem(request.CorrelationId, request.ApiKey))
                 {
                     try
                     {
@@ -269,9 +269,8 @@ namespace KafkaNet
             }
             else
             {
-                asyncRequestItem.ReceiveTask.TrySetException(new ResponseTimeoutException(
-                    string.Format("Timeout reached for endpoint {0} (after waiting {1})",
-                       _client.Endpoint, _responseTimeoutMs)));
+                asyncRequestItem.ReceiveTask.TrySetException(
+                    new TimeoutException($"Timeout expired. Was {_responseTimeoutMs.TotalMilliseconds} ms."));
             }
         }
 
@@ -296,13 +295,15 @@ namespace KafkaNet
         {
             private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
 
-            public AsyncRequestItem(int correlationId)
+            public AsyncRequestItem(int correlationId, ApiKeyRequestType apiKey)
             {
                 CorrelationId = correlationId;
+                ApiKey = apiKey;
                 ReceiveTask = new TaskCompletionSource<byte[]>();
             }
 
             public int CorrelationId { get; private set; }
+            public ApiKeyRequestType ApiKey { get; }
             public TaskCompletionSource<byte[]> ReceiveTask { get; private set; }
 
             public void MarkRequestAsSent(ExceptionDispatchInfo exceptionDispatchInfo, TimeSpan timeout, Action<AsyncRequestItem> timeoutFunction)

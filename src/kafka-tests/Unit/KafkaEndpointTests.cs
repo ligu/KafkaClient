@@ -6,6 +6,7 @@ using System.Net;
 
 namespace kafka_tests.Unit
 {
+    [Category("Unit")]
     [TestFixture]
     public class KafkaEndpointTests
     {

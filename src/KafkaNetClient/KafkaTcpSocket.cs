@@ -268,7 +268,7 @@ namespace KafkaNet
                                 _client = null;
                                 if (_disposeToken.IsCancellationRequested) { return; }
 
-                                throw new BrokerConnectionException(string.Format("Lost connection to server: {0}", _endpoint), _endpoint);
+                                throw new KafkaConnectionException(_endpoint);
                             }
                         }
 
@@ -286,7 +286,7 @@ namespace KafkaNet
                         throw exception;
                     }
 
-                    if (ex is BrokerConnectionException)
+                    if (ex is KafkaConnectionException)
                     {
                         readTask.Tcp.TrySetException(ex);
                         if (_disposeToken.IsCancellationRequested) return;
@@ -296,7 +296,7 @@ namespace KafkaNet
                     //if an exception made us lose a connection throw disconnected exception
                     if (_client == null || _client.Connected == false)
                     {
-                        var exception = new BrokerConnectionException(string.Format("Lost connection to server: {0}", _endpoint), _endpoint);
+                        var exception = new KafkaConnectionException(_endpoint);
                         readTask.Tcp.TrySetException(exception);
                         throw exception;
                     }
@@ -367,7 +367,7 @@ namespace KafkaNet
             if (_disposeToken.IsCancellationRequested)
                 wrappedException = new ObjectDisposedException(string.Format("Object is disposing (KafkaTcpSocket for endpoint: {0})", Endpoint));
             else
-                wrappedException = new BrokerConnectionException(string.Format("Lost connection to server: {0}", _endpoint), _endpoint, ex);
+                wrappedException = new KafkaConnectionException($"Lost connection to server: {_endpoint}", ex) { Endpoint = _endpoint };
 
             return wrappedException;
         }
@@ -413,7 +413,7 @@ namespace KafkaNet
                         throw new ObjectDisposedException(string.Format("Object is disposing (KafkaTcpSocket for endpoint: {0})", Endpoint));
 
                     await connectTask;
-                    if (!_client.Connected) throw new BrokerConnectionException(string.Format("Lost connection to server: {0}", _endpoint), _endpoint);
+                    if (!_client.Connected) throw new KafkaConnectionException(_endpoint);
                     _log.DebugFormat("Connection established to:{0}.", _endpoint);
 
                     return _client;

@@ -2,28 +2,30 @@
 using KafkaNet.Protocol;
 using NUnit.Framework;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Runtime.Serialization.Formatters.Binary;
 
 namespace kafka_tests.Unit
 {
+    [Category("Unit")]
     [TestFixture]
     public class BinaryFormatterSerializationTests
     {
         [Test]
-        public void ShouldSerializeInvalidTopicMetadataException()
+        public void ShouldSerializeCachedMetadataException()
         {
-            var expected = new InvalidTopicMetadataException(ErrorResponseCode.RequestTimedOut, "blblb");
+            var expected = new CachedMetadataException("blblb") { Topic = "foobar"};
             var actual = SerializeDeserialize(expected);
 
-            Assert.AreEqual(expected.ErrorResponseCode, actual.ErrorResponseCode);
+            Assert.AreEqual(expected.Topic, actual.Topic);
         }
 
         [Test]
         public void ShouldSerializeBufferUnderRunException()
         {
-            var expected = new BufferUnderRunException(44,44);
+            var expected = new BufferUnderRunException(44, 44, 43);
             var actual = SerializeDeserialize(expected);
 
             Assert.AreEqual(expected.MessageHeaderSize, actual.MessageHeaderSize);
@@ -33,57 +35,65 @@ namespace kafka_tests.Unit
         [Test]
         public void ShouldSerializeOffsetOutOfRangeException()
         {
-            var expected = new OffsetOutOfRangeException("a"){FetchRequest = new Fetch(){MaxBytes = 1,Topic = "aa",Offset = 2,PartitionId = 3}};
+            var expected = new FetchOutOfRangeException(
+                new Fetch {
+                    MaxBytes = 1,
+                    Topic = "aa",
+                    Offset = 2,
+                    PartitionId = 3
+                }, ApiKeyRequestType.Fetch, ErrorResponseCode.OffsetOutOfRange);
             var actual = SerializeDeserialize(expected);
 
-            Assert.AreEqual(expected.FetchRequest.MaxBytes, actual.FetchRequest.MaxBytes);
-            Assert.AreEqual(expected.FetchRequest.Offset, actual.FetchRequest.Offset);
-            Assert.AreEqual(expected.FetchRequest.PartitionId, actual.FetchRequest.PartitionId);
-            Assert.AreEqual(expected.FetchRequest.Topic, actual.FetchRequest.Topic);
+            Assert.AreEqual(expected.Fetch.MaxBytes, actual.Fetch.MaxBytes);
+            Assert.AreEqual(expected.Fetch.Offset, actual.Fetch.Offset);
+            Assert.AreEqual(expected.Fetch.PartitionId, actual.Fetch.PartitionId);
+            Assert.AreEqual(expected.Fetch.Topic, actual.Fetch.Topic);
         }
 
         [Test]
         public void ShouldSerializeOffsetOutOfRangeExceptionNull()
         {
-            var expected = new OffsetOutOfRangeException("a") {FetchRequest = null};
+            var expected = new FetchOutOfRangeException("a");
             var actual = SerializeDeserialize(expected);
 
-            Assert.AreEqual(expected.FetchRequest, actual.FetchRequest);
+            Assert.AreEqual(expected.Fetch, actual.Fetch);
         }
 
         [Test]
         public void ShouldSerializeOffsetKafkaEndpointInnerObjectAreNull()
         {
-            var expected = new BrokerException("a",new KafkaEndpoint());
+            var expected = new KafkaRequestException("a");
             var actual = SerializeDeserialize(expected);
 
-            Assert.AreEqual(expected.BrokerEndPoint.ServeUri, actual.BrokerEndPoint.ServeUri);
-            Assert.AreEqual(expected.BrokerEndPoint.Endpoint, actual.BrokerEndPoint.Endpoint);
+            Assert.AreEqual(expected.Endpoint, actual.Endpoint);
         }
 
         [Test]
         public void ShouldSerializeOffsetKafkaEndpoint()
         {
-            var expected = new BrokerException("a", new KafkaEndpoint() {Endpoint = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 8888),ServeUri = new Uri("http://S1.com")});
+            var expected = new KafkaRequestException("a") {
+                Endpoint = new KafkaEndpoint(new Uri("http://S1.com"), 
+                new IPEndPoint(IPAddress.Parse("127.0.0.1"), 8888))
+            };
             var actual = SerializeDeserialize(expected);
 
-            Assert.AreEqual(expected.BrokerEndPoint.ServeUri, actual.BrokerEndPoint.ServeUri);
-            Assert.AreEqual(expected.BrokerEndPoint.Endpoint, actual.BrokerEndPoint.Endpoint);
+            Assert.AreEqual(expected.Endpoint.ServeUri, actual.Endpoint.ServeUri);
+            Assert.AreEqual(expected.Endpoint.Endpoint, actual.Endpoint.Endpoint);
         }
 
         [Test]
         public void ShouldSerializeOffsetKafkaEndpointNull()
         {
-            var expected = new BrokerException("a", null);
+            var expected = new KafkaRequestException("a", null);
             var actual = SerializeDeserialize(expected);
 
-            Assert.AreEqual(expected.BrokerEndPoint, actual.BrokerEndPoint);
+            Assert.AreEqual(expected.Endpoint, actual.Endpoint);
         }
 
         [Test]
         public void ShouldSerializeKafkaApplicationException()
         {
-            var expected = new KafkaApplicationException("3"){ErrorCode = 1};
+            var expected = new KafkaRequestException(ApiKeyRequestType.Fetch, ErrorResponseCode.OffsetOutOfRange, "3");
             var actual = SerializeDeserialize(expected);
 
             Assert.AreEqual(expected.ErrorCode, actual.ErrorCode);
