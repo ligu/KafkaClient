@@ -37,16 +37,18 @@ namespace kafka_tests
 
             //setup mock IKafkaConnection
             _fakeConn0 = new FakeKafkaConnection(new Uri("http://localhost:1"));
-            _fakeConn0.ProduceResponseFunction = async () => new ProduceResponse { Offset = _offset0++, PartitionId = 0, Topic = TestTopic };
+#pragma warning disable 1998
+            _fakeConn0.ProduceResponseFunction = async () => new ProduceResponse(0, new []{ new ProduceTopic(TestTopic, 0, ErrorResponseCode.NoError, _offset0++)});
             _fakeConn0.MetadataResponseFunction = () => MetadataResponse();
-            _fakeConn0.OffsetResponseFunction = async () => new OffsetResponse { Offsets = new List<long> { 0, 99 }, PartitionId = 0, Topic = TestTopic };
+            _fakeConn0.OffsetResponseFunction = async () => new OffsetTopic(TestTopic, 0, ErrorResponseCode.NoError, new []{ 0L, 99L });
             _fakeConn0.FetchResponseFunction = async () => { Thread.Sleep(500); return null; };
 
             _fakeConn1 = new FakeKafkaConnection(new Uri("http://localhost:2"));
-            _fakeConn1.ProduceResponseFunction = async () => new ProduceResponse { Offset = _offset1++, PartitionId = 1, Topic = TestTopic };
+            _fakeConn1.ProduceResponseFunction = async () => new ProduceResponse(0, new []{ new ProduceTopic(TestTopic, 1, ErrorResponseCode.NoError, _offset1++)});
             _fakeConn1.MetadataResponseFunction = () => MetadataResponse();
-            _fakeConn1.OffsetResponseFunction = async () => new OffsetResponse { Offsets = new List<long> { 0, 100 }, PartitionId = 1, Topic = TestTopic };
+            _fakeConn1.OffsetResponseFunction = async () => new OffsetTopic(TestTopic, 1, ErrorResponseCode.NoError, new []{ 0L, 100L });
             _fakeConn1.FetchResponseFunction = async () => { Thread.Sleep(500); return null; };
+#pragma warning restore 1998
 
             _mockKafkaConnectionFactory = _kernel.GetMock<IKafkaConnectionFactory>();
             _mockKafkaConnectionFactory.Setup(x => x.Create(It.Is<KafkaEndpoint>(e => e.Endpoint.Port == 1), It.IsAny<TimeSpan>(), It.IsAny<IKafkaLog>(), It.IsAny<int>(), It.IsAny<TimeSpan?>(), It.IsAny<StatisticsTrackerOptions>())).Returns(() => _fakeConn0);
@@ -66,147 +68,62 @@ namespace kafka_tests
             });
         }
 
+#pragma warning disable 1998
         public static async Task<MetadataResponse> CreateMetadataResponseWithMultipleBrokers()
         {
-            return new MetadataResponse
-                {
-                    CorrelationId = 1,
-                    Brokers = new List<Broker>
-                        {
-                            new Broker
-                                {
-                                    Host = "localhost",
-                                    Port = 1,
-                                    BrokerId = 0
-                                },
-                            new Broker
-                                {
-                                    Host = "localhost",
-                                    Port = 2,
-                                    BrokerId = 1
-                                },
-                        },
-                    Topics = new List<Topic>
-                        {
-                            new Topic
-                                {
-                                    ErrorCode = 0,
-                                    Name = TestTopic,
-                                    Partitions = new List<Partition>
-                                        {
-                                            new Partition
-                                                {
-                                                    ErrorCode = 0,
-                                                    Isrs = new List<int> {1},
-                                                    PartitionId = 0,
-                                                    LeaderId = 0,
-                                                    Replicas = new List<int> {1},
-                                                },
-                                            new Partition
-                                                {
-                                                    ErrorCode = 0,
-                                                    Isrs = new List<int> {1},
-                                                    PartitionId = 1,
-                                                    LeaderId = 1,
-                                                    Replicas = new List<int> {1},
-                                                }
-                                        }
-                                }
-                        }
-                };
+            return new MetadataResponse(
+                1, 
+                new [] {
+                    new MetadataBroker(0, "localhost", 1),
+                    new MetadataBroker(1, "localhost", 2)
+                },
+                new [] {
+                    new MetadataTopic(TestTopic, 
+                        ErrorResponseCode.NoError, new [] {
+                                          new MetadataPartition(0, 0, ErrorResponseCode.NoError, new [] { 1 }, new []{ 1 }),
+                                          new MetadataPartition(1, 1, ErrorResponseCode.NoError, new [] { 1 }, new []{ 1 }),
+                                      })
+                });
         }
 
 
         public static async Task<MetadataResponse> CreateMetadataResponseWithSingleBroker()
         {
-            return new MetadataResponse
-            {
-                CorrelationId = 1,
-                Brokers = new List<Broker>
-                        {
-                            new Broker
-                                {
-                                    Host = "localhost",
-                                    Port = 2,
-                                    BrokerId = 1
-                                },
-                        },
-                Topics = new List<Topic>
-                        {
-                            new Topic
-                                {
-                                    ErrorCode = 0,
-                                    Name = TestTopic,
-                                    Partitions = new List<Partition>
-                                        {
-                                            new Partition
-                                                {
-                                                    ErrorCode = 0,
-                                                    Isrs = new List<int> {1},
-                                                    PartitionId = 0,
-                                                    LeaderId = 1,
-                                                    Replicas = new List<int> {1},
-                                                },
-                                            new Partition
-                                                {
-                                                    ErrorCode = 0,
-                                                    Isrs = new List<int> {1},
-                                                    PartitionId = 1,
-                                                    LeaderId = 1,
-                                                    Replicas = new List<int> {1},
-                                                }
-                                        }
-                                }
-                        }
-            };
+            return new MetadataResponse(
+                1, 
+                new [] {
+                    new MetadataBroker(1, "localhost", 2)
+                },
+                new [] {
+                    new MetadataTopic(TestTopic, 
+                        ErrorResponseCode.NoError, new [] {
+                                          new MetadataPartition(0, 1, ErrorResponseCode.NoError, new [] { 1 }, new []{ 1 }),
+                                          new MetadataPartition(1, 1, ErrorResponseCode.NoError, new [] { 1 }, new []{ 1 }),
+                                      })
+                });
         }
 
         public static async Task<MetadataResponse> CreateMetadataResponseWithNotEndToElectLeader()
         {
-            return new MetadataResponse
-            {
-                CorrelationId = 1,
-                Brokers = new List<Broker>
-                        {
-                            new Broker
-                                {
-                                    Host = "localhost",
-                                    Port = 2,
-                                    BrokerId = 1
-                                },
-                        },
-                Topics = new List<Topic>
-                        {
-                            new Topic
-                                {
-                                    ErrorCode = 0,
-                                    Name = TestTopic,
-                                    Partitions = new List<Partition>
-                                        {
-                                            new Partition
-                                                {
-                                                    ErrorCode = 0,
-                                                    Isrs = new List<int> {1},
-                                                    PartitionId = 0,
-                                                    LeaderId = -1,
-                                                    Replicas = new List<int> {1},
-                                                },
-                                            new Partition
-                                                {
-                                                    ErrorCode = 0,
-                                                    Isrs = new List<int> {1},
-                                                    PartitionId = 1,
-                                                    LeaderId = 1,
-                                                    Replicas = new List<int> {1},
-                                                }
-                                        }
-                                }
-                        }
-            };
+            return new MetadataResponse(
+                1, 
+                new [] {
+                    new MetadataBroker(1, "localhost", 2)
+                },
+                new [] {
+                    new MetadataTopic(TestTopic, 
+                        ErrorResponseCode.NoError, new [] {
+                                          new MetadataPartition(0, -1, ErrorResponseCode.NoError, new [] { 1 }, new []{ 1 }),
+                                          new MetadataPartition(1, 1, ErrorResponseCode.NoError, new [] { 1 }, new []{ 1 }),
+                                      })
+                });
         }
+
         public static async Task<MetadataResponse> CreateMetaResponseWithException()
         {
             throw new Exception();
         }
+#pragma warning restore 1998
+
     }
 }

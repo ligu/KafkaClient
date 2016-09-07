@@ -6,6 +6,7 @@ using Moq;
 using Ninject.MockingKernel.Moq;
 using NUnit.Framework;
 using System;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -36,7 +37,7 @@ namespace kafka_tests.Unit
 
         [TestCase(ErrorResponseCode.NotLeaderForPartition)]
         [TestCase(ErrorResponseCode.LeaderNotAvailable)]
-        [TestCase(ErrorResponseCode.ConsumerCoordinatorNotAvailableCode)]
+        [TestCase(ErrorResponseCode.ConsumerCoordinatorNotAvailable)]
         [TestCase(ErrorResponseCode.BrokerNotAvailable)]
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         public async Task ShouldTryToRefreshMataDataIfCanRecoverByRefreshMetadata(ErrorResponseCode code)
@@ -114,14 +115,14 @@ namespace kafka_tests.Unit
         [TestCase(ErrorResponseCode.InvalidMessage)]
         [TestCase(ErrorResponseCode.InvalidMessageSize)]
         [TestCase(ErrorResponseCode.MessageSizeTooLarge)]
-        [TestCase(ErrorResponseCode.OffsetMetadataTooLargeCode)]
+        [TestCase(ErrorResponseCode.OffsetMetadataTooLarge)]
         [TestCase(ErrorResponseCode.OffsetOutOfRange)]
-        [TestCase(ErrorResponseCode.NotCoordinatorForConsumerCode)]
+        [TestCase(ErrorResponseCode.NotCoordinatorForConsumer)]
         [TestCase(ErrorResponseCode.RequestTimedOut)]
-        [TestCase(ErrorResponseCode.OffsetsLoadInProgressCode)]
+        [TestCase(ErrorResponseCode.OffsetsLoadInProgress)]
         [TestCase(ErrorResponseCode.UnknownTopicOrPartition)]
         [TestCase(ErrorResponseCode.Unknown)]
-        [TestCase(ErrorResponseCode.StaleControllerEpochCode)]
+        [TestCase(ErrorResponseCode.StaleControllerEpoch)]
         [TestCase(ErrorResponseCode.ReplicaNotAvailable)]
         public async Task SendProtocolRequestShouldNoTryToRefreshMataDataIfCanNotRecoverByRefreshMetadata(
             ErrorResponseCode code)
@@ -186,8 +187,7 @@ namespace kafka_tests.Unit
             routerProxy.BrokerConn0.MetadataResponseFunction = async () =>
             {
                 var response = await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers();
-                response.Topics[0].Name = "test2";
-                return response;
+                return new MetadataResponse(response.CorrelationId, response.Brokers, response.Topics.Select(t => new MetadataTopic("test2", t.ErrorCode, t.Partitions)));
             };
 
             for (int i = 0; i < numberOfCall / 2; i++)
@@ -234,7 +234,7 @@ namespace kafka_tests.Unit
                 }
                 log.DebugFormat("Completed ");
 
-                return new FetchResponse() { Error = (short)ErrorResponseCode.NoError };
+                return new FetchResponse(0);
             };
 
             routerProxy.BrokerConn0.FetchResponseFunction = ShouldReturnNotLeaderForPartitionAndThenNoError;
@@ -334,20 +334,17 @@ namespace kafka_tests.Unit
             Assert.That(routerProxy.BrokerConn1.MetadataRequestCallCount, Is.EqualTo(0), "MetadataRequestCallCount");
         }
 
-        private static Func<Task<FetchResponse>> FailedInFirstMessageError(ErrorResponseCode errorResponseCode,
-            TimeSpan delay)
+        private static Func<Task<FetchResponse>> FailedInFirstMessageError(ErrorResponseCode errorResponseCode, TimeSpan delay)
         {
             bool firstTime = true;
-            Func<Task<FetchResponse>> result = async () =>
-            {
-                if (firstTime)
-                {
+            Func<Task<FetchResponse>> result = async () => {
+                if (firstTime) {
                     await Task.Delay(delay);
                     await Task.Delay(1);
                     firstTime = false;
-                    return new FetchResponse() { Error = (short)errorResponseCode };
+                    return new FetchResponse(0, new []{ new FetchTopicResponse("foo", 1, 0, errorResponseCode)});
                 }
-                return new FetchResponse() { Error = (short)ErrorResponseCode.NoError };
+                return new FetchResponse(0);
             };
             return result;
         }
@@ -370,7 +367,7 @@ namespace kafka_tests.Unit
                     args[0] = "error Test";
                     throw (Exception)Activator.CreateInstance(exceptionType, args);
                 }
-                return new FetchResponse() { Error = (short)ErrorResponseCode.NoError };
+                return new FetchResponse(0);
             };
             return result;
         }
@@ -385,7 +382,7 @@ namespace kafka_tests.Unit
 
         private Task<FetchResponse> ShouldReturnValidMessage()
         {
-            return Task.FromResult(new FetchResponse() { Error = (short)ErrorResponseCode.NoError });
+            return Task.FromResult(new FetchResponse(0));
         }
     }
 }

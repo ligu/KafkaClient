@@ -1,7 +1,5 @@
-using KafkaNet.Common;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace KafkaNet.Protocol
 {
@@ -11,149 +9,48 @@ namespace KafkaNet.Protocol
     /// </summary>
     public class OffsetCommitRequest : BaseRequest, IKafkaRequest<OffsetCommitResponse>
     {
-        public ApiKeyRequestType ApiKey { get { return ApiKeyRequestType.OffsetCommit; } }
+        public ApiKeyRequestType ApiKey => ApiKeyRequestType.OffsetCommit;
+
+        /// <summary>
+        /// The generation of the consumer group.
+        /// Only version 1 (0.8.2) and above
+        /// </summary>
         public int GenerationId { get; set; }
+
+        /// <summary>
+        /// The consumer id assigned by the group coordinator.
+        /// Only version 1 (0.8.2) and above
+        /// </summary>
         public string MemberId { get; set; }
+
+        /// <summary>
+        /// The consumer group id.
+        /// </summary>
         public string ConsumerGroup { get; set; }
+
+        /// <summary>
+        /// Time period to retain the offset.
+        /// </summary>
         public TimeSpan? OffsetRetention { get; set; }
+
         public List<OffsetCommit> OffsetCommits { get; set; }
 
         public KafkaDataPayload Encode()
         {
-            return EncodeOffsetCommitRequest(this);
-        }
-
-        public IEnumerable<OffsetCommitResponse> Decode(byte[] payload)
-        {
-            return DecodeOffsetCommitResponse(payload);
-        }
-
-        private KafkaDataPayload EncodeOffsetCommitRequest(OffsetCommitRequest request)
-        {
-            if (request.OffsetCommits == null) request.OffsetCommits = new List<OffsetCommit>();
-
-            using (var message = EncodeHeader(request).Pack(request.ConsumerGroup, StringPrefixEncoding.Int16))
-            {
-                if (request.ApiVersion >= 1) {
-                    message.Pack(request.GenerationId)
-                            .Pack(request.MemberId, StringPrefixEncoding.Int16);
-                }
-                if (request.ApiVersion >= 2) {
-                    if (request.OffsetRetention.HasValue) {
-                        message.Pack((long) request.OffsetRetention.Value.TotalMilliseconds);
-                    } else {
-                        message.Pack(-1L);
-                    }
-                }
-
-                var topicGroups = request.OffsetCommits.GroupBy(x => x.Topic).ToList();
-                message.Pack(topicGroups.Count);
-
-                foreach (var topicGroup in topicGroups)
-                {
-                    var partitions = topicGroup.GroupBy(x => x.PartitionId).ToList();
-                    message.Pack(topicGroup.Key, StringPrefixEncoding.Int16)
-                        .Pack(partitions.Count);
-
-                    foreach (var partition in partitions)
-                    {
-                        foreach (var commit in partition)
-                        {
-                            message.Pack(partition.Key)
-                            .Pack(commit.Offset);
-                            if (ApiVersion == 1) {
-                                message.Pack(commit.TimeStamp);
-                            }
-                            message.Pack(commit.Metadata, StringPrefixEncoding.Int16);
-                        }
-                    }
-                }
-
-                return new KafkaDataPayload
-                {
-                    Buffer = message.Payload(),
-                    CorrelationId = request.CorrelationId,
-                    ApiKey = ApiKey
-                };
+            if (OffsetCommits == null) {
+                OffsetCommits = new List<OffsetCommit>();
             }
+
+            return new KafkaDataPayload {
+                Buffer = EncodeRequest.OffsetCommitRequest(this),
+                CorrelationId = CorrelationId,
+                ApiKey = ApiKey
+            };
         }
 
-        private IEnumerable<OffsetCommitResponse> DecodeOffsetCommitResponse(byte[] data)
+        public OffsetCommitResponse Decode(byte[] payload)
         {
-            using (var stream = new BigEndianBinaryReader(data))
-            {
-                var correlationId = stream.ReadInt32();
-
-                var topicCount = stream.ReadInt32();
-                for (int i = 0; i < topicCount; i++)
-                {
-                    var topic = stream.ReadInt16String();
-
-                    var partitionCount = stream.ReadInt32();
-                    for (int j = 0; j < partitionCount; j++)
-                    {
-                        var response = new OffsetCommitResponse()
-                        {
-                            Topic = topic,
-                            PartitionId = stream.ReadInt32(),
-                            Error = stream.ReadInt16()
-                        };
-
-                        yield return response;
-                    }
-                }
-            }
+            return DecodeResponse.OffsetCommitResponse(ApiVersion, payload);
         }
-    }
-
-    public class OffsetCommit
-    {
-        /// <summary>
-        /// The topic the offset came from.
-        /// </summary>
-        public string Topic { get; set; }
-
-        /// <summary>
-        /// The partition the offset came from.
-        /// </summary>
-        public int PartitionId { get; set; }
-
-        /// <summary>
-        /// The offset number to commit as completed.
-        /// </summary>
-        public long Offset { get; set; }
-
-        /// <summary>
-        /// If the time stamp field is set to -1, then the broker sets the time stamp to the receive time before committing the offset.
-        /// </summary>
-        public long TimeStamp { get; set; }
-
-        /// <summary>
-        /// Descriptive metadata about this commit.
-        /// </summary>
-        public string Metadata { get; set; }
-
-        public OffsetCommit()
-        {
-            TimeStamp = -1;
-        }
-    }
-
-    public class OffsetCommitResponse : IBaseResponse
-    {
-        /// <summary>
-        /// The name of the topic this response entry is for.
-        /// </summary>
-        public string Topic { get; set; }
-
-        /// <summary>
-        /// The id of the partition this response is for.
-        /// </summary>
-        public Int32 PartitionId { get; set; }
-
-        /// <summary>
-        /// Error code of exception that occured during the request.  Zero if no error.
-        /// </summary>
-        public Int16 Error { get; set; }
     }
 }

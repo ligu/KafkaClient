@@ -74,7 +74,7 @@ namespace kafka_tests.Unit
             using (var server = new FakeTcpServer(Ilog, 8999))
             using (var client = new TcpClient())
             {
-                server.SendDataAsync(testData.ToBytes());
+                var send = server.SendDataAsync(testData.ToBytes());
                 Thread.Sleep(1000);
                 client.Connect(_fakeServerUrl.Host, _fakeServerUrl.Port);
 

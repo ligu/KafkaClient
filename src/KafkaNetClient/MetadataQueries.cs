@@ -24,23 +24,20 @@ namespace KafkaNet
         /// <param name="maxOffsets"></param>
         /// <param name="time"></param>
         /// <returns></returns>
-        public async Task<List<OffsetResponse>> GetTopicOffsetAsync(string topic, int maxOffsets = 2, int time = -1)
+        public async Task<List<OffsetTopic>> GetTopicOffsetAsync(string topic, int maxOffsets = 2, int time = -1)
         {
             await _brokerRouter.RefreshMissingTopicMetadata(topic).ConfigureAwait(false);
             var topicMetadata = GetTopicFromCache(topic);
 
             //send the offset request to each partition leader
             var sendRequests = topicMetadata.Partitions
-                .GroupBy(x => x.PartitionId)
+                .GroupBy((MetadataPartition x) => x.PartitionId)
                 .Select(p =>
                     {
                         var route = _brokerRouter.SelectBrokerRouteFromLocalCache(topic, p.Key);
-                        var request = new OffsetRequest
-                                        {
-                                            Offsets = new List<Offset>
-                                                {
-                                                    new Offset
-                                                    {
+                        var request = new OffsetRequest {
+                                            Offsets = new List<Offset> {
+                                                    new Offset {
                                                         Topic = topic,
                                                         PartitionId = p.Key,
                                                         MaxOffsets = maxOffsets,
@@ -53,7 +50,7 @@ namespace KafkaNet
                     }).ToArray();
 
             await Task.WhenAll(sendRequests).ConfigureAwait(false);
-            return sendRequests.SelectMany(x => x.Result).ToList();
+            return sendRequests.SelectMany(x => x.Result.Topics).ToList();
         }
 
         /// <summary>
@@ -61,7 +58,7 @@ namespace KafkaNet
         /// </summary>
         /// <param name="topic">The metadata on the requested topic.</param>
         /// <returns>Topic object containing the metadata on the requested topic.</returns>
-        public Topic GetTopicFromCache(string topic)
+        public MetadataTopic GetTopicFromCache(string topic)
         {
             var response = _brokerRouter.GetTopicMetadataFromLocalCache(topic);
 

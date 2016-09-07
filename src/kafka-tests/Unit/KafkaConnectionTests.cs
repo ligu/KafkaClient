@@ -196,7 +196,7 @@ namespace kafka_tests.Unit
                     server.OnClientConnected += () => Console.WriteLine("Client connected...");
                     server.OnBytesReceived += (b) =>
                     {
-                        server.SendDataAsync(MessageHelper.CreateMetadataResponse(1, "Test"));
+                        var send = server.SendDataAsync(MessageHelper.CreateMetadataResponse(1, "Test"));
                     };
 
                     await Task.WhenAny(taskResult, Task.Delay(TimeSpan.FromSeconds(15)));
@@ -225,7 +225,7 @@ namespace kafka_tests.Unit
                         conn.SendAsync(new MetadataRequest())
                     };
 
-                Task.WhenAll(tasks);
+                await Task.WhenAll(tasks);
 
                 await TaskTest.WaitFor(() => tasks.All(t => t.IsFaulted));
                 foreach (var task in tasks)

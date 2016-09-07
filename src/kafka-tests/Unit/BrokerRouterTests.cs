@@ -78,7 +78,7 @@ namespace kafka_tests.Unit
             });
 
             _mockKafkaConnection1.Setup(x => x.SendAsync(It.IsAny<IKafkaRequest<MetadataResponse>>()))
-                      .Returns(() => Task.Run(async () => new List<MetadataResponse> { await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers() }));
+                      .Returns(() => Task.Run(async () => await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers()));
             await router.RefreshMissingTopicMetadata(TestTopic);
             var topics = router.GetTopicMetadataFromLocalCache(TestTopic);
             _mockKafkaConnectionFactory.Verify(x => x.Create(It.Is<KafkaEndpoint>(e => e.Endpoint.Port == 2), It.IsAny<TimeSpan>(), It.IsAny<IKafkaLog>(), It.IsAny<int>(), It.IsAny<TimeSpan?>(), It.IsAny<StatisticsTrackerOptions>()), Times.Once());
@@ -263,7 +263,9 @@ namespace kafka_tests.Unit
             metadataResponse.Topics.Clear();
 
             var routerProxy = new BrokerRouterProxy(_kernel);
+#pragma warning disable 1998
             routerProxy.BrokerConn0.MetadataResponseFunction = async () => metadataResponse;
+#pragma warning restore 1998
 
             routerProxy.Create().SelectBrokerRouteFromLocalCache(TestTopic, 1);
         }
@@ -276,7 +278,9 @@ namespace kafka_tests.Unit
             metadataResponse.Brokers.Clear();
 
             var routerProxy = new BrokerRouterProxy(_kernel);
+#pragma warning disable 1998
             routerProxy.BrokerConn0.MetadataResponseFunction = async () => metadataResponse;
+#pragma warning restore 1998
             var router = routerProxy.Create();
             await router.RefreshMissingTopicMetadata(TestTopic);
             router.SelectBrokerRouteFromLocalCache(TestTopic, 1);
@@ -294,22 +298,15 @@ namespace kafka_tests.Unit
             var key = testCase.ToIntSizedBytes();
             var routerProxy = new BrokerRouterProxy(_kernel);
 
-            _mockPartitionSelector.Setup(x => x.Select(It.IsAny<Topic>(), key))
-                                  .Returns(() => new Partition
-                                  {
-                                      ErrorCode = 0,
-                                      Isrs = new List<int> { 1 },
-                                      PartitionId = 0,
-                                      LeaderId = 0,
-                                      Replicas = new List<int> { 1 },
-                                  });
+            _mockPartitionSelector.Setup(x => x.Select(It.IsAny<MetadataTopic>(), key))
+                                  .Returns(() => new MetadataPartition(0, 0, ErrorResponseCode.NoError, new []{ 1 }, new []{ 1 }));
 
             routerProxy.PartitionSelector = _mockPartitionSelector.Object;
             var router = routerProxy.Create();
             await router.RefreshMissingTopicMetadata(TestTopic);
             var result = router.SelectBrokerRouteFromLocalCache(TestTopic, key);
 
-            _mockPartitionSelector.Verify(f => f.Select(It.Is<Topic>(x => x.Name == TestTopic), key), Times.Once());
+            _mockPartitionSelector.Verify(f => f.Select(It.Is<MetadataTopic>(x => x.Name == TestTopic), key), Times.Once());
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
@@ -320,7 +317,9 @@ namespace kafka_tests.Unit
             metadataResponse.Topics.Clear();
 
             var routerProxy = new BrokerRouterProxy(_kernel);
+#pragma warning disable 1998
             routerProxy.BrokerConn0.MetadataResponseFunction = async () => metadataResponse;
+#pragma warning restore 1998
 
             routerProxy.Create().SelectBrokerRouteFromLocalCache(TestTopic);
         }
@@ -334,7 +333,9 @@ namespace kafka_tests.Unit
 
             var routerProxy = new BrokerRouterProxy(_kernel);
             var router = routerProxy.BrokerConn0;
+#pragma warning disable 1998
             routerProxy.BrokerConn0.MetadataResponseFunction = async () => metadataResponse;
+#pragma warning restore 1998
             var routerProxy1 = routerProxy.Create();
             await routerProxy1.RefreshMissingTopicMetadata(TestTopic);
             routerProxy1.SelectBrokerRouteFromLocalCache(TestTopic);

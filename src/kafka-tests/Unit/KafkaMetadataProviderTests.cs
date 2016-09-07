@@ -3,7 +3,6 @@ using KafkaNet;
 using KafkaNet.Protocol;
 using NSubstitute;
 using NUnit.Framework;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace kafka_tests.Unit
@@ -22,8 +21,8 @@ namespace kafka_tests.Unit
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         [TestCase(ErrorResponseCode.LeaderNotAvailable)]
-        [TestCase(ErrorResponseCode.OffsetsLoadInProgressCode)]
-        [TestCase(ErrorResponseCode.ConsumerCoordinatorNotAvailableCode)]
+        [TestCase(ErrorResponseCode.OffsetsLoadInProgress)]
+        [TestCase(ErrorResponseCode.ConsumerCoordinatorNotAvailable)]
         public async Task ShouldRetryWhenReceiveAnRetryErrorCode(ErrorResponseCode errorCode)
         {
             var conn = Substitute.For<IKafkaConnection>();
@@ -146,43 +145,18 @@ namespace kafka_tests.Unit
             }
         }
 
-        private Task<List<MetadataResponse>> CreateMetadataResponse(int brokerId, string host, int port)
+#pragma warning disable 1998
+        private Task<MetadataResponse> CreateMetadataResponse(int brokerId, string host, int port)
         {
-            var tcs = new TaskCompletionSource<List<MetadataResponse>>();
-            tcs.SetResult(new List<MetadataResponse>{
-                new MetadataResponse
-            {
-                Brokers = new List<Broker>
-                {
-                    new Broker
-                    {
-                        BrokerId = brokerId,
-                        Host = host,
-                        Port = port}
-                },
-                Topics  = new List<Topic>()
-            }});
+            var tcs = new TaskCompletionSource<MetadataResponse>();
+            tcs.SetResult(new MetadataResponse(1, new [] { new MetadataBroker(brokerId, host, port) }, new MetadataTopic[] {}));
             return tcs.Task;
         }
 
-        private async Task<List<MetadataResponse>> CreateMetadataResponse(ErrorResponseCode errorCode)
+        private async Task<MetadataResponse> CreateMetadataResponse(ErrorResponseCode errorCode)
         {
-            return new List<MetadataResponse>
-            {
-                new MetadataResponse
-                {
-                    Brokers = new List<Broker>(),
-                    Topics = new List<Topic>
-                    {
-                        new Topic
-                        {
-                            ErrorCode = (short) errorCode,
-                            Name = "Test",
-                            Partitions = new List<Partition>()
-                        }
-                    }
-                }
-            };
+            return new MetadataResponse(1, new MetadataBroker[] {}, new [] { new MetadataTopic("Test", errorCode, new MetadataPartition[] {})});
         }
+#pragma warning restore 1998
     }
 }

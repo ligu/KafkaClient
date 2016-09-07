@@ -289,12 +289,12 @@ namespace kafka_tests.Unit
             }
 
             var request = new FetchRequest { ApiVersion = version };
-            var responses = request.Decode(data); // doesn't include the size in the decode -- the framework deals with it, I'd assume
+            var response = request.Decode(data); // doesn't include the size in the decode -- the framework deals with it, I'd assume
             data.PrefixWithInt32Length().AssertProtocol(
                 reader =>
                 {
                     reader.AssertResponseHeader(correlationId);
-                    reader.AssertFetchResponse(version, throttleTime, responses);
+                    reader.AssertFetchResponse(version, response);
                 });
         }
 
@@ -396,12 +396,12 @@ namespace kafka_tests.Unit
             }
 
             var request = new OffsetRequest { ApiVersion = 0 };
-            var responses = request.Decode(data); // doesn't include the size in the decode -- the framework deals with it, I'd assume
+            var response = request.Decode(data); // doesn't include the size in the decode -- the framework deals with it, I'd assume
             data.PrefixWithInt32Length().AssertProtocol(
                 reader =>
                 {
                     reader.AssertResponseHeader(correlationId);
-                    reader.AssertOffsetResponse(responses);
+                    reader.AssertOffsetResponse(response);
                 });
         }
 
@@ -512,12 +512,12 @@ namespace kafka_tests.Unit
             }
 
             var request = new MetadataRequest {ApiVersion = 0};
-            var responses = request.Decode(data).Single(); // note that this is a bit weird
+            var response = request.Decode(data);
                 // doesn't include the size in the decode -- the framework deals with it, I'd assume
             data.PrefixWithInt32Length().AssertProtocol(
                      reader => {
                          reader.AssertResponseHeader(correlationId);
-                         reader.AssertMetadataResponse(responses);
+                         reader.AssertMetadataResponse(response);
                      });
         }
 
@@ -602,7 +602,7 @@ namespace kafka_tests.Unit
             [Values(1, 5)] int partitionsPerTopic,
             [Values(
                  ErrorResponseCode.NoError,
-                 ErrorResponseCode.OffsetMetadataTooLargeCode
+                 ErrorResponseCode.OffsetMetadataTooLarge
              )] ErrorResponseCode errorCode)
         {
             var clientId = "OffsetCommitApiResponse";
@@ -627,12 +627,12 @@ namespace kafka_tests.Unit
             }
 
             var request = new OffsetCommitRequest {ApiVersion = 0};
-            var responses = request.Decode(data); 
+            var response = request.Decode(data); 
                 // doesn't include the size in the decode -- the framework deals with it, I'd assume
             data.PrefixWithInt32Length().AssertProtocol(
                      reader => {
                          reader.AssertResponseHeader(correlationId);
-                         reader.AssertOffsetCommitResponse(responses);
+                         reader.AssertOffsetCommitResponse(response);
                      });
         }
 
@@ -657,16 +657,12 @@ namespace kafka_tests.Unit
                 ClientId = clientId,
                 CorrelationId = clientId.GetHashCode(),
                 ConsumerGroup = groupId,
-                Topics = new List<OffsetFetch>(),
+                Topics = new List<Topic>(),
                 ApiVersion = 0
             };
 
             for (var t = 0; t < topicsPerRequest; t++) {
-                var payload = new OffsetFetch {
-                    Topic = topic + t,
-                    PartitionId = t % maxPartitions
-                };
-                request.Topics.Add(payload);
+                request.Topics.Add(new Topic(topic + t, t % maxPartitions));
             }
 
             var data = request.Encode();
@@ -697,8 +693,8 @@ namespace kafka_tests.Unit
             [Values(
                  ErrorResponseCode.NoError,
                  ErrorResponseCode.UnknownTopicOrPartition,
-                 ErrorResponseCode.OffsetsLoadInProgressCode,
-                 ErrorResponseCode.NotCoordinatorForConsumerCode,
+                 ErrorResponseCode.OffsetsLoadInProgress,
+                 ErrorResponseCode.NotCoordinatorForConsumer,
                  ErrorResponseCode.IllegalGeneration,
                  ErrorResponseCode.UnknownMemberId,
                  ErrorResponseCode.TopicAuthorizationFailed,
@@ -731,12 +727,12 @@ namespace kafka_tests.Unit
             }
 
             var request = new OffsetFetchRequest {ApiVersion = 0};
-            var responses = request.Decode(data); 
+            var response = request.Decode(data); 
                 // doesn't include the size in the decode -- the framework deals with it, I'd assume
             data.PrefixWithInt32Length().AssertProtocol(
                      reader => {
                          reader.AssertResponseHeader(correlationId);
-                         reader.AssertOffsetFetchResponse(responses);
+                         reader.AssertOffsetFetchResponse(response);
                      });
         }
 
@@ -751,7 +747,7 @@ namespace kafka_tests.Unit
         {
             var clientId = "GroupCoordinatorApiRequest";
 
-            var request = new ConsumerMetadataRequest {
+            var request = new GroupCoordinatorRequest {
                 ClientId = clientId,
                 CorrelationId = clientId.GetHashCode(),
                 ConsumerGroup = groupId,
@@ -781,7 +777,7 @@ namespace kafka_tests.Unit
         public void GroupCoordinatorApiResponse(
             [Values(
                  ErrorResponseCode.NoError,
-                 ErrorResponseCode.ConsumerCoordinatorNotAvailableCode,
+                 ErrorResponseCode.ConsumerCoordinatorNotAvailable,
                  ErrorResponseCode.GroupAuthorizationFailed
              )] ErrorResponseCode errorCode,
             [Values(0, 1)] int coordinatorId
@@ -803,13 +799,13 @@ namespace kafka_tests.Unit
                 Buffer.BlockCopy(stream.GetBuffer(), 0, data, 0, data.Length);
             }
 
-            var request = new ConsumerMetadataRequest {ApiVersion = 0};
-            var responses = request.Decode(data).Single(); 
+            var request = new GroupCoordinatorRequest {ApiVersion = 0};
+            var response = request.Decode(data); 
                 // doesn't include the size in the decode -- the framework deals with it, I'd assume
             data.PrefixWithInt32Length().AssertProtocol(
                      reader => {
                          reader.AssertResponseHeader(correlationId);
-                         reader.AssertGroupCoordinatorResponse(responses);
+                         reader.AssertGroupCoordinatorResponse(response);
                      });
         }
 
@@ -878,7 +874,7 @@ namespace kafka_tests.Unit
             }
 
             var request = new ApiVersionsRequest {ApiVersion = 0};
-            var responses = request.Decode(data).Single(); 
+            var responses = request.Decode(data); 
                 // doesn't include the size in the decode -- the framework deals with it, I'd assume
             data.PrefixWithInt32Length().AssertProtocol(
                      reader => {

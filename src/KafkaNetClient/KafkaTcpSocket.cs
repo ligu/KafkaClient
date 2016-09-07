@@ -499,10 +499,7 @@ namespace KafkaNet
         public ApiKeyRequestType ApiKey { get; set; }
         public int MessageCount { get; set; }
 
-        public bool TrackPayload
-        {
-            get { return MessageCount > 0; }
-        }
+        public bool TrackPayload => MessageCount > 0;
 
         public byte[] Buffer { get; set; }
     }

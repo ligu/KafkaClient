@@ -26,7 +26,7 @@ namespace KafkaNet
         private readonly KafkaMetadataProvider _kafkaMetadataProvider;
         private readonly ConcurrentDictionary<KafkaEndpoint, IKafkaConnection> _defaultConnectionIndex = new ConcurrentDictionary<KafkaEndpoint, IKafkaConnection>();
         private readonly ConcurrentDictionary<int, IKafkaConnection> _brokerConnectionIndex = new ConcurrentDictionary<int, IKafkaConnection>();
-        private readonly ConcurrentDictionary<string, Tuple<Topic, DateTime>> _topicIndex = new ConcurrentDictionary<string, Tuple<Topic, DateTime>>();
+        private readonly ConcurrentDictionary<string, Tuple<MetadataTopic, DateTime>> _topicIndex = new ConcurrentDictionary<string, Tuple<MetadataTopic, DateTime>>();
         private readonly AsyncLock _taskLocker = new AsyncLock();
 
         /// <exception cref="ServerUnreachableException">None of the provided Kafka servers are resolvable.</exception>
@@ -113,7 +113,7 @@ namespace KafkaNet
         /// request metadata from the server.  To force querying the metadata from the server use <see cref="RefreshTopicMetadata"/>
         /// </remarks>
         /// <exception cref="InvalidTopicNotExistsInCache">Thrown if the topic metadata does not exist in the cache.</exception>
-        public List<Topic> GetTopicMetadataFromLocalCache(params string[] topics)
+        public List<MetadataTopic> GetTopicMetadataFromLocalCache(params string[] topics)
         {
             var topicSearchResult = SearchCacheForTopics(topics, null);
 
@@ -171,7 +171,7 @@ namespace KafkaNet
         /// <remarks>
         /// The topic metadata will by default check the cache. To force querying the metadata from the server use <see cref="RefreshAllTopicMetadata"/>
         /// </remarks>
-        public List<Topic> GetAllTopicMetadataFromLocalCache()
+        public List<MetadataTopic> GetAllTopicMetadataFromLocalCache()
         {
             return _topicIndex.Values.Select(t => t.Item1).ToList();
         }
@@ -226,9 +226,9 @@ namespace KafkaNet
             return result;
         }
 
-        private Topic GetCachedTopic(string topic, TimeSpan? expiration = null)
+        private MetadataTopic GetCachedTopic(string topic, TimeSpan? expiration = null)
         {
-            Tuple<Topic, DateTime> cachedTopic;
+            Tuple<MetadataTopic, DateTime> cachedTopic;
             if (_topicIndex.TryGetValue(topic, out cachedTopic))
             {
                 bool hasExpirationPolicy = expiration.HasValue;
@@ -241,7 +241,7 @@ namespace KafkaNet
             return null;
         }
 
-        private BrokerRoute GetCachedRoute(string topic, Partition partition)
+        private BrokerRoute GetCachedRoute(string topic, MetadataPartition partition)
         {
             var route = TryGetRouteFromCache(topic, partition);
             if (route != null) return route;
@@ -252,7 +252,7 @@ namespace KafkaNet
             };
         }
 
-        private BrokerRoute TryGetRouteFromCache(string topic, Partition partition)
+        private BrokerRoute TryGetRouteFromCache(string topic, MetadataPartition partition)
         {
             IKafkaConnection conn;
             if (_brokerConnectionIndex.TryGetValue(partition.LeaderId, out conn))
@@ -299,7 +299,7 @@ namespace KafkaNet
 
             foreach (var topic in metadata.Topics)
             {
-                var localTopic = new Tuple<Topic, DateTime>(topic, DateTime.Now);
+                var localTopic = new Tuple<MetadataTopic, DateTime>(topic, DateTime.Now);
                 _topicIndex.AddOrUpdate(topic.Name, s => localTopic, (s, existing) => localTopic);
             }
         }
@@ -352,12 +352,12 @@ namespace KafkaNet
 
     public class TopicSearchResult
     {
-        public List<Topic> Topics { get; set; }
+        public List<MetadataTopic> Topics { get; set; }
         public List<string> Missing { get; set; }
 
         public TopicSearchResult()
         {
-            Topics = new List<Topic>();
+            Topics = new List<MetadataTopic>();
             Missing = new List<string>();
         }
     }

@@ -35,11 +35,12 @@ namespace kafka_tests.Integration
             await router.RefreshMissingTopicMetadata(IntegrationConfig.IntegrationTopic);
             var conn = router.SelectBrokerRouteFromLocalCache(IntegrationConfig.IntegrationTopic, partitionId);
 
-            var response = (await conn.Connection.SendAsync(request)).FirstOrDefault();
+            var response = await conn.Connection.SendAsync(request);
+            var topic = response.Topics.FirstOrDefault();
 
-            Assert.That(response, Is.Not.Null);
-            Assert.That(response.Error, Is.EqualTo((int)ErrorResponseCode.NoError));
-            Assert.That(response.Offset, Is.EqualTo(-1));
+            Assert.That(topic, Is.Not.Null);
+            Assert.That(topic.Error, Is.EqualTo((int)ErrorResponseCode.NoError));
+            Assert.That(topic.Offset, Is.EqualTo(-1));
             router.Dispose();
         }
 
@@ -53,10 +54,11 @@ namespace kafka_tests.Integration
             var conn = router.SelectBrokerRouteFromLocalCache(IntegrationConfig.IntegrationTopic, partitionId);
 
             var commit = CreateOffsetCommitRequest(IntegrationConfig.IntegrationConsumer, partitionId, 10);
-            var response = (await conn.Connection.SendAsync(commit)).FirstOrDefault();
+            var response = await conn.Connection.SendAsync(commit);
+            var topic = response.Topics.FirstOrDefault();
 
-            Assert.That(response, Is.Not.Null);
-            Assert.That(response.Error, Is.EqualTo((int)ErrorResponseCode.NoError));
+            Assert.That(topic, Is.Not.Null);
+            Assert.That(topic.Error, Is.EqualTo((int)ErrorResponseCode.NoError));
 
             router.Dispose();
         }
@@ -73,17 +75,19 @@ namespace kafka_tests.Integration
             var conn = router.SelectBrokerRouteFromLocalCache(IntegrationConfig.IntegrationTopic, partitionId);
 
             var commit = CreateOffsetCommitRequest(IntegrationConfig.IntegrationConsumer, partitionId, offset);
-            var commitResponse = (await conn.Connection.SendAsync(commit)).FirstOrDefault();
+            var commitResponse = await conn.Connection.SendAsync(commit);
+            var commitTopic = commitResponse.Topics.SingleOrDefault();
 
-            Assert.That(commitResponse, Is.Not.Null);
-            Assert.That(commitResponse.Error, Is.EqualTo((int)ErrorResponseCode.NoError));
+            Assert.That(commitTopic, Is.Not.Null);
+            Assert.That(commitTopic.Error, Is.EqualTo(ErrorResponseCode.NoError));
 
             var fetch = CreateOffsetFetchRequest(IntegrationConfig.IntegrationConsumer, partitionId);
-            var fetchResponse = (await conn.Connection.SendAsync(fetch)).FirstOrDefault();
+            var fetchResponse = await conn.Connection.SendAsync(fetch);
+            var fetchTopic = fetchResponse.Topics.SingleOrDefault();
 
-            Assert.That(fetchResponse, Is.Not.Null);
-            Assert.That(fetchResponse.Error, Is.EqualTo((int)ErrorResponseCode.NoError));
-            Assert.That(fetchResponse.Offset, Is.EqualTo(offset));
+            Assert.That(fetchTopic, Is.Not.Null);
+            Assert.That(fetchTopic.Error, Is.EqualTo(ErrorResponseCode.NoError));
+            Assert.That(fetchTopic.Offset, Is.EqualTo(offset));
             router.Dispose();
         }
 
@@ -100,18 +104,20 @@ namespace kafka_tests.Integration
             var conn = router.SelectBrokerRouteFromLocalCache(IntegrationConfig.IntegrationTopic, partitionId);
 
             var commit = CreateOffsetCommitRequest(IntegrationConfig.IntegrationConsumer, partitionId, offset, metadata);
-            var commitResponse = conn.Connection.SendAsync(commit).Result.FirstOrDefault();
+            var commitResponse = conn.Connection.SendAsync(commit).Result;
+            var commitTopic = commitResponse.Topics.SingleOrDefault();
 
-            Assert.That(commitResponse, Is.Not.Null);
-            Assert.That(commitResponse.Error, Is.EqualTo((int)ErrorResponseCode.NoError));
+            Assert.That(commitTopic, Is.Not.Null);
+            Assert.That(commitTopic.Error, Is.EqualTo(ErrorResponseCode.NoError));
 
             var fetch = CreateOffsetFetchRequest(IntegrationConfig.IntegrationConsumer, partitionId);
-            var fetchResponse = conn.Connection.SendAsync(fetch).Result.FirstOrDefault();
+            var fetchResponse = conn.Connection.SendAsync(fetch).Result;
+            var fetchTopic = fetchResponse.Topics.SingleOrDefault();
 
-            Assert.That(fetchResponse, Is.Not.Null);
-            Assert.That(fetchResponse.Error, Is.EqualTo((int)ErrorResponseCode.NoError));
-            Assert.That(fetchResponse.Offset, Is.EqualTo(offset));
-            Assert.That(fetchResponse.MetaData, Is.EqualTo(metadata));
+            Assert.That(fetchTopic, Is.Not.Null);
+            Assert.That(fetchTopic.Error, Is.EqualTo(ErrorResponseCode.NoError));
+            Assert.That(fetchTopic.Offset, Is.EqualTo(offset));
+            Assert.That(fetchTopic.MetaData, Is.EqualTo(metadata));
             router.Dispose();
         }
 
@@ -123,9 +129,9 @@ namespace kafka_tests.Integration
             {
                 var conn = router.SelectBrokerRouteFromLocalCache(IntegrationConfig.IntegrationTopic);
 
-                var request = new ConsumerMetadataRequest { ConsumerGroup = IntegrationConfig.IntegrationConsumer };
+                var request = new GroupCoordinatorRequest { ConsumerGroup = IntegrationConfig.IntegrationConsumer };
 
-                var response = conn.Connection.SendAsync(request).Result.FirstOrDefault();
+                var response = conn.Connection.SendAsync(request).Result;
 
                 Assert.That(response, Is.Not.Null);
                 Assert.That(response.Error, Is.EqualTo((int)ErrorResponseCode.NoError));
@@ -137,13 +143,8 @@ namespace kafka_tests.Integration
             var request = new OffsetFetchRequest
             {
                 ConsumerGroup = consumerGroup,
-                Topics = new List<OffsetFetch>
-                    {
-                        new OffsetFetch
-                        {
-                            PartitionId = partitionId,
-                            Topic = IntegrationConfig.IntegrationTopic
-                        }
+                Topics = new List<Topic> {
+                        new Topic(IntegrationConfig.IntegrationTopic, partitionId)
                     }
             };
 

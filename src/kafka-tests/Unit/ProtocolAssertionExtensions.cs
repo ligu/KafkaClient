@@ -40,12 +40,12 @@ namespace kafka_tests.Unit
         ///
         /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
         /// </summary>
-        public static void AssertGroupCoordinatorResponse(this BigEndianBinaryReader reader, ConsumerMetadataResponse response)
+        public static void AssertGroupCoordinatorResponse(this BigEndianBinaryReader reader, GroupCoordinatorResponse response)
         {
             Assert.That(reader.ReadInt16(), Is.EqualTo(response.Error), "ErrorCode");
-            Assert.That(reader.ReadInt32(), Is.EqualTo(response.CoordinatorId), "CoordinatorId");
-            Assert.That(reader.ReadInt16String(), Is.EqualTo(response.CoordinatorHost), "CoordinatorHost");
-            Assert.That(reader.ReadInt32(), Is.EqualTo(response.CoordinatorPort), "CoordinatorPort");
+            Assert.That(reader.ReadInt32(), Is.EqualTo(response.BrokerId), "CoordinatorId");
+            Assert.That(reader.ReadInt16String(), Is.EqualTo(response.Host), "CoordinatorHost");
+            Assert.That(reader.ReadInt32(), Is.EqualTo(response.Port), "CoordinatorPort");
         }
 
         /// <summary>
@@ -54,7 +54,7 @@ namespace kafka_tests.Unit
         ///
         /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
         /// </summary>
-        public static void AssertGroupCoordinatorRequest(this BigEndianBinaryReader reader, ConsumerMetadataRequest request)
+        public static void AssertGroupCoordinatorRequest(this BigEndianBinaryReader reader, GroupCoordinatorRequest request)
         {
             Assert.That(reader.ReadInt16String(), Is.EqualTo(request.ConsumerGroup), "ConsumerGroup");
         }
@@ -69,11 +69,11 @@ namespace kafka_tests.Unit
         ///
         /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
         /// </summary>
-        public static void AssertOffsetFetchResponse(this BigEndianBinaryReader reader, IEnumerable<OffsetFetchResponse> response)
+        public static void AssertOffsetFetchResponse(this BigEndianBinaryReader reader, OffsetFetchResponse response)
         {
-            var responses = response.GroupBy(r => r.Topic).ToList();
-            Assert.That(reader.ReadInt32(), Is.EqualTo(responses.Count), "[TopicName]");
-            foreach (var payload in responses) {
+            var topicGroups = response.Topics.GroupBy(r => r.TopicName).ToList();
+            Assert.That(reader.ReadInt32(), Is.EqualTo(topicGroups.Count), "[TopicName]");
+            foreach (var payload in topicGroups) {
                 Assert.That(reader.ReadInt16String(), Is.EqualTo(payload.Key), "TopicName");
                 var partitions = payload.ToList();
                 Assert.That(reader.ReadInt32(), Is.EqualTo(partitions.Count), "[Partition]");
@@ -100,7 +100,7 @@ namespace kafka_tests.Unit
 
             Assert.That(reader.ReadInt32(), Is.EqualTo(request.Topics.Count), "[TopicName]");
             foreach (var payload in request.Topics) {
-                Assert.That(reader.ReadInt16String(), Is.EqualTo(payload.Topic), "TopicName");
+                Assert.That(reader.ReadInt16String(), Is.EqualTo(payload.TopicName), "TopicName");
                 Assert.That(reader.ReadInt32(), Is.EqualTo(1), "[Partition]"); // this is a mismatch between the protocol and the object model
                 Assert.That(reader.ReadInt32(), Is.EqualTo(payload.PartitionId), "Partition");
             }
@@ -114,11 +114,11 @@ namespace kafka_tests.Unit
         ///
         /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
         /// </summary>
-        public static void AssertOffsetCommitResponse(this BigEndianBinaryReader reader, IEnumerable<OffsetCommitResponse> response)
+        public static void AssertOffsetCommitResponse(this BigEndianBinaryReader reader, OffsetCommitResponse response)
         {
-            var responses = response.GroupBy(r => r.Topic).ToList();
-            Assert.That(reader.ReadInt32(), Is.EqualTo(responses.Count), "[TopicName]");
-            foreach (var payload in responses) {
+            var topicGroups = response.Topics.GroupBy(r => r.TopicName).ToList();
+            Assert.That(reader.ReadInt32(), Is.EqualTo(topicGroups.Count), "[TopicName]");
+            foreach (var payload in topicGroups) {
                 Assert.That(reader.ReadInt16String(), Is.EqualTo(payload.Key), "TopicName");
                 var partitions = payload.ToList();
                 Assert.That(reader.ReadInt32(), Is.EqualTo(partitions.Count), "[Partition]");
@@ -248,18 +248,17 @@ namespace kafka_tests.Unit
         /// 
         /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetAPI(AKAListOffset)
         /// </summary>
-        public static void AssertOffsetResponse(this BigEndianBinaryReader reader, IEnumerable<OffsetResponse> response)
+        public static void AssertOffsetResponse(this BigEndianBinaryReader reader, OffsetResponse response)
         {
-            var responses = response.ToList();
-            Assert.That(reader.ReadInt32(), Is.EqualTo(responses.Count), "[TopicName]");
-            foreach (var payload in responses) {
-                Assert.That(reader.ReadInt16String(), Is.EqualTo(payload.Topic), "TopicName");
+            Assert.That(reader.ReadInt32(), Is.EqualTo(response.Topics.Count), "[TopicName]");
+            foreach (var topic in response.Topics) {
+                Assert.That(reader.ReadInt16String(), Is.EqualTo(topic.TopicName), "TopicName");
                 Assert.That(reader.ReadInt32(), Is.EqualTo(1), "[Partition]"); // this is a mismatch between the protocol and the object model
-                Assert.That(reader.ReadInt32(), Is.EqualTo(payload.PartitionId), "Partition");
-                Assert.That(reader.ReadInt16(), Is.EqualTo(payload.Error), "ErrorCode");
+                Assert.That(reader.ReadInt32(), Is.EqualTo(topic.PartitionId), "Partition");
+                Assert.That(reader.ReadInt16(), Is.EqualTo(topic.Error), "ErrorCode");
 
-                Assert.That(reader.ReadInt32(), Is.EqualTo(payload.Offsets.Count), "[Offset]");
-                foreach (var offset in payload.Offsets) {
+                Assert.That(reader.ReadInt32(), Is.EqualTo(topic.Offsets.Count), "[Offset]");
+                foreach (var offset in topic.Offsets) {
                     Assert.That(reader.ReadInt64(), Is.EqualTo(offset), "Offset");
                 }
             }
@@ -309,22 +308,22 @@ namespace kafka_tests.Unit
         /// 
         /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-FetchResponse
         /// </summary>
-        public static void AssertFetchResponse(this BigEndianBinaryReader reader, int version, int throttleTime, IEnumerable<FetchResponse> response)
+        public static void AssertFetchResponse(this BigEndianBinaryReader reader, int version, FetchResponse response)
         {
-            var responses = response.ToList();
             if (version >= 1) {
-                Assert.That(reader.ReadInt32(), Is.EqualTo(throttleTime), "ThrottleTime");
+                var milliseconds = response.ThrottleTime.HasValue ? (int)response.ThrottleTime.Value.TotalMilliseconds : 0;
+                Assert.That(reader.ReadInt32(), Is.EqualTo(milliseconds), "ThrottleTime");
             }
-            Assert.That(reader.ReadInt32(), Is.EqualTo(responses.Count), "[TopicName]");
-            foreach (var payload in responses) {
-                Assert.That(reader.ReadInt16String(), Is.EqualTo(payload.Topic), "TopicName");
+            Assert.That(reader.ReadInt32(), Is.EqualTo(response.Topics.Count), "[TopicName]");
+            foreach (var topic in response.Topics) {
+                Assert.That(reader.ReadInt16String(), Is.EqualTo(topic.TopicName), "TopicName");
                 Assert.That(reader.ReadInt32(), Is.EqualTo(1), "[Partition]"); // this is a mismatch between the protocol and the object model
-                Assert.That(reader.ReadInt32(), Is.EqualTo(payload.PartitionId), "Partition");
-                Assert.That(reader.ReadInt16(), Is.EqualTo(payload.Error), "Error");
-                Assert.That(reader.ReadInt64(), Is.EqualTo(payload.HighWaterMark), "HighwaterMarkOffset");
+                Assert.That(reader.ReadInt32(), Is.EqualTo(topic.PartitionId), "Partition");
+                Assert.That(reader.ReadInt16(), Is.EqualTo(topic.Error), "Error");
+                Assert.That(reader.ReadInt64(), Is.EqualTo(topic.HighWaterMark), "HighwaterMarkOffset");
 
                 var finalPosition = reader.ReadInt32() + reader.Position;
-                reader.AssertMessageSet(version, payload.Messages);
+                reader.AssertMessageSet(version, topic.Messages);
                 Assert.That(reader.Position, Is.EqualTo(finalPosition),
                             string.Format("MessageSetSize was {0} but ended in a different spot.", finalPosition - 4));
             }
@@ -387,12 +386,12 @@ namespace kafka_tests.Unit
         /// 
         /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-Messagesets
         /// </summary>
-        public static void AssertProduceResponse(this BigEndianBinaryReader reader, int version, int throttleTime, IEnumerable<ProduceResponse> response)
+        public static void AssertProduceResponse(this BigEndianBinaryReader reader, int version, int throttleTime, ProduceResponse response)
         {
-            var responses = response.ToList();
+            var responses = response.Topics;
             Assert.That(reader.ReadInt32(), Is.EqualTo(responses.Count), "[TopicName]");
             foreach (var payload in responses) {
-                Assert.That(reader.ReadInt16String(), Is.EqualTo(payload.Topic), "TopicName");
+                Assert.That(reader.ReadInt16String(), Is.EqualTo(payload.TopicName), "TopicName");
                 Assert.That(reader.ReadInt32(), Is.EqualTo(1), "[Partition]"); // this is a mismatch between the protocol and the object model
                 Assert.That(reader.ReadInt32(), Is.EqualTo(payload.PartitionId), "Partition");
                 Assert.That(reader.ReadInt16(), Is.EqualTo(payload.Error), "Error");
@@ -516,6 +515,7 @@ namespace kafka_tests.Unit
         ///  client_id => NULLABLE_STRING -- A user specified identifier for the client making the request.
         /// </summary>
         public static void AssertRequestHeader<T>(this BigEndianBinaryReader reader, IKafkaRequest<T> request)
+            where T : IKafkaResponse
         {
             reader.AssertRequestHeader(request.ApiKey, request.ApiVersion, request.CorrelationId, request.ClientId);
         }

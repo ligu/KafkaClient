@@ -91,9 +91,8 @@ namespace KafkaNet
             BatchSize = DefaultBatchSize;
             BatchDelayTime = TimeSpan.FromMilliseconds(DefaultBatchDelayMS);
 
-            _postTask = Task.Run(() =>
-            {
-                BatchSendAsync();
+            _postTask = Task.Run(async () => {
+                await BatchSendAsync();
                 BrokerRouter.Log.InfoFormat("ending the sending thread");
             });
         }
@@ -106,16 +105,16 @@ namespace KafkaNet
         /// <param name="acks">The required level of acknowlegment from the kafka server.  0=none, 1=writen to leader, 2+=writen to replicas, -1=writen to all replicas.</param>
         /// <param name="timeout">Interal kafka timeout to wait for the requested level of ack to occur before returning. Defaults to 1000ms.</param>
         /// <param name="codec">The codec to apply to the message collection.  Defaults to none.</param>
+        /// <param name="partition">The partition to send messages to</param>
         /// <returns>List of ProduceResponses from each partition sent to or empty list if acks = 0.</returns>
-        public Task<ProduceResponse[]> SendMessageAsync(string topic, IEnumerable<Message> messages, Int16 acks = 1,
+        public Task<ProduceTopic[]> SendMessageAsync(string topic, IEnumerable<Message> messages, short acks = 1,
             TimeSpan? timeout = null, MessageCodec codec = MessageCodec.CodecNone, int? partition = null)
         {
             if (_stopToken.IsCancellationRequested)
                 throw new ObjectDisposedException("Cannot send new documents as producer is disposing.");
             if (timeout == null) timeout = TimeSpan.FromMilliseconds(DefaultAckTimeoutMS);
 
-            var batch = messages.Select(message => new TopicMessage
-            {
+            var batch = messages.Select(message => new TopicMessage {
                 Acks = acks,
                 Codec = codec,
                 Timeout = timeout.Value,
@@ -129,18 +128,18 @@ namespace KafkaNet
             return Task.WhenAll(batch.Select(x => x.Tcs.Task));
         }
 
-        public Task<ProduceResponse[]> SendMessageAsync(string topic, int partition, params Message[] messages)
+        public Task<ProduceTopic[]> SendMessageAsync(string topic, int partition, params Message[] messages)
         {
             return SendMessageAsync(topic, messages, partition: partition);
         }
 
-        public async Task<ProduceResponse> SendMessageAsync(Message messages, string topic, int partition, Int16 acks = 1)
+        public async Task<ProduceTopic> SendMessageAsync(Message message, string topic, int partition, short acks = 1)
         {
-            var result = await SendMessageAsync(topic, new Message[] { messages }, partition: partition, acks: acks).ConfigureAwait(false);
+            var result = await SendMessageAsync(topic, new[] { message }, partition: partition, acks: acks).ConfigureAwait(false);
             return result.FirstOrDefault();
         }
 
-        public Task<ProduceResponse[]> SendMessageAsync(string topic, params Message[] messages)
+        public Task<ProduceTopic[]> SendMessageAsync(string topic, params Message[] messages)
         {
             return SendMessageAsync(topic, messages, acks: 1);
         }
@@ -150,12 +149,12 @@ namespace KafkaNet
         /// </summary>
         /// <param name="topic">The name of the topic to get metadata for.</param>
         /// <returns>Topic with metadata information.</returns>
-        public Topic GetTopicFromCache(string topic)
+        public MetadataTopic GetTopicFromCache(string topic)
         {
             return _metadataQueries.GetTopicFromCache(topic);
         }
 
-        public Task<List<OffsetResponse>> GetTopicOffsetAsync(string topic, int maxOffsets = 2, int time = -1)
+        public Task<List<OffsetTopic>> GetTopicOffsetAsync(string topic, int maxOffsets = 2, int time = -1)
         {
             return _metadataQueries.GetTopicOffsetAsync(topic, maxOffsets, time);
         }
@@ -193,7 +192,7 @@ namespace KafkaNet
 
                         batch = await _asyncCollection.TakeAsync(BatchSize, BatchDelayTime, _stopToken.Token).ConfigureAwait(false);
                     }
-                    catch (OperationCanceledException ex)
+                    catch (OperationCanceledException)
                     {
                         //TODO log that the operation was canceled, this only happens during a dispose
                     }
@@ -295,32 +294,17 @@ namespace KafkaNet
             {
                 try
                 {
-                    //all ready done don't need to await but it none blocking syntext
+                    // already done don't need to await but it none blocking syntext
                     var batchResult = await sendTask.Task.ConfigureAwait(false);
                     var numberOfMessage = sendTask.MessagesSent.Count;
-                    for (int i = 0; i < numberOfMessage; i++)
-                    {
-                        bool isAckLevel0 = sendTask.AckLevel == 0;
-                        if (isAckLevel0)
-                        {
-                            var responce = new ProduceResponse()
-                            {
-                                Error = (short)ErrorResponseCode.NoError,
-                                PartitionId = sendTask.Route.PartitionId,
-                                Topic = sendTask.Route.Topic,
-                                Offset = -1
-                            };
-                            sendTask.MessagesSent[i].Tcs.SetResult(responce);
-                        }
-                        else
-                        {
-                            var response = new ProduceResponse()
-                            {
-                                Error = batchResult.Error,
-                                PartitionId = batchResult.PartitionId,
-                                Topic = batchResult.Topic,
-                                Offset = batchResult.Offset + i
-                            };
+                    for (int i = 0; i < numberOfMessage; i++) {
+                        if (sendTask.AckLevel == 0) {
+                            var response = new ProduceTopic(sendTask.Route.Topic, sendTask.Route.PartitionId, ErrorResponseCode.NoError, -1);
+                            sendTask.MessagesSent[i].Tcs.SetResult(response);
+                        } else {
+                            // HACK: assume there is only one ...
+                            var topic = batchResult.Topics.Single();
+                            var response = new ProduceTopic(topic.TopicName, topic.PartitionId, topic.Error, topic.Offset + 1, topic.Timestamp);
                             sendTask.MessagesSent[i].Tcs.SetResult(response);
                         }
                     }
@@ -328,7 +312,7 @@ namespace KafkaNet
                 catch (Exception ex)
                 {
                     BrokerRouter.Log.ErrorFormat("failed to send batch Topic[{0}] ackLevel[{1}] partition[{2}] EndPoint[{3}] Exception[{4}] stacktrace[{5}]", sendTask.Route.Topic, sendTask.AckLevel, sendTask.Route.PartitionId, sendTask.Route.Connection.Endpoint, ex.Message, ex.StackTrace);
-                    sendTask.MessagesSent.ForEach((x) => x.Tcs.TrySetException(ex));
+                    sendTask.MessagesSent.ForEach(x => x.Tcs.TrySetException(ex));
                 }
             }
         }
@@ -352,7 +336,7 @@ namespace KafkaNet
 
     internal class TopicMessage
     {
-        public TaskCompletionSource<ProduceResponse> Tcs { get; set; }
+        public TaskCompletionSource<ProduceTopic> Tcs { get; set; }
         public short Acks { get; set; }
         public TimeSpan Timeout { get; set; }
         public MessageCodec Codec { get; set; }
@@ -362,7 +346,7 @@ namespace KafkaNet
 
         public TopicMessage()
         {
-            Tcs = new TaskCompletionSource<ProduceResponse>();
+            Tcs = new TaskCompletionSource<ProduceTopic>();
         }
     }
 

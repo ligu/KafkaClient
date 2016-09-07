@@ -1,0 +1,17 @@
+﻿namespace KafkaNet.Protocol
+{
+    /// <summary>
+    /// Enumeration of numeric codes that the ApiKey in the request can take for each request types.
+    /// </summary>
+    public enum ApiKeyRequestType : short
+    {
+        Produce = 0,
+        Fetch = 1,
+        Offset = 2,
+        MetaData = 3,
+        OffsetCommit = 8,
+        OffsetFetch = 9,
+        GroupCoordinator = 10,
+        ApiVersions = 18
+    }
+}

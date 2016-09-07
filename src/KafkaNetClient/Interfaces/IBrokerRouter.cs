@@ -37,7 +37,7 @@ namespace KafkaNet
         /// <param name="topics">Collection of topics to request metadata for.</param>
         /// <returns>List of Topics as provided by Kafka.</returns>
         /// <remarks>The topic metadata will by default check the cache first and then request metadata from the server if it does not exist in cache.</remarks>
-        List<Topic> GetTopicMetadataFromLocalCache(params string[] topics);
+        List<MetadataTopic> GetTopicMetadataFromLocalCache(params string[] topics);
 
         /// <summary>
         /// Force a call to the kafka servers to refresh metadata for the given topics.
@@ -55,7 +55,7 @@ namespace KafkaNet
         /// <remarks>
         /// The topic metadata will by default check the cache.
         /// </remarks>
-        List<Topic> GetAllTopicMetadataFromLocalCache();
+        List<MetadataTopic> GetAllTopicMetadataFromLocalCache();
 
         /// <summary>
         /// Force a call to the kafka servers to refresh metadata for all topics.

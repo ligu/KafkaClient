@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using KafkaNet.Protocol;
 
 namespace KafkaNet
 {
@@ -30,6 +31,6 @@ namespace KafkaNet
         /// <typeparam name="T">The type of the KafkaResponse expected from the request being sent.</typeparam>
         /// <param name="request">The KafkaRequest to send to the connected endpoint.</param>
         /// <returns>Task representing the future responses from the sent request.</returns>
-        Task<List<T>> SendAsync<T>(IKafkaRequest<T> request);
+        Task<T> SendAsync<T>(IKafkaRequest<T> request) where T : IKafkaResponse;
     }
 }

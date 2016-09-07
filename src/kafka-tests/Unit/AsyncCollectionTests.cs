@@ -137,7 +137,7 @@ namespace kafka_tests.Unit
             const int size = 20;
             var aq = new AsyncCollection<bool>();
 
-            Task.Run(() =>
+            var task = Task.Run(() =>
             {
                 //this should take 2000ms to complete
                 for (int i = 0; i < size; i++)
@@ -169,7 +169,7 @@ namespace kafka_tests.Unit
             var cancelSource = new CancellationTokenSource();
             var collection = new AsyncCollection<int>();
 
-            Task.Delay(TimeSpan.FromMilliseconds(100)).ContinueWith(t => cancelSource.Cancel());
+            var task = Task.Delay(TimeSpan.FromMilliseconds(100)).ContinueWith(t => cancelSource.Cancel());
 
             var sw = Stopwatch.StartNew();
             var data = await collection.TakeAsync(10, TimeSpan.FromMilliseconds(500), cancelSource.Token);

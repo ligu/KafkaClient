@@ -8,7 +8,7 @@
 
         public override string ToString()
         {
-            return string.Format("{0} Topic:{1} PartitionId:{2}", Connection.Endpoint.ServeUri, Topic, PartitionId);
+            return $"{Connection.Endpoint.ServeUri} Topic:{Topic} PartitionId:{PartitionId}";
         }
 
         #region Equals Override...
@@ -22,7 +22,7 @@
         {
             unchecked
             {
-                return ((Topic != null ? Topic.GetHashCode() : 0) * 397) ^ PartitionId;
+                return ((Topic?.GetHashCode() ?? 0) * 397) ^ PartitionId;
             }
         }
 

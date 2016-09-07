@@ -2,6 +2,8 @@
 using KafkaNet.Protocol;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -17,7 +19,7 @@ namespace KafkaNet
         private readonly ProtocolGateway _gateway;
         private readonly int _maxSizeOfMessageSet;
         private readonly string _clientId;
-        private List<Message> _lastMessages;
+        private ImmutableList<Message> _lastMessages;
 
         private const int MaxWaitTimeForKafka = 0;
         private const int UseBrokerTimestamp = -1;
@@ -25,9 +27,12 @@ namespace KafkaNet
 
         public ManualConsumer(int partitionId, string topic, ProtocolGateway gateway, string clientId, int maxSizeOfMessageSet)
         {
-            if (string.IsNullOrEmpty(topic)) throw new ArgumentNullException("topic");
-            if (gateway == null) throw new ArgumentNullException("gateway");
-            if (maxSizeOfMessageSet <= 0) throw new ArgumentOutOfRangeException("maxSizeOfMessageSet", "argument must be larger than zero");
+            if (string.IsNullOrEmpty(topic)) throw new ArgumentNullException(nameof(topic));
+            if (gateway == null) throw new ArgumentNullException(nameof(gateway));
+            if (maxSizeOfMessageSet <= 0) throw new ArgumentOutOfRangeException(nameof(maxSizeOfMessageSet), "argument must be larger than zero");
+            Contract.Requires<ArgumentNullException>(!string.IsNullOrEmpty(topic));
+            Contract.Requires<ArgumentNullException>(gateway != null);
+            Contract.Requires<ArgumentOutOfRangeException>(maxSizeOfMessageSet > 0);
 
             _gateway = gateway;
             _partitionId = partitionId;
@@ -45,10 +50,12 @@ namespace KafkaNet
         /// <returns></returns>
         public async Task UpdateOrCreateOffset(string consumerGroup, long offset)
         {
-            if (string.IsNullOrEmpty(consumerGroup)) throw new ArgumentNullException("consumerGroup");
-            if (offset < 0) throw new ArgumentOutOfRangeException("offset", "offset must be positive or zero");
+            if (string.IsNullOrEmpty(consumerGroup)) throw new ArgumentNullException(nameof(consumerGroup));
+            if (offset < 0) throw new ArgumentOutOfRangeException(nameof(offset), "offset must be positive or zero");
+            Contract.Requires<ArgumentNullException>(!string.IsNullOrEmpty(consumerGroup));
+            Contract.Requires<ArgumentOutOfRangeException>(offset >= 0);
 
-            OffsetCommitRequest request = CreateOffsetCommitRequest(offset, consumerGroup);
+            var request = CreateOffsetCommitRequest(offset, consumerGroup);
             await _gateway.SendProtocolRequest(request, _topic, _partitionId).ConfigureAwait(false);
         }
 
@@ -60,7 +67,8 @@ namespace KafkaNet
         {
             var request = CreateFetchLastOffsetRequest();
             var response = await _gateway.SendProtocolRequest(request, _topic, _partitionId).ConfigureAwait(false);
-            return response.Offsets.Count > 0 ? response.Offsets.First() : NoOffsetFound;
+            var topicOffset = response.Topics.SingleOrDefault(t => t.TopicName == _topic && t.PartitionId == _partitionId);
+            return topicOffset == null || topicOffset.Offsets.Count == 0 ? NoOffsetFound : topicOffset.Offsets.First();
         }
 
         /// <summary>
@@ -70,12 +78,14 @@ namespace KafkaNet
         /// <returns>The current offset of the consumerGroup</returns>
         public async Task<long> FetchOffset(string consumerGroup)
         {
-            if (string.IsNullOrEmpty(consumerGroup)) throw new ArgumentNullException("consumerGroup");
+            if (string.IsNullOrEmpty(consumerGroup)) throw new ArgumentNullException(nameof(consumerGroup));
+            Contract.Requires<ArgumentNullException>(!string.IsNullOrEmpty(consumerGroup));
 
-            OffsetFetchRequest offsetFetchRequest = CreateOffsetFetchRequest(consumerGroup);
+            var offsetFetchRequest = CreateOffsetFetchRequest(consumerGroup);
 
             var response = await _gateway.SendProtocolRequest(offsetFetchRequest, _topic, _partitionId).ConfigureAwait(false);
-            return response.Offset;
+            var topicOffset = response.Topics.SingleOrDefault(t => t.TopicName == _topic && t.PartitionId == _partitionId);
+            return topicOffset.Offset;
         }
 
         /// <summary>
@@ -103,16 +113,16 @@ namespace KafkaNet
             FetchRequest request = CreateFetchRequest(offset);
 
             var response = await _gateway.SendProtocolRequest(request, _topic, _partitionId).ConfigureAwait(false);
+            var topic = response.Topics.SingleOrDefault();
 
-            if (response.Messages.Count == 0)
-            {
+            if (topic?.Messages?.Count == 0) {
                 _lastMessages = null;
-                return response.Messages;
+                return topic.Messages;
             }
 
             // Saving the last consumed offset and Returning the wanted amount
-            _lastMessages = response.Messages;
-            var messagesToReturn = response.Messages.Take(maxCount);
+            _lastMessages = topic?.Messages;
+            var messagesToReturn = topic?.Messages?.Take(maxCount);
 
             return messagesToReturn;
         }
@@ -134,11 +144,10 @@ namespace KafkaNet
 
         private OffsetFetchRequest CreateOffsetFetchRequest(string consumerGroup)
         {
-            OffsetFetch topicFetch = new OffsetFetch() { PartitionId = _partitionId, Topic = _topic };
-            OffsetFetchRequest request = new OffsetFetchRequest()
-            {
+            var topicFetch = new Topic(_topic, _partitionId);
+            var request = new OffsetFetchRequest {
                 ConsumerGroup = consumerGroup,
-                Topics = new List<OffsetFetch>() { topicFetch },
+                Topics = new List<Topic>() { topicFetch },
                 ClientId = _clientId
             };
 

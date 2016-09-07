@@ -30,7 +30,7 @@ namespace KafkaNet
 
         private int _disposeCount;
         private int _ensureOneThread;
-        private Topic _topic;
+        private MetadataTopic _topic;
 
         public Consumer(ConsumerOptions options, params OffsetPosition[] positions)
         {
@@ -171,28 +171,26 @@ namespace KafkaNet
                             if (_disposeTask.Task.IsCompleted) return;
 
                             //already done
-                            var responses = await taskSend;
-                            if (responses.Count > 0)
+                            var response = await taskSend;
+                            if (response?.Topics.Count > 0)
                             {
-                                //we only asked for one response
-                                var response = responses.FirstOrDefault();
+                                // we only asked for one response
+                                var fetchTopicResponse = response.Topics.FirstOrDefault();
 
-                                if (response != null && response.Messages.Any())
-                                {
-                                    HandleResponseErrors(fetchRequest, response, route.Connection);
+                                if (fetchTopicResponse != null && fetchTopicResponse.Messages.Any()) {
+                                    HandleResponseErrors(fetchRequest, fetchTopicResponse, route.Connection);
 
-                                    foreach (var message in response.Messages)
+                                    foreach (var message in fetchTopicResponse.Messages)
                                     {
-                                        await Task.Run(() =>
-                                        {
-                                            //this is a block operation
+                                        await Task.Run(() => {
+                                            // this is a block operation
                                             _fetchResponseQueue.Add(message, _disposeToken.Token);
                                         }, _disposeToken.Token).ConfigureAwait(false);
 
                                         if (_disposeToken.IsCancellationRequested) return;
                                     }
 
-                                    var nextOffset = response.Messages.Last().Meta.Offset + 1;
+                                    var nextOffset = fetchTopicResponse.Messages.Last().Meta.Offset + 1;
                                     _partitionOffsetIndex.AddOrUpdate(partitionId, i => nextOffset, (i, l) => nextOffset);
 
                                     // sleep is not needed if responses were received
@@ -228,7 +226,7 @@ namespace KafkaNet
                             _options.Log.ErrorFormat(ex.Message);
                         }
 
-                        catch (TaskCanceledException ex)
+                        catch (TaskCanceledException)
                         {
                             //TODO :LOG
                         }
@@ -247,23 +245,23 @@ namespace KafkaNet
             });
         }
 
-        private void HandleResponseErrors(FetchRequest request, FetchResponse response, IKafkaConnection connection)
+        private void HandleResponseErrors(FetchRequest request, FetchTopicResponse response, IKafkaConnection connection)
         {
-            switch ((ErrorResponseCode)response.Error)
+            switch (response.Error)
             {
                 case ErrorResponseCode.NoError:
                     return;
 
                 case ErrorResponseCode.BrokerNotAvailable:
-                case ErrorResponseCode.ConsumerCoordinatorNotAvailableCode:
+                case ErrorResponseCode.ConsumerCoordinatorNotAvailable:
                 case ErrorResponseCode.LeaderNotAvailable:
                 case ErrorResponseCode.NotLeaderForPartition:
                     throw new CachedMetadataException(
                         $"FetchResponse indicated we may have mismatched metadata. ErrorCode:{response.Error}",
-                        request.ExtractException(response, connection?.Endpoint));
+                        request.ExtractException(response.Error, connection?.Endpoint));
 
                 default:
-                    throw request.ExtractException(response, connection?.Endpoint);
+                    throw request.ExtractException(response.Error, connection?.Endpoint);
             }
         }
 
@@ -291,12 +289,12 @@ namespace KafkaNet
                    });
         }
 
-        public Topic GetTopicFromCache(string topic)
+        public MetadataTopic GetTopicFromCache(string topic)
         {
             return _metadataQueries.GetTopicFromCache(topic);
         }
 
-        public Task<List<OffsetResponse>> GetTopicOffsetAsync(string topic, int maxOffsets = 2, int time = -1)
+        public Task<List<OffsetTopic>> GetTopicOffsetAsync(string topic, int maxOffsets = 2, int time = -1)
         {
             return _metadataQueries.GetTopicOffsetAsync(topic, maxOffsets, time);
         }

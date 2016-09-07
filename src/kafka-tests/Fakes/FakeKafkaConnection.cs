@@ -12,7 +12,7 @@ namespace kafka_tests.Fakes
     {
         public Func<Task<ProduceResponse>> ProduceResponseFunction;
         public Func<Task<MetadataResponse>> MetadataResponseFunction;
-        public Func<Task<OffsetResponse>> OffsetResponseFunction;
+        public Func<Task<OffsetTopic>> OffsetResponseFunction;
         public Func<Task<FetchResponse>> FetchResponseFunction;
 
         public FakeKafkaConnection(Uri address)
@@ -39,7 +39,7 @@ namespace kafka_tests.Fakes
 
         /// <exception cref="Exception">A delegate callback throws an exception.</exception>
         /// <exception cref="NullReferenceException">The address of <paramref name="location" /> is a null pointer. </exception>
-        public async Task<List<T>> SendAsync<T>(IKafkaRequest<T> request)
+        public async Task<T> SendAsync<T>(IKafkaRequest<T> request) where T : IKafkaResponse
         {
             T result;
 
@@ -53,7 +53,7 @@ namespace kafka_tests.Fakes
                 Interlocked.Increment(ref MetadataRequestCallCount);
                 result = (T)(object)await MetadataResponseFunction();
             }
-            else if (typeof(T) == typeof(OffsetResponse))
+            else if (typeof(T) == typeof(OffsetTopic))
             {
                 Interlocked.Increment(ref OffsetRequestCallCount);
                 result = (T)(object)await OffsetResponseFunction();
@@ -67,9 +67,7 @@ namespace kafka_tests.Fakes
             {
                 throw new Exception("no found implementation");
             }
-            var resultlist = new List<T>();
-            resultlist.Add(result);
-            return resultlist;
+            return result;
         }
 
         public void Dispose()

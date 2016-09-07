@@ -25,8 +25,8 @@ namespace kafka_tests.Integration
 
             var producer = new Producer(router);
             string messge1 = Guid.NewGuid().ToString();
-            var respose = await producer.SendMessageAsync(IntegrationConfig.IntegrationTopic, new[] { new Message(messge1) }, 1, null, MessageCodec.CodecNone, partitionId);
-            var offset = respose.FirstOrDefault().Offset;
+            var response = await producer.SendMessageAsync(IntegrationConfig.IntegrationTopic, new[] { new Message(messge1) }, 1, null, MessageCodec.CodecNone, partitionId);
+            var offset = response.FirstOrDefault().Offset;
 
             ProtocolGateway protocolGateway = new ProtocolGateway(IntegrationConfig.IntegrationUri);
             var fetch = new Fetch
@@ -48,7 +48,7 @@ namespace kafka_tests.Integration
 
             var r = await protocolGateway.SendProtocolRequest(fetchRequest, IntegrationConfig.IntegrationTopic, partitionId);
             //  var r1 = await protocolGateway.SendProtocolRequest(fetchRequest, IntegrationConfig.IntegrationTopic, partitionId);
-            Assert.IsTrue(r.Messages.FirstOrDefault().Value.ToUtf8String() == messge1);
+            Assert.IsTrue(r.Topics.First().Messages.FirstOrDefault().Value.ToUtf8String() == messge1);
         }
     }
 }

@@ -1,103 +1,61 @@
-﻿using KafkaNet.Common;
 using System;
-using System.Collections.Generic;
 
 namespace KafkaNet.Protocol
 {
-    public class Topic
+    public class Topic : IEquatable<Topic>
     {
-        public Int16 ErrorCode { get; set; }
-        public string Name { get; set; }
-        public List<Partition> Partitions { get; set; }
-
-        public static Topic FromStream(BigEndianBinaryReader stream)
+        public Topic(string topicName, int partitionId)
         {
-            var topic = new Topic
-                {
-                    ErrorCode = stream.ReadInt16(),
-                    Name = stream.ReadInt16String(),
-                    Partitions = new List<Partition>()
-                };
-
-            var numPartitions = stream.ReadInt32();
-            for (int i = 0; i < numPartitions; i++)
-            {
-                topic.Partitions.Add(Partition.FromStream(stream));
-            }
-
-            return topic;
-        }
-    }
-
-    public class Partition
-    {
-        /// <summary>
-        /// Error code. 0 indicates no error occured.
-        /// </summary>
-        public Int16 ErrorCode { get; set; }
-
-        /// <summary>
-        /// The Id of the partition that this metadata describes.
-        /// </summary>
-        public int PartitionId { get; set; }
-
-        /// <summary>
-        /// The node id for the kafka broker currently acting as leader for this partition. If no leader exists because we are in the middle of a leader election this id will be -1.
-        /// </summary>
-        public int LeaderId { get; set; }
-
-        /// <summary>
-        /// The set of alive nodes that currently acts as slaves for the leader for this partition.
-        /// </summary>
-        public List<int> Replicas { get; set; }
-
-        /// <summary>
-        /// The set subset of the replicas that are "caught up" to the leader
-        /// </summary>
-        public List<int> Isrs { get; set; }
-
-        public static Partition FromStream(BigEndianBinaryReader stream)
-        {
-            var partition = new Partition
-            {
-                ErrorCode = stream.ReadInt16(),
-                PartitionId = stream.ReadInt32(),
-                LeaderId = stream.ReadInt32(),
-                Replicas = new List<int>(),
-                Isrs = new List<int>()
-            };
-
-            var numReplicas = stream.ReadInt32();
-            for (int i = 0; i < numReplicas; i++)
-            {
-                partition.Replicas.Add(stream.ReadInt32());
-            }
-
-            var numIsr = stream.ReadInt32();
-            for (int i = 0; i < numIsr; i++)
-            {
-                partition.Isrs.Add(stream.ReadInt32());
-            }
-
-            return partition;
+            TopicName = topicName;
+            PartitionId = partitionId;
         }
 
-        protected bool Equals(Partition other)
+        /// <summary>
+        /// The topic name.
+        /// </summary>
+        public string TopicName { get; }
+
+        /// <summary>
+        /// The partition id.
+        /// </summary>
+        public int PartitionId { get; }
+
+        #region Equality
+
+        public override bool Equals(object obj)
         {
-            return PartitionId == other.PartitionId;
+            return Equals(obj as Topic);
+        }
+
+        public bool Equals(Topic other)
+        {
+            if (ReferenceEquals(null, other)) return false;
+            if (ReferenceEquals(this, other)) return true;
+            return string.Equals(TopicName, other.TopicName) 
+                   && PartitionId == other.PartitionId;
         }
 
         public override int GetHashCode()
         {
-            return PartitionId;
+            unchecked {
+                var hashCode = TopicName?.GetHashCode() ?? 0;
+                hashCode = (hashCode*397) ^ PartitionId;
+                return hashCode;
+            }
         }
 
-        public override bool Equals(object obj)
+        public static bool operator ==(Topic left, Topic right)
         {
-            if (ReferenceEquals(null, obj)) return false;
-            if (ReferenceEquals(this, obj)) return true;
-            if (obj.GetType() != this.GetType()) return false;
-            return Equals((Partition)obj);
+            return Equals(left, right);
         }
+
+        public static bool operator !=(Topic left, Topic right)
+        {
+            return !Equals(left, right);
+        }
+
+        #endregion
+
+        public override string ToString() => $"Topic: {TopicName} Partition: {PartitionId}";
     }
 }

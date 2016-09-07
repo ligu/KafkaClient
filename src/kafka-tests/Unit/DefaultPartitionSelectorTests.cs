@@ -15,47 +15,20 @@ namespace kafka_tests.Unit
     [Category("Unit")]
     public class DefaultPartitionSelectorTests
     {
-        private Topic _topicA;
-        private Topic _topicB;
+        private MetadataTopic _topicA;
+        private MetadataTopic _topicB;
 
         [SetUp]
         public void Setup()
         {
-            _topicA = new Topic
-            {
-                Name = "a",
-                Partitions = new List<Partition>(new[]
-                {
-                    new Partition
-                        {
-                            LeaderId = 0,
-                            PartitionId = 0
-                        },
-                    new Partition
-                        {
-                            LeaderId = 1,
-                            PartitionId = 1
-                        }
-                })
-            };
-
-            _topicB = new Topic
-            {
-                Name = "b",
-                Partitions = new List<Partition>(new[]
-                {
-                    new Partition
-                        {
-                            LeaderId = 0,
-                            PartitionId = 0
-                        },
-                    new Partition
-                        {
-                            LeaderId = 1,
-                            PartitionId = 1
-                        }
-                })
-            };
+            _topicA = new MetadataTopic("a", ErrorResponseCode.NoError, new [] {
+                                            new MetadataPartition(0, 0),
+                                            new MetadataPartition(1, 1),
+                                        });
+            _topicB = new MetadataTopic("b", ErrorResponseCode.NoError, new [] {
+                                            new MetadataPartition(0, 0),
+                                            new MetadataPartition(1, 1),
+                                        });
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
@@ -76,7 +49,7 @@ namespace kafka_tests.Unit
         public void RoundRobinShouldHandleMultiThreadedRollOver()
         {
             var selector = new DefaultPartitionSelector();
-            var bag = new ConcurrentBag<Partition>();
+            var bag = new ConcurrentBag<MetadataPartition>();
 
             Parallel.For(0, 100, x => bag.Add(selector.Select(_topicA, null)));
 
@@ -106,14 +79,14 @@ namespace kafka_tests.Unit
         {
             const int TotalPartitions = 100;
             var selector = new DefaultPartitionSelector();
-            var partitions = new List<Partition>();
+            var partitions = new List<MetadataPartition>();
             for (int i = 0; i < TotalPartitions; i++)
             {
-                partitions.Add(new Partition { LeaderId = i, PartitionId = i });
+                partitions.Add(new MetadataPartition(i, i));
             }
-            var topic = new Topic { Name = "a", Partitions = partitions };
+            var topic = new MetadataTopic("a", partitions: partitions);
 
-            var bag = new ConcurrentBag<Partition>();
+            var bag = new ConcurrentBag<MetadataPartition>();
             Parallel.For(0, TotalPartitions * 3, x => bag.Add(selector.Select(topic, null)));
 
             var eachPartitionHasThree = bag.GroupBy(x => x.PartitionId).Count();
@@ -148,13 +121,10 @@ namespace kafka_tests.Unit
         public void KeyHashShouldThrowExceptionWhenChoosesAPartitionIdThatDoesNotExist()
         {
             var selector = new DefaultPartitionSelector();
-            var list = new List<Partition>(_topicA.Partitions);
-            list[1].PartitionId = 999;
-            var topic = new Topic
-                {
-                    Name = "badPartition",
-                    Partitions = list
-                };
+            var topic = new MetadataTopic("badPartition", partitions: new [] {
+                                              new MetadataPartition(0, 0),
+                                              new MetadataPartition(999, 1) 
+                                          });
 
             selector.Select(topic, CreateKeyForPartition(1));
         }
@@ -164,11 +134,7 @@ namespace kafka_tests.Unit
         public void SelectorShouldThrowExceptionWhenPartitionsAreEmpty()
         {
             var selector = new DefaultPartitionSelector();
-            var topic = new Topic
-            {
-                Name = "emptyPartition",
-                Partitions = new List<Partition>()
-            };
+            var topic = new MetadataTopic("emptyPartition");
             selector.Select(topic, CreateKeyForPartition(1));
         }
     }

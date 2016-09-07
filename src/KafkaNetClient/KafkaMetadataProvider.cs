@@ -14,7 +14,7 @@ namespace KafkaNet
     /// Error Codes:
     /// LeaderNotAvailable = 5
     /// NotLeaderForPartition = 6
-    /// ConsumerCoordinatorNotAvailableCode = 15
+    /// ConsumerCoordinatorNotAvailable = 15
     /// BrokerId = -1
     ///
     /// Documentation:
@@ -110,9 +110,8 @@ namespace KafkaNet
                 try
                 {
                     var response = await conn.SendAsync(request).ConfigureAwait(false);
-                    if (response != null && response.Count > 0)
-                    {
-                        return response.FirstOrDefault();
+                    if (response?.Topics.Count > 0) {
+                        return response;
                     }
                 }
                 catch (Exception ex)
@@ -126,38 +125,30 @@ namespace KafkaNet
 
         private IEnumerable<MetadataValidationResult> ValidateResponse(MetadataResponse metadata)
         {
-            foreach (var broker in metadata.Brokers)
-            {
+            foreach (var broker in metadata.Brokers) {
                 yield return ValidateBroker(broker);
             }
-
-            foreach (var topic in metadata.Topics)
-            {
+            foreach (var topic in metadata.Topics) {
                 yield return ValidateTopic(topic);
             }
         }
 
-        private MetadataValidationResult ValidateBroker(Broker broker)
+        private MetadataValidationResult ValidateBroker(MetadataBroker broker)
         {
-            if (broker.BrokerId == -1)
-            {
+            if (broker.BrokerId == -1) {
                 return new MetadataValidationResult { Status = ValidationResult.Retry, ErrorCode = ErrorResponseCode.Unknown };
             }
 
-            if (string.IsNullOrEmpty(broker.Host))
-            {
-                return new MetadataValidationResult
-                {
+            if (string.IsNullOrEmpty(broker.Host)) {
+                return new MetadataValidationResult {
                     Status = ValidationResult.Error,
                     ErrorCode = ErrorResponseCode.NoError,
                     Message = "Broker missing host information."
                 };
             }
 
-            if (broker.Port <= 0)
-            {
-                return new MetadataValidationResult
-                {
+            if (broker.Port <= 0) {
+                return new MetadataValidationResult {
                     Status = ValidationResult.Error,
                     ErrorCode = ErrorResponseCode.NoError,
                     Message = "Broker missing port information."
@@ -167,7 +158,7 @@ namespace KafkaNet
             return new MetadataValidationResult();
         }
 
-        private MetadataValidationResult ValidateTopic(Topic topic)
+        private MetadataValidationResult ValidateTopic(MetadataTopic topic)
         {
             try
             {
@@ -178,18 +169,16 @@ namespace KafkaNet
                 switch (errorCode)
                 {
                     case ErrorResponseCode.LeaderNotAvailable:
-                    case ErrorResponseCode.OffsetsLoadInProgressCode:
-                    case ErrorResponseCode.ConsumerCoordinatorNotAvailableCode:
-                        return new MetadataValidationResult
-                        {
+                    case ErrorResponseCode.OffsetsLoadInProgress:
+                    case ErrorResponseCode.ConsumerCoordinatorNotAvailable:
+                        return new MetadataValidationResult {
                             Status = ValidationResult.Retry,
                             ErrorCode = errorCode,
                             Message = $"Topic:{topic.Name} returned error code of {errorCode}. Retrying."
                         };
                 }
 
-                return new MetadataValidationResult
-                {
+                return new MetadataValidationResult {
                     Status = ValidationResult.Error,
                     ErrorCode = errorCode,
                     Message = $"Topic:{topic.Name} returned an error of {errorCode}"
@@ -212,7 +201,12 @@ namespace KafkaNet
         }
     }
 
-    public enum ValidationResult { Valid, Error, Retry }
+    public enum ValidationResult
+    {
+        Valid,
+        Error,
+        Retry
+    }
 
     public class MetadataValidationResult
     {

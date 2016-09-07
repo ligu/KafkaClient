@@ -1,54 +1,5 @@
-﻿using System.IO;
-using System.IO.Compression;
-
-namespace KafkaNet.Protocol
+﻿namespace KafkaNet.Protocol
 {
-    /// <summary>
-    /// Extension methods which allow compression of byte arrays
-    /// </summary>
-    public static class Compression
-    {
-        public static byte[] Zip(byte[] bytes)
-        {
-            using (var destination = new MemoryStream())
-            using (var gzip = new GZipStream(destination, CompressionLevel.Fastest, false))
-            {
-                gzip.Write(bytes, 0, bytes.Length);
-                gzip.Flush();
-                gzip.Close();
-                return destination.ToArray();
-            }
-        }
-
-        public static byte[] Unzip(byte[] bytes)
-        {
-            using (var source = new MemoryStream(bytes))
-            using (var destination = new MemoryStream())
-            using (var gzip = new GZipStream(source, CompressionMode.Decompress, false))
-            {
-                gzip.CopyTo(destination);
-                gzip.Flush();
-                gzip.Close();
-                return destination.ToArray();
-            }
-        }
-    }
-
-    /// <summary>
-    /// Enumeration of numeric codes that the ApiKey in the request can take for each request types.
-    /// </summary>
-    public enum ApiKeyRequestType : short
-    {
-        Produce = 0,
-        Fetch = 1,
-        Offset = 2,
-        MetaData = 3,
-        OffsetCommit = 8,
-        OffsetFetch = 9,
-        ConsumerMetadataRequest = 10,
-        ApiVersions = 18
-    }
-
     /// <summary>
     /// Enumeration of error codes that might be returned from a Kafka server
     /// </summary>
@@ -117,12 +68,12 @@ namespace KafkaNet.Protocol
         /// <summary>
         /// Internal error code for broker-to-broker communication.
         /// </summary>
-        StaleControllerEpochCode = 11,
+        StaleControllerEpoch = 11,
 
         /// <summary>
         /// If you specify a string larger than configured maximum for offset metadata
         /// </summary>
-        OffsetMetadataTooLargeCode = 12,
+        OffsetMetadataTooLarge = 12,
 
         /// <summary>
         /// The server disconnected before a response was received.
@@ -132,17 +83,17 @@ namespace KafkaNet.Protocol
         /// <summary>
         /// The broker returns this error code for an offset fetch request if it is still loading offsets (after a leader change for that offsets topic partition).
         /// </summary>
-        OffsetsLoadInProgressCode = 14,
+        OffsetsLoadInProgress = 14,
 
         /// <summary>
         /// The broker returns this error code for consumer metadata requests or offset commit requests if the offsets topic has not yet been created.
         /// </summary>
-        ConsumerCoordinatorNotAvailableCode = 15,
+        ConsumerCoordinatorNotAvailable = 15,
 
         /// <summary>
         /// The broker returns this error code if it receives an offset fetch or commit request for a consumer group that it is not a coordinator for.
         /// </summary>
-        NotCoordinatorForConsumerCode = 16,
+        NotCoordinatorForConsumer = 16,
 
         /// <summary>
         /// The request attempted to perform an operation on an invalid topic.
@@ -239,26 +190,5 @@ namespace KafkaNet.Protocol
         /// The version of API is not supported.
         /// </summary>
         UnsupportedVersion = 35
-    }
-
-    /// <summary>
-    /// Protocol specific constants
-    /// </summary>
-    public struct ProtocolConstants
-    {
-        /// <summary>
-        ///  The lowest 2 bits contain the compression codec used for the message. The other bits should be set to 0.
-        /// </summary>
-        public static byte AttributeCodeMask = 0x03;
-    }
-
-    /// <summary>
-    /// Enumeration which specifies the compression type of messages
-    /// </summary>
-    public enum MessageCodec
-    {
-        CodecNone = 0x00,
-        CodecGzip = 0x01,
-        CodecSnappy = 0x02
     }
 }

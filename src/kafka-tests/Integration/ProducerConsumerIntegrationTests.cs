@@ -26,10 +26,9 @@ namespace kafka_tests.Integration
             using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri)))
             using (var producer = new Producer(router, maxAsync) { BatchSize = amount / 2 })
             {
-                var tasks = new Task<ProduceResponse[]>[amount];
+                var tasks = new Task<ProduceTopic[]>[amount];
 
-                for (var i = 0; i < amount; i++)
-                {
+                for (var i = 0; i < amount; i++) {
                     tasks[i] = producer.SendMessageAsync(IntegrationConfig.IntegrationTopic,
                         new[] { new Message(Guid.NewGuid().ToString()) });
                 }
@@ -76,7 +75,7 @@ namespace kafka_tests.Integration
             using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri) { Log = IntegrationConfig.NoDebugLog }))
             using (var producer = new Producer(router))
             {
-                ProduceResponse[] responseAckLevel1 = await producer.SendMessageAsync(IntegrationConfig.IntegrationTopic, 0, new Message("Ack Level 1"), new Message("Ack Level 1"));
+                var responseAckLevel1 = await producer.SendMessageAsync(IntegrationConfig.IntegrationTopic, 0, new Message("Ack Level 1"), new Message("Ack Level 1"));
                 var offsetResponse = await producer.GetTopicOffsetAsync(IntegrationConfig.IntegrationTopic);
                 var maxOffset = offsetResponse.Find(x => x.PartitionId == 0);
 
@@ -93,7 +92,7 @@ namespace kafka_tests.Integration
             using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri) { Log = IntegrationConfig.NoDebugLog }))
             using (var producer = new Producer(router))
             {
-                ProduceResponse responseAckLevel1 = await producer.SendMessageAsync(new Message(messge.ToString()), IntegrationConfig.IntegrationTopic, acks: 1, partition: 0);
+                var responseAckLevel1 = await producer.SendMessageAsync(new Message(messge.ToString()), IntegrationConfig.IntegrationTopic, acks: 1, partition: 0);
                 offsetResponse = responseAckLevel1.Offset;
             }
             using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri) { Log = IntegrationConfig.NoDebugLog }))
@@ -149,7 +148,7 @@ namespace kafka_tests.Integration
             var producer = new Producer(router, causesRaceConditionOldVersion) { BatchDelayTime = TimeSpan.Zero };//this is slow on purpose
             //this is not slow  var producer = new Producer(router);
             IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("create producer"));
-            List<OffsetResponse> offsets = await producer.GetTopicOffsetAsync(IntegrationConfig.IntegrationTopic);
+            List<OffsetTopic> offsets = await producer.GetTopicOffsetAsync(IntegrationConfig.IntegrationTopic);
             IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("request Offset"));
             List<Task> sendList = new List<Task>(numberOfMessage);
             for (int i = 0; i < numberOfMessage; i++)
@@ -208,7 +207,7 @@ namespace kafka_tests.Integration
             var producer = new Producer(router) { BatchDelayTime = TimeSpan.FromMilliseconds(10), BatchSize = numberOfMessage / 10 };
             IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("create producer ,time Milliseconds:{0}", stopwatch.ElapsedMilliseconds));
             stopwatch.Restart();
-            List<OffsetResponse> offsets = await producer.GetTopicOffsetAsync(IntegrationConfig.IntegrationTopic);
+            List<OffsetTopic> offsets = await producer.GetTopicOffsetAsync(IntegrationConfig.IntegrationTopic);
             IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("request Offset,time Milliseconds:{0}", stopwatch.ElapsedMilliseconds));
             stopwatch.Restart();
             List<Task> sendList = new List<Task>(numberOfMessage);
@@ -345,7 +344,7 @@ namespace kafka_tests.Integration
         public async Task ProducerShouldUsePartitionIdInsteadOfMessageKeyToChoosePartition()
         {
             Mock<IPartitionSelector> partitionSelector = new Mock<IPartitionSelector>();
-            partitionSelector.Setup(x => x.Select(It.IsAny<Topic>(), It.IsAny<byte[]>())).Returns((Topic y, byte[] y1) => { return y.Partitions.Find(p => p.PartitionId == 1); });
+            partitionSelector.Setup(x => x.Select(It.IsAny<MetadataTopic>(), It.IsAny<byte[]>())).Returns((MetadataTopic y, byte[] y1) => { return y.Partitions.Find(p => p.PartitionId == 1); });
 
             var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri) { PartitionSelector = partitionSelector.Object });
             var producer = new Producer(router);

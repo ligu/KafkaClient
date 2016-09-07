@@ -68,7 +68,7 @@ namespace kafka_tests.Unit
             var count = 0;
             using (var test = new KafkaTcpSocket(_log, _badServerUrl, _maxRetry))
             {
-                test.WriteAsync(1.ToBytes().ToPayload()); //will force a connection
+                var write = test.WriteAsync(1.ToBytes().ToPayload()); //will force a connection
                 test.OnReconnectionAttempt += x => Interlocked.Increment(ref count);
                 await TaskTest.WaitFor(() => count > 1, 10000);
                 Assert.That(count, Is.GreaterThan(1));
@@ -132,7 +132,7 @@ namespace kafka_tests.Unit
 
                 var taskResult = test.WriteAsync(4.ToBytes().ToPayload());
 
-                TaskTest.WaitFor(() => writeSize > 0);
+                var wait = TaskTest.WaitFor(() => writeSize > 0);
 
                 using (test)
                 {
@@ -271,7 +271,7 @@ namespace kafka_tests.Unit
                 const string secondMessage = "testmessage";
 
                 Console.WriteLine("Sending first message to receive...");
-                server.SendDataAsync(firstMessage.ToBytes());
+                var send = server.SendDataAsync(firstMessage.ToBytes());
 
                 var firstResponse = test.ReadAsync(4).Result.ToInt32();
                 Assert.That(firstResponse, Is.EqualTo(firstMessage));
@@ -294,11 +294,11 @@ namespace kafka_tests.Unit
                 const int secondMessage = 100;
 
                 Console.WriteLine("Sending first message to receive...");
-                server.SendDataAsync(firstMessage.ToBytes());
+                var send1 = server.SendDataAsync(firstMessage.ToBytes());
                 var firstResponseTask = test.ReadAsync(4);
 
                 Console.WriteLine("Sending second message to receive...");
-                server.SendDataAsync(secondMessage.ToBytes());
+                var send2 = server.SendDataAsync(secondMessage.ToBytes());
                 var secondResponseTask = test.ReadAsync(4);
 
                 Assert.That(firstResponseTask.Result.ToInt32(), Is.EqualTo(firstMessage));
@@ -320,7 +320,7 @@ namespace kafka_tests.Unit
                     .Pack(secondMessage, StringPrefixEncoding.None);
 
                 //send the combined payload
-                server.SendDataAsync(payload.PayloadNoLength());
+                var send = server.SendDataAsync(payload.PayloadNoLength());
 
                 var firstResponse = test.ReadAsync(4).Result.ToInt32();
                 Assert.That(firstResponse, Is.EqualTo(firstMessage));
@@ -424,7 +424,7 @@ namespace kafka_tests.Unit
 
                 var tasks = messages.Select(x => socket.ReadAsync(x.Length)).ToArray();
 
-                server.SendDataAsync(payload.Payload());
+                var send = server.SendDataAsync(payload.Payload());
 
                 Task.WaitAll(tasks);
 
@@ -581,7 +581,7 @@ namespace kafka_tests.Unit
             {
                 test.OnWriteToSocketAttempt += payload => Interlocked.Increment(ref writeAttempts);
 
-                test.WriteAsync(new KafkaDataPayload { Buffer = 1.ToBytes() }, token.Token);
+                var write = test.WriteAsync(new KafkaDataPayload { Buffer = 1.ToBytes() }, token.Token);
 
                 await TaskTest.WaitFor(() => server.ConnectionEventcount > 0);
                 await TaskTest.WaitFor(() => writeAttempts > 0);
@@ -611,7 +611,7 @@ namespace kafka_tests.Unit
 
                 var taskResult = test.WriteAsync(new KafkaDataPayload { Buffer = 1.ToBytes() }, token.Token);
 
-                TaskTest.WaitFor(() => connectionAttempt > 1);
+                var wait = TaskTest.WaitFor(() => connectionAttempt > 1);
 
                 token.Cancel();
 
@@ -632,7 +632,7 @@ namespace kafka_tests.Unit
 
                 var taskResult = test.WriteAsync(new KafkaDataPayload { Buffer = 1.ToBytes() }, token.Token);
 
-                TaskTest.WaitFor(() => connectionAttempt > 1);
+                var wait = TaskTest.WaitFor(() => connectionAttempt > 1);
 
                 var attemptsMadeSoFar = connectionAttempt;
 

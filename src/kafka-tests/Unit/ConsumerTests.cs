@@ -21,7 +21,9 @@ namespace kafka_tests.Unit
         public void CancellationShouldInterruptConsumption()
         {
             var routerProxy = new BrokerRouterProxy(new MoqMockingKernel());
-            routerProxy.BrokerConn0.FetchResponseFunction = async () => { return new FetchResponse(); };
+#pragma warning disable 1998
+            routerProxy.BrokerConn0.FetchResponseFunction = async () => new FetchResponse(0, new FetchTopicResponse[] {});
+#pragma warning restore 1998
 
             var router = routerProxy.Create();
 
@@ -34,7 +36,7 @@ namespace kafka_tests.Unit
                 var consumeTask = Task.Run(() => consumer.Consume(tokenSrc.Token).FirstOrDefault());
 
                 //wait until the fake broker is running and requesting fetches
-                TaskTest.WaitFor(() => routerProxy.BrokerConn0.FetchRequestCallCount > 10);
+                var wait = TaskTest.WaitFor(() => routerProxy.BrokerConn0.FetchRequestCallCount > 10);
 
                 tokenSrc.Cancel();
 
@@ -48,7 +50,9 @@ namespace kafka_tests.Unit
         public async Task ConsumerWhitelistShouldOnlyConsumeSpecifiedPartition()
         {
             var routerProxy = new BrokerRouterProxy(new MoqMockingKernel());
-            routerProxy.BrokerConn0.FetchResponseFunction = async () => { return new FetchResponse(); };
+#pragma warning disable 1998
+            routerProxy.BrokerConn0.FetchResponseFunction = async () => new FetchResponse(0, new FetchTopicResponse[] {});
+#pragma warning restore 1998
             var router = routerProxy.Create();
             var options = CreateOptions(router);
             options.PartitionWhitelist = new List<int> { 0 };
@@ -96,14 +100,16 @@ namespace kafka_tests.Unit
         public void ConsumerShouldCreateTaskForEachBroker()
         {
             var routerProxy = new BrokerRouterProxy(new MoqMockingKernel());
-            routerProxy.BrokerConn0.FetchResponseFunction = async () => { return new FetchResponse(); };
+#pragma warning disable 1998
+            routerProxy.BrokerConn0.FetchResponseFunction = async () => new FetchResponse(0, new FetchTopicResponse[] {});
+#pragma warning restore 1998
             var router = routerProxy.Create();
             var options = CreateOptions(router);
             options.PartitionWhitelist = new List<int>();
             using (var consumer = new Consumer(options))
             {
                 var test = consumer.Consume();
-                TaskTest.WaitFor(() => consumer.ConsumerTaskCount >= 2);
+                var wait = TaskTest.WaitFor(() => consumer.ConsumerTaskCount >= 2);
 
                 Assert.That(consumer.ConsumerTaskCount, Is.EqualTo(2));
             }
@@ -113,14 +119,16 @@ namespace kafka_tests.Unit
         public void ConsumerShouldReturnOffset()
         {
             var routerProxy = new BrokerRouterProxy(new MoqMockingKernel());
-            routerProxy.BrokerConn0.FetchResponseFunction = async () => { return new FetchResponse(); };
+#pragma warning disable 1998
+            routerProxy.BrokerConn0.FetchResponseFunction = async () => new FetchResponse(0, new FetchTopicResponse[] {});
+#pragma warning restore 1998
             var router = routerProxy.Create();
             var options = CreateOptions(router);
             options.PartitionWhitelist = new List<int>();
             using (var consumer = new Consumer(options))
             {
                 var test = consumer.Consume();
-                TaskTest.WaitFor(() => consumer.ConsumerTaskCount >= 2);
+                var wait = TaskTest.WaitFor(() => consumer.ConsumerTaskCount >= 2);
 
                 Assert.That(consumer.ConsumerTaskCount, Is.EqualTo(2));
             }
@@ -140,7 +148,9 @@ namespace kafka_tests.Unit
         public void EnsureConsumerDisposesAllTasks()
         {
             var routerProxy = new BrokerRouterProxy(new MoqMockingKernel());
-            routerProxy.BrokerConn0.FetchResponseFunction = async () => { return new FetchResponse(); };
+#pragma warning disable 1998
+            routerProxy.BrokerConn0.FetchResponseFunction = async () => new FetchResponse(0, new FetchTopicResponse[] {});
+#pragma warning restore 1998
             var router = routerProxy.Create();
             var options = CreateOptions(router);
             options.PartitionWhitelist = new List<int>();
@@ -149,10 +159,10 @@ namespace kafka_tests.Unit
             using (consumer)
             {
                 var test = consumer.Consume();
-                TaskTest.WaitFor(() => consumer.ConsumerTaskCount >= 2);
+                var wait = TaskTest.WaitFor(() => consumer.ConsumerTaskCount >= 2);
             }
 
-            TaskTest.WaitFor(() => consumer.ConsumerTaskCount <= 0);
+            var wait2 = TaskTest.WaitFor(() => consumer.ConsumerTaskCount <= 0);
             Assert.That(consumer.ConsumerTaskCount, Is.EqualTo(0));
         }
 

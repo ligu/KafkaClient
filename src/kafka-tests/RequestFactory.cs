@@ -60,14 +60,7 @@ namespace kafka_tests
             return new OffsetFetchRequest
             {
                 ConsumerGroup = "DefaultGroup",
-                Topics = new List<OffsetFetch>(new[]
-        		                          {
-        		                          	new OffsetFetch
-        		                          	{
-        		                          		Topic = topic,
-        		                          		PartitionId = partitionId
-        		                          	}
-        		                          })
+                Topics = new List<Topic>{ new Topic(topic, partitionId) }
             };
         }
     }

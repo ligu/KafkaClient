@@ -74,7 +74,7 @@ namespace TestHarness
             Console.WriteLine("Completed send of batch: {0}. Buffered:{1} AsyncCount:{2}", count, producer.BufferCount, producer.AsyncCount);
             foreach (var result in response.OrderBy(x => x.PartitionId))
             {
-                Console.WriteLine("Topic:{0} PartitionId:{1} Offset:{2}", result.Topic, result.PartitionId, result.Offset);
+                Console.WriteLine("Topic:{0} PartitionId:{1} Offset:{2}", result.TopicName, result.PartitionId, result.Offset);
             }
             
         }

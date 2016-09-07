@@ -97,7 +97,7 @@ namespace KafkaNet
         /// <param name="request">The IKafkaRequest to send to the kafka servers.</param>
         /// <returns></returns>
 
-        public async Task<List<T>> SendAsync<T>(IKafkaRequest<T> request)
+        public async Task<T> SendAsync<T>(IKafkaRequest<T> request) where T : IKafkaResponse
         {
             //assign unique correlationId
             request.CorrelationId = NextCorrelationId();
@@ -131,15 +131,13 @@ namespace KafkaNet
 
                     var response = await asyncRequest.ReceiveTask.Task.ConfigureAwait(false);
 
-                    return request.Decode(response).ToList();
+                    return request.Decode(response);
                 }
             }
 
-            //no response needed, just send
+            // no response needed, just send
             await _client.WriteAsync(request.Encode()).ConfigureAwait(false);
-
-            //TODO should this return a response of success for request?
-            return new List<T>();
+            return default(T);
         }
 
         #region Equals Override...

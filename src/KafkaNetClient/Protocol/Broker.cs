@@ -1,23 +1,59 @@
-﻿using KafkaNet.Common;
-using System;
+﻿using System;
 
 namespace KafkaNet.Protocol
 {
-    public class Broker
+    public class Broker : IEquatable<Broker>
     {
-        public int BrokerId { get; set; }
-        public string Host { get; set; }
-        public int Port { get; set; }
-        public Uri Address { get { return new Uri(string.Format("http://{0}:{1}", Host, Port)); } }
-
-        public static Broker FromStream(BigEndianBinaryReader stream)
+        public Broker(int brokerId, string host, int port)
         {
-            return new Broker
-                {
-                    BrokerId = stream.ReadInt32(),
-                    Host = stream.ReadInt16String(),
-                    Port = stream.ReadInt32()
-                };
+            BrokerId = brokerId;
+            Host = host;
+            Port = port;
         }
+
+        public int BrokerId { get; }
+        public string Host { get; }
+        public int Port { get; }
+        public Uri Address => new Uri($"http://{Host}:{Port}");
+
+        #region Equality
+
+        public override bool Equals(object obj)
+        {
+            return Equals(obj as Broker);
+        }
+
+        public bool Equals(Broker other)
+        {
+            if (ReferenceEquals(null, other)) return false;
+            if (ReferenceEquals(this, other)) return true;
+            return BrokerId == other.BrokerId 
+                   && string.Equals(Host, other.Host) 
+                   && Port == other.Port;
+        }
+
+        public override int GetHashCode()
+        {
+            unchecked {
+                var hashCode = BrokerId;
+                hashCode = (hashCode*397) ^ (Host?.GetHashCode() ?? 0);
+                hashCode = (hashCode*397) ^ Port;
+                return hashCode;
+            }
+        }
+
+        public static bool operator ==(Broker left, Broker right)
+        {
+            return Equals(left, right);
+        }
+
+        public static bool operator !=(Broker left, Broker right)
+        {
+            return !Equals(left, right);
+        }
+                
+        #endregion
+
+        public override string ToString() => $"http://{Host}:{Port} Broker:{BrokerId}";
     }
 }

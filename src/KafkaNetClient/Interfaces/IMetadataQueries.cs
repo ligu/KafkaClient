@@ -15,7 +15,7 @@ namespace KafkaNet
         /// </summary>
         /// <param name="topic">The metadata on the requested topic.</param>
         /// <returns>Topic object containing the metadata on the requested topic.</returns>
-        Topic GetTopicFromCache(string topic);
+        MetadataTopic GetTopicFromCache(string topic);
 
         /// <summary>
         /// Get offsets for each partition from a given topic.
@@ -24,6 +24,6 @@ namespace KafkaNet
         /// <param name="maxOffsets"></param>
         /// <param name="time"></param>
         /// <returns></returns>
-        Task<List<KafkaNet.Protocol.OffsetResponse>> GetTopicOffsetAsync(string topic, int maxOffsets = 2, int time = -1);
+        Task<List<KafkaNet.Protocol.OffsetTopic>> GetTopicOffsetAsync(string topic, int maxOffsets = 2, int time = -1);
     }
 }

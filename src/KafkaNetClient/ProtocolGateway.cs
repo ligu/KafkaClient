@@ -4,6 +4,7 @@ using System;
 using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Runtime.Serialization;
+using System.Text;
 using System.Threading.Tasks;
 using KafkaNet.Common;
 
@@ -46,7 +47,7 @@ namespace KafkaNet
         /// <exception cref="KafkaConnectionException">Thrown in case of network error contacting broker (after retries), or if none of the default brokers can be contacted.</exception>
         /// <exception cref="KafkaRequestException">Thrown in case of an unexpected error in the request</exception>
         /// <exception cref="FormatException">Thrown in case the topic name is invalid</exception>
-        public async Task<T> SendProtocolRequest<T>(IKafkaRequest<T> request, string topic, int partition) where T : class, IBaseResponse
+        public async Task<T> SendProtocolRequest<T>(IKafkaRequest<T> request, string topic, int partition) where T : class, IKafkaResponse
         {
             ValidateTopic(topic);
             T response = null;
@@ -62,23 +63,23 @@ namespace KafkaNet
                 {
                     await _brokerRouter.RefreshMissingTopicMetadata(topic);
 
-                    //find route it can chage after Metadata Refresh
+                    // route can change after Metadata Refresh
                     var route = _brokerRouter.SelectBrokerRouteFromLocalCache(topic, partition);
                     connection = route.Connection;
-                    var responses = await route.Connection.SendAsync(request).ConfigureAwait(false);
-                    response = responses.FirstOrDefault();
+                    response = await route.Connection.SendAsync(request).ConfigureAwait(false);
 
-                    //this can happened if you send ProduceRequest with ack level=0
-                    if (response == null) return null;
+                    if (response == null) {
+                        // this can happen if you send ProduceRequest with ack level=0
+                        return null;
+                    }
 
-                    var error = (ErrorResponseCode) response.Error;
-                    if (error == ErrorResponseCode.NoError) {
+                    var errors = response.Errors.Where(e => e != ErrorResponseCode.NoError).ToList();
+                    if (errors.Count == 0) {
                         return response;
                     }
 
-                    //It means we had an error
-                    errorDetails = $"{error}  ({route})";
-                    needToRefreshTopicMetadata = CanRecoverByRefreshMetadata(error);
+                    errorDetails = errors.Aggregate(new StringBuilder($"{route} - "), (buffer, e) => buffer.Append(" ").Append(e)).ToString();
+                    needToRefreshTopicMetadata = errors.All(CanRecoverByRefreshMetadata);
                 }
                 catch (TimeoutException ex)
                 {
@@ -120,7 +121,7 @@ namespace KafkaNet
                     exceptionInfo?.Throw();
 
                     // Otherwise, the error was from Kafka, throwing application exception
-                    throw request.ExtractException(response, connection?.Endpoint);
+                    throw request.ExtractExceptions(response, connection?.Endpoint);
                 }
             }
 
@@ -130,7 +131,7 @@ namespace KafkaNet
         private static bool CanRecoverByRefreshMetadata(ErrorResponseCode error)
         {
             return  error == ErrorResponseCode.BrokerNotAvailable ||
-                    error == ErrorResponseCode.ConsumerCoordinatorNotAvailableCode ||
+                    error == ErrorResponseCode.ConsumerCoordinatorNotAvailable ||
                     error == ErrorResponseCode.LeaderNotAvailable ||
                     error == ErrorResponseCode.NotLeaderForPartition;
         }

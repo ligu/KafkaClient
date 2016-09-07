@@ -68,7 +68,7 @@ namespace kafka_tests.Integration
                 IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("start SendAsync"));
                 var response = conn.Connection.SendAsync(request).Result;
                 IntegrationConfig.NoDebugLog.InfoFormat("end SendAsync");
-                Assert.That(response.First().Error, Is.EqualTo(0));
+                Assert.That(response.Errors.Any(e => e != ErrorResponseCode.NoError), Is.False);
                 IntegrationConfig.NoDebugLog.InfoFormat("start dispose");
             }
             IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("end EnsureGzipCompressedMessageCanSend"));

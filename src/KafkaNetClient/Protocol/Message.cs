@@ -26,6 +26,11 @@ namespace KafkaNet.Protocol
     /// </summary>
     public class Message
     {
+        /// <summary>
+        ///  The lowest 2 bits contain the compression codec used for the message. The other bits should be set to 0.
+        /// </summary>
+        public static byte AttributeCodeMask = 0x03;
+
         private const int MessageHeaderSize = 12;
         private const long InitialMessageOffset = 0;
 
@@ -35,7 +40,7 @@ namespace KafkaNet.Protocol
         public MessageMetadata Meta { get; set; }
 
         /// <summary>
-        /// This is a version id used to allow backwards compatible evolution of the message binary format.  Reserved for future use.
+        /// This is a version id used to allow backwards compatible evolution of the message binary format. Reserved for future use.
         /// </summary>
         public byte MagicNumber { get; set; }
 
@@ -57,6 +62,7 @@ namespace KafkaNet.Protocol
         /// The message body contents.  Can contain compress message set.
         /// </summary>
         public byte[] Value { get; set; }
+
         /// <summary>
         /// This is the timestamp of the message. The timestamp type is indicated in the attributes. Unit is milliseconds since beginning of the epoch (midnight Jan 1, 1970 (UTC)).
         /// </summary>
@@ -189,7 +195,7 @@ namespace KafkaNet.Protocol
                 }
                 message.Key = stream.ReadIntPrefixedBytes();
 
-                var codec = (MessageCodec)(ProtocolConstants.AttributeCodeMask & message.Attribute);
+                var codec = (MessageCodec)(AttributeCodeMask & message.Attribute);
                 switch (codec)
                 {
                     case MessageCodec.CodecNone:

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.Contracts;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -9,9 +10,8 @@ namespace KafkaNet.Common
     /// Utility functions for dealing with Task's.
     /// </summary>
     /// <remarks>
-    /// This is copy of orleans TaskExtensions here:https://github.com/dotnet/orleans/blob/master/src/Orleans/Async/TaskExtensions.cs#L218
+    /// Some of these come from orleans TaskExtensions here:https://github.com/dotnet/orleans/blob/master/src/Orleans/Async/TaskExtensions.cs#L218
     /// </remarks>
-
     public static class TaskExtensions
     {
 
@@ -46,7 +46,6 @@ namespace KafkaNet.Common
         /// <param name="timeout">Amount of time to wait before timing out</param>
         /// <exception cref="TimeoutException">If we time out we will get this exception</exception>
         /// <returns>The value of the completed task</returns>
-
         public static async Task<T> WithTimeout<T>(this Task<T> taskToComplete, TimeSpan timeSpan)
         {
             if (taskToComplete.IsCompleted)
@@ -70,5 +69,130 @@ namespace KafkaNet.Common
             throw new TimeoutException(String.Format("WithTimeout has timed out after {0}.", timeSpan));
         }
 
+        /// <summary>
+        /// Execute an await task while monitoring a given cancellation token.  Use with non-cancelable async operations.
+        /// </summary>
+        /// <remarks>
+        /// This extension method will only cancel the await and not the actual IO operation.  The status of the IO opperation will still
+        /// need to be considered after the operation is cancelled.
+        /// See <see cref="http://blogs.msdn.com/b/pfxteam/archive/2012/10/05/how-do-i-cancel-non-cancelable-async-operations.aspx"/>
+        /// </remarks>
+        public static async Task<T> WithCancellation<T>(this Task<T> task, CancellationToken cancellationToken)
+        {
+            var tcs = new TaskCompletionSource<bool>();
+
+            var cancelRegistration = cancellationToken.Register(source => ((TaskCompletionSource<bool>)source).TrySetResult(true), tcs);
+
+            using (cancelRegistration)
+            {
+                if (task != await Task.WhenAny(task, tcs.Task).ConfigureAwait(false))
+                {
+                    throw new OperationCanceledException(cancellationToken);
+                }
+            }
+
+            return await task.ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Execute an await task while monitoring a given cancellation token.  Use with non-cancelable async operations.
+        /// </summary>
+        /// <remarks>
+        /// This extension method will only cancel the await and not the actual IO operation.  The status of the IO opperation will still
+        /// need to be considered after the operation is cancelled.
+        /// See <see cref="http://blogs.msdn.com/b/pfxteam/archive/2012/10/05/how-do-i-cancel-non-cancelable-async-operations.aspx"/>
+        /// </remarks>
+        public static async Task WithCancellation(this Task task, CancellationToken cancellationToken)
+        {
+            var tcs = new TaskCompletionSource<bool>();
+
+            var cancelRegistration = cancellationToken.Register(source => ((TaskCompletionSource<bool>)source).TrySetResult(true), tcs);
+
+            using (cancelRegistration)
+            {
+                if (task != await Task.WhenAny(task, tcs.Task).ConfigureAwait(false))
+                {
+                    throw new OperationCanceledException(cancellationToken);
+                }
+            }
+        }
+
+        public static async Task<bool> WithCancellationBool(this Task task, CancellationToken cancellationToken)
+        {
+            var tcs = new TaskCompletionSource<bool>();
+
+            var cancelRegistration = cancellationToken.Register(source => ((TaskCompletionSource<bool>)source).TrySetResult(true), tcs);
+
+            using (cancelRegistration)
+            {
+                if (task != await Task.WhenAny(task, tcs.Task).ConfigureAwait(false))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        public static Task CreateTask(this CancellationToken cancellationToken)
+        {
+            var tcs = new TaskCompletionSource<bool>();
+            cancellationToken.Register(source => ((TaskCompletionSource<bool>)source).TrySetResult(true), tcs);
+            return tcs.Task;
+        }
+
+        /// <summary>
+        /// Returns true if <see cref="WaitHandle"/> before timeout expires./>
+        /// </summary>
+        /// <param name="handle">The handle whose signal triggers the task to be completed.</param>
+        /// <param name="timeout">The timespan to wait before returning false</param>
+        /// <returns>The task returns true if the handle is signaled before the timeout has expired.</returns>
+        /// <remarks>
+        /// Original code from: http://blog.nerdbank.net/2011/07/c-await-for-waithandle.html
+        /// There is a (brief) time delay between when the handle is signaled and when the task is marked as completed.
+        /// </remarks>
+        public static Task<bool> WaitAsync(this WaitHandle handle, TimeSpan timeout)
+        {
+            Contract.Requires<ArgumentNullException>(handle != null);
+            Contract.Ensures(Contract.Result<Task>() != null);
+
+            var tcs = new TaskCompletionSource<bool>();
+            var localVariableInitLock = new object();
+            lock (localVariableInitLock)
+            {
+                RegisteredWaitHandle callbackHandle = null;
+                callbackHandle = ThreadPool.RegisterWaitForSingleObject(
+                    handle,
+                    (state, timedOut) =>
+                    {
+                        tcs.TrySetResult(!timedOut);
+
+                        // We take a lock here to make sure the outer method has completed setting the local variable callbackHandle.
+                        lock (localVariableInitLock)
+                        {
+                            if (callbackHandle != null) callbackHandle.Unregister(null);
+                        }
+                    },
+                    state: null,
+                    millisecondsTimeOutInterval: (long)timeout.TotalMilliseconds,
+                    executeOnlyOnce: true);
+            }
+
+            return tcs.Task;
+        }
+
+        /// <summary>
+        /// Mainly used for testing, allows waiting on a single task without throwing exceptions.
+        /// </summary>
+        public static void SafeWait(this Task source, TimeSpan timeout)
+        {
+            try
+            {
+                source.Wait(timeout);
+            }
+            catch
+            {
+                //ignore an exception that happens in this source
+            }
+        }
     }
 }
