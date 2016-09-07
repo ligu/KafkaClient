@@ -46,21 +46,23 @@ namespace KafkaNet.Protocol
                 var correlationId = stream.ReadInt32();
                 var clientId = stream.ReadInt16String();
 
+                // request
                 var replicaId = stream.ReadInt32();
                 this.MaxWaitTime = stream.ReadInt32();
                 this.MinBytes = stream.ReadInt32();
 
-                var fetches = stream.ReadInt32();
-                this.Fetches = new List<Fetch>(fetches);
-                for (var i = 0; i < fetches; i++) {
-                    var fetch = new Fetch();
-                    fetch.Topic = stream.ReadInt16String();
+                var topics = stream.ReadInt32();
+                this.Fetches = new List<Fetch>();
+                for (var t = 0; t < topics; t++) {
+                    var topic = stream.ReadInt16String();
                     var partitions = stream.ReadInt32();
-                    fetch.PartitionId = stream.ReadInt32();
-                    fetch.Offset = stream.ReadInt64();
-                    fetch.MaxBytes = stream.ReadInt32();
-
-                    this.Fetches.Add(fetch);
+                    for (var p = 0; p < partitions; p++) {
+                        var fetch = new Fetch {Topic = topic};
+                        fetch.PartitionId = stream.ReadInt32();
+                        fetch.Offset = stream.ReadInt64();
+                        fetch.MaxBytes = stream.ReadInt32();
+                        this.Fetches.Add(fetch);
+                    }
                 }
             }
         }

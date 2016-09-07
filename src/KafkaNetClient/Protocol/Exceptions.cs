@@ -122,57 +122,55 @@ namespace KafkaNet.Protocol
     }
 
     /// <summary>
-    /// An exception caused by a FetchRequest
+    /// An exception caused by a Kafka Request for fetching (FetchRequest, FetchOffset, etc)
     /// </summary>
     [Serializable]
-    public class FetchRequestException : KafkaRequestException
+    public class FetchOutOfRangeException : KafkaRequestException
     {
-        public FetchRequestException(FetchRequest request, ErrorResponseCode errorCode, string message = null)
-            : base(request.ApiKey, errorCode, message)
+        public FetchOutOfRangeException(Fetch fetch, ApiKeyRequestType apiKey, ErrorResponseCode errorCode, string message = null)
+            : base(apiKey, errorCode, message)
         {
-            Request = request;
+            Fetch = fetch;
         }
 
-        public FetchRequestException(string message)
+        public FetchOutOfRangeException(string message)
             : base(message)
         {
         }
 
-        public FetchRequestException(string message, Exception innerException)
+        public FetchOutOfRangeException(string message, Exception innerException)
             : base(message, innerException)
         {
         }
 
-        public FetchRequestException(SerializationInfo info, StreamingContext context)
+        public FetchOutOfRangeException(SerializationInfo info, StreamingContext context)
             : base(info, context)
         {
-            var bytes = info.GetInt32("Size");
-            if (bytes > 0) {
-                var buffer = info.GetValue<byte[]>("Request");
-                Request = new FetchRequest();
-                Request.DecodeRequest(buffer);
+            if (info.GetByte(nameof(Fetch)) == 1) {
+                Fetch = new Fetch {
+                    MaxBytes = info.GetInt32(nameof(Fetch.MaxBytes)),
+                    Offset = info.GetInt64(nameof(Fetch.Offset)),
+                    PartitionId = info.GetInt32(nameof(Fetch.PartitionId)),
+                    Topic = info.GetString(nameof(Fetch.Topic))
+                };
             }
         }
 
         public override void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             base.GetObjectData(info, context);
-            var bytes = 0;
-            if (Request != null) {
-                var payload = Request.Encode();
-                bytes = payload.Buffer?.Length ?? 0;
-                if (bytes > 0) {
-                    info.AddValue("Size", bytes);
-                    info.AddValue("Request", payload.Buffer);
-                }
-            }
-
-            if (bytes == 0) {
-                info.AddValue("Size", 0);
-            }            
+            if (Fetch == null) {
+                info.AddValue(nameof(Fetch), (byte)0);
+            } else {
+                info.AddValue(nameof(Fetch), (byte)1);
+                info.AddValue(nameof(Fetch.MaxBytes), Fetch.MaxBytes);
+                info.AddValue(nameof(Fetch.Offset), Fetch.Offset);
+                info.AddValue(nameof(Fetch.PartitionId), Fetch.PartitionId);
+                info.AddValue(nameof(Fetch.Topic), Fetch.Topic);
+            }         
         }
 
-        public FetchRequest Request { get; }
+        public Fetch Fetch { get; }
     }
 
     /// <summary>
@@ -201,17 +199,17 @@ namespace KafkaNet.Protocol
         public KafkaRequestException(SerializationInfo info, StreamingContext context)
             : base(info, context)
         {
-            ApiKey = (ApiKeyRequestType)info.GetInt16("ApiKey");
-            ErrorCode = (ErrorResponseCode)info.GetInt16("ErrorCode");
-            Endpoint = info.GetValue<KafkaEndpoint>("Endpoint");
+            ApiKey = (ApiKeyRequestType)info.GetInt16(nameof(ApiKey));
+            ErrorCode = (ErrorResponseCode)info.GetInt16(nameof(ErrorCode));
+            Endpoint = info.GetValue<KafkaEndpoint>(nameof(Endpoint));
         }
 
         public override void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             base.GetObjectData(info, context);
-            info.AddValue("ApiKey", (short)ApiKey);
-            info.AddValue("ErrorCode", (short)ErrorCode);
-            info.AddValue("Endpoint", Endpoint);
+            info.AddValue(nameof(ApiKey), (short)ApiKey);
+            info.AddValue(nameof(ErrorCode), (short)ErrorCode);
+            info.AddValue(nameof(Endpoint), Endpoint);
         }
 
         public ApiKeyRequestType ApiKey { get; }
@@ -244,13 +242,13 @@ namespace KafkaNet.Protocol
         public KafkaConnectionException(SerializationInfo info, StreamingContext context)
             : base(info, context)
         {
-            Endpoint = info.GetValue<KafkaEndpoint>("Endpoint");
+            Endpoint = info.GetValue<KafkaEndpoint>(nameof(Endpoint));
         }
 
         public override void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             base.GetObjectData(info, context);
-            info.AddValue("Endpoint", Endpoint);
+            info.AddValue(nameof(Endpoint), Endpoint);
         }
 
         public KafkaEndpoint Endpoint { get; set; }

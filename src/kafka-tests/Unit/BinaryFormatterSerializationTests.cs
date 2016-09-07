@@ -35,27 +35,28 @@ namespace kafka_tests.Unit
         [Test]
         public void ShouldSerializeOffsetOutOfRangeException()
         {
-            var expected = new FetchRequestException(
-                new FetchRequest {
-                    Fetches = new List<Fetch> {
-                        new Fetch(){MaxBytes = 1,Topic = "aa",Offset = 2,PartitionId = 3}
-                    }
-                }, ErrorResponseCode.OffsetOutOfRange);
+            var expected = new FetchOutOfRangeException(
+                new Fetch {
+                    MaxBytes = 1,
+                    Topic = "aa",
+                    Offset = 2,
+                    PartitionId = 3
+                }, ApiKeyRequestType.Fetch, ErrorResponseCode.OffsetOutOfRange);
             var actual = SerializeDeserialize(expected);
 
-            Assert.AreEqual(expected.Request.Fetches[0].MaxBytes, actual.Request.Fetches[0].MaxBytes);
-            Assert.AreEqual(expected.Request.Fetches[0].Offset, actual.Request.Fetches[0].Offset);
-            Assert.AreEqual(expected.Request.Fetches[0].PartitionId, actual.Request.Fetches[0].PartitionId);
-            Assert.AreEqual(expected.Request.Fetches[0].Topic, actual.Request.Fetches[0].Topic);
+            Assert.AreEqual(expected.Fetch.MaxBytes, actual.Fetch.MaxBytes);
+            Assert.AreEqual(expected.Fetch.Offset, actual.Fetch.Offset);
+            Assert.AreEqual(expected.Fetch.PartitionId, actual.Fetch.PartitionId);
+            Assert.AreEqual(expected.Fetch.Topic, actual.Fetch.Topic);
         }
 
         [Test]
         public void ShouldSerializeOffsetOutOfRangeExceptionNull()
         {
-            var expected = new FetchRequestException("a");
+            var expected = new FetchOutOfRangeException("a");
             var actual = SerializeDeserialize(expected);
 
-            Assert.AreEqual(expected.Request, actual.Request);
+            Assert.AreEqual(expected.Fetch, actual.Fetch);
         }
 
         [Test]
@@ -64,8 +65,7 @@ namespace kafka_tests.Unit
             var expected = new KafkaRequestException("a");
             var actual = SerializeDeserialize(expected);
 
-            Assert.AreEqual(expected.Endpoint.ServeUri, actual.Endpoint.ServeUri);
-            Assert.AreEqual(expected.Endpoint.Endpoint, actual.Endpoint.Endpoint);
+            Assert.AreEqual(expected.Endpoint, actual.Endpoint);
         }
 
         [Test]

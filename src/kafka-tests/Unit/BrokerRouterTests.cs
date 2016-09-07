@@ -100,7 +100,7 @@ namespace kafka_tests.Unit
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
-        [ExpectedException(typeof(KafkaException))]
+        [ExpectedException(typeof(KafkaRequestException))]
         public async Task BrokerRouteShouldThrowIfCycleCouldNotConnectToAnyServer()
         {
             var routerProxy = new BrokerRouterProxy(_kernel);

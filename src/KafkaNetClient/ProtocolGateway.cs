@@ -5,6 +5,7 @@ using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
+using KafkaNet.Common;
 
 namespace KafkaNet
 {
@@ -68,14 +69,10 @@ namespace KafkaNet
                     response = responses.FirstOrDefault();
 
                     //this can happened if you send ProduceRequest with ack level=0
-                    if (response == null)
-                    {
-                        return null;
-                    }
+                    if (response == null) return null;
 
                     var error = (ErrorResponseCode) response.Error;
-                    if (error == ErrorResponseCode.NoError)
-                    {
+                    if (error == ErrorResponseCode.NoError) {
                         return response;
                     }
 
@@ -89,6 +86,10 @@ namespace KafkaNet
                     exceptionInfo = ExceptionDispatchInfo.Capture(ex);
                 }
                 catch (KafkaConnectionException ex)
+                {
+                    exceptionInfo = ExceptionDispatchInfo.Capture(ex);
+                }
+                catch (FetchOutOfRangeException ex)
                 {
                     exceptionInfo = ExceptionDispatchInfo.Capture(ex);
                 }
@@ -116,15 +117,10 @@ namespace KafkaNet
                     _brokerRouter.Log.ErrorFormat("ProtocolGateway sending request failed");
 
                     // If an exception was thrown, we want to propagate it
-                    if (exceptionInfo != null)
-                    {
-                        exceptionInfo.Throw();
-                    }
-                    
+                    exceptionInfo?.Throw();
+
                     // Otherwise, the error was from Kafka, throwing application exception
-                    throw new KafkaRequestException(request.ApiKey, (ErrorResponseCode)response.Error) {
-                        Endpoint = connection?.Endpoint
-                    };
+                    throw request.ExtractException(response, connection?.Endpoint);
                 }
             }
 

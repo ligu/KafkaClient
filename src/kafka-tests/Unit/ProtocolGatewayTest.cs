@@ -69,7 +69,7 @@ namespace kafka_tests.Unit
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         [TestCase(typeof(KafkaConnectionException))]
-        [TestCase(typeof(KafkaRequestException))]
+        [TestCase(typeof(FetchOutOfRangeException))]
         [TestCase(typeof(CachedMetadataException))]
         public async Task ShouldTryToRefreshMataDataIfOnExceptions(Type exceptionType)
         {

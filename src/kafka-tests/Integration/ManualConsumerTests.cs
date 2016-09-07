@@ -155,7 +155,7 @@ namespace kafka_tests.Integration
         }
 
         [Test]
-       [ExpectedException(typeof(KafkaRequestException), ExpectedMessage = "FetchResponse received an error from Kafka: OffsetOutOfRange", MatchType = MessageMatch.StartsWith)]
+       [ExpectedException(typeof(FetchOutOfRangeException), ExpectedMessage = "Kafka returned error response for Fetch: OffsetOutOfRange", MatchType = MessageMatch.StartsWith)]
         public async Task FetchMessagesOffsetBiggerThanLastOffsetInQueueTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
@@ -185,7 +185,7 @@ namespace kafka_tests.Integration
         }
 
         [Test]
-        [ExpectedException(typeof(KafkaNet.Protocol.CachedMetadataException))]
+        [ExpectedException(typeof(KafkaNet.Protocol.KafkaRequestException))]
         public async Task FetchMessagesTopicDoesntExist()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
@@ -246,7 +246,7 @@ namespace kafka_tests.Integration
         }
 
         [Test]
-        [ExpectedException(typeof(CachedMetadataException))]
+        [ExpectedException(typeof(KafkaRequestException))]
         public async Task FetchOffsetConsumerGroupDoesntExistTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
@@ -274,7 +274,7 @@ namespace kafka_tests.Integration
         }
 
         [Test]
-        [ExpectedException(typeof(CachedMetadataException))]
+        [ExpectedException(typeof(KafkaRequestException))]
         public async Task FetchOffsetTopicDoesntExistTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
@@ -494,7 +494,7 @@ namespace kafka_tests.Integration
         }
 
         [Test]
-        [ExpectedException(typeof(CachedMetadataException))]
+        [ExpectedException(typeof(KafkaRequestException))]
         public async Task FetchLastOffsetTopicDoesntExistTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer

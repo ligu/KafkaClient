@@ -5,6 +5,8 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using KafkaNet.Model;
+using KafkaNet.Protocol;
 
 namespace KafkaNet.Common
 {
@@ -255,6 +257,23 @@ namespace KafkaNet.Common
                 return task.Exception.Flatten();
 
             return new ApplicationException("Unknown exception occured.");
+        }
+
+        public static KafkaRequestException ExtractException<TRequest, TResponse>(this TRequest request, TResponse response, KafkaEndpoint endpoint = null) 
+            where TRequest : IKafkaRequest<TResponse>
+            where TResponse : IBaseResponse
+        {
+            if ((ErrorResponseCode)response.Error == ErrorResponseCode.OffsetOutOfRange) {
+                var fetchRequest = request as FetchRequest;
+                if (fetchRequest?.Fetches?.Count == 1) {
+                    var fetch = fetchRequest.Fetches.First();
+                    return new FetchOutOfRangeException(fetch, request.ApiKey, (ErrorResponseCode) response.Error);
+                }
+            }
+
+            return new KafkaRequestException(request.ApiKey, (ErrorResponseCode) response.Error) {
+                Endpoint = endpoint
+            };
         }
     }
 }

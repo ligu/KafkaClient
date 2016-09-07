@@ -160,7 +160,7 @@ namespace kafka_tests.Unit
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
-        [ExpectedException(typeof(ApplicationException))]
+        [ExpectedException(typeof(CachedMetadataException))]
         public void SelectorShouldThrowExceptionWhenPartitionsAreEmpty()
         {
             var selector = new DefaultPartitionSelector();

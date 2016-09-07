@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using KafkaNet.Common;
 
 namespace KafkaNet
 {
@@ -214,11 +215,11 @@ namespace KafkaNet
                             _options.Log.InfoFormat("Buffer underrun.  Increasing buffer size to: {0}",
                                 bufferSizeHighWatermark);
                         }
-                        catch (FetchRequestException ex) when (ex.ErrorCode == ErrorResponseCode.OffsetOutOfRange)
+                        catch (FetchOutOfRangeException ex) when (ex.ErrorCode == ErrorResponseCode.OffsetOutOfRange)
                         {
                             //TODO this turned out really ugly.  Need to fix this section.
                             _options.Log.ErrorFormat(ex.Message);
-                            await FixOffsetOutOfRangeExceptionAsync(ex.Request);
+                            await FixOffsetOutOfRangeExceptionAsync(ex.Fetch);
                         }
                         catch (CachedMetadataException ex)
                         {
@@ -259,25 +260,15 @@ namespace KafkaNet
                 case ErrorResponseCode.NotLeaderForPartition:
                     throw new CachedMetadataException(
                         $"FetchResponse indicated we may have mismatched metadata. ErrorCode:{response.Error}",
-                        FetchException(request, response, connection));
+                        request.ExtractException(response, connection?.Endpoint));
 
                 default:
-                    throw FetchException(request, response, connection);
+                    throw request.ExtractException(response, connection?.Endpoint);
             }
         }
 
-        private static KafkaRequestException FetchException(FetchRequest request, FetchResponse response, IKafkaConnection connection)
+        private async Task FixOffsetOutOfRangeExceptionAsync(Fetch fetch)
         {
-            return new FetchRequestException(request, (ErrorResponseCode)response.Error) {
-                Endpoint = connection?.Endpoint
-            };
-        }
-
-        private async Task FixOffsetOutOfRangeExceptionAsync(FetchRequest request)
-        {
-            var fetch = request.Fetches.FirstOrDefault();
-            if (fetch == null) return;
-
             await _metadataQueries.GetTopicOffsetAsync(fetch.Topic)
                    .ContinueWith(t =>
                    {
