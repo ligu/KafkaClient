@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 namespace kafka_tests.Unit
 {
     [TestFixture]
-    [Category("Local")]
+    [Category("Unit")]
     public class ScheduledTimerFixture
     {
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]

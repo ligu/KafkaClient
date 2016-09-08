@@ -30,9 +30,9 @@ namespace KafkaNet
             if (string.IsNullOrEmpty(topic)) throw new ArgumentNullException(nameof(topic));
             if (gateway == null) throw new ArgumentNullException(nameof(gateway));
             if (maxSizeOfMessageSet <= 0) throw new ArgumentOutOfRangeException(nameof(maxSizeOfMessageSet), "argument must be larger than zero");
-            Contract.Requires<ArgumentNullException>(!string.IsNullOrEmpty(topic));
-            Contract.Requires<ArgumentNullException>(gateway != null);
-            Contract.Requires<ArgumentOutOfRangeException>(maxSizeOfMessageSet > 0);
+            Contract.Requires(!string.IsNullOrEmpty(topic));
+            Contract.Requires(gateway != null);
+            Contract.Requires(maxSizeOfMessageSet > 0);
 
             _gateway = gateway;
             _partitionId = partitionId;
@@ -52,8 +52,8 @@ namespace KafkaNet
         {
             if (string.IsNullOrEmpty(consumerGroup)) throw new ArgumentNullException(nameof(consumerGroup));
             if (offset < 0) throw new ArgumentOutOfRangeException(nameof(offset), "offset must be positive or zero");
-            Contract.Requires<ArgumentNullException>(!string.IsNullOrEmpty(consumerGroup));
-            Contract.Requires<ArgumentOutOfRangeException>(offset >= 0);
+            Contract.Requires(!string.IsNullOrEmpty(consumerGroup));
+            Contract.Requires(offset >= 0);
 
             var request = CreateOffsetCommitRequest(offset, consumerGroup);
             await _gateway.SendProtocolRequest(request, _topic, _partitionId).ConfigureAwait(false);
@@ -79,7 +79,7 @@ namespace KafkaNet
         public async Task<long> FetchOffset(string consumerGroup)
         {
             if (string.IsNullOrEmpty(consumerGroup)) throw new ArgumentNullException(nameof(consumerGroup));
-            Contract.Requires<ArgumentNullException>(!string.IsNullOrEmpty(consumerGroup));
+            Contract.Requires(!string.IsNullOrEmpty(consumerGroup));
 
             var offsetFetchRequest = CreateOffsetFetchRequest(consumerGroup);
 

@@ -70,8 +70,8 @@ namespace kafka_tests
             return new MetadataResponse(
                 0, 
                 new [] {
-                    new MetadataBroker(0, "localhost", 1),
-                    new MetadataBroker(1, "localhost", 2)
+                    new Broker(0, "localhost", 1),
+                    new Broker(1, "localhost", 2)
                 },
                 new [] {
                     new MetadataTopic(TestTopic, 

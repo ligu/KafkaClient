@@ -6,8 +6,8 @@ namespace KafkaNet.Protocol
 {
     public class FetchTopicResponse : TopicResponse, IEquatable<FetchTopicResponse>
     {
-        public FetchTopicResponse(string topic, int partitionId, long highWaterMark, ErrorResponseCode error = ErrorResponseCode.NoError, IEnumerable<Message> messages = null)
-            : base(topic, partitionId, error)
+        public FetchTopicResponse(string topic, int partitionId, long highWaterMark, ErrorResponseCode errorCode = ErrorResponseCode.NoError, IEnumerable<Message> messages = null)
+            : base(topic, partitionId, errorCode)
         {
             HighWaterMark = highWaterMark;
             Messages = messages != null ? ImmutableList<Message>.Empty.AddRange(messages) : ImmutableList<Message>.Empty;

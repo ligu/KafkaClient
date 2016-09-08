@@ -4,16 +4,16 @@ namespace KafkaNet.Protocol
 {
     public class TopicResponse : Topic, IEquatable<TopicResponse>
     {
-        public TopicResponse(string topicName, int partitionId, ErrorResponseCode error)
+        public TopicResponse(string topicName, int partitionId, ErrorResponseCode errorCode)
             : base(topicName, partitionId)
         {
-            Error = error;
+            ErrorCode = errorCode;
         }
 
         /// <summary>
         /// Error response code.
         /// </summary>
-        public ErrorResponseCode Error { get; }
+        public ErrorResponseCode ErrorCode { get; }
 
         #region Equality
 
@@ -27,14 +27,14 @@ namespace KafkaNet.Protocol
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
             return base.Equals(other)
-                && Error == other.Error;
+                && ErrorCode == other.ErrorCode;
         }
 
         public override int GetHashCode()
         {
             unchecked {
                 var hashCode = base.GetHashCode();
-                hashCode = (hashCode*397) ^ (int) Error;
+                hashCode = (hashCode*397) ^ (int) ErrorCode;
                 return hashCode;
             }
         }
@@ -51,6 +51,6 @@ namespace KafkaNet.Protocol
 
         #endregion
 
-        public override string ToString() => $"{base.ToString()} ErrorCode: {Error}";
+        public override string ToString() => $"{base.ToString()} ErrorCode: {ErrorCode}";
     }
 }

@@ -4,8 +4,8 @@ namespace KafkaNet.Protocol
 {
     public class ProduceTopic : TopicResponse, IEquatable<ProduceTopic>
     {
-        public ProduceTopic(string topic, int partitionId, ErrorResponseCode error, long offset, DateTime? timestamp = null)
-            : base(topic, partitionId, error)
+        public ProduceTopic(string topic, int partitionId, ErrorResponseCode errorCode, long offset, DateTime? timestamp = null)
+            : base(topic, partitionId, errorCode)
         {
             Offset = offset;
             Timestamp = timestamp;

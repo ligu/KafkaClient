@@ -104,7 +104,6 @@
     <Compile Include="BrokerRouter.cs" />
     <Compile Include="Model\KafkaEndpoint.cs" />
     <Compile Include="KafkaMetadataProvider.cs" />
-    <Compile Include="Protocol\MetadataBroker.cs" />
     <Compile Include="Common\Crc32Provider.cs" />
     <Compile Include="Interfaces\IKafkaConnectionFactory.cs" />
     <Compile Include="Producer.cs" />

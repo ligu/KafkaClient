@@ -460,7 +460,7 @@ namespace kafka_tests.Unit
         /// </summary>
         [Test]
         public void MetadataApiResponse(
-            [Values(1, 5)] int brokersPerRequest,
+            [Values(1, 15)] int brokersPerRequest,
             [Values("test", "a really long name, with spaces and punctuation!")] string topic,
             [Values(1, 10)] int topicsPerRequest,
             [Values(1, 5)] int partitionsPerTopic,

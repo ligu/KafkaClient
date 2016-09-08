@@ -12,7 +12,7 @@ namespace KafkaNet.Protocol
         {
             CorrelationId = correlationId;
             Topics = topics != null ? ImmutableList<ProduceTopic>.Empty.AddRange(topics) : ImmutableList<ProduceTopic>.Empty;
-            Errors = ImmutableList<ErrorResponseCode>.Empty.AddRange(Topics.Select(t => t.Error));
+            Errors = ImmutableList<ErrorResponseCode>.Empty.AddRange(Topics.Select(t => t.ErrorCode));
             ThrottleTime = throttleTime;
         }
 

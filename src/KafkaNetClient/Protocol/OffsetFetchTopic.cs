@@ -4,8 +4,8 @@ namespace KafkaNet.Protocol
 {
     public class OffsetFetchTopic : TopicResponse, IEquatable<OffsetFetchTopic>
     {
-        public OffsetFetchTopic(string topic, int partitionId, ErrorResponseCode error, long offset, string metadata) 
-            : base(topic, partitionId, error)
+        public OffsetFetchTopic(string topic, int partitionId, ErrorResponseCode errorCode, long offset, string metadata) 
+            : base(topic, partitionId, errorCode)
         {
             Offset = offset;
             MetaData = metadata;
@@ -61,7 +61,7 @@ namespace KafkaNet.Protocol
 
         public override string ToString()
         {
-            return $"[OffsetFetchResponse TopicName={TopicName}, PartitionID={PartitionId}, Offset={Offset}, MetaData={MetaData}, ErrorCode={Error}]";
+            return $"[OffsetFetchResponse TopicName={TopicName}, PartitionID={PartitionId}, Offset={Offset}, MetaData={MetaData}, ErrorCode={ErrorCode}]";
         }
     }
 }

@@ -39,7 +39,7 @@ namespace kafka_tests.Integration
             var topic = response.Topics.FirstOrDefault();
 
             Assert.That(topic, Is.Not.Null);
-            Assert.That(topic.Error, Is.EqualTo((int)ErrorResponseCode.NoError));
+            Assert.That(topic.ErrorCode, Is.EqualTo((int)ErrorResponseCode.NoError));
             Assert.That(topic.Offset, Is.EqualTo(-1));
             router.Dispose();
         }
@@ -58,7 +58,7 @@ namespace kafka_tests.Integration
             var topic = response.Topics.FirstOrDefault();
 
             Assert.That(topic, Is.Not.Null);
-            Assert.That(topic.Error, Is.EqualTo((int)ErrorResponseCode.NoError));
+            Assert.That(topic.ErrorCode, Is.EqualTo((int)ErrorResponseCode.NoError));
 
             router.Dispose();
         }
@@ -79,14 +79,14 @@ namespace kafka_tests.Integration
             var commitTopic = commitResponse.Topics.SingleOrDefault();
 
             Assert.That(commitTopic, Is.Not.Null);
-            Assert.That(commitTopic.Error, Is.EqualTo(ErrorResponseCode.NoError));
+            Assert.That(commitTopic.ErrorCode, Is.EqualTo(ErrorResponseCode.NoError));
 
             var fetch = CreateOffsetFetchRequest(IntegrationConfig.IntegrationConsumer, partitionId);
             var fetchResponse = await conn.Connection.SendAsync(fetch);
             var fetchTopic = fetchResponse.Topics.SingleOrDefault();
 
             Assert.That(fetchTopic, Is.Not.Null);
-            Assert.That(fetchTopic.Error, Is.EqualTo(ErrorResponseCode.NoError));
+            Assert.That(fetchTopic.ErrorCode, Is.EqualTo(ErrorResponseCode.NoError));
             Assert.That(fetchTopic.Offset, Is.EqualTo(offset));
             router.Dispose();
         }
@@ -108,14 +108,14 @@ namespace kafka_tests.Integration
             var commitTopic = commitResponse.Topics.SingleOrDefault();
 
             Assert.That(commitTopic, Is.Not.Null);
-            Assert.That(commitTopic.Error, Is.EqualTo(ErrorResponseCode.NoError));
+            Assert.That(commitTopic.ErrorCode, Is.EqualTo(ErrorResponseCode.NoError));
 
             var fetch = CreateOffsetFetchRequest(IntegrationConfig.IntegrationConsumer, partitionId);
             var fetchResponse = conn.Connection.SendAsync(fetch).Result;
             var fetchTopic = fetchResponse.Topics.SingleOrDefault();
 
             Assert.That(fetchTopic, Is.Not.Null);
-            Assert.That(fetchTopic.Error, Is.EqualTo(ErrorResponseCode.NoError));
+            Assert.That(fetchTopic.ErrorCode, Is.EqualTo(ErrorResponseCode.NoError));
             Assert.That(fetchTopic.Offset, Is.EqualTo(offset));
             Assert.That(fetchTopic.MetaData, Is.EqualTo(metadata));
             router.Dispose();
@@ -134,7 +134,7 @@ namespace kafka_tests.Integration
                 var response = conn.Connection.SendAsync(request).Result;
 
                 Assert.That(response, Is.Not.Null);
-                Assert.That(response.Error, Is.EqualTo((int)ErrorResponseCode.NoError));
+                Assert.That(response.ErrorCode, Is.EqualTo((int)ErrorResponseCode.NoError));
             }
         }
 

@@ -133,7 +133,7 @@ namespace KafkaNet
             }
         }
 
-        private MetadataValidationResult ValidateBroker(MetadataBroker broker)
+        private MetadataValidationResult ValidateBroker(Broker broker)
         {
             if (broker.BrokerId == -1) {
                 return new MetadataValidationResult { Status = ValidationResult.Retry, ErrorCode = ErrorResponseCode.Unknown };

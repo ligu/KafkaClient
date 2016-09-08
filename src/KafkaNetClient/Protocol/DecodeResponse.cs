@@ -174,108 +174,45 @@ namespace KafkaNet.Protocol
             using (var stream = new BigEndianBinaryReader(payload)) {
                 var correlationId = stream.ReadInt32();
 
-                var brokers = BrokerMetadatas(version, stream);
-                //var brokers = new List<Broker>();
-                //var brokerCount = stream.ReadInt32();
-                //for (var b = 0; b < brokerCount; b++) {
-                //    var brokerId = stream.ReadInt32();
-                //    var host = stream.ReadInt16String();
-                //    var port = stream.ReadInt32();
+                var brokers = new List<Broker>();
+                var brokerCount = stream.ReadInt32();
+                for (var b = 0; b < brokerCount; b++) {
+                    var brokerId = stream.ReadInt32();
+                    var host = stream.ReadInt16String();
+                    var port = stream.ReadInt32();
 
-                //    brokers.Add(new Broker(brokerId, host, port));
-                //}
+                    brokers.Add(new Broker(brokerId, host, port));
+                }
 
-                var topics = TopicMetadatas(version, stream);
-                //var topics = new List<Topic>();
-                //var topicCount = stream.ReadInt32();
-                //for (var t = 0; t < topicCount; t++) {
-                //    var topicError = (ErrorResponseCode) stream.ReadInt16();
-                //    var topicName = stream.ReadInt16String();
+                var topics = new List<MetadataTopic>();
+                var topicCount = stream.ReadInt32();
+                for (var t = 0; t < topicCount; t++) {
+                    var topicError = (ErrorResponseCode) stream.ReadInt16();
+                    var topicName = stream.ReadInt16String();
 
-                //    var partitions = new List<Partition>();
-                //    var partitionCount = stream.ReadInt32();
-                //    for (var p = 0; p < partitionCount; p++) {
-                //        var partitionError = (ErrorResponseCode) stream.ReadInt16();
-                //        var partitionId = stream.ReadInt32();
-                //        var leaderId = stream.ReadInt32();
+                    var partitions = new List<MetadataPartition>();
+                    var partitionCount = stream.ReadInt32();
+                    for (var p = 0; p < partitionCount; p++) {
+                        var partitionError = (ErrorResponseCode) stream.ReadInt16();
+                        var partitionId = stream.ReadInt32();
+                        var leaderId = stream.ReadInt32();
 
-                //        var replicaCount = stream.ReadInt32();
-                //        var replicas = replicaCount.Repeat(stream.ReadInt32);
+                        var replicaCount = stream.ReadInt32();
+                        var replicas = replicaCount.Repeat(stream.ReadInt32).ToArray();
 
-                //        var isrCount = stream.ReadInt32();
-                //        var isrs = isrCount.Repeat(stream.ReadInt32);
+                        var isrCount = stream.ReadInt32();
+                        var isrs = isrCount.Repeat(stream.ReadInt32).ToArray();
 
-                //        partitions.Add(new Partition(partitionError, partitionId, leaderId, replicas, isrs));
+                        partitions.Add(new MetadataPartition(partitionId, leaderId, partitionError, replicas, isrs));
 
-                //    }
-                //    topics.Add(new Topic(topicError, topicName, partitions));
-                //}
+                    }
+                    topics.Add(new MetadataTopic(topicName, topicError, partitions));
+                }
 
                 return new MetadataResponse(correlationId, brokers, topics);
             }
         }
-
-        /// <summary>
-        /// MetadataResponse => [Broker] ...
-        ///  Broker => NodeId Host Port  (any number of brokers may be returned)
-        ///                               -- The node id, hostname, and port information for a kafka broker
-        ///   NodeId => int32             -- The broker id.
-        ///   Host => string              -- The hostname of the broker.
-        ///   Port => int32               -- The port on which the broker accepts requests.
-        /// </summary>
-        private static IEnumerable<MetadataBroker> BrokerMetadatas(short version, BigEndianBinaryReader stream)
-        {
-            var brokerCount = stream.ReadInt32();
-            for (var b = 0; b < brokerCount; b++) {
-                var brokerId = stream.ReadInt32();
-                var host = stream.ReadInt16String();
-                var port = stream.ReadInt32();
-
-                yield return new MetadataBroker(brokerId, host, port);
-            }
-        }
-
-        /// <summary>
-        /// MetadataResponse => ... [TopicMetadata]
-        ///  TopicMetadata => TopicErrorCode TopicName [PartitionMetadata]
-        ///   TopicErrorCode => int16     -- The error code for the given topic.
-        ///   TopicName => string         -- The name of the topic.
-        ///  PartitionMetadata => PartitionErrorCode PartitionId Leader Replicas Isr
-        ///   PartitionErrorCode => int16 -- The error code for the partition, if any.
-        ///   PartitionId => int32        -- The id of the partition.
-        ///   Leader => int32             -- The id of the broker acting as leader for this partition.
-        ///                                  If no leader exists because we are in the middle of a leader election this id will be -1.
-        ///   Replicas => [int32]         -- The set of all nodes that host this partition.
-        ///   Isr => [int32]              -- The set of nodes that are in sync with the leader for this partition.
-        /// </summary>
-        private static IEnumerable<MetadataTopic> TopicMetadatas(short version, BigEndianBinaryReader stream)
-        {
-            var topicCount = stream.ReadInt32();
-            for (var t = 0; t < topicCount; t++) {
-                var topicError = (ErrorResponseCode) stream.ReadInt16();
-                var topicName = stream.ReadInt16String();
-
-                var partitions = new List<MetadataPartition>();
-                var partitionCount = stream.ReadInt32();
-                for (var p = 0; p < partitionCount; p++) {
-                    var partitionError = (ErrorResponseCode) stream.ReadInt16();
-                    var partitionId = stream.ReadInt32();
-                    var leaderId = stream.ReadInt32();
-
-                    var replicaCount = stream.ReadInt32();
-                    var replicas = replicaCount.Repeat(stream.ReadInt32);
-
-                    var isrCount = stream.ReadInt32();
-                    var isrs = isrCount.Repeat(stream.ReadInt32);
-
-                    partitions.Add(new MetadataPartition(partitionId, leaderId, partitionError, replicas, isrs));
-
-                }
-                yield return new MetadataTopic(topicName, topicError, partitions);
-            }
-        }
-
-
+        
         /// <summary>
         /// OffsetCommitResponse => [TopicName [Partition ErrorCode]]]
         ///  TopicName => string -- The name of the topic.

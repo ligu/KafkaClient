@@ -304,7 +304,7 @@ namespace KafkaNet
                         } else {
                             // HACK: assume there is only one ...
                             var topic = batchResult.Topics.Single();
-                            var response = new ProduceTopic(topic.TopicName, topic.PartitionId, topic.Error, topic.Offset + 1, topic.Timestamp);
+                            var response = new ProduceTopic(topic.TopicName, topic.PartitionId, topic.ErrorCode, topic.Offset + 1, topic.Timestamp);
                             sendTask.MessagesSent[i].Tcs.SetResult(response);
                         }
                     }

@@ -275,7 +275,7 @@ namespace kafka_tests.Unit
         public async Task SelectExactPartitionShouldThrowWhenBrokerCollectionIsEmpty()
         {
             var metadataResponse = await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers();
-            metadataResponse.Brokers.Clear();
+            metadataResponse = new MetadataResponse(metadataResponse.CorrelationId, topics: metadataResponse.Topics);
 
             var routerProxy = new BrokerRouterProxy(_kernel);
 #pragma warning disable 1998
@@ -329,7 +329,7 @@ namespace kafka_tests.Unit
         public async Task SelectPartitionShouldThrowWhenBrokerCollectionIsEmpty()
         {
             var metadataResponse = await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers();
-            metadataResponse.Brokers.Clear();
+            metadataResponse = new MetadataResponse(metadataResponse.CorrelationId, topics: metadataResponse.Topics);
 
             var routerProxy = new BrokerRouterProxy(_kernel);
             var router = routerProxy.BrokerConn0;

@@ -10,7 +10,7 @@ namespace KafkaNet.Protocol
         {
             CorrelationId = correlationId;
             Topics = topics != null ? ImmutableList<OffsetTopic>.Empty.AddRange(topics) : ImmutableList<OffsetTopic>.Empty;
-            Errors = ImmutableList<ErrorResponseCode>.Empty.AddRange(Topics.Select(t => t.Error));
+            Errors = ImmutableList<ErrorResponseCode>.Empty.AddRange(Topics.Select(t => t.ErrorCode));
         }
 
         /// <inheritdoc />

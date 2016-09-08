@@ -247,7 +247,7 @@ namespace KafkaNet
 
         private void HandleResponseErrors(FetchRequest request, FetchTopicResponse response, IKafkaConnection connection)
         {
-            switch (response.Error)
+            switch (response.ErrorCode)
             {
                 case ErrorResponseCode.NoError:
                     return;
@@ -257,11 +257,11 @@ namespace KafkaNet
                 case ErrorResponseCode.LeaderNotAvailable:
                 case ErrorResponseCode.NotLeaderForPartition:
                     throw new CachedMetadataException(
-                        $"FetchResponse indicated we may have mismatched metadata. ErrorCode:{response.Error}",
-                        request.ExtractException(response.Error, connection?.Endpoint));
+                        $"FetchResponse indicated we may have mismatched metadata. ErrorCode:{response.ErrorCode}",
+                        request.ExtractException(response.ErrorCode, connection?.Endpoint));
 
                 default:
-                    throw request.ExtractException(response.Error, connection?.Endpoint);
+                    throw request.ExtractException(response.ErrorCode, connection?.Endpoint);
             }
         }
 

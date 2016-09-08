@@ -149,13 +149,13 @@ namespace kafka_tests.Unit
         private Task<MetadataResponse> CreateMetadataResponse(int brokerId, string host, int port)
         {
             var tcs = new TaskCompletionSource<MetadataResponse>();
-            tcs.SetResult(new MetadataResponse(1, new [] { new MetadataBroker(brokerId, host, port) }, new MetadataTopic[] {}));
+            tcs.SetResult(new MetadataResponse(1, new [] { new Broker(brokerId, host, port) }, new MetadataTopic[] {}));
             return tcs.Task;
         }
 
         private async Task<MetadataResponse> CreateMetadataResponse(ErrorResponseCode errorCode)
         {
-            return new MetadataResponse(1, new MetadataBroker[] {}, new [] { new MetadataTopic("Test", errorCode, new MetadataPartition[] {})});
+            return new MetadataResponse(1, new Broker[] {}, new [] { new MetadataTopic("Test", errorCode, new MetadataPartition[] {})});
         }
 #pragma warning restore 1998
     }

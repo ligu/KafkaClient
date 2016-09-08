@@ -152,7 +152,7 @@ namespace KafkaNet.Common
         /// </remarks>
         public static Task<bool> WaitAsync(this WaitHandle handle, TimeSpan timeout)
         {
-            Contract.Requires<ArgumentNullException>(handle != null);
+            Contract.Requires(handle != null);
             Contract.Ensures(Contract.Result<Task>() != null);
 
             var tcs = new TaskCompletionSource<bool>();

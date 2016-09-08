@@ -8,14 +8,14 @@ namespace KafkaNet.Protocol
             : base(coordinatorId, host, port)
         {
             CorrelationId = correlationId;
-            Error = errorCode;
-            Errors = ImmutableList<ErrorResponseCode>.Empty.Add(Error);
+            ErrorCode = errorCode;
+            Errors = ImmutableList<ErrorResponseCode>.Empty.Add(ErrorCode);
         }
 
         /// <summary>
         /// Error code of exception that occured during the request.  Zero if no error.
         /// </summary>
-        public ErrorResponseCode Error { get; }
+        public ErrorResponseCode ErrorCode { get; }
 
         public int CorrelationId { get; }
 

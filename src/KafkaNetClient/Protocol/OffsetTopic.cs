@@ -6,8 +6,8 @@ namespace KafkaNet.Protocol
 {
     public class OffsetTopic : TopicResponse, IEquatable<OffsetTopic>
     {
-        public OffsetTopic(string topic, int partitionId, ErrorResponseCode error = ErrorResponseCode.NoError, IEnumerable<long> offsets = null) 
-            : base(topic, partitionId, error)
+        public OffsetTopic(string topic, int partitionId, ErrorResponseCode errorCode = ErrorResponseCode.NoError, IEnumerable<long> offsets = null) 
+            : base(topic, partitionId, errorCode)
         {
             Offsets = offsets != null ? ImmutableList<long>.Empty.AddRange(offsets) : ImmutableList<long>.Empty;
         }
