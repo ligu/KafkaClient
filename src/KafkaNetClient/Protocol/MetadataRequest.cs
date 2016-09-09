@@ -1,36 +1,19 @@
-using KafkaNet.Common;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 
 namespace KafkaNet.Protocol
 {
-    public class MetadataRequest : BaseRequest, IKafkaRequest<MetadataResponse>
+    public class MetadataRequest : KafkaRequest
     {
-        /// <summary>
-        /// Indicates the type of kafka encoding this request is
-        /// </summary>
-        public ApiKeyRequestType ApiKey => ApiKeyRequestType.MetaData;
+        public MetadataRequest(IEnumerable<string> topics = null) 
+            : base(ApiKeyRequestType.Metadata)
+        {
+            Topics = topics != null ? ImmutableList<string>.Empty.AddRange(topics) : ImmutableList<string>.Empty;
+        }
 
         /// <summary>
         /// The list of topics to get metadata for.
         /// </summary>
-        public List<string> Topics { get; set; }
-
-        public KafkaDataPayload Encode()
-        {
-            if (Topics == null) {
-                Topics = new List<string>();
-            }
-
-            return new KafkaDataPayload {
-                Buffer = EncodeRequest.MetadataRequest(this),
-                CorrelationId = CorrelationId,
-                ApiKey = ApiKey
-            };
-        }
-
-        public MetadataResponse Decode(byte[] payload)
-        {
-            return DecodeResponse.MetadataResponse(ApiVersion, payload);
-        }
+        public ImmutableList<string> Topics { get; }
     }
 }

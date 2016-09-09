@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 namespace KafkaNet
 {
     /// <summary>
-    /// This provider blocks while it attempts to get the MetaData configuration of the Kafka servers.  If any retry errors occurs it will
+    /// This provider blocks while it attempts to get the Metadata configuration of the Kafka servers.  If any retry errors occurs it will
     /// continue to block the downstream call and then repeatedly query kafka until the retry errors subside.  This repeat call happens in
     /// a backoff manner, which each subsequent call waiting longer before a requery.
     ///
@@ -174,14 +174,14 @@ namespace KafkaNet
                         return new MetadataValidationResult {
                             Status = ValidationResult.Retry,
                             ErrorCode = errorCode,
-                            Message = $"Topic:{topic.Name} returned error code of {errorCode}. Retrying."
+                            Message = $"Topic:{topic.TopicName} returned error code of {errorCode}. Retrying."
                         };
                 }
 
                 return new MetadataValidationResult {
                     Status = ValidationResult.Error,
                     ErrorCode = errorCode,
-                    Message = $"Topic:{topic.Name} returned an error of {errorCode}"
+                    Message = $"Topic:{topic.TopicName} returned an error of {errorCode}"
                 };
             }
             catch

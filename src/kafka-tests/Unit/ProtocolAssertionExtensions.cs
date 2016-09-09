@@ -205,7 +205,7 @@ namespace kafka_tests.Unit
             Assert.That(reader.ReadInt32(), Is.EqualTo(response.Topics.Count), "[TopicMetadata]");
             foreach (var topic in response.Topics) {
                 Assert.That(reader.ReadInt16(), Is.EqualTo((short)topic.ErrorCode), "TopicErrorCode");
-                Assert.That(reader.ReadInt16String(), Is.EqualTo(topic.Name), "TopicName");
+                Assert.That(reader.ReadInt16String(), Is.EqualTo(topic.TopicName), "TopicName");
                 Assert.That(reader.ReadInt32(), Is.EqualTo(topic.Partitions.Count), "[PartitionMetadata]");
                 foreach (var partition in topic.Partitions) {
                     Assert.That(reader.ReadInt16(), Is.EqualTo((short) partition.ErrorCode), "PartitionErrorCode");
@@ -360,7 +360,7 @@ namespace kafka_tests.Unit
 
             Assert.That(reader.ReadInt32(), Is.EqualTo(request.Fetches.Count), "[TopicName]");
             foreach (var payload in request.Fetches) {
-                Assert.That(reader.ReadInt16String(), Is.EqualTo(payload.Topic), "TopicName");
+                Assert.That(reader.ReadInt16String(), Is.EqualTo(payload.TopicName), "TopicName");
                 Assert.That(reader.ReadInt32(), Is.EqualTo(1), "[Partition]"); // this is a mismatch between the protocol and the object model
                 Assert.That(reader.ReadInt32(), Is.EqualTo(payload.PartitionId), "Partition");
 

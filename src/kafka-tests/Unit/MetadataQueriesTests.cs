@@ -63,7 +63,7 @@ namespace kafka_tests.Unit
             var common = new MetadataQueries(router);
 
             var result = common.GetTopicFromCache(BrokerRouterProxy.TestTopic);
-            Assert.That(result.Name, Is.EqualTo(BrokerRouterProxy.TestTopic));
+            Assert.That(result.TopicName, Is.EqualTo(BrokerRouterProxy.TestTopic));
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]

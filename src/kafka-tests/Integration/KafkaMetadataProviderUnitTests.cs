@@ -32,7 +32,7 @@ namespace kafka_tests.Integration
             var topic = (await response).Topics.FirstOrDefault();
 
             Assert.That(topic, Is.Not.Null);
-            Assert.That(topic.Name, Is.EqualTo(expectedTopic));
+            Assert.That(topic.TopicName, Is.EqualTo(expectedTopic));
             Assert.That(topic.ErrorCode, Is.EqualTo((int)ErrorResponseCode.NoError));
         }
     }

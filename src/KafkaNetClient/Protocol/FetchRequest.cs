@@ -1,22 +1,32 @@
+using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 
 namespace KafkaNet.Protocol
 {
-    public class FetchRequest : BaseRequest, IKafkaRequest<FetchResponse>
+    public class FetchRequest : KafkaRequest
     {
+        public FetchRequest(Fetch fetch, TimeSpan? maxWaitTime = null, int minBytes = DefaultMinBlockingByteBufferSize) 
+            : this (new []{ fetch }, maxWaitTime, minBytes)
+        {
+        }
+
+        public FetchRequest(IEnumerable<Fetch> fetches = null, TimeSpan? maxWaitTime = null, int minBytes = DefaultMinBlockingByteBufferSize) 
+            : base(ApiKeyRequestType.Fetch)
+        {
+            MaxWaitTime = maxWaitTime.GetValueOrDefault(TimeSpan.FromMilliseconds(DefaultMaxBlockingWaitTime));
+            MinBytes = minBytes;
+            Fetches = fetches != null ? ImmutableList<Fetch>.Empty.AddRange(fetches) : ImmutableList<Fetch>.Empty;
+        }
+
         internal const int DefaultMinBlockingByteBufferSize = 4096;
         internal const int DefaultBufferSize = DefaultMinBlockingByteBufferSize * 8;
         internal const int DefaultMaxBlockingWaitTime = 5000;
 
         /// <summary>
-        /// Indicates the type of kafka encoding this request is
+        /// The max wait time is the maximum amount of time to block waiting if insufficient data is available at the time the request is issued.
         /// </summary>
-        public ApiKeyRequestType ApiKey => ApiKeyRequestType.Fetch;
-
-        /// <summary>
-        /// The max wait time is the maximum amount of time in milliseconds to block waiting if insufficient data is available at the time the request is issued.
-        /// </summary>
-        public int MaxWaitTime = DefaultMaxBlockingWaitTime;
+        public TimeSpan MaxWaitTime { get; }
 
         /// <summary>
         /// This is the minimum number of bytes of messages that must be available to give a response.
@@ -25,26 +35,8 @@ namespace KafkaNet.Protocol
         /// By setting higher values in combination with the timeout the consumer can tune for throughput and trade a little additional latency for reading only large chunks of data
         /// (e.g. setting MaxWaitTime to 100 ms and setting MinBytes to 64k would allow the server to wait up to 100ms to try to accumulate 64k of data before responding).
         /// </summary>
-        public int MinBytes = DefaultMinBlockingByteBufferSize;
+        public int MinBytes { get; }
 
-        public List<Fetch> Fetches { get; set; }
-
-        public KafkaDataPayload Encode()
-        {
-            if (Fetches == null) {
-                Fetches = new List<Fetch>();
-            }
-
-            return new KafkaDataPayload {
-                Buffer = EncodeRequest.FetchRequest(this),
-                CorrelationId = CorrelationId,
-                ApiKey = ApiKey
-            };
-        }
-
-        public FetchResponse Decode(byte[] payload)
-        {
-            return DecodeResponse.FetchResponse(ApiVersion, payload);
-        }
+        public ImmutableList<Fetch> Fetches { get; }
     }
 }

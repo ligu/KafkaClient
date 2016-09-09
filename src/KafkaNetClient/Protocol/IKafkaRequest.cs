@@ -5,7 +5,8 @@ namespace KafkaNet.Protocol
     /// binary request and Decode any responses to that request.
     /// </summary>
     /// <typeparam name="T">The type of the KafkaResponse expected back from the request.</typeparam>
-    public interface IKafkaRequest<out T>  : IKafkaRequest where T : IKafkaResponse
+    public interface IKafkaRequest<out T> : IKafkaRequest 
+        where T : IKafkaResponse
     {
         /// <summary>
         /// Encode this request into the Kafka wire protocol.
@@ -16,6 +17,7 @@ namespace KafkaNet.Protocol
         /// <summary>
         /// Decode a response payload from Kafka into a T responses.
         /// </summary>
+        /// <param name="context">Context of the request.</param>
         /// <param name="payload">Buffer data returned by Kafka servers.</param>
         /// <returns></returns>
         T Decode(byte[] payload);
@@ -29,23 +31,8 @@ namespace KafkaNet.Protocol
         bool ExpectResponse { get; }
 
         /// <summary>
-        /// Descriptive name used to identify the source of this request.
-        /// </summary>
-        string ClientId { get; set; }
-
-        /// <summary>
-        /// Id which will be echoed back by Kafka to correlate responses to this request.  Usually automatically assigned by driver.
-        /// </summary>
-        int CorrelationId { get; set; }
-
-        /// <summary>
         /// Enum identifying the specific type of request message being represented.
         /// </summary>
         ApiKeyRequestType ApiKey { get; }
-
-        /// <summary>
-        /// This is a numeric version number for the api request. It allows the server to properly interpret the request as the protocol evolves. Responses will always be in the format corresponding to the request version.
-        /// </summary>
-        short ApiVersion { get; set; }
     }
 }

@@ -1,78 +1,22 @@
 ﻿using KafkaNet.Common;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace KafkaNet.Protocol
 {
-    /// <summary>
-    /// Buffer represents a collection of messages to be posted to a specified Topic on specified Partition.
-    /// </summary>
-    public class Payload
-    {
-        public Payload()
-        {
-            Codec = MessageCodec.CodecNone;
-        }
-
-        public string Topic { get; set; }
-        public int Partition { get; set; }
-        public MessageCodec Codec { get; set; }
-        public List<Message> Messages { get; set; }
-    }
-
     /// <summary>
     /// Message represents the data from a single event occurance.
     /// </summary>
     public class Message
     {
-        /// <summary>
-        ///  The lowest 2 bits contain the compression codec used for the message. The other bits should be set to 0.
-        /// </summary>
-        public static byte AttributeCodeMask = 0x03;
-
-        private const int MessageHeaderSize = 12;
-        private const long InitialMessageOffset = 0;
-
-        /// <summary>
-        /// Metadata on source offset and partition location for this message.
-        /// </summary>
-        public MessageMetadata Meta { get; set; }
-
-        /// <summary>
-        /// This is a version id used to allow backwards compatible evolution of the message binary format. Reserved for future use.
-        /// </summary>
-        public byte MagicNumber { get; set; }
-
-        /// <summary>
-        /// Attribute value outside message body used for added codec/compression info.
-        /// 
-        /// The lowest 3 bits contain the compression codec used for the message.
-        /// The fourth lowest bit represents the timestamp type. 0 stands for CreateTime and 1 stands for LogAppendTime. The producer should always set this bit to 0. (since 0.10.0)
-        /// All other bits should be set to 0.
-        /// </summary>
-        public byte Attribute { get; set; }
-
-        /// <summary>
-        /// Key value used for routing message to partitions.
-        /// </summary>
-        public byte[] Key { get; set; }
-
-        /// <summary>
-        /// The message body contents.  Can contain compress message set.
-        /// </summary>
-        public byte[] Value { get; set; }
-
-        /// <summary>
-        /// This is the timestamp of the message. The timestamp type is indicated in the attributes. Unit is milliseconds since beginning of the epoch (midnight Jan 1, 1970 (UTC)).
-        /// </summary>
-        public DateTime Timestamp { get; set; }
-
-        /// <summary>
-        /// Construct an empty message.
-        /// </summary>
-        public Message()
+        public Message(byte[] value, byte attribute, long offset = 0, int partitionId = 0, byte version = 0, byte[] key = null, DateTime? timestamp = null)
         {
+            Offset = offset;
+            PartitionId = partitionId;
+            MessageVersion = version;
+            Attribute = attribute;
+            Key = key;
+            Value = value;
+            Timestamp = timestamp;
         }
 
         /// <summary>
@@ -88,153 +32,42 @@ namespace KafkaNet.Protocol
         }
 
         /// <summary>
-        /// Encodes a collection of messages into one byte[].  Encoded in order of list.
-        /// </summary>
-        /// <param name="messages">The collection of messages to encode together.</param>
-        /// <returns>Encoded byte[] representing the collection of messages.</returns>
-        public static byte[] EncodeMessageSet(IEnumerable<Message> messages)
-        {
-            using (var stream = new KafkaMessagePacker())
-            {
-                foreach (var message in messages)
-                {
-                    stream.Pack(InitialMessageOffset)
-                        .Pack(EncodeMessage(message));
-                }
-
-                return stream.PayloadNoLength();
-            }
-        }
-
-        /// <summary>
-        /// Decode a byte[] that represents a collection of messages.
-        /// </summary>
-        /// <param name="messageSet">The byte[] encode as a message set from kafka.</param>
-        /// <returns>Enumerable representing stream of messages decoded from byte[]</returns>
-        public static IEnumerable<Message> DecodeMessageSet(byte[] messageSet)
-        {
-            using (var stream = new BigEndianBinaryReader(messageSet))
-            {
-                while (stream.HasData)
-                {
-                    //this checks that we have at least the minimum amount of data to retrieve a header
-                    if (stream.Available(MessageHeaderSize) == false)
-                        yield break;
-
-                    var offset = stream.ReadInt64();
-                    var messageSize = stream.ReadInt32();
-
-                    //if messagessize is greater than the total payload, our max buffer is insufficient.
-                    if ((stream.Length - MessageHeaderSize) < messageSize)
-                        throw new BufferUnderRunException(MessageHeaderSize, messageSize, stream.Length);
-
-                    //if the stream does not have enough left in the payload, we got only a partial message
-                    if (stream.Available(messageSize) == false)
-                        yield break;
-
-                    foreach (var message in DecodeMessage(offset, stream.RawRead(messageSize)))
-                    {
-                        yield return message;
-                    }
-                }
-            }
-        }
-
-        /// <summary>
-        /// Encodes a message object to byte[]
-        /// </summary>
-        /// <param name="message">Message data to encode.</param>
-        /// <returns>Encoded byte[] representation of the message object.</returns>
-        /// <remarks>
-        /// Format:
-        /// Crc (Int32), MagicByte (Byte), Attribute (Byte), Key (Byte[]), Value (Byte[])
-        /// </remarks>
-        public static byte[] EncodeMessage(Message message)
-        {
-            using (var stream = new KafkaMessagePacker())
-            {
-                stream.Pack(message.MagicNumber)
-                      .Pack(message.Attribute);
-                if (message.MagicNumber >= 1) {
-                    stream.Pack(message.Timestamp.ToUnixEpochMilliseconds());
-                }
-                return stream.Pack(message.Key)
-                      .Pack(message.Value)
-                      .CrcPayload();
-            }
-        }
-
-        /// <summary>
-        /// Decode messages from a payload and assign it a given kafka offset.
-        /// </summary>
-        /// <param name="offset">The offset represting the log entry from kafka of this message.</param>
-        /// <param name="payload">The byte[] encode as a message from kafka.</param>
-        /// <returns>Enumerable representing stream of messages decoded from byte[].</returns>
-        /// <remarks>The return type is an Enumerable as the message could be a compressed message set.</remarks>
-        public static IEnumerable<Message> DecodeMessage(long offset, byte[] payload)
-        {
-            var crc = BitConverter.ToUInt32(payload.Take(4).ToArray(), 0);
-            using (var stream = new BigEndianBinaryReader(payload, 4))
-            {
-                var crcHash = BitConverter.ToUInt32(stream.CrcHash(), 0);
-                if (crc != crcHash)
-                    throw new CrcValidationException("Buffer did not match CRC validation.") { Crc = crc, CalculatedCrc = crcHash };
-
-                var message = new Message
-                {
-                    Meta = new MessageMetadata { Offset = offset },
-                    MagicNumber = stream.ReadByte(),
-                    Attribute = stream.ReadByte(),
-                };
-
-                if (message.MagicNumber >= 1) {
-                    var timestamp = stream.ReadInt64();
-                    if (timestamp >= 0) {
-                        message.Timestamp = timestamp.FromUnixEpochMilliseconds();
-                    }
-                }
-                message.Key = stream.ReadIntPrefixedBytes();
-
-                var codec = (MessageCodec)(AttributeCodeMask & message.Attribute);
-                switch (codec)
-                {
-                    case MessageCodec.CodecNone:
-                        message.Value = stream.ReadIntPrefixedBytes();
-                        yield return message;
-                        break;
-
-                    case MessageCodec.CodecGzip:
-                        var gZipData = stream.ReadIntPrefixedBytes();
-                        foreach (var m in DecodeMessageSet(Compression.Unzip(gZipData)))
-                        {
-                            yield return m;
-                        }
-                        break;
-
-                    default:
-                        throw new NotSupportedException($"Codec type of {codec} is not supported.");
-                }
-            }
-        }
-    }
-
-    /// <summary>
-    /// Provides metadata about the message received from the FetchResponse
-    /// </summary>
-    /// <remarks>
-    /// The purpose of this metadata is to allow client applications to track their own offset information about messages received from Kafka.
-    /// <see cref="http://kafka.apache.org/documentation.html#semantics"/>
-    /// </remarks>
-    public class MessageMetadata
-    {
-        /// <summary>
         /// The log offset of this message as stored by the Kafka server.
         /// </summary>
-        public long Offset { get; set; }
+        public long Offset { get; }
 
         /// <summary>
         /// The partition id this offset is from.
         /// </summary>
-        public int PartitionId { get; set; }
+        public int PartitionId { get; }
+
+        /// <summary>
+        /// This is a version id used to allow backwards compatible evolution of the message binary format.
+        /// </summary>
+        public byte MessageVersion { get; }
+
+        /// <summary>
+        /// Attribute value outside message body used for added codec/compression info.
+        /// 
+        /// The lowest 3 bits contain the compression codec used for the message.
+        /// The fourth lowest bit represents the timestamp type. 0 stands for CreateTime and 1 stands for LogAppendTime. The producer should always set this bit to 0. (since 0.10.0)
+        /// All other bits should be set to 0.
+        /// </summary>
+        public byte Attribute { get; }
+
+        /// <summary>
+        /// Key value used for routing message to partitions.
+        /// </summary>
+        public byte[] Key { get; }
+
+        /// <summary>
+        /// The message body contents.  Can contain compress message set.
+        /// </summary>
+        public byte[] Value { get; }
+
+        /// <summary>
+        /// This is the timestamp of the message. The timestamp type is indicated in the attributes. Unit is milliseconds since beginning of the epoch (midnight Jan 1, 1970 (UTC)).
+        /// </summary>
+        public DateTime? Timestamp { get; }
     }
 }

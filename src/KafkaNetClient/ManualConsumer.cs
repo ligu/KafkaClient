@@ -21,7 +21,7 @@ namespace KafkaNet
         private readonly string _clientId;
         private ImmutableList<Message> _lastMessages;
 
-        private const int MaxWaitTimeForKafka = 0;
+        private static readonly TimeSpan MaxWaitTimeForKafka = TimeSpan.Zero;
         private const int UseBrokerTimestamp = -1;
         private const int NoOffsetFound = -1;
 
@@ -129,16 +129,8 @@ namespace KafkaNet
 
         private FetchRequest CreateFetchRequest(long offset)
         {
-            Fetch fetch = new Fetch() { Offset = offset, PartitionId = _partitionId, Topic = _topic, MaxBytes = _maxSizeOfMessageSet };
-
-            FetchRequest request = new FetchRequest()
-            {
-                MaxWaitTime = MaxWaitTimeForKafka,
-                MinBytes = 0,
-                Fetches = new List<Fetch>() { fetch },
-                ClientId = _clientId
-            };
-
+            var fetch = new Fetch(_topic, _partitionId, offset, _maxSizeOfMessageSet);
+            var request = new FetchRequest(fetch, MaxWaitTimeForKafka, 0, clientId: _clientId);
             return request;
         }
 

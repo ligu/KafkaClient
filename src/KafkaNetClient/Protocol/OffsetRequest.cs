@@ -1,33 +1,19 @@
-using KafkaNet.Common;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 
 namespace KafkaNet.Protocol
 {
     /// <summary>
     /// A funky Protocol for requesting the starting offset of each segment for the requested partition
     /// </summary>
-    public class OffsetRequest : BaseRequest, IKafkaRequest<OffsetResponse>
+    public class OffsetRequest : KafkaRequest
     {
-
-        public ApiKeyRequestType ApiKey => ApiKeyRequestType.Offset;
-        public List<Offset> Offsets { get; set; }
-
-        public KafkaDataPayload Encode()
+        public OffsetRequest(IEnumerable<Offset> offsets) 
+            : base(ApiKeyRequestType.Offset)
         {
-            if (Offsets == null) {
-                Offsets = new List<Offset>();
-            }
-
-            return new KafkaDataPayload {
-                Buffer = Protocol.EncodeRequest.OffsetRequest(this),
-                CorrelationId = CorrelationId,
-                ApiKey = ApiKey
-            };
+            Offsets = offsets != null ? ImmutableList<Offset>.Empty.AddRange(offsets) : ImmutableList<Offset>.Empty;
         }
 
-        public OffsetResponse Decode(byte[] payload)
-        {
-            return Protocol.DecodeResponse.OffsetResponse(ApiVersion, payload);
-        }
+        public ImmutableList<Offset> Offsets { get; }
     }
 }

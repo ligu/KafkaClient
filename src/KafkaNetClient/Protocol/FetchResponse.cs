@@ -7,18 +7,12 @@ namespace KafkaNet.Protocol
 {
     public class FetchResponse : IKafkaResponse
     {
-        public FetchResponse(int correlationId, IEnumerable<FetchTopicResponse> topics = null, TimeSpan? throttleTime = null)
+        public FetchResponse(IEnumerable<FetchTopicResponse> topics = null, TimeSpan? throttleTime = null)
         {
-            CorrelationId = correlationId;
             Topics = topics != null ? ImmutableList<FetchTopicResponse>.Empty.AddRange(topics) : ImmutableList<FetchTopicResponse>.Empty;
             Errors = ImmutableList<ErrorResponseCode>.Empty.AddRange(Topics.Select(t => t.ErrorCode));
             ThrottleTime = throttleTime;
         }
-
-        /// <summary>
-        /// Request Correlation
-        /// </summary>
-        public int CorrelationId { get; }
 
         public ImmutableList<ErrorResponseCode> Errors { get; }
 

@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Collections.Immutable;
 
 namespace KafkaNet.Protocol
 {
@@ -7,30 +8,17 @@ namespace KafkaNet.Protocol
     /// for a given consumer group.  Essentially this part of the api allows a user to save/load a given offset position
     /// under any abritrary name.
     /// </summary>
-    public class OffsetFetchRequest : BaseRequest, IKafkaRequest<OffsetFetchResponse>
+    public class OffsetFetchRequest : KafkaRequest
     {
-        public ApiKeyRequestType ApiKey => ApiKeyRequestType.OffsetFetch;
-
-        public string ConsumerGroup { get; set; }
-
-        public List<Topic> Topics { get; set; }
-
-        public KafkaDataPayload Encode()
+        public OffsetFetchRequest(string consumerGroup, IEnumerable<Topic> topics) 
+            : base(ApiKeyRequestType.OffsetFetch)
         {
-            if (Topics == null) {
-                Topics = new List<Topic>();
-            }
-
-            return new KafkaDataPayload {
-                Buffer = EncodeRequest.OffsetFetchRequest(this),
-                CorrelationId = CorrelationId,
-                ApiKey = ApiKey
-            };
+            ConsumerGroup = consumerGroup;
+            Topics = topics != null ? ImmutableList<Topic>.Empty.AddRange(topics) : ImmutableList<Topic>.Empty;
         }
 
-        public OffsetFetchResponse Decode(byte[] payload)
-        {
-            return DecodeResponse.OffsetFetchResponse(ApiVersion, payload);
-        }
+        public string ConsumerGroup { get; }
+
+        public ImmutableList<Topic> Topics { get; }
     }
 }

@@ -78,7 +78,7 @@ namespace KafkaNet
                 throw new CachedMetadataException($"The topic: {topic} has no partitionId: {partitionId} defined.") { Topic = topic, Partition = partitionId };
             }
 
-            return GetCachedRoute(topicMetadata.Name, partition);
+            return GetCachedRoute(topicMetadata.TopicName, partition);
         }
 
         /// <summary>
@@ -100,7 +100,7 @@ namespace KafkaNet
 
             var partition = _kafkaOptions.PartitionSelector.Select(cachedTopic, key);
 
-            return GetCachedRoute(cachedTopic.Name, partition);
+            return GetCachedRoute(cachedTopic.TopicName, partition);
         }
 
         /// <summary>
@@ -271,7 +271,7 @@ namespace KafkaNet
         private void UpdateInternalMetadataCache(MetadataResponse metadata)
         {
             var noLeaderElectedForPartition =
-                metadata.Topics.Select(x => new {topic = x.Name, partition = x.Partitions.FirstOrDefault(i => i.LeaderId == -1)})
+                metadata.Topics.Select(x => new {topic = x.TopicName, partition = x.Partitions.FirstOrDefault(i => i.LeaderId == -1)})
                     .FirstOrDefault(x => x.partition != null);
 
             if (noLeaderElectedForPartition != null)
@@ -300,7 +300,7 @@ namespace KafkaNet
             foreach (var topic in metadata.Topics)
             {
                 var localTopic = new Tuple<MetadataTopic, DateTime>(topic, DateTime.Now);
-                _topicIndex.AddOrUpdate(topic.Name, s => localTopic, (s, existing) => localTopic);
+                _topicIndex.AddOrUpdate(topic.TopicName, s => localTopic, (s, existing) => localTopic);
             }
         }
 

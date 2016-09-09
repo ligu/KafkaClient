@@ -214,7 +214,7 @@ namespace kafka_tests.Unit
 
             for (var t = 0; t < topicsPerRequest; t++) {
                 var payload = new Fetch {
-                    Topic = topic + t,
+                    TopicName = topic + t,
                     PartitionId = t % totalPartitions,
                     Offset = randomizer.Next(0, int.MaxValue),
                     MaxBytes = maxBytes

@@ -3,7 +3,7 @@
     /// <summary>
     /// Enumeration which specifies the compression type of messages
     /// </summary>
-    public enum MessageCodec
+    public enum MessageCodec : byte
     {
         CodecNone = 0x00,
         CodecGzip = 0x01,

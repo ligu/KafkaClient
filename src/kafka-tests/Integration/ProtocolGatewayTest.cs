@@ -31,7 +31,7 @@ namespace kafka_tests.Integration
             ProtocolGateway protocolGateway = new ProtocolGateway(IntegrationConfig.IntegrationUri);
             var fetch = new Fetch
             {
-                Topic = IntegrationConfig.IntegrationTopic,
+                TopicName = IntegrationConfig.IntegrationTopic,
                 PartitionId = partitionId,
                 Offset = offset,
                 MaxBytes = 32000,

@@ -8,7 +8,7 @@
         Produce = 0,
         Fetch = 1,
         Offset = 2,
-        MetaData = 3,
+        Metadata = 3,
         OffsetCommit = 8,
         OffsetFetch = 9,
         GroupCoordinator = 10,

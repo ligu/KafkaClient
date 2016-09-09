@@ -41,6 +41,8 @@ namespace KafkaNet.Protocol
 
         protected bool Equals(MetadataPartition other)
         {
+            if (ReferenceEquals(null, other)) return false;
+            if (ReferenceEquals(this, other)) return true;
             return PartitionId == other.PartitionId;
         }
 
@@ -51,10 +53,7 @@ namespace KafkaNet.Protocol
 
         public override bool Equals(object obj)
         {
-            if (ReferenceEquals(null, obj)) return false;
-            if (ReferenceEquals(this, obj)) return true;
-            if (obj.GetType() != this.GetType()) return false;
-            return Equals((MetadataPartition)obj);
+            return Equals(obj as MetadataPartition);
         }
     }
 }

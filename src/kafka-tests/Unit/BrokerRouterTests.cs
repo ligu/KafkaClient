@@ -133,9 +133,9 @@ namespace kafka_tests.Unit
             Assert.AreEqual(1, router.GetAllTopicMetadataFromLocalCache().Count);
             Assert.That(routerProxy.BrokerConn0.MetadataRequestCallCount, Is.EqualTo(1));
             Assert.That(result1.Count, Is.EqualTo(1));
-            Assert.That(result1[0].Name, Is.EqualTo(TestTopic));
+            Assert.That(result1[0].TopicName, Is.EqualTo(TestTopic));
             Assert.That(result2.Count, Is.EqualTo(1));
-            Assert.That(result2[0].Name, Is.EqualTo(TestTopic));
+            Assert.That(result2[0].TopicName, Is.EqualTo(TestTopic));
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
@@ -160,9 +160,9 @@ namespace kafka_tests.Unit
 
             Assert.That(routerProxy.BrokerConn0.MetadataRequestCallCount, Is.EqualTo(1));
             Assert.That(result1.Count, Is.EqualTo(1));
-            Assert.That(result1[0].Name, Is.EqualTo(TestTopic));
+            Assert.That(result1[0].TopicName, Is.EqualTo(TestTopic));
             Assert.That(result2.Count, Is.EqualTo(1));
-            Assert.That(result2[0].Name, Is.EqualTo(TestTopic));
+            Assert.That(result2[0].TopicName, Is.EqualTo(TestTopic));
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
@@ -306,7 +306,7 @@ namespace kafka_tests.Unit
             await router.RefreshMissingTopicMetadata(TestTopic);
             var result = router.SelectBrokerRouteFromLocalCache(TestTopic, key);
 
-            _mockPartitionSelector.Verify(f => f.Select(It.Is<MetadataTopic>(x => x.Name == TestTopic), key), Times.Once());
+            _mockPartitionSelector.Verify(f => f.Select(It.Is<MetadataTopic>(x => x.TopicName == TestTopic), key), Times.Once());
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]

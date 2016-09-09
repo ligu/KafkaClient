@@ -1,25 +1,18 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics.Contracts;
 using System.Linq;
 
 namespace KafkaNet.Protocol
 {
     public class ProduceResponse : IKafkaResponse
     {
-        public ProduceResponse(int correlationId, IEnumerable<ProduceTopic> topics = null, TimeSpan? throttleTime = null)
+        public ProduceResponse(IEnumerable<ProduceTopic> topics = null, TimeSpan? throttleTime = null)
         {
-            CorrelationId = correlationId;
             Topics = topics != null ? ImmutableList<ProduceTopic>.Empty.AddRange(topics) : ImmutableList<ProduceTopic>.Empty;
             Errors = ImmutableList<ErrorResponseCode>.Empty.AddRange(Topics.Select(t => t.ErrorCode));
             ThrottleTime = throttleTime;
         }
-
-        /// <summary>
-        /// Request Correlation
-        /// </summary>
-        public int CorrelationId { get; }
 
         public ImmutableList<ErrorResponseCode> Errors { get; }
 

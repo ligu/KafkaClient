@@ -4,10 +4,9 @@ namespace KafkaNet.Protocol
 {
     public class GroupCoordinatorResponse : Broker, IKafkaResponse
     {
-        public GroupCoordinatorResponse(int correlationId, ErrorResponseCode errorCode, int coordinatorId, string host, int port)
+        public GroupCoordinatorResponse(ErrorResponseCode errorCode, int coordinatorId, string host, int port)
             : base(coordinatorId, host, port)
         {
-            CorrelationId = correlationId;
             ErrorCode = errorCode;
             Errors = ImmutableList<ErrorResponseCode>.Empty.Add(ErrorCode);
         }
@@ -16,8 +15,6 @@ namespace KafkaNet.Protocol
         /// Error code of exception that occured during the request.  Zero if no error.
         /// </summary>
         public ErrorResponseCode ErrorCode { get; }
-
-        public int CorrelationId { get; }
 
         public ImmutableList<ErrorResponseCode> Errors { get; }
     }

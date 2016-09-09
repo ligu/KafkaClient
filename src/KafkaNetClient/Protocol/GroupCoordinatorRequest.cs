@@ -5,25 +5,14 @@
     /// The offsets for a given consumer group is maintained by a specific broker called the offset coordinator. i.e., a consumer needs
     /// to issue its offset commit and fetch requests to this specific broker. It can discover the current offset coordinator by issuing a consumer metadata request.
     /// </summary>
-    public class GroupCoordinatorRequest : BaseRequest, IKafkaRequest<GroupCoordinatorResponse>
+    public class GroupCoordinatorRequest : KafkaRequest
     {
-        public ApiKeyRequestType ApiKey => ApiKeyRequestType.GroupCoordinator;
-
-        public string ConsumerGroup { get; set; }
-
-        public KafkaDataPayload Encode()
+        public GroupCoordinatorRequest(string consumerGroup) 
+            : base(ApiKeyRequestType.GroupCoordinator)
         {
-            return new KafkaDataPayload
-            {
-                Buffer = EncodeRequest.GroupCoordinatorRequest(this),
-                CorrelationId = CorrelationId,
-                ApiKey = ApiKey
-            };
+            ConsumerGroup = consumerGroup;
         }
 
-        public GroupCoordinatorResponse Decode(byte[] payload)
-        {
-            return DecodeResponse.GroupCoordinatorResponse(ApiVersion, payload);
-        }
+        public string ConsumerGroup { get; }
     }
 }

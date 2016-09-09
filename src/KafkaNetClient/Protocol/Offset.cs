@@ -1,23 +1,61 @@
+using System;
+
 namespace KafkaNet.Protocol
 {
-    public class Offset
+    public class Offset : Topic, IEquatable<Offset>
     {
-        public Offset()
+        public Offset(string topicName, int partitionId, int time = -1, int maxOffsets = 1) : base(topicName, partitionId)
         {
-            Time = -1;
-            MaxOffsets = 1;
+            Time = time;
+            MaxOffsets = maxOffsets;
         }
-
-        public string Topic { get; set; }
-        public int PartitionId { get; set; }
 
         /// <summary>
         /// Used to ask for all messages before a certain time (ms). There are two special values.
         /// Specify -1 to receive the latest offsets and -2 to receive the earliest available offset.
         /// Note that because offsets are pulled in descending order, asking for the earliest offset will always return you a single element.
         /// </summary>
-        public long Time { get; set; }
+        public long Time { get; }
 
-        public int MaxOffsets { get; set; }
+        public int MaxOffsets { get; }
+
+        #region Equality
+
+        public override bool Equals(object obj)
+        {
+            return Equals(obj as Offset);
+        }
+
+        public bool Equals(Offset other)
+        {
+            if (ReferenceEquals(null, other)) return false;
+            if (ReferenceEquals(this, other)) return true;
+            return base.Equals(other) 
+                && Time == other.Time 
+                && MaxOffsets == other.MaxOffsets;
+        }
+
+        public override int GetHashCode()
+        {
+            unchecked {
+                int hashCode = base.GetHashCode();
+                hashCode = (hashCode*397) ^ Time.GetHashCode();
+                hashCode = (hashCode*397) ^ MaxOffsets;
+                return hashCode;
+            }
+        }
+
+        public static bool operator ==(Offset left, Offset right)
+        {
+            return Equals(left, right);
+        }
+
+        public static bool operator !=(Offset left, Offset right)
+        {
+            return !Equals(left, right);
+        }
+
+        #endregion
+        
     }
 }

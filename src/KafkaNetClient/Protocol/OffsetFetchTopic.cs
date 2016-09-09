@@ -61,7 +61,7 @@ namespace KafkaNet.Protocol
 
         public override string ToString()
         {
-            return $"[OffsetFetchResponse TopicName={TopicName}, PartitionID={PartitionId}, Offset={Offset}, MetaData={MetaData}, ErrorCode={ErrorCode}]";
+            return $"[OffsetFetchResponse TopicName={TopicName}, PartitionID={PartitionId}, Offset={Offset}, Metadata={MetaData}, ErrorCode={ErrorCode}]";
         }
     }
 }

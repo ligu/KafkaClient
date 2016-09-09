@@ -1,44 +1,54 @@
+using System;
+
 namespace KafkaNet.Protocol
 {
-    public class OffsetPosition
+    public class OffsetPosition : IEquatable<OffsetPosition>
     {
-        public OffsetPosition()
-        {
-        }
-
         public OffsetPosition(int partitionId, long offset)
         {
             PartitionId = partitionId;
             Offset = offset;
         }
 
-        public int PartitionId { get; set; }
-        public long Offset { get; set; }
+        public int PartitionId { get; }
 
-        public override string ToString()
-        {
-            return $"PartitionId:{PartitionId}, Offset:{Offset}";
-        }
+        public long Offset { get; }
+
+        #region Equality
 
         public override bool Equals(object obj)
         {
-            if (ReferenceEquals(null, obj)) return false;
-            if (ReferenceEquals(this, obj)) return true;
-            if (obj.GetType() != this.GetType()) return false;
-            return Equals((OffsetPosition)obj);
+            return Equals(obj as OffsetPosition);
         }
 
-        protected bool Equals(OffsetPosition other)
+        public bool Equals(OffsetPosition other)
         {
-            return PartitionId == other.PartitionId && Offset == other.Offset;
+            if (ReferenceEquals(null, other)) return false;
+            if (ReferenceEquals(this, other)) return true;
+            return PartitionId == other.PartitionId 
+                && Offset == other.Offset;
         }
 
         public override int GetHashCode()
         {
-            unchecked
-            {
-                return (PartitionId * 397) ^ Offset.GetHashCode();
+            unchecked {
+                return (PartitionId*397) ^ Offset.GetHashCode();
             }
         }
+
+        public static bool operator ==(OffsetPosition left, OffsetPosition right)
+        {
+            return Equals(left, right);
+        }
+
+        public static bool operator !=(OffsetPosition left, OffsetPosition right)
+        {
+            return !Equals(left, right);
+        }
+
+        #endregion
+
+        public override string ToString() => $"PartitionId:{PartitionId}, Offset:{Offset}";
+
     }
 }

@@ -234,7 +234,7 @@ namespace kafka_tests.Unit
                 }
                 log.DebugFormat("Completed ");
 
-                return new FetchResponse(0);
+                return new FetchResponse();
             };
 
             routerProxy.BrokerConn0.FetchResponseFunction = ShouldReturnNotLeaderForPartitionAndThenNoError;
@@ -342,9 +342,9 @@ namespace kafka_tests.Unit
                     await Task.Delay(delay);
                     await Task.Delay(1);
                     firstTime = false;
-                    return new FetchResponse(0, new []{ new FetchTopicResponse("foo", 1, 0, errorResponseCode)});
+                    return new FetchResponse(new []{ new FetchTopicResponse("foo", 1, 0, errorResponseCode)});
                 }
-                return new FetchResponse(0);
+                return new FetchResponse();
             };
             return result;
         }
@@ -367,7 +367,7 @@ namespace kafka_tests.Unit
                     args[0] = "error Test";
                     throw (Exception)Activator.CreateInstance(exceptionType, args);
                 }
-                return new FetchResponse(0);
+                return new FetchResponse();
             };
             return result;
         }
@@ -382,7 +382,7 @@ namespace kafka_tests.Unit
 
         private Task<FetchResponse> ShouldReturnValidMessage()
         {
-            return Task.FromResult(new FetchResponse(0));
+            return Task.FromResult(new FetchResponse());
         }
     }
 }

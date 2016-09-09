@@ -29,7 +29,7 @@ namespace kafka_tests
                         {
                             new Fetch
                                 {
-                                    Topic = topic,
+                                    TopicName = topic,
                                     PartitionId = partitionId,
                                     Offset = offset
                                 }

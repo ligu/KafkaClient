@@ -5,16 +5,16 @@ namespace KafkaNet.Protocol
 {
     public class MetadataTopic
     {
-        public MetadataTopic(string name, ErrorResponseCode errorCode = ErrorResponseCode.NoError, IEnumerable<MetadataPartition> partitions = null)
+        public MetadataTopic(string topicName, ErrorResponseCode errorCode = ErrorResponseCode.NoError, IEnumerable<MetadataPartition> partitions = null)
         {
             ErrorCode = errorCode;
-            Name = name;
+            TopicName = topicName;
             Partitions = partitions != null ? ImmutableList<MetadataPartition>.Empty.AddRange(partitions) : ImmutableList<MetadataPartition>.Empty;
         }
 
         public ErrorResponseCode ErrorCode { get; }
 
-        public string Name { get; }
+        public string TopicName { get; }
 
         public ImmutableList<MetadataPartition> Partitions { get; }
     }

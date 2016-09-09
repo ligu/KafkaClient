@@ -2,10 +2,10 @@
 using KafkaNet.Protocol;
 using NUnit.Framework;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Runtime.Serialization.Formatters.Binary;
+using KafkaNet;
 
 namespace kafka_tests.Unit
 {
@@ -38,7 +38,7 @@ namespace kafka_tests.Unit
             var expected = new FetchOutOfRangeException(
                 new Fetch {
                     MaxBytes = 1,
-                    Topic = "aa",
+                    TopicName = "aa",
                     Offset = 2,
                     PartitionId = 3
                 }, ApiKeyRequestType.Fetch, ErrorResponseCode.OffsetOutOfRange);
@@ -47,7 +47,7 @@ namespace kafka_tests.Unit
             Assert.AreEqual(expected.Fetch.MaxBytes, actual.Fetch.MaxBytes);
             Assert.AreEqual(expected.Fetch.Offset, actual.Fetch.Offset);
             Assert.AreEqual(expected.Fetch.PartitionId, actual.Fetch.PartitionId);
-            Assert.AreEqual(expected.Fetch.Topic, actual.Fetch.Topic);
+            Assert.AreEqual(expected.Fetch.TopicName, actual.Fetch.TopicName);
         }
 
         [Test]

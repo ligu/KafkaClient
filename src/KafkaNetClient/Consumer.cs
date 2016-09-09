@@ -99,7 +99,7 @@ namespace KafkaNet
                         if (_options.PartitionWhitelist.Count == 0 || _options.PartitionWhitelist.Any(x => x == partitionId))
                         {
                             _partitionPollingIndex.AddOrUpdate(partitionId,
-                                                               i => ConsumeTopicPartitionAsync(_topic.Name, partitionId),
+                                                               i => ConsumeTopicPartitionAsync(_topic.TopicName, partitionId),
                                                                (i, task) => task);
                         }
                     }
@@ -147,7 +147,7 @@ namespace KafkaNet
                             //build a fetch request for partition at offset
                             var fetch = new Fetch
                             {
-                                Topic = topic,
+                                TopicName = topic,
                                 PartitionId = partitionId,
                                 Offset = offset,
                                 MaxBytes = bufferSizeHighWatermark,
@@ -267,7 +267,7 @@ namespace KafkaNet
 
         private async Task FixOffsetOutOfRangeExceptionAsync(Fetch fetch)
         {
-            await _metadataQueries.GetTopicOffsetAsync(fetch.Topic)
+            await _metadataQueries.GetTopicOffsetAsync(fetch.TopicName)
                    .ContinueWith(t =>
                    {
                        try
@@ -284,7 +284,7 @@ namespace KafkaNet
                        catch (Exception ex)
                        {
                            _options.Log.ErrorFormat("Failed to fix the offset out of range exception on topic:{0} partition:{1}.  Polling will continue.  Exception={2}",
-                               fetch.Topic, fetch.PartitionId, ex);
+                               fetch.TopicName, fetch.PartitionId, ex);
                        }
                    });
         }
