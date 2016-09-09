@@ -1,5 +1,4 @@
 ﻿using KafkaNet.Model;
-using KafkaNet.Protocol;
 using System;
 using System.Linq;
 using System.Net;

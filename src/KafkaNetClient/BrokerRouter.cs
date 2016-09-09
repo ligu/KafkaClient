@@ -60,9 +60,7 @@ namespace KafkaNet
         /// <remarks>
         /// This function does not use any selector criteria.  If the given partitionId does not exist an exception will be thrown.
         /// </remarks>
-        /// <exception cref="InvalidPartitionException">Thrown if the give partitionId does not exist for the given topic.</exception>
-        /// <exception cref="InvalidTopicNotExistsInCache">Thrown if the topic metadata does not exist in the cache.</exception>
-
+        /// <exception cref="CachedMetadataException">Thrown if the given topic or partitionId does not exist for the given topic.</exception>
         public BrokerRoute SelectBrokerRouteFromLocalCache(string topic, int partitionId)
         {
             var cachedTopic = GetTopicMetadataFromLocalCache(topic);
@@ -87,7 +85,7 @@ namespace KafkaNet
         /// <param name="topic">The topic to retreive a broker route for.</param>
         /// <param name="key">The key used by the IPartitionSelector to collate to a consistent partition. Null value means key will be ignored in selection process.</param>
         /// <returns>A broker route for the given topic.</returns>
-        /// <exception cref="InvalidTopicNotExistsInCache">Thrown if the topic metadata does not exist in the cache.</exception>
+        /// <exception cref="CachedMetadataException">Thrown if the topic metadata does not exist in the cache.</exception>
         public BrokerRoute SelectBrokerRouteFromLocalCache(string topic, byte[] key = null)
         {
             //get topic either from cache or server.
@@ -112,7 +110,7 @@ namespace KafkaNet
         /// The topic metadata will by default check the cache first and then if it does not exist it will then
         /// request metadata from the server.  To force querying the metadata from the server use <see cref="RefreshTopicMetadata"/>
         /// </remarks>
-        /// <exception cref="InvalidTopicNotExistsInCache">Thrown if the topic metadata does not exist in the cache.</exception>
+        /// <exception cref="CachedMetadataException">Thrown if the topic metadata does not exist in the cache.</exception>
         public List<MetadataTopic> GetTopicMetadataFromLocalCache(params string[] topics)
         {
             var topicSearchResult = SearchCacheForTopics(topics, null);
@@ -342,10 +340,7 @@ namespace KafkaNet
             return _topicIndex[topic].Item2;
         }
 
-        public IKafkaLog Log
-        {
-            get { return _kafkaOptions.Log; }
-        }
+        public IKafkaLog Log => _kafkaOptions.Log;
     }
 
     #region BrokerCache Class...

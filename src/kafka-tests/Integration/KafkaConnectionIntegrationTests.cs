@@ -32,8 +32,8 @@ namespace kafka_tests.Integration
         {
             var result1 = _conn.SendAsync(new MetadataRequest()).Result;
             var result2 = _conn.SendAsync(new MetadataRequest()).Result;
-            Assert.That(result1.Topics.Count, Is.EqualTo(1));
-            Assert.That(result2.Topics.Count, Is.EqualTo(1));
+            Assert.That(result1.Errors.Count(code => code != ErrorResponseCode.NoError), Is.EqualTo(0));
+            Assert.That(result2.Errors.Count(code => code != ErrorResponseCode.NoError), Is.EqualTo(0));
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
@@ -43,9 +43,9 @@ namespace kafka_tests.Integration
             var result2 = _conn.SendAsync(new MetadataRequest());
             var result3 = _conn.SendAsync(new MetadataRequest());
 
-            Assert.That(result1.Result.Topics.Count, Is.EqualTo(1));
-            Assert.That(result2.Result.Topics.Count, Is.EqualTo(1));
-            Assert.That(result3.Result.Topics.Count, Is.EqualTo(1));
+            Assert.That(result1.Result.Errors.Count(code => code != ErrorResponseCode.NoError), Is.EqualTo(0));
+            Assert.That(result2.Result.Errors.Count(code => code != ErrorResponseCode.NoError), Is.EqualTo(0));
+            Assert.That(result3.Result.Errors.Count(code => code != ErrorResponseCode.NoError), Is.EqualTo(0));
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]

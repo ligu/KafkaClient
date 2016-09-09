@@ -20,7 +20,7 @@ namespace KafkaNet.Common
             _values = new T[_maxSize];
         }
 
-        public int MaxSize { get { return _maxSize; } }
+        public int MaxSize => _maxSize;
 
         public long Count
         {
@@ -45,8 +45,7 @@ namespace KafkaNet.Common
         public IEnumerator<T> GetEnumerator()
         {
             long head = Interlocked.Read(ref _head);
-            for (int i = 0; i < Count; i++)
-            {
+            for (int i = 0; i < Count; i++) {
                 yield return _values[(head % MaxSize) + i];
             }
         }

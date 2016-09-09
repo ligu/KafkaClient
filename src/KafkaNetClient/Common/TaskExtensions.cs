@@ -14,7 +14,6 @@ namespace KafkaNet.Common
     /// </remarks>
     public static class TaskExtensions
     {
-
         /// <summary>
         /// Observes and ignores a potential exception on a given Task.
         /// If a Task fails and throws an exception which is never observed, it will be caught by the .NET finalizer thread.
@@ -25,12 +24,9 @@ namespace KafkaNet.Common
         [SuppressMessage("Microsoft.Performance", "CA1804:RemoveUnusedLocals", MessageId = "ignored")]
         public static void Ignore(this Task task)
         {
-            if (task.IsCompleted)
-            {
+            if (task.IsCompleted) {
                 var ignored = task.Exception;
-            }
-            else
-            {
+            } else {
                 task.ContinueWith(
                     t => { var ignored = t.Exception; },
                     CancellationToken.None,
@@ -46,19 +42,17 @@ namespace KafkaNet.Common
         /// <param name="timeout">Amount of time to wait before timing out</param>
         /// <exception cref="TimeoutException">If we time out we will get this exception</exception>
         /// <returns>The value of the completed task</returns>
-        public static async Task<T> WithTimeout<T>(this Task<T> taskToComplete, TimeSpan timeSpan)
+        public static async Task<T> WithTimeout<T>(this Task<T> taskToComplete, TimeSpan timeout)
         {
-            if (taskToComplete.IsCompleted)
-            {
+            if (taskToComplete.IsCompleted) {
                 return await taskToComplete;
             }
 
             var timeoutCancellationTokenSource = new CancellationTokenSource();
-            var completedTask = await Task.WhenAny(taskToComplete, Task.Delay(timeSpan, timeoutCancellationTokenSource.Token));
+            var completedTask = await Task.WhenAny(taskToComplete, Task.Delay(timeout, timeoutCancellationTokenSource.Token));
 
             // We got done before the timeout, or were able to complete before this code ran, return the result
-            if (taskToComplete == completedTask)
-            {
+            if (taskToComplete == completedTask) {
                 timeoutCancellationTokenSource.Cancel();
                 // Await this so as to propagate the exception correctly
                 return await taskToComplete;
@@ -66,7 +60,7 @@ namespace KafkaNet.Common
 
             // We did not complete before the timeout, we fire and forget to ensure we observe any exceptions that may occur
             taskToComplete.Ignore();
-            throw new TimeoutException(String.Format("WithTimeout has timed out after {0}.", timeSpan));
+            throw new TimeoutException($"WithTimeout has timed out after {timeout}.");
         }
 
         /// <summary>
@@ -83,10 +77,8 @@ namespace KafkaNet.Common
 
             var cancelRegistration = cancellationToken.Register(source => ((TaskCompletionSource<bool>)source).TrySetResult(true), tcs);
 
-            using (cancelRegistration)
-            {
-                if (task != await Task.WhenAny(task, tcs.Task).ConfigureAwait(false))
-                {
+            using (cancelRegistration) {
+                if (task != await Task.WhenAny(task, tcs.Task).ConfigureAwait(false)) {
                     throw new OperationCanceledException(cancellationToken);
                 }
             }
@@ -108,10 +100,8 @@ namespace KafkaNet.Common
 
             var cancelRegistration = cancellationToken.Register(source => ((TaskCompletionSource<bool>)source).TrySetResult(true), tcs);
 
-            using (cancelRegistration)
-            {
-                if (task != await Task.WhenAny(task, tcs.Task).ConfigureAwait(false))
-                {
+            using (cancelRegistration) {
+                if (task != await Task.WhenAny(task, tcs.Task).ConfigureAwait(false)) {
                     throw new OperationCanceledException(cancellationToken);
                 }
             }
@@ -123,10 +113,8 @@ namespace KafkaNet.Common
 
             var cancelRegistration = cancellationToken.Register(source => ((TaskCompletionSource<bool>)source).TrySetResult(true), tcs);
 
-            using (cancelRegistration)
-            {
-                if (task != await Task.WhenAny(task, tcs.Task).ConfigureAwait(false))
-                {
+            using (cancelRegistration) {
+                if (task != await Task.WhenAny(task, tcs.Task).ConfigureAwait(false)) {
                     return false;
                 }
             }
@@ -157,19 +145,16 @@ namespace KafkaNet.Common
 
             var tcs = new TaskCompletionSource<bool>();
             var localVariableInitLock = new object();
-            lock (localVariableInitLock)
-            {
+            lock (localVariableInitLock) {
                 RegisteredWaitHandle callbackHandle = null;
                 callbackHandle = ThreadPool.RegisterWaitForSingleObject(
                     handle,
-                    (state, timedOut) =>
-                    {
+                    (state, timedOut) => {
                         tcs.TrySetResult(!timedOut);
 
                         // We take a lock here to make sure the outer method has completed setting the local variable callbackHandle.
-                        lock (localVariableInitLock)
-                        {
-                            if (callbackHandle != null) callbackHandle.Unregister(null);
+                        lock (localVariableInitLock) {
+                            callbackHandle?.Unregister(null);
                         }
                     },
                     state: null,
@@ -185,13 +170,10 @@ namespace KafkaNet.Common
         /// </summary>
         public static void SafeWait(this Task source, TimeSpan timeout)
         {
-            try
-            {
+            try {
                 source.Wait(timeout);
-            }
-            catch
-            {
-                //ignore an exception that happens in this source
+            } catch {
+                // ignore an exception that happens in this source
             }
         }
     }

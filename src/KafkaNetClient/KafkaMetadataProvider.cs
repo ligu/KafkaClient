@@ -64,16 +64,13 @@ namespace KafkaNet
             var retryAttempt = 0;
             MetadataResponse metadataResponse = null;
 
-            do
-            {
+            do {
                 performRetry = false;
                 metadataResponse = await GetMetadataResponse(connections, request);
                 if (metadataResponse == null) return null;
 
-                foreach (var validation in ValidateResponse(metadataResponse))
-                {
-                    switch (validation.Status)
-                    {
+                foreach (var validation in ValidateResponse(metadataResponse)) {
+                    switch (validation.Status) {
                         case ValidationResult.Retry:
                             performRetry = true;
                             _log.WarnFormat(validation.Message);
@@ -104,13 +101,9 @@ namespace KafkaNet
 
         private async Task<MetadataResponse> GetMetadataResponse(IKafkaConnection[] connections, MetadataRequest request)
         {
-            // try each default broker until we find one that is available
             foreach (var conn in connections) {
                 try {
-                    var response = await conn.SendAsync(request).ConfigureAwait(false);
-                    if (response?.Topics.Count > 0) {
-                        return response;
-                    }
+                    return await conn.SendAsync(request).ConfigureAwait(false);
                 } catch (Exception ex) {
                     _log.WarnFormat("Failed to contact Kafka server={0}. Trying next default server. Exception={1}", conn.Endpoint, ex);
                 }

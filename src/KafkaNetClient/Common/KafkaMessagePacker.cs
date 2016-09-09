@@ -21,19 +21,19 @@ namespace KafkaNet.Common
             return this;
         }
 
-        public KafkaMessagePacker Pack(Int32 ints)
+        public KafkaMessagePacker Pack(int ints)
         {
             _stream.Write(ints);
             return this;
         }
 
-        public KafkaMessagePacker Pack(Int16 ints)
+        public KafkaMessagePacker Pack(short ints)
         {
             _stream.Write(ints);
             return this;
         }
 
-        public KafkaMessagePacker Pack(Int64 ints)
+        public KafkaMessagePacker Pack(long ints)
         {
             _stream.Write(ints);
             return this;
@@ -65,7 +65,7 @@ namespace KafkaNet.Common
         {
             var buffer = new byte[_stream.BaseStream.Length];
             _stream.BaseStream.Position = 0;
-            Pack((Int32)(_stream.BaseStream.Length - IntegerByteSize));
+            Pack((int)(_stream.BaseStream.Length - IntegerByteSize));
             _stream.BaseStream.Position = 0;
             _stream.BaseStream.Read(buffer, 0, (int)_stream.BaseStream.Length);
             return buffer;

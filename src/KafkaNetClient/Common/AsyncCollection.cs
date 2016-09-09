@@ -13,10 +13,7 @@ namespace KafkaNet.Common
         private readonly ConcurrentQueue<T> _queue = new ConcurrentQueue<T>();
         private long _dataInBufferCount = 0;
 
-        public int Count
-        {
-            get { return _queue.Count + (int)Interlocked.Read(ref _dataInBufferCount); }
-        }
+        public int Count => _queue.Count + (int)Interlocked.Read(ref _dataInBufferCount);
 
         public bool IsCompleted { get; private set; }
 
@@ -101,7 +98,7 @@ namespace KafkaNet.Common
         public void DrainAndApply(Action<T> appliedFunc)
         {
             var nb = _queue.Count;
-            for (int i = 0; i < nb; i++)
+            for (var i = 0; i < nb; i++)
             {
                 T data;
                 if (!_queue.TryDequeue(out data))

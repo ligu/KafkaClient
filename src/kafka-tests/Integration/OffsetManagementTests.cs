@@ -58,7 +58,7 @@ namespace kafka_tests.Integration
             var topic = response.Topics.FirstOrDefault();
 
             Assert.That(topic, Is.Not.Null);
-            Assert.That(topic.ErrorCode, Is.EqualTo((int)ErrorResponseCode.NoError));
+            Assert.That(topic.ErrorCode, Is.EqualTo(ErrorResponseCode.NoError));
 
             router.Dispose();
         }

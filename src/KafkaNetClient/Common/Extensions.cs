@@ -24,7 +24,7 @@ namespace KafkaNet.Common
         {
             if (string.IsNullOrEmpty(value)) return (-1).ToBytes();
 
-            return ((Int16)value.Length).ToBytes()
+            return ((short)value.Length).ToBytes()
                         .Concat(value.ToBytes())
                         .ToArray();
         }
@@ -58,17 +58,17 @@ namespace KafkaNet.Common
             return Encoding.UTF8.GetBytes(value);
         }
 
-        public static byte[] ToBytes(this Int16 value)
+        public static byte[] ToBytes(this short value)
         {
             return BitConverter.GetBytes(value).Reverse().ToArray();
         }
 
-        public static byte[] ToBytes(this Int32 value)
+        public static byte[] ToBytes(this int value)
         {
             return BitConverter.GetBytes(value).Reverse().ToArray();
         }
 
-        public static byte[] ToBytes(this Int64 value)
+        public static byte[] ToBytes(this long value)
         {
             return BitConverter.GetBytes(value).Reverse().ToArray();
         }
@@ -93,7 +93,7 @@ namespace KafkaNet.Common
             return BitConverter.GetBytes(value).Reverse().ToArray();
         }
 
-        public static Int32 ToInt32(this byte[] value)
+        public static int ToInt32(this byte[] value)
         {
             return BitConverter.ToInt32(value.Reverse().ToArray(), 0);
         }
@@ -123,10 +123,8 @@ namespace KafkaNet.Common
         public static Exception ExtractException(this Task task)
         {
             if (task.IsFaulted == false) return null;
-            if (task.Exception != null)
-                return task.Exception.Flatten();
-
-            return new ApplicationException("Unknown exception occured.");
+            if (task.Exception != null) return task.Exception.Flatten();
+            return new Exception("Unknown exception occured.");
         }
 
         public static IEnumerable<T> Repeat<T>(this int count, Func<T> producer)

@@ -45,12 +45,12 @@ namespace KafkaNet
         /// </summary>
         /// <param name="log">Logging interface used to record any log messages created by the connection.</param>
         /// <param name="client">The kafka socket initialized to the kafka server.</param>
-        /// <param name="responseTimeoutMs">The amount of time to wait for a message response to be received after sending message to Kafka.  Defaults to 30s.</param>
-        public KafkaConnection(IKafkaTcpSocket client, TimeSpan? responseTimeoutMs = null, IKafkaLog log = null)
+        /// <param name="responseTimeout">The amount of time to wait for a message response to be received after sending message to Kafka.  Defaults to 30s.</param>
+        public KafkaConnection(IKafkaTcpSocket client, TimeSpan? responseTimeout = null, IKafkaLog log = null)
         {
             _client = client;
             _log = log ?? new DefaultTraceLog();
-            _responseTimeoutMs = responseTimeoutMs ?? TimeSpan.FromMilliseconds(DefaultResponseTimeoutMs);
+            _responseTimeoutMs = responseTimeout ?? TimeSpan.FromMilliseconds(DefaultResponseTimeoutMs);
 
             StartReadStreamPoller();
         }
@@ -101,7 +101,7 @@ namespace KafkaNet
             //assign unique correlationId
             context = context.WithCorrelation(NextCorrelationId());
 
-            _log.DebugFormat("Entered SendAsync for CorrelationId:{0} Connection:{1} ", context.CorrelationId, Endpoint);
+            _log.DebugFormat("SendAsync Api={0} CorrelationId={1} to {2} ", request.ApiKey, context.CorrelationId, Endpoint);
             if (!request.ExpectResponse) {
                 await _client.WriteAsync(KafkaEncoder.Encode(context, request)).ConfigureAwait(false);
                 return default(T);
@@ -210,14 +210,11 @@ namespace KafkaNet
         {
             var correlationId = payload.Take(4).ToArray().ToInt32();
             AsyncRequestItem asyncRequest;
-            if (_requestIndex.TryRemove(correlationId, out asyncRequest))
-            {
-                _log.DebugFormat("Get Response for CorrelationId:{0} Connection:{1}", correlationId, Endpoint);
+            if (_requestIndex.TryRemove(correlationId, out asyncRequest)) {
+                _log.DebugFormat("Matched Response from {0} with CorrelationId={1}", Endpoint, correlationId);
                 asyncRequest.ReceiveTask.SetResult(payload);
-            }
-            else
-            {
-                _log.WarnFormat("Message response received with correlationId={0}, but did not exist in the request queue.", correlationId);
+            } else {
+                _log.WarnFormat("Unexpected Response from {0} with CorrelationId={1} (not in request queue).", Endpoint, correlationId);
             }
         }
 
@@ -226,8 +223,7 @@ namespace KafkaNet
             var id = Interlocked.Increment(ref _correlationIdSeed);
 
             //somewhere close to max reset.
-            if (id > int.MaxValue - 100)
-            {
+            if (id > int.MaxValue - 100) {
                 Interlocked.Exchange(ref _correlationIdSeed, 0);
             }
             return id;
@@ -236,8 +232,9 @@ namespace KafkaNet
         private void AddAsyncRequestItemToResponseQueue(AsyncRequestItem requestItem)
         {
             if (requestItem == null) return;
-            if (_requestIndex.TryAdd(requestItem.CorrelationId, requestItem) == false)
+            if (_requestIndex.TryAdd(requestItem.CorrelationId, requestItem) == false) {
                 throw new ApplicationException("Failed to register request for async response.");
+            }
         }
 
         private void TriggerMessageTimeout(AsyncRequestItem asyncRequestItem)
@@ -249,15 +246,12 @@ namespace KafkaNet
             //just remove it from the index
             _requestIndex.TryRemove(asyncRequestItem.CorrelationId, out request);
 
-            if (_disposeToken.IsCancellationRequested)
-            {
+            if (_disposeToken.IsCancellationRequested) {
                 asyncRequestItem.ReceiveTask.TrySetException(
                     new ObjectDisposedException("The object is being disposed and the connection is closing."));
-            }
-            else
-            {
+            } else {
                 asyncRequestItem.ReceiveTask.TrySetException(
-                    new TimeoutException($"Timeout expired. Was {_responseTimeoutMs.TotalMilliseconds} ms."));
+                    new TimeoutException($"Timeout expired after {_responseTimeoutMs.TotalMilliseconds} ms."));
             }
         }
 
@@ -268,7 +262,7 @@ namespace KafkaNet
 
             _disposeToken.Cancel();
 
-            if (_connectionReadPollingTask != null) _connectionReadPollingTask.Wait(TimeSpan.FromSeconds(1));
+            _connectionReadPollingTask?.Wait(TimeSpan.FromSeconds(1));
 
             using (_disposeToken)
             using (_client)
@@ -295,8 +289,7 @@ namespace KafkaNet
 
             public void MarkRequestAsSent(ExceptionDispatchInfo exceptionDispatchInfo, TimeSpan timeout, Action<AsyncRequestItem> timeoutFunction)
             {
-                if (exceptionDispatchInfo != null)
-                {
+                if (exceptionDispatchInfo != null) {
                     ReceiveTask.TrySetException(exceptionDispatchInfo.SourceException);
                     exceptionDispatchInfo.Throw();
                 }

@@ -22,10 +22,7 @@ namespace KafkaNet.Common
             _releaser = Task.FromResult(new Releaser(this));
         }
 
-        public bool IsLocked
-        {
-            get { return _semaphore.CurrentCount == 0; }
-        }
+        public bool IsLocked => _semaphore.CurrentCount == 0;
 
         public Task<Releaser> LockAsync(CancellationToken canceller)
         {
@@ -59,8 +56,7 @@ namespace KafkaNet.Common
 
         protected void Dispose(bool disposing)
         {
-            if (disposing)
-            {
+            if (disposing) {
                 using (_semaphore) { }
                 using (_releaser) { }
             }
@@ -77,10 +73,7 @@ namespace KafkaNet.Common
 
             public void Dispose()
             {
-                if (_toRelease != null)
-                {
-                    _toRelease._semaphore.Release();
-                }
+                _toRelease?._semaphore.Release();
             }
         }
     }

@@ -52,7 +52,10 @@
     <Compile Include="Common\AsyncManualResetEvent.cs" />
     <Compile Include="Common\AsyncCollection.cs" />
     <Compile Include="Common\ConcurrentCircularBuffer.cs" />
+    <Compile Include="Common\IScheduledTimer.cs" />
     <Compile Include="Common\KafkaMessagePacker.cs" />
+    <Compile Include="Common\ScheduledTimerStatus.cs" />
+    <Compile Include="Common\StringPrefixEncoding.cs" />
     <Compile Include="Common\TaskExtensions.cs" />
     <Compile Include="Interfaces\IManualConsumer.cs" />
     <Compile Include="ManualConsumer.cs" />

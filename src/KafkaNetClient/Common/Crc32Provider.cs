@@ -14,21 +14,21 @@ namespace KafkaNet.Common
     /// </summary>
     public static class Crc32Provider
     {
-        public const UInt32 DefaultPolynomial = 0xedb88320u;
-        public const UInt32 DefaultSeed = 0xffffffffu;
-        private static readonly UInt32[] PolynomialTable;
+        public const uint DefaultPolynomial = 0xedb88320u;
+        public const uint DefaultSeed = 0xffffffffu;
+        private static readonly uint[] PolynomialTable;
 
         static Crc32Provider()
         {
             PolynomialTable = InitializeTable(DefaultPolynomial);
         }
 
-        public static UInt32 Compute(byte[] buffer)
+        public static uint Compute(byte[] buffer)
         {
             return ~CalculateHash(buffer, 0, buffer.Length);
         }
 
-        public static UInt32 Compute(byte[] buffer, int offset, int length)
+        public static uint Compute(byte[] buffer, int offset, int length)
         {
             return ~CalculateHash(buffer, offset, length);
         }
@@ -43,39 +43,40 @@ namespace KafkaNet.Common
             return UInt32ToBigEndianBytes(Compute(buffer, offset, length));
         }
 
-        private static UInt32[] InitializeTable(UInt32 polynomial)
+        private static uint[] InitializeTable(uint polynomial)
         {
-            var createTable = new UInt32[256];
-            for (var i = 0; i < 256; i++)
-            {
-                var entry = (UInt32)i;
-                for (var j = 0; j < 8; j++)
-                    if ((entry & 1) == 1)
+            var createTable = new uint[256];
+            for (var i = 0; i < 256; i++) {
+                var entry = (uint)i;
+                for (var j = 0; j < 8; j++) {
+                    if ((entry & 1) == 1) {
                         entry = (entry >> 1) ^ polynomial;
-                    else
+                    } else {
                         entry = entry >> 1;
+                    }
+                }
                 createTable[i] = entry;
             }
 
             return createTable;
         }
 
-        private static UInt32 CalculateHash(byte[] buffer, int offset, int length)
+        private static uint CalculateHash(byte[] buffer, int offset, int length)
         {
             var crc = DefaultSeed;
-            for (var i = offset; i < length; i++)
-            {
+            for (var i = offset; i < length; i++) {
                 crc = (crc >> 8) ^ PolynomialTable[buffer[i] ^ crc & 0xff];
             }
             return crc;
         }
 
-        private static byte[] UInt32ToBigEndianBytes(UInt32 uint32)
+        private static byte[] UInt32ToBigEndianBytes(uint uint32)
         {
             var result = BitConverter.GetBytes(uint32);
 
-            if (BitConverter.IsLittleEndian)
+            if (BitConverter.IsLittleEndian) {
                 Array.Reverse(result);
+            }
 
             return result;
         }

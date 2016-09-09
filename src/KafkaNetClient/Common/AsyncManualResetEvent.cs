@@ -12,10 +12,7 @@ namespace KafkaNet.Common
     {
         private TaskCompletionSource<bool> _tcs;
 
-        public bool IsOpen
-        {
-            get { return _tcs.Task.IsCompleted; }
-        }
+        public bool IsOpen => _tcs.Task.IsCompleted;
 
         /// <summary>
         /// Async version of a manual reset event.
@@ -24,8 +21,7 @@ namespace KafkaNet.Common
         public AsyncManualResetEvent(bool set = false)
         {
             _tcs = new TaskCompletionSource<bool>();
-            if (set)
-            {
+            if (set) {
                 _tcs.SetResult(true);
             }
         }
@@ -52,8 +48,7 @@ namespace KafkaNet.Common
         /// </summary>
         public void Close()
         {
-            while (true)
-            {
+            while (true) {
                 var tcs = _tcs;
                 if (!tcs.Task.IsCompleted || Interlocked.CompareExchange(ref _tcs, new TaskCompletionSource<bool>(), tcs) == tcs)
                     return;

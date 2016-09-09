@@ -26,15 +26,15 @@ namespace KafkaNet.Common
             Contract.Requires(stream != null);
         }
 
-        public BigEndianBinaryWriter(Stream stream, Boolean leaveOpen)
+        public BigEndianBinaryWriter(Stream stream, bool leaveOpen)
             : base(stream, Encoding.UTF8, leaveOpen)
         {
             Contract.Requires(stream != null);
         }
 
-        public override void Write(Decimal value)
+        public override void Write(decimal value)
         {
-            var ints = Decimal.GetBits(value);
+            var ints = decimal.GetBits(value);
             Contract.Assume(ints != null);
             Contract.Assume(ints.Length == 4);
 
@@ -51,49 +51,49 @@ namespace KafkaNet.Common
             }
         }
 
-        public override void Write(Single value)
+        public override void Write(float value)
         {
             var bytes = BitConverter.GetBytes(value);
             WriteBigEndian(bytes);
         }
 
-        public override void Write(Double value)
+        public override void Write(double value)
         {
             var bytes = BitConverter.GetBytes(value);
             WriteBigEndian(bytes);
         }
 
-        public override void Write(Int16 value)
+        public override void Write(short value)
         {
             var bytes = BitConverter.GetBytes(value);
             WriteBigEndian(bytes);
         }
 
-        public override void Write(Int32 value)
+        public override void Write(int value)
         {
             var bytes = BitConverter.GetBytes(value);
             WriteBigEndian(bytes);
         }
 
-        public override void Write(Int64 value)
+        public override void Write(long value)
         {
             var bytes = BitConverter.GetBytes(value);
             WriteBigEndian(bytes);
         }
 
-        public override void Write(UInt16 value)
+        public override void Write(ushort value)
         {
             var bytes = BitConverter.GetBytes(value);
             WriteBigEndian(bytes);
         }
 
-        public override void Write(UInt32 value)
+        public override void Write(uint value)
         {
             var bytes = BitConverter.GetBytes(value);
             WriteBigEndian(bytes);
         }
 
-        public override void Write(UInt64 value)
+        public override void Write(ulong value)
         {
             var bytes = BitConverter.GetBytes(value);
             WriteBigEndian(bytes);
@@ -106,16 +106,14 @@ namespace KafkaNet.Common
 
         public void Write(byte[] value, StringPrefixEncoding encoding)
         {
-            if (value == null)
-            {
+            if (value == null) {
                 Write(-1);
                 return;
             }
 
-            switch (encoding)
-            {
+            switch (encoding) {
                 case StringPrefixEncoding.Int16:
-                    Write((Int16)value.Length);
+                    Write((short)value.Length);
                     break;
 
                 case StringPrefixEncoding.Int32:
@@ -128,12 +126,10 @@ namespace KafkaNet.Common
 
         public void Write(string value, StringPrefixEncoding encoding)
         {
-            if (value == null)
-            {
-                switch (encoding)
-                {
+            if (value == null) {
+                switch (encoding) {
                     case StringPrefixEncoding.Int16:
-                        Write((Int16)(-1));
+                        Write((short)(-1));
                         return;
 
                     default:
@@ -142,10 +138,9 @@ namespace KafkaNet.Common
                 }
             }
 
-            switch (encoding)
-            {
+            switch (encoding) {
                 case StringPrefixEncoding.Int16:
-                    Write((Int16)value.Length);
+                    Write((short)value.Length);
                     break;
 
                 case StringPrefixEncoding.Int32:
@@ -156,21 +151,15 @@ namespace KafkaNet.Common
             Write(Encoding.UTF8.GetBytes(value));
         }
 
-        private void WriteBigEndian(Byte[] bytes)
+        private void WriteBigEndian(byte[] bytes)
         {
             Contract.Requires(bytes != null);
 
-            if (BitConverter.IsLittleEndian)
+            if (BitConverter.IsLittleEndian) {
                 Array.Reverse(bytes);
+            }
 
             Write(bytes);
         }
     }
-
-    public enum StringPrefixEncoding
-    {
-        Int16,
-        Int32,
-        None
-    };
 }

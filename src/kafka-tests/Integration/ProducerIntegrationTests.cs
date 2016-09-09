@@ -61,17 +61,16 @@ namespace kafka_tests.Integration
             using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri)))
             using (var producer = new Producer(router))
             {
-                var tasks = new[]
-                {
-                    producer.SendMessageAsync(IntegrationConfig.IntegrationTopic, new[] {new Message("1")}),
-                    producer.SendMessageAsync(IntegrationConfig.IntegrationTopic, new[] {new Message("1")}),
-                    producer.SendMessageAsync(IntegrationConfig.IntegrationTopic, new[] {new Message("1")}),
+                var tasks = new[] {
+                    producer.SendMessageAsync(IntegrationConfig.IntegrationTopic, new Message("1")),
+                    producer.SendMessageAsync(IntegrationConfig.IntegrationTopic, new Message("2")),
+                    producer.SendMessageAsync(IntegrationConfig.IntegrationTopic, new Message("3")),
                 };
 
                 await Task.WhenAll(tasks);
 
                 var result = tasks.SelectMany(x => x.Result).Distinct().ToList();
-                Assert.That(result.Count, Is.EqualTo(tasks.Count()));
+                Assert.That(result.Count, Is.EqualTo(tasks.Length));
             }
         }
     }

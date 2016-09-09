@@ -218,14 +218,11 @@ namespace kafka_tests.Unit
                 server.HasClientConnected.Wait(TimeSpan.FromSeconds(3));
                 Assert.That(server.ConnectionEventcount, Is.EqualTo(1));
 
-                var tasks = new[]
-                    {
-                        conn.SendAsync(new MetadataRequest()),
-                        conn.SendAsync(new MetadataRequest()),
-                        conn.SendAsync(new MetadataRequest())
-                    };
-
-                await Task.WhenAll(tasks);
+                var tasks = new[] {
+                    conn.SendAsync(new MetadataRequest()),
+                    conn.SendAsync(new MetadataRequest()),
+                    conn.SendAsync(new MetadataRequest())
+                };
 
                 await TaskTest.WaitFor(() => tasks.All(t => t.IsFaulted));
                 foreach (var task in tasks)

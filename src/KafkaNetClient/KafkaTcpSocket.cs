@@ -403,14 +403,13 @@ namespace KafkaNet
                 attempts++;
                 try
                 {
-                    if (OnReconnectionAttempt != null) OnReconnectionAttempt(attempts);
+                    OnReconnectionAttempt?.Invoke(attempts);
                     _client = new TcpClient();
 
                     var connectTask = _client.ConnectAsync(_endpoint.Endpoint.Address, _endpoint.Endpoint.Port);
                     await Task.WhenAny(connectTask, _disposeTask).ConfigureAwait(false);
 
-                    if (_disposeToken.IsCancellationRequested)
-                        throw new ObjectDisposedException(string.Format("Object is disposing (KafkaTcpSocket for endpoint: {0})", Endpoint));
+                    if (_disposeToken.IsCancellationRequested) throw new ObjectDisposedException($"Object is disposing (KafkaTcpSocket for endpoint {Endpoint})");
 
                     await connectTask;
                     if (!_client.Connected) throw new KafkaConnectionException(_endpoint);
@@ -439,7 +438,7 @@ namespace KafkaNet
         public void Dispose()
         {
             if (Interlocked.Increment(ref _disposeCount) != 1) return;
-            if (_disposeToken != null) _disposeToken.Cancel();
+            _disposeToken?.Cancel();
 
             using (_disposeToken)
             using (_disposeRegistration)

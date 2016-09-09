@@ -3,69 +3,6 @@ using System.Timers;
 
 namespace KafkaNet.Common
 {
-    public enum ScheduledTimerStatus
-    {
-        /// <summary>
-        ///     Timer is stopped.
-        /// </summary>
-        Stopped,
-
-        /// <summary>
-        ///     Timer is running.
-        /// </summary>
-        Running
-    }
-
-    public interface IScheduledTimer : IDisposable
-    {
-        /// <summary>
-        ///     Current running status of the timer.
-        /// </summary>
-        ScheduledTimerStatus Status { get; }
-
-        /// <summary>
-        /// Indicates if the timer is running.
-        /// </summary>
-        bool Enabled { get; }
-
-        /// <summary>
-        ///     Set the time to start a replication.
-        /// </summary>
-        /// <param name="start">Start date and time for the replication timer.</param>
-        /// <returns>Instance of ScheduledTimer for fluent configuration.</returns>
-        /// <remarks>If no interval is set, the replication will only happen once.</remarks>
-        IScheduledTimer StartingAt(DateTime start);
-
-        /// <summary>
-        ///     Set the interval to send a replication command to a Solr server.
-        /// </summary>
-        /// <param name="interval">Interval this command is to be called.</param>
-        /// <returns>Instance of ScheduledTimer for fluent configuration.</returns>
-        /// <remarks>If no start time is set, the interval starts when the timer is started.</remarks>
-        IScheduledTimer Every(TimeSpan interval);
-
-        /// <summary>
-        ///     Action to perform when the timer expires.
-        /// </summary>
-        IScheduledTimer Do(Action action);
-
-        /// <summary>
-        /// Sets the timer to execute and restart the timer without waiting for the Do method to finish.
-        /// </summary>
-        /// <returns></returns>
-        IScheduledTimer DontWait();
-
-        /// <summary>
-        ///     Starts the timer
-        /// </summary>
-        IScheduledTimer Begin();
-
-        /// <summary>
-        ///     Stop the timer.
-        /// </summary>
-        IScheduledTimer End();
-    }
-
     /// <summary>
     /// TODO there is a bug in this that sometimes calls the do function twice on startup
     /// Timer class which providers a fluent interface for scheduling task for threads to execute at some future point.
@@ -121,16 +58,16 @@ namespace KafkaNet.Common
         {
             if (_action == null) return;
 
-            if (_dontWait)
+            if (_dontWait) {
                 _action();
-            else
+            } else {
                 WaitActionWrapper();
+            }
         }
 
         private void ReplicationStartupTimerElapsed(object sender, ElapsedEventArgs e)
         {
-            if (_interval.HasValue)
-            {
+            if (_interval.HasValue) {
                 _timer.Stop();
 
                 _timer.Elapsed -= ReplicationStartupTimerElapsed;
@@ -139,9 +76,7 @@ namespace KafkaNet.Common
                 _timer.Interval = ProcessIntervalAndEnsureItIsGreaterThan0(_interval.Value);
 
                 _timer.Start();
-            }
-            else
-            {
+            } else {
                 End();
             }
 
@@ -151,7 +86,7 @@ namespace KafkaNet.Common
         /// <summary>
         /// Indicates if the timer is running.
         /// </summary>
-        public bool Enabled { get { return _timer.Enabled; } }
+        public bool Enabled => _timer.Enabled;
 
         /// <summary>
         ///     Set the time to start the first execution of the scheduled task.
@@ -173,13 +108,11 @@ namespace KafkaNet.Common
         /// </summary>
         public void Dispose()
         {
-            if (Status == ScheduledTimerStatus.Running)
-            {
+            if (Status == ScheduledTimerStatus.Running) {
                 End();
             }
 
-            using (_timer)
-            {
+            using (_timer) {
                 _disposed = true;
             }
         }
@@ -194,8 +127,7 @@ namespace KafkaNet.Common
         {
             _interval = interval;
 
-            if (!_timerStart.HasValue)
-            {
+            if (!_timerStart.HasValue) {
                 _timer.Interval = ProcessIntervalAndEnsureItIsGreaterThan0(_interval.Value);
             }
 
@@ -228,13 +160,7 @@ namespace KafkaNet.Common
 
         private static double ProcessIntervalAndEnsureItIsGreaterThan0(TimeSpan interval)
         {
-            var intervalInMilliseconds = interval.TotalMilliseconds;
-
-            intervalInMilliseconds =
-                (intervalInMilliseconds < 1)
-                    ? 1
-                    : intervalInMilliseconds;
-
+            var intervalInMilliseconds = Math.Max(1, interval.TotalMilliseconds);
             return intervalInMilliseconds;
         }
 
@@ -243,8 +169,7 @@ namespace KafkaNet.Common
         /// </summary>
         public IScheduledTimer Begin()
         {
-            if (!_timerStart.HasValue)
-            {
+            if (!_timerStart.HasValue) {
                 StartingAt(DateTime.Now);
             }
 
@@ -269,9 +194,6 @@ namespace KafkaNet.Common
         /// <summary>
         /// Exposes the timer object for unit testing.
         /// </summary>
-        public Timer TimerObject
-        {
-            get { return _timer; }
-        }
+        public Timer TimerObject => _timer;
     }
 }

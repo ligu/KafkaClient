@@ -36,76 +36,76 @@ namespace KafkaNet.Common
         {
         }
 
-        public long Length { get { return base.BaseStream.Length; } }
-        public long Position { get { return base.BaseStream.Position; } set { base.BaseStream.Position = value; } }
-        public bool HasData { get { return base.BaseStream.Position < base.BaseStream.Length; } }
+        public long Length => BaseStream.Length;
+        public long Position { get { return BaseStream.Position; } set { BaseStream.Position = value; } }
+        public bool HasData => BaseStream.Position < BaseStream.Length;
 
         public bool Available(int dataSize)
         {
-            return (base.BaseStream.Length - base.BaseStream.Position) >= dataSize;
+            return BaseStream.Length - BaseStream.Position >= dataSize;
         }
 
-        public override Decimal ReadDecimal()
+        public override decimal ReadDecimal()
         {
             var bytes = GetNextBytesNativeEndian(16);
 
-            var ints = new Int32[4];
-            ints[0] = (Int32)bytes[0] << 0
-                | (Int32)bytes[1] << 8
-                | (Int32)bytes[2] << 16
-                | (Int32)bytes[3] << 24;
-            ints[1] = (Int32)bytes[4] << 0
-                | (Int32)bytes[5] << 8
-                | (Int32)bytes[6] << 16
-                | (Int32)bytes[7] << 24;
-            ints[2] = (Int32)bytes[8] << 0
-                | (Int32)bytes[9] << 8
-                | (Int32)bytes[10] << 16
-                | (Int32)bytes[11] << 24;
-            ints[3] = (Int32)bytes[12] << 0
-                | (Int32)bytes[13] << 8
-                | (Int32)bytes[14] << 16
-                | (Int32)bytes[15] << 24;
+            var ints = new int[4];
+            ints[0] = (int)bytes[0] << 0
+                | (int)bytes[1] << 8
+                | (int)bytes[2] << 16
+                | (int)bytes[3] << 24;
+            ints[1] = (int)bytes[4] << 0
+                | (int)bytes[5] << 8
+                | (int)bytes[6] << 16
+                | (int)bytes[7] << 24;
+            ints[2] = (int)bytes[8] << 0
+                | (int)bytes[9] << 8
+                | (int)bytes[10] << 16
+                | (int)bytes[11] << 24;
+            ints[3] = (int)bytes[12] << 0
+                | (int)bytes[13] << 8
+                | (int)bytes[14] << 16
+                | (int)bytes[15] << 24;
 
-            return new Decimal(ints);
+            return new decimal(ints);
         }
 
-        public override Single ReadSingle()
+        public override float ReadSingle()
         {
             return EndianAwareRead(4, BitConverter.ToSingle);
         }
 
-        public override Double ReadDouble()
+        public override double ReadDouble()
         {
             return EndianAwareRead(8, BitConverter.ToDouble);
         }
 
-        public override Int16 ReadInt16()
+        public override short ReadInt16()
         {
             return EndianAwareRead(2, BitConverter.ToInt16);
         }
 
-        public override Int32 ReadInt32()
+        public override int ReadInt32()
         {
             return EndianAwareRead(4, BitConverter.ToInt32);
         }
 
-        public override Int64 ReadInt64()
+        public override long ReadInt64()
         {
             return EndianAwareRead(8, BitConverter.ToInt64);
         }
 
-        public override UInt16 ReadUInt16()
+        public override ushort ReadUInt16()
         {
             return EndianAwareRead(2, BitConverter.ToUInt16);
         }
 
-        public override UInt32 ReadUInt32()
+        public override uint ReadUInt32()
         {
             return EndianAwareRead(4, BitConverter.ToUInt32);
         }
 
-        public override UInt64 ReadUInt64()
+        public override ulong ReadUInt64()
         {
             return EndianAwareRead(8, BitConverter.ToUInt64);
         }
@@ -145,37 +145,31 @@ namespace KafkaNet.Common
 
         public byte[] ReadToEnd()
         {
-            var size = (int)(base.BaseStream.Length - base.BaseStream.Position);
+            var size = (int)(BaseStream.Length - BaseStream.Position);
             var buffer = new byte[size];
-            base.BaseStream.Read(buffer, 0, size);
+            BaseStream.Read(buffer, 0, size);
             return buffer;
         }
 
         public byte[] CrcHash()
         {
-            var currentPosition = base.BaseStream.Position;
-            try
-            {
-                base.BaseStream.Position = 0;
+            var currentPosition = BaseStream.Position;
+            try {
+                BaseStream.Position = 0;
                 return Crc32Provider.ComputeHash(ReadToEnd());
-            }
-            finally
-            {
-                base.BaseStream.Position = currentPosition;
+            } finally {
+                BaseStream.Position = currentPosition;
             }
         }
 
         public uint Crc()
         {
-            var currentPosition = base.BaseStream.Position;
-            try
-            {
-                base.BaseStream.Position = 0;
+            var currentPosition = BaseStream.Position;
+            try {
+                BaseStream.Position = 0;
                 return Crc32Provider.Compute(ReadToEnd());
-            }
-            finally
-            {
-                base.BaseStream.Position = currentPosition;
+            } finally {
+                BaseStream.Position = currentPosition;
             }
         }
 
@@ -184,13 +178,11 @@ namespace KafkaNet.Common
             if (size <= 0) { return new byte[0]; }
 
             var buffer = new byte[size];
-
-            base.Read(buffer, 0, size);
-
+            Read(buffer, 0, size);
             return buffer;
         }
 
-        private T EndianAwareRead<T>(Int32 size, Func<Byte[], Int32, T> converter) where T : struct
+        private T EndianAwareRead<T>(int size, Func<byte[], int, T> converter) where T : struct
         {
             Contract.Requires(size >= 0);
             Contract.Requires(converter != null);
@@ -199,29 +191,29 @@ namespace KafkaNet.Common
             return converter(bytes, 0);
         }
 
-        private Byte[] GetNextBytesNativeEndian(Int32 count)
+        private byte[] GetNextBytesNativeEndian(int count)
         {
             Contract.Requires(count >= 0);
-            Contract.Ensures(Contract.Result<Byte[]>() != null);
-            Contract.Ensures(Contract.Result<Byte[]>().Length == count);
+            Contract.Ensures(Contract.Result<byte[]>() != null);
+            Contract.Ensures(Contract.Result<byte[]>().Length == count);
 
             var bytes = GetNextBytes(count);
-            if (BitConverter.IsLittleEndian)
+            if (BitConverter.IsLittleEndian) {
                 Array.Reverse(bytes);
+            }
             return bytes;
         }
 
-        private Byte[] GetNextBytes(Int32 count)
+        private byte[] GetNextBytes(int count)
         {
             Contract.Requires(count >= 0);
-            Contract.Ensures(Contract.Result<Byte[]>() != null);
-            Contract.Ensures(Contract.Result<Byte[]>().Length == count);
+            Contract.Ensures(Contract.Result<byte[]>() != null);
+            Contract.Ensures(Contract.Result<byte[]>().Length == count);
 
-            var buffer = new Byte[count];
+            var buffer = new byte[count];
             var bytesRead = BaseStream.Read(buffer, 0, count);
 
-            if (bytesRead != count)
-                throw new EndOfStreamException();
+            if (bytesRead != count) throw new EndOfStreamException();
 
             return buffer;
         }

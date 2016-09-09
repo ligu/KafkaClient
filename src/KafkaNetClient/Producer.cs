@@ -33,17 +33,17 @@ namespace KafkaNet
         /// <summary>
         /// Get the number of messages sitting in the buffer waiting to be sent.
         /// </summary>
-        public int BufferCount { get { return _asyncCollection.Count; } }
+        public int BufferCount => _asyncCollection.Count;
 
         /// <summary>
         /// Get the number of messages staged for Async upload.
         /// </summary>
-        public int InFlightMessageCount { get { return _inFlightMessageCount; } }
+        public int InFlightMessageCount => _inFlightMessageCount;
 
         /// <summary>
         /// Get the number of active async threads sending messages.
         /// </summary>
-        public int AsyncCount { get { return _maximumAsyncRequests - _semaphoreMaximumAsync.CurrentCount; } }
+        public int AsyncCount => _maximumAsyncRequests - _semaphoreMaximumAsync.CurrentCount;
 
         /// <summary>
         /// The number of messages to wait for before sending to kafka.  Will wait <see cref="BatchDelayTime"/> before sending whats received.
@@ -110,9 +110,10 @@ namespace KafkaNet
         public Task<ProduceTopic[]> SendMessageAsync(string topic, IEnumerable<Message> messages, short acks = 1,
             TimeSpan? timeout = null, MessageCodec codec = MessageCodec.CodecNone, int? partition = null)
         {
-            if (_stopToken.IsCancellationRequested)
-                throw new ObjectDisposedException("Cannot send new documents as producer is disposing.");
-            if (timeout == null) timeout = TimeSpan.FromMilliseconds(DefaultAckTimeoutMS);
+            if (_stopToken.IsCancellationRequested) throw new ObjectDisposedException("Cannot send new documents as producer is disposing.");
+            if (timeout == null) {
+                timeout = TimeSpan.FromMilliseconds(DefaultAckTimeoutMS);
+            }
 
             var batch = messages.Select(message => new TopicMessage {
                 Acks = acks,
