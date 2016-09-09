@@ -289,10 +289,14 @@ namespace KafkaNet
                             var response = new ProduceTopic(sendTask.Route.Topic, sendTask.Route.PartitionId, ErrorResponseCode.NoError, -1);
                             sendTask.MessagesSent[i].Tcs.SetResult(response);
                         } else {
-                            // HACK: assume there is only one ...
-                            var topic = batchResult.Topics.Single();
-                            var response = new ProduceTopic(topic.TopicName, topic.PartitionId, topic.ErrorCode, topic.Offset + 1, topic.Timestamp);
-                            sendTask.MessagesSent[i].Tcs.SetResult(response);
+                            // HACK: assume there is at most one ...
+                            var topic = batchResult.Topics.SingleOrDefault();
+                            if (topic == null) {
+                                sendTask.MessagesSent[i].Tcs.SetResult(null);
+                            } else {
+                                var response = new ProduceTopic(topic.TopicName, topic.PartitionId, topic.ErrorCode, topic.Offset + 1, topic.Timestamp);
+                                sendTask.MessagesSent[i].Tcs.SetResult(response);
+                            }
                         }
                     }
                 }

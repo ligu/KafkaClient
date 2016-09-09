@@ -277,17 +277,17 @@ namespace kafka_tests.Unit
             int count = 0;
             //with max buffer set below the batch size, this should cause the producer to block until batch delay time.
             var routerProxy = new FakeBrokerRouter();
-            routerProxy.BrokerConn0.ProduceResponseFunction = async () =>
-            {
+            routerProxy.BrokerConn0.ProduceResponseFunction = async () => {
                 await Task.Delay(200);
                 return new ProduceResponse();
             };
-            using (var producer = new Producer(routerProxy.Create(), maximumMessageBuffer: 1) { BatchSize = 10, BatchDelayTime = TimeSpan.FromMilliseconds(500) })
+            using (var producer = new Producer(routerProxy.Create(), maximumMessageBuffer: 1) {
+                BatchSize = 10,
+                BatchDelayTime = TimeSpan.FromMilliseconds(500)
+            })
             {
-                var senderTask = Task.Factory.StartNew(async () =>
-                {
-                    for (int i = 0; i < 3; i++)
-                    {
+                var senderTask = Task.Factory.StartNew(async () => {
+                    for (int i = 0; i < 3; i++) {
                         await producer.SendMessageAsync(FakeBrokerRouter.TestTopic, new Message(i.ToString()));
                         Console.WriteLine("Await: {0}", producer.BufferCount);
                         Interlocked.Increment(ref count);

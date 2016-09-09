@@ -104,23 +104,19 @@ namespace KafkaNet
 
         private async Task<MetadataResponse> GetMetadataResponse(IKafkaConnection[] connections, MetadataRequest request)
         {
-            //try each default broker until we find one that is available
-            foreach (var conn in connections)
-            {
-                try
-                {
+            // try each default broker until we find one that is available
+            foreach (var conn in connections) {
+                try {
                     var response = await conn.SendAsync(request).ConfigureAwait(false);
                     if (response?.Topics.Count > 0) {
                         return response;
                     }
-                }
-                catch (Exception ex)
-                {
+                } catch (Exception ex) {
                     _log.WarnFormat("Failed to contact Kafka server={0}. Trying next default server. Exception={1}", conn.Endpoint, ex);
                 }
             }
 
-            throw new KafkaRequestException(request.ApiKey, ErrorResponseCode.NoError, $"Unable to query for metadata from any of the provided Kafka servers. Server list: {string.Join(", ", connections.Select(x => x.ToString()))}");
+            throw new KafkaRequestException(request.ApiKey, ErrorResponseCode.NoError, $"Unable to query for metadata from any of the provided Kafka servers. Server list: {string.Join(", ", connections.Select(x => x?.Endpoint?.ToString()))}");
         }
 
         private IEnumerable<MetadataValidationResult> ValidateResponse(MetadataResponse metadata)
