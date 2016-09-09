@@ -1,5 +1,4 @@
 ﻿using KafkaNet.Protocol;
-using System.Collections.Generic;
 
 namespace kafka_tests
 {
@@ -7,61 +6,22 @@ namespace kafka_tests
     {
         public static ProduceRequest CreateProduceRequest(string topic, string message, string key = null)
         {
-            return new ProduceRequest
-                {
-                    Payload = new List<Payload>(new[]
-                        {
-                            new Payload
-                                {
-                                    Topic = topic,
-                                    Messages = new List<Message>(new[] {new Message(message)})
-                                }
-                        })
-                };
+            return new ProduceRequest(new Payload(topic, 0, new[] {new Message(message, key)}));
         }
 
         public static FetchRequest CreateFetchRequest(string topic, int offset, int partitionId = 0)
         {
-            return new FetchRequest
-            {
-                CorrelationId = 1,
-                Fetches = new List<Fetch>(new[]
-                        {
-                            new Fetch
-                                {
-                                    TopicName = topic,
-                                    PartitionId = partitionId,
-                                    Offset = offset
-                                }
-                        })
-            };
+            return new FetchRequest(new Fetch(topic, partitionId, offset));
         }
 
         public static OffsetRequest CreateOffsetRequest(string topic, int partitionId = 0, int maxOffsets = 1, int time = -1)
         {
-            return new OffsetRequest
-            {
-                CorrelationId = 1,
-                Offsets = new List<Offset>(new[]
-                        {
-                            new Offset
-                                {
-                                    Topic = topic,
-                                    PartitionId = partitionId,
-                                    MaxOffsets = maxOffsets,
-                                    Time = time
-                                }
-                        })
-            };
+            return new OffsetRequest(new Offset(topic, partitionId, time, maxOffsets));
         }
 
         public static OffsetFetchRequest CreateOffsetFetchRequest(string topic, int partitionId = 0)
         {
-            return new OffsetFetchRequest
-            {
-                ConsumerGroup = "DefaultGroup",
-                Topics = new List<Topic>{ new Topic(topic, partitionId) }
-            };
+            return new OffsetFetchRequest("DefaultGroup", new Topic(topic, partitionId));
         }
     }
 }

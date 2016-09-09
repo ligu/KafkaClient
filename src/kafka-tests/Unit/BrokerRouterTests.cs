@@ -77,7 +77,7 @@ namespace kafka_tests.Unit
                 KafkaConnectionFactory = _mockKafkaConnectionFactory.Object
             });
 
-            _mockKafkaConnection1.Setup(x => x.SendAsync(It.IsAny<IKafkaRequest<MetadataResponse>>()))
+            _mockKafkaConnection1.Setup(x => x.SendAsync(It.IsAny<IKafkaRequest<MetadataResponse>>(), It.IsAny<IRequestContext>()))
                       .Returns(() => Task.Run(async () => await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers()));
             await router.RefreshMissingTopicMetadata(TestTopic);
             var topics = router.GetTopicMetadataFromLocalCache(TestTopic);
@@ -139,7 +139,7 @@ namespace kafka_tests.Unit
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
-        public async Task BrokerRouteShouldThrowNoLeaderElectedForPartition()
+        public void BrokerRouteShouldThrowNoLeaderElectedForPartition()
         {
             var routerProxy = new BrokerRouterProxy(_kernel);
             routerProxy.MetadataResponse = BrokerRouterProxy.CreateMetadataResponseWithNotEndToElectLeader;
@@ -275,7 +275,7 @@ namespace kafka_tests.Unit
         public async Task SelectExactPartitionShouldThrowWhenBrokerCollectionIsEmpty()
         {
             var metadataResponse = await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers();
-            metadataResponse = new MetadataResponse(metadataResponse.CorrelationId, topics: metadataResponse.Topics);
+            metadataResponse = new MetadataResponse(topics: metadataResponse.Topics);
 
             var routerProxy = new BrokerRouterProxy(_kernel);
 #pragma warning disable 1998
@@ -329,7 +329,7 @@ namespace kafka_tests.Unit
         public async Task SelectPartitionShouldThrowWhenBrokerCollectionIsEmpty()
         {
             var metadataResponse = await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers();
-            metadataResponse = new MetadataResponse(metadataResponse.CorrelationId, topics: metadataResponse.Topics);
+            metadataResponse = new MetadataResponse(topics: metadataResponse.Topics);
 
             var routerProxy = new BrokerRouterProxy(_kernel);
             var router = routerProxy.BrokerConn0;

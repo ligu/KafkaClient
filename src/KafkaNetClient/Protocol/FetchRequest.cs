@@ -4,7 +4,7 @@ using System.Collections.Immutable;
 
 namespace KafkaNet.Protocol
 {
-    public class FetchRequest : KafkaRequest
+    public class FetchRequest : KafkaRequest, IKafkaRequest<FetchResponse>
     {
         public FetchRequest(Fetch fetch, TimeSpan? maxWaitTime = null, int minBytes = DefaultMinBlockingByteBufferSize) 
             : this (new []{ fetch }, maxWaitTime, minBytes)

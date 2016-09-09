@@ -129,7 +129,7 @@ namespace kafka_tests.Integration
             {
                 var conn = router.SelectBrokerRouteFromLocalCache(IntegrationConfig.IntegrationTopic);
 
-                var request = new GroupCoordinatorRequest { ConsumerGroup = IntegrationConfig.IntegrationConsumer };
+                var request = new GroupCoordinatorRequest(IntegrationConfig.IntegrationConsumer);
 
                 var response = conn.Connection.SendAsync(request).Result;
 
@@ -140,34 +140,13 @@ namespace kafka_tests.Integration
 
         private OffsetFetchRequest CreateOffsetFetchRequest(string consumerGroup, int partitionId)
         {
-            var request = new OffsetFetchRequest
-            {
-                ConsumerGroup = consumerGroup,
-                Topics = new List<Topic> {
-                        new Topic(IntegrationConfig.IntegrationTopic, partitionId)
-                    }
-            };
-
+            var request = new OffsetFetchRequest(consumerGroup, new Topic(IntegrationConfig.IntegrationTopic, partitionId));
             return request;
         }
 
         private OffsetCommitRequest CreateOffsetCommitRequest(string consumerGroup, int partitionId, long offset, string metadata = null)
         {
-            var commit = new OffsetCommitRequest
-            {
-                ConsumerGroup = consumerGroup,
-                OffsetCommits = new List<OffsetCommit>
-                            {
-                                new OffsetCommit
-                                    {
-                                        PartitionId = partitionId,
-                                        Topic = IntegrationConfig.IntegrationTopic,
-                                        Offset = offset,
-                                        Metadata = metadata
-                                    }
-                            }
-            };
-
+            var commit = new OffsetCommitRequest(consumerGroup, new []{ new OffsetCommit(IntegrationConfig.IntegrationTopic, partitionId, offset, metadata) });
             return commit;
         }
     }

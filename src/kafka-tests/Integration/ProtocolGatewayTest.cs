@@ -29,22 +29,9 @@ namespace kafka_tests.Integration
             var offset = response.FirstOrDefault().Offset;
 
             ProtocolGateway protocolGateway = new ProtocolGateway(IntegrationConfig.IntegrationUri);
-            var fetch = new Fetch
-            {
-                TopicName = IntegrationConfig.IntegrationTopic,
-                PartitionId = partitionId,
-                Offset = offset,
-                MaxBytes = 32000,
-            };
+            var fetch = new Fetch(IntegrationConfig.IntegrationTopic, partitionId, offset, 32000);
 
-            var fetches = new List<Fetch> { fetch };
-
-            var fetchRequest = new FetchRequest
-            {
-                MaxWaitTime = 1000,
-                MinBytes = 10,
-                Fetches = fetches
-            };
+            var fetchRequest = new FetchRequest(fetch, minBytes: 10);
 
             var r = await protocolGateway.SendProtocolRequest(fetchRequest, IntegrationConfig.IntegrationTopic, partitionId);
             //  var r1 = await protocolGateway.SendProtocolRequest(fetchRequest, IntegrationConfig.IntegrationTopic, partitionId);

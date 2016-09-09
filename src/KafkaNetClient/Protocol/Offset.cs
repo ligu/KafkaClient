@@ -4,7 +4,7 @@ namespace KafkaNet.Protocol
 {
     public class Offset : Topic, IEquatable<Offset>
     {
-        public Offset(string topicName, int partitionId, int time = -1, int maxOffsets = 1) : base(topicName, partitionId)
+        public Offset(string topicName, int partitionId, long time = -1, int maxOffsets = 1) : base(topicName, partitionId)
         {
             Time = time;
             MaxOffsets = maxOffsets;

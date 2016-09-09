@@ -35,13 +35,7 @@ namespace kafka_tests.Unit
         [Test]
         public void ShouldSerializeOffsetOutOfRangeException()
         {
-            var expected = new FetchOutOfRangeException(
-                new Fetch {
-                    MaxBytes = 1,
-                    TopicName = "aa",
-                    Offset = 2,
-                    PartitionId = 3
-                }, ApiKeyRequestType.Fetch, ErrorResponseCode.OffsetOutOfRange);
+            var expected = new FetchOutOfRangeException(new Fetch ("aa", 3, 2, 1), ApiKeyRequestType.Fetch, ErrorResponseCode.OffsetOutOfRange);
             var actual = SerializeDeserialize(expected);
 
             Assert.AreEqual(expected.Fetch.MaxBytes, actual.Fetch.MaxBytes);

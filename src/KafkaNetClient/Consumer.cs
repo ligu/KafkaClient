@@ -77,7 +77,7 @@ namespace KafkaNet
         /// <remarks>Will only return data if the consumer is actively being consumed.</remarks>
         public List<OffsetPosition> GetOffsetPosition()
         {
-            return _partitionOffsetIndex.Select(x => new OffsetPosition { PartitionId = x.Key, Offset = x.Value }).ToList();
+            return _partitionOffsetIndex.Select(x => new OffsetPosition(x.Key, x.Value)).ToList();
         }
 
         private void EnsurePartitionPollingThreads()
@@ -145,22 +145,8 @@ namespace KafkaNet
                             });
 
                             //build a fetch request for partition at offset
-                            var fetch = new Fetch
-                            {
-                                TopicName = topic,
-                                PartitionId = partitionId,
-                                Offset = offset,
-                                MaxBytes = bufferSizeHighWatermark,
-                            };
-
-                            var fetches = new List<Fetch> { fetch };
-
-                            var fetchRequest = new FetchRequest
-                            {
-                                MaxWaitTime = (int)Math.Min(int.MaxValue, _options.MaxWaitTimeForMinimumBytes.TotalMilliseconds),
-                                MinBytes = _options.MinimumBytes,
-                                Fetches = fetches
-                            };
+                            var fetch = new Fetch(topic, partitionId, offset, bufferSizeHighWatermark);
+                            var fetchRequest = new FetchRequest(fetch, _options.MaxWaitTimeForMinimumBytes, _options.MinimumBytes);
 
                             //make request and post to queue
                             var route = _options.Router.SelectBrokerRouteFromLocalCache(topic, partitionId);
@@ -190,7 +176,7 @@ namespace KafkaNet
                                         if (_disposeToken.IsCancellationRequested) return;
                                     }
 
-                                    var nextOffset = fetchTopicResponse.Messages.Last().Meta.Offset + 1;
+                                    var nextOffset = fetchTopicResponse.Messages.Last().Offset + 1;
                                     _partitionOffsetIndex.AddOrUpdate(partitionId, i => nextOffset, (i, l) => nextOffset);
 
                                     // sleep is not needed if responses were received

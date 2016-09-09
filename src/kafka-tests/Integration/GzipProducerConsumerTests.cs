@@ -31,10 +31,7 @@ namespace kafka_tests.Integration
             IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("start EnsureGzipCompressedMessageCanSend"));
             using (var conn = GetKafkaConnection())
             {
-                conn.SendAsync(new MetadataRequest
-                {
-                    Topics = new List<string>(new[] { IntegrationConfig.IntegrationCompressionTopic })
-                })
+                conn.SendAsync(new MetadataRequest(IntegrationConfig.IntegrationCompressionTopic))
                     .Wait(TimeSpan.FromSeconds(10));
             }
 
@@ -45,26 +42,11 @@ namespace kafka_tests.Integration
                 IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("end RefreshMissingTopicMetadata"));
                 var conn = router.SelectBrokerRouteFromLocalCache(IntegrationConfig.IntegrationCompressionTopic, 0);
 
-                var request = new ProduceRequest
-                {
-                    Acks = 1,
-                    TimeoutMS = 1000,
-                    Payload = new List<Payload>
-                        {
-                            new Payload
-                            {
-                                Codec = MessageCodec.CodecGzip,
-                                Topic = IntegrationConfig.IntegrationCompressionTopic,
-                                Partition = 0,
-                                Messages = new List<Message>
-                                {
+                var request = new ProduceRequest(new Payload(IntegrationConfig.IntegrationCompressionTopic, 0, new [] {
                                     new Message("0", "1"),
                                     new Message("1", "1"),
                                     new Message("2", "1")
-                                }
-                            }
-                        }
-                };
+                                }, MessageCodec.CodecGzip));
                 IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("start SendAsync"));
                 var response = conn.Connection.SendAsync(request).Result;
                 IntegrationConfig.NoDebugLog.InfoFormat("end SendAsync");

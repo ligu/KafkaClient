@@ -532,7 +532,7 @@ namespace kafka_tests.Integration
                     payload.Add(Convert.ToByte(1));
                 }
 
-                messages.Add(new Message() { Value = payload.ToArray() });
+                messages.Add(new Message(payload.ToArray(), 0));
             }
 
             return messages;

@@ -12,7 +12,7 @@ namespace kafka_tests.Fakes
     {
         public Func<Task<ProduceResponse>> ProduceResponseFunction;
         public Func<Task<MetadataResponse>> MetadataResponseFunction;
-        public Func<Task<OffsetTopic>> OffsetResponseFunction;
+        public Func<Task<OffsetResponse>> OffsetResponseFunction;
         public Func<Task<FetchResponse>> FetchResponseFunction;
 
         public FakeKafkaConnection(Uri address)
@@ -27,19 +27,15 @@ namespace kafka_tests.Fakes
 
         public KafkaEndpoint Endpoint { get; private set; }
 
-        public bool ReadPolling
-        {
-            get { return true; }
-        }
+        public bool ReadPolling => true;
 
-        public Task SendAsync(KafkaDataPayload payload)
+        public Task SendAsync(KafkaDataPayload payload, CancellationToken token)
         {
             throw new NotImplementedException();
         }
 
         /// <exception cref="Exception">A delegate callback throws an exception.</exception>
-        /// <exception cref="NullReferenceException">The address of <paramref name="location" /> is a null pointer. </exception>
-        public async Task<T> SendAsync<T>(IKafkaRequest<T> request) where T : IKafkaResponse
+        public async Task<T> SendAsync<T>(IKafkaRequest<T> request, IRequestContext context = null) where T : class, IKafkaResponse
         {
             T result;
 
@@ -53,7 +49,7 @@ namespace kafka_tests.Fakes
                 Interlocked.Increment(ref MetadataRequestCallCount);
                 result = (T)(object)await MetadataResponseFunction();
             }
-            else if (typeof(T) == typeof(OffsetTopic))
+            else if (typeof(T) == typeof(OffsetResponse))
             {
                 Interlocked.Increment(ref OffsetRequestCallCount);
                 result = (T)(object)await OffsetResponseFunction();
@@ -65,7 +61,7 @@ namespace kafka_tests.Fakes
             }
             else
             {
-                throw new Exception("no found implementation");
+                throw new NotImplementedException(typeof(T).FullName);
             }
             return result;
         }

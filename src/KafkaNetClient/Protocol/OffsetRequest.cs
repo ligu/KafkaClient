@@ -6,8 +6,13 @@ namespace KafkaNet.Protocol
     /// <summary>
     /// A funky Protocol for requesting the starting offset of each segment for the requested partition
     /// </summary>
-    public class OffsetRequest : KafkaRequest
+    public class OffsetRequest : KafkaRequest, IKafkaRequest<OffsetResponse>
     {
+        public OffsetRequest(params Offset[] offsets)
+            : this((IEnumerable<Offset>)offsets)
+        {
+        }
+
         public OffsetRequest(IEnumerable<Offset> offsets) 
             : base(ApiKeyRequestType.Offset)
         {

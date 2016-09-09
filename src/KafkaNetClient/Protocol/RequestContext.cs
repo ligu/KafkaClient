@@ -2,7 +2,7 @@ namespace KafkaNet.Protocol
 {
     public class RequestContext : IRequestContext
     {
-        protected RequestContext(int? correlationId = null, short? version = null, string clientId = null)
+        public RequestContext(int? correlationId = null, short? version = null, string clientId = null)
         {
             CorrelationId = correlationId.GetValueOrDefault(1);
             ApiVersion = version.GetValueOrDefault(0);

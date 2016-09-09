@@ -76,7 +76,7 @@ namespace kafka_tests.Unit
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
-        public async Task ShouldDisposeWithoutExceptionEvenWhileCallingSendAsync()
+        public void ShouldDisposeWithoutExceptionEvenWhileCallingSendAsync()
         {
             using (var socket = new KafkaTcpSocket(_log, _kafkaEndpoint, _maxRetry))
             using (var conn = new KafkaConnection(socket, log: _log))

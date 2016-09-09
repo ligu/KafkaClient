@@ -41,7 +41,7 @@ namespace KafkaNet
         /// <returns>MetadataResponse validated to be complete.</returns>
         public Task<MetadataResponse> Get(IKafkaConnection[] connections, IEnumerable<string> topics)
         {
-            var request = new MetadataRequest { Topics = topics.ToList() };
+            var request = new MetadataRequest(topics);
             if (request.Topics.Count <= 0) return null;
             return Get(connections, request);
         }

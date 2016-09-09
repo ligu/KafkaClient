@@ -6,6 +6,11 @@ namespace KafkaNet.Protocol
 {
     public class OffsetResponse : IKafkaResponse
     {
+        public OffsetResponse(OffsetTopic topic)
+            : this(new[] {topic})
+        {
+        }
+
         public OffsetResponse(IEnumerable<OffsetTopic> topics = null)
         {
             Topics = topics != null ? ImmutableList<OffsetTopic>.Empty.AddRange(topics) : ImmutableList<OffsetTopic>.Empty;

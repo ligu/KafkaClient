@@ -38,7 +38,7 @@ namespace kafka_tests.Unit
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
-        public async Task ShouldSendAsyncToAllConnectionsEvenWhenExceptionOccursOnOne()
+        public void ShouldSendAsyncToAllConnectionsEvenWhenExceptionOccursOnOne()
         {
             var routerProxy = new FakeBrokerRouter();
             routerProxy.BrokerConn1.ProduceResponseFunction = () => { throw new KafkaRequestException("some exception"); };
@@ -66,7 +66,7 @@ namespace kafka_tests.Unit
             routerProxy.BrokerConn0.ProduceResponseFunction = async () =>
             {
                 await semaphore.WaitAsync();
-                return new ProduceResponse(0);
+                return new ProduceResponse();
             };
 
             var router = routerProxy.Create();
@@ -100,7 +100,7 @@ namespace kafka_tests.Unit
             var semaphore = new SemaphoreSlim(0);
             var routerProxy = new FakeBrokerRouter();
             //block the second call returning from send message async
-            routerProxy.BrokerConn0.ProduceResponseFunction = async () => { await semaphore.WaitAsync(); return new ProduceResponse(0); };
+            routerProxy.BrokerConn0.ProduceResponseFunction = async () => { await semaphore.WaitAsync(); return new ProduceResponse(); };
 
             var router = routerProxy.Create();
             using (var producer = new Producer(router, maximumAsyncRequests: 1) { BatchSize = 1 })
@@ -167,8 +167,8 @@ namespace kafka_tests.Unit
             {
                 var calls = new[]
                 {
-                    producer.SendMessageAsync(FakeBrokerRouter.TestTopic, new[] {new Message()}),
-                    producer.SendMessageAsync(FakeBrokerRouter.TestTopic, new[] {new Message()})
+                    producer.SendMessageAsync(FakeBrokerRouter.TestTopic, new Message("1")),
+                    producer.SendMessageAsync(FakeBrokerRouter.TestTopic, new Message("2"))
                 };
 
                 await Task.WhenAll(calls);
@@ -187,10 +187,10 @@ namespace kafka_tests.Unit
             {
                 var calls = new[]
                 {
-                    producer.SendMessageAsync(FakeBrokerRouter.TestTopic, new[] {new Message()}),
-                    producer.SendMessageAsync(FakeBrokerRouter.TestTopic, new[] {new Message()}),
-                    producer.SendMessageAsync(FakeBrokerRouter.TestTopic, new[] {new Message()}),
-                    producer.SendMessageAsync(FakeBrokerRouter.TestTopic, new[] {new Message()})
+                    producer.SendMessageAsync(FakeBrokerRouter.TestTopic, new Message("1")),
+                    producer.SendMessageAsync(FakeBrokerRouter.TestTopic, new Message("2")),
+                    producer.SendMessageAsync(FakeBrokerRouter.TestTopic, new Message("3")),
+                    producer.SendMessageAsync(FakeBrokerRouter.TestTopic, new Message("4"))
                 };
 
                 await Task.WhenAll(calls);
@@ -212,8 +212,8 @@ namespace kafka_tests.Unit
             {
                 var calls = new[]
                 {
-                    producer.SendMessageAsync(FakeBrokerRouter.TestTopic, new[] {new Message(), new Message()}, acks:ack1, timeout: TimeSpan.FromMilliseconds(time1)),
-                    producer.SendMessageAsync(FakeBrokerRouter.TestTopic, new[] {new Message(), new Message()}, acks:ack2, timeout: TimeSpan.FromMilliseconds(time2))
+                    producer.SendMessageAsync(FakeBrokerRouter.TestTopic, new[] {new Message("1"), new Message("2")}, acks:ack1, timeout: TimeSpan.FromMilliseconds(time1)),
+                    producer.SendMessageAsync(FakeBrokerRouter.TestTopic, new[] {new Message("1"), new Message("2")}, acks:ack2, timeout: TimeSpan.FromMilliseconds(time2))
                 };
 
                 await Task.WhenAll(calls);
@@ -235,8 +235,8 @@ namespace kafka_tests.Unit
             {
                 var calls = new[]
                 {
-                    producer.SendMessageAsync(FakeBrokerRouter.TestTopic, new[] {new Message(), new Message()}, codec: codec1),
-                    producer.SendMessageAsync(FakeBrokerRouter.TestTopic, new[] {new Message(), new Message()}, codec: codec2)
+                    producer.SendMessageAsync(FakeBrokerRouter.TestTopic, new[] {new Message("1"), new Message("2")}, codec: codec1),
+                    producer.SendMessageAsync(FakeBrokerRouter.TestTopic, new[] {new Message("1"), new Message("2")}, codec: codec2)
                 };
 
                 await Task.WhenAll(calls);
@@ -260,7 +260,7 @@ namespace kafka_tests.Unit
                 {
                     for (int i = 0; i < numberOfTime; i++)
                     {
-                        producer.SendMessageAsync(FakeBrokerRouter.TestTopic, new[] { new Message(i.ToString()) });
+                        producer.SendMessageAsync(FakeBrokerRouter.TestTopic, new Message(i.ToString()));
                     }
                 });
                 await senderTask;
@@ -280,7 +280,7 @@ namespace kafka_tests.Unit
             routerProxy.BrokerConn0.ProduceResponseFunction = async () =>
             {
                 await Task.Delay(200);
-                return new ProduceResponse(0);
+                return new ProduceResponse();
             };
             using (var producer = new Producer(routerProxy.Create(), maximumMessageBuffer: 1) { BatchSize = 10, BatchDelayTime = TimeSpan.FromMilliseconds(500) })
             {
@@ -288,7 +288,7 @@ namespace kafka_tests.Unit
                 {
                     for (int i = 0; i < 3; i++)
                     {
-                        await producer.SendMessageAsync(FakeBrokerRouter.TestTopic, new[] { new Message(i.ToString()) });
+                        await producer.SendMessageAsync(FakeBrokerRouter.TestTopic, new Message(i.ToString()));
                         Console.WriteLine("Await: {0}", producer.BufferCount);
                         Interlocked.Increment(ref count);
                     }
@@ -315,15 +315,15 @@ namespace kafka_tests.Unit
             var routerProxy = new FakeBrokerRouter();
             var semaphore = new SemaphoreSlim(0);
 #pragma warning disable 1998
-            routerProxy.BrokerConn0.ProduceResponseFunction = async () => { semaphore.Wait(); return new ProduceResponse(0); };
-            routerProxy.BrokerConn1.ProduceResponseFunction = async () => { semaphore.Wait(); return new ProduceResponse(0); };
+            routerProxy.BrokerConn0.ProduceResponseFunction = async () => { semaphore.Wait(); return new ProduceResponse(); };
+            routerProxy.BrokerConn1.ProduceResponseFunction = async () => { semaphore.Wait(); return new ProduceResponse(); };
 #pragma warning restore 1998
 
             var producer = new Producer(routerProxy.Create(), maximumMessageBuffer: 5, maximumAsyncRequests: 1) { BatchSize = 1, BatchDelayTime = TimeSpan.FromMilliseconds(500) };
             using (producer)
             {
                 var sendTasks = Enumerable.Range(0, 5)
-                    .Select(x => producer.SendMessageAsync(FakeBrokerRouter.TestTopic, new[] { new Message(x.ToString()) }))
+                    .Select(x => producer.SendMessageAsync(FakeBrokerRouter.TestTopic, new Message(x.ToString())))
                     .ToList();
 
                 var wait = TaskTest.WaitFor(() => producer.AsyncCount > 0);
@@ -345,7 +345,7 @@ namespace kafka_tests.Unit
             var router = Substitute.For<IBrokerRouter>();
             var producer = new Producer(router);
             using (producer) { }
-            await producer.SendMessageAsync("Test", new[] { new Message() });
+            await producer.SendMessageAsync("Test", new Message("1"));
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
@@ -356,7 +356,7 @@ namespace kafka_tests.Unit
             using (var producer = new Producer(router))
             {
                 producer.Stop(false);
-                await producer.SendMessageAsync("Test", new[] { new Message() });
+                await producer.SendMessageAsync("Test", new Message("1"));
             }
         }
 

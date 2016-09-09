@@ -19,9 +19,9 @@ namespace kafka_tests.Unit
         {
             var testMessage = new Message(value: "kafka test message.", key: "test");
 
-            var encoded = Message.EncodeMessage(testMessage);
+            var encoded = KafkaEncoder.EncodeMessage(testMessage);
             encoded[0] += 1;
-            var result = Message.DecodeMessage(0, encoded).First();
+            var result = KafkaEncoder.DecodeMessage(0, encoded).First();
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
@@ -33,8 +33,8 @@ namespace kafka_tests.Unit
         {
             var testMessage = new Message(key: key, value: value);
 
-            var encoded = Message.EncodeMessage(testMessage);
-            var result = Message.DecodeMessage(0, encoded).First();
+            var encoded = KafkaEncoder.EncodeMessage(testMessage);
+            var result = KafkaEncoder.DecodeMessage(0, encoded).First();
 
             Assert.That(testMessage.Key, Is.EqualTo(result.Key));
             Assert.That(testMessage.Value, Is.EqualTo(result.Value));
@@ -58,7 +58,7 @@ namespace kafka_tests.Unit
                     new Message("2", "1")
                 };
 
-            var result = Message.EncodeMessageSet(messages);
+            var result = KafkaEncoder.EncodeMessageSet(messages);
 
             Assert.That(expected, Is.EqualTo(result));
         }
@@ -67,7 +67,7 @@ namespace kafka_tests.Unit
         public void DecodeMessageSetShouldHandleResponseWithMaxBufferSizeHit()
         {
             //This message set has a truncated message bytes at the end of it
-            var result = Message.DecodeMessageSet(MessageHelper.FetchResponseMaxBytesOverflow).ToList();
+            var result = KafkaEncoder.DecodeMessageSet(MessageHelper.FetchResponseMaxBytesOverflow).ToList();
 
             var message = Encoding.UTF8.GetString(result.First().Value);
 
@@ -90,7 +90,7 @@ namespace kafka_tests.Unit
             var payloadBytes = memoryStream.ToArray();
 
             // act/assert
-            Assert.Throws<BufferUnderRunException>(() => Message.DecodeMessageSet(payloadBytes).ToList());
+            Assert.Throws<BufferUnderRunException>(() => KafkaEncoder.DecodeMessageSet(payloadBytes).ToList());
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
@@ -101,7 +101,7 @@ namespace kafka_tests.Unit
             var payload = MessageHelper.CreateMessage(0, new Byte[] { 0 }, expectedPayloadBytes);
 
             // act/assert
-            var messages = Message.DecodeMessageSet(payload).ToList();
+            var messages = KafkaEncoder.DecodeMessageSet(payload).ToList();
             var actualPayload = messages.First().Value;
 
             // assert

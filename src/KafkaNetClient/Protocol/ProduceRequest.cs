@@ -4,8 +4,13 @@ using System.Collections.Immutable;
 
 namespace KafkaNet.Protocol
 {
-    public class ProduceRequest : KafkaRequest
+    public class ProduceRequest : KafkaRequest, IKafkaRequest<ProduceResponse>
     {
+        public ProduceRequest(Payload payload, TimeSpan? timeout = null, short acks = 1)
+            : this(new [] { payload }, timeout, acks)
+        {
+        }
+
         public ProduceRequest(IEnumerable<Payload> payload, TimeSpan? timeout = null, short acks = 1) 
             : base(ApiKeyRequestType.Produce, acks != 0)
         {

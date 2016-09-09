@@ -35,16 +35,7 @@ namespace KafkaNet
                 .Select(p =>
                     {
                         var route = _brokerRouter.SelectBrokerRouteFromLocalCache(topic, p.Key);
-                        var request = new OffsetRequest {
-                                            Offsets = new List<Offset> {
-                                                    new Offset {
-                                                        Topic = topic,
-                                                        PartitionId = p.Key,
-                                                        MaxOffsets = maxOffsets,
-                                                        Time = time
-                                                    }
-                                                }
-                                        };
+                        var request = new OffsetRequest(new Offset(topic, p.Key, time, maxOffsets));
 
                         return route.Connection.SendAsync(request);
                     }).ToArray();

@@ -74,31 +74,18 @@ namespace kafka_tests.Unit
         {
             var clientId = "ProduceApiRequest";
 
-            var request = new ProduceRequest {
-                Acks = acks,
-                ClientId = clientId,
-                CorrelationId = clientId.GetHashCode(),
-                TimeoutMS = timeoutMilliseconds,
-                Payload = new List<Payload>(),
-                ApiVersion = version
-            };
-
+            var request = new ProduceRequest(new List<Payload>(), TimeSpan.FromMilliseconds(timeoutMilliseconds), acks);
             for (var t = 0; t < topicsPerRequest; t++) {
-                request.Payload.Add(
-                    new Payload {
-                        Topic = topic + t,
-                        Partition = t % totalPartitions,
-                        Codec = MessageCodec.CodecNone,
-                        Messages = GenerateMessages(messagesPerSet, (byte) (version >= 2 ? 1 : 0))
-                    });
+                request.Payload.Add(new Payload(topic + t, t % totalPartitions, GenerateMessages(messagesPerSet, (byte) (version >= 2 ? 1 : 0))));
             }
 
-            var data = request.Encode();
+            var context = new RequestContext(clientId.GetHashCode(), version, clientId);
+            var data = KafkaEncoder.EncodeRequestBytes(context, request);
 
-            data.Buffer.AssertProtocol(
+            data.AssertProtocol(
                 reader => {
-                    reader.AssertRequestHeader(request);
-                    reader.AssertProduceRequest(request);
+                    reader.AssertRequestHeader(context, request);
+                    reader.AssertProduceRequest(context, request);
                 });
         }
 
@@ -161,13 +148,13 @@ namespace kafka_tests.Unit
                 Buffer.BlockCopy(stream.GetBuffer(), 0, data, 0, data.Length);
             }
 
-            var request = new ProduceRequest { ApiVersion = version };
-            var responses = request.Decode(data); // doesn't include the size in the decode -- the framework deals with it, I'd assume
+            var context = new RequestContext(clientId.GetHashCode(), version, clientId);
+            var response = KafkaEncoder.Decode<ProduceResponse>(context, data); // doesn't include the size in the decode
             data.PrefixWithInt32Length().AssertProtocol(
                 reader =>
                 {
-                    reader.AssertResponseHeader(correlationId);
-                    reader.AssertProduceResponse(version, throttleTime, responses);
+                    reader.AssertResponseHeader(context);
+                    reader.AssertProduceResponse(context, response);
                 });
         }
 
@@ -205,29 +192,19 @@ namespace kafka_tests.Unit
             var randomizer = new Randomizer();
             var clientId = "FetchApiRequest";
 
-            var request = new FetchRequest {
-                ClientId = clientId,
-                CorrelationId = clientId.GetHashCode(),
-                Fetches = new List<Fetch>(),
-                ApiVersion = version
-            };
-
+            var fetches = new List<Fetch>();
             for (var t = 0; t < topicsPerRequest; t++) {
-                var payload = new Fetch {
-                    TopicName = topic + t,
-                    PartitionId = t % totalPartitions,
-                    Offset = randomizer.Next(0, int.MaxValue),
-                    MaxBytes = maxBytes
-                };
-                request.Fetches.Add(payload);
+                fetches.Add(new Fetch(topic + t, t % totalPartitions, randomizer.Next(0, int.MaxValue), maxBytes));
             }
+            var request = new FetchRequest(fetches, TimeSpan.FromMilliseconds(timeoutMilliseconds), minBytes);
 
-            var data = request.Encode();
+            var context = new RequestContext(clientId.GetHashCode(), version, clientId);
+            var data = KafkaEncoder.EncodeRequestBytes(context, request);
 
-            data.Buffer.AssertProtocol(
+            data.AssertProtocol(
                 reader => {
-                    reader.AssertRequestHeader(request);
-                    reader.AssertFetchRequest(request);
+                    reader.AssertRequestHeader(context, request);
+                    reader.AssertFetchRequest(context, request);
                 });
         }
 
@@ -280,7 +257,7 @@ namespace kafka_tests.Unit
                     writer.Write((short)errorCode);
                     writer.Write((long)randomizer.Next());
 
-                    var messageSet = Message.EncodeMessageSet(GenerateMessages(messagesPerSet, (byte) (version >= 2 ? 1 : 0)));
+                    var messageSet = KafkaEncoder.EncodeMessageSet(GenerateMessages(messagesPerSet, (byte) (version >= 2 ? 1 : 0)));
                     writer.Write(messageSet.Length);
                     writer.Write(messageSet);
                 }
@@ -288,13 +265,13 @@ namespace kafka_tests.Unit
                 Buffer.BlockCopy(stream.GetBuffer(), 0, data, 0, data.Length);
             }
 
-            var request = new FetchRequest { ApiVersion = version };
-            var response = request.Decode(data); // doesn't include the size in the decode -- the framework deals with it, I'd assume
+            var context = new RequestContext(clientId.GetHashCode(), version, clientId);
+            var response = KafkaEncoder.Decode<FetchResponse>(context, data); // doesn't include the size in the decode
             data.PrefixWithInt32Length().AssertProtocol(
                 reader =>
                 {
-                    reader.AssertResponseHeader(correlationId);
-                    reader.AssertFetchResponse(version, response);
+                    reader.AssertResponseHeader(context);
+                    reader.AssertFetchResponse(context, response);
                 });
         }
 
@@ -322,29 +299,20 @@ namespace kafka_tests.Unit
         {
             var clientId = "OffsetsApiRequest";
 
-            var request = new OffsetRequest {
-                ClientId = clientId,
-                CorrelationId = clientId.GetHashCode(),
-                Offsets = new List<Offset>(),
-                ApiVersion = 0
-            };
-
+            var offsets = new List<Offset>();
             for (var t = 0; t < topicsPerRequest; t++) {
-                var payload = new Offset {
-                    Topic = topic + t,
-                    PartitionId = t % totalPartitions,
-                    Time = time,
-                    MaxOffsets = maxOffsets
-                };
-                request.Offsets.Add(payload);
+                var offset = new Offset(topic + t, t % totalPartitions, time, maxOffsets);
+                offsets.Add(offset);
             }
+            var request = new OffsetRequest(offsets);
 
-            var data = request.Encode();
+            var context = new RequestContext(clientId.GetHashCode(), 0, clientId);
+            var data = KafkaEncoder.EncodeRequestBytes(context, request);
 
-            data.Buffer.AssertProtocol(
+            data.AssertProtocol(
                 reader => {
-                    reader.AssertRequestHeader(request);
-                    reader.AssertOffsetRequest(request);
+                    reader.AssertRequestHeader(context, request);
+                    reader.AssertOffsetRequest(context, request);
                 });
         }
 
@@ -395,13 +363,13 @@ namespace kafka_tests.Unit
                 Buffer.BlockCopy(stream.GetBuffer(), 0, data, 0, data.Length);
             }
 
-            var request = new OffsetRequest { ApiVersion = 0 };
-            var response = request.Decode(data); // doesn't include the size in the decode -- the framework deals with it, I'd assume
+            var context = new RequestContext(clientId.GetHashCode(), 0, clientId);
+            var response = KafkaEncoder.Decode<OffsetResponse>(context, data); // doesn't include the size in the decode
             data.PrefixWithInt32Length().AssertProtocol(
                 reader =>
                 {
-                    reader.AssertResponseHeader(correlationId);
-                    reader.AssertOffsetResponse(response);
+                    reader.AssertResponseHeader(context);
+                    reader.AssertOffsetResponse(context, response);
                 });
         }
 
@@ -418,23 +386,19 @@ namespace kafka_tests.Unit
         {
             var clientId = "MetadataApiRequest";
 
-            var request = new MetadataRequest {
-                ClientId = clientId,
-                CorrelationId = clientId.GetHashCode(),
-                Topics = new List<string>(),
-                ApiVersion = 0
-            };
-
+            var topics = new List<string>();
             for (var t = 0; t < topicsPerRequest; t++) {
-                request.Topics.Add(topic + t);
+                topics.Add(topic + t);
             }
+            var request = new MetadataRequest(topics);
 
-            var data = request.Encode();
+            var context = new RequestContext(clientId.GetHashCode(), 0, clientId);
+            var data = KafkaEncoder.EncodeRequestBytes(context, request);
 
-            data.Buffer.AssertProtocol(
+            data.AssertProtocol(
                      reader => {
-                         reader.AssertRequestHeader(request);
-                         reader.AssertMetadataRequest(request);
+                         reader.AssertRequestHeader(context, request);
+                         reader.AssertMetadataRequest(context, request);
                      });
         }
 
@@ -511,13 +475,12 @@ namespace kafka_tests.Unit
                 Buffer.BlockCopy(stream.GetBuffer(), 0, data, 0, data.Length);
             }
 
-            var request = new MetadataRequest {ApiVersion = 0};
-            var response = request.Decode(data);
-                // doesn't include the size in the decode -- the framework deals with it, I'd assume
+            var context = new RequestContext(clientId.GetHashCode(), 0, clientId);
+            var response = KafkaEncoder.Decode<MetadataResponse>(context, data); // doesn't include the size in the decode
             data.PrefixWithInt32Length().AssertProtocol(
                      reader => {
-                         reader.AssertResponseHeader(correlationId);
-                         reader.AssertMetadataResponse(response);
+                         reader.AssertResponseHeader(context);
+                         reader.AssertMetadataResponse(context, response);
                      });
         }
 
@@ -553,37 +516,30 @@ namespace kafka_tests.Unit
             var clientId = "OffsetCommitApiRequest";
             var randomizer = new Randomizer();
 
-            var request = new OffsetCommitRequest {
-                ClientId = clientId,
-                CorrelationId = clientId.GetHashCode(),
-                ConsumerGroup = groupId,
-                OffsetCommits = new List<OffsetCommit>(),
-                ApiVersion = version,
-                GenerationId = generation,
-                MemberId = "member" + generation
-            };
-
-            if (retentionTime >= 0) {
-                request.OffsetRetention = TimeSpan.FromMilliseconds(retentionTime);
-            }
+            var offsetCommits = new List<OffsetCommit>();
             for (var t = 0; t < topicsPerRequest; t++) {
-                var payload = new OffsetCommit {
-                    Topic = topic + t,
-                    PartitionId = t % maxPartitions,
-                    Offset = randomizer.Next(0, int.MaxValue),
-                    Metadata = metadata
-                };
-                payload.TimeStamp = retentionTime;
-                request.OffsetCommits.Add(payload);
+                offsetCommits.Add(new OffsetCommit(
+                                      topic + t,
+                                      t%maxPartitions,
+                                      randomizer.Next(0, int.MaxValue),
+                                      metadata,
+                                      retentionTime));
             }
+            var request = new OffsetCommitRequest(
+                groupId,
+                offsetCommits,
+                "member" + generation,
+                generation,
+                retentionTime >= 0 ? (TimeSpan?) TimeSpan.FromMilliseconds(retentionTime) : null);
 
-            var data = request.Encode();
+            var context = new RequestContext(clientId.GetHashCode(), version, clientId);
+            var data = KafkaEncoder.EncodeRequestBytes(context, request);
 
-            data.Buffer.AssertProtocol(
+            data.AssertProtocol(
                      reader =>
                      {
-                         reader.AssertRequestHeader(request);
-                         reader.AssertOffsetCommitRequest(request);
+                         reader.AssertRequestHeader(context, request);
+                         reader.AssertOffsetCommitRequest(context, request);
                      });
         }
 
@@ -626,13 +582,12 @@ namespace kafka_tests.Unit
                 Buffer.BlockCopy(stream.GetBuffer(), 0, data, 0, data.Length);
             }
 
-            var request = new OffsetCommitRequest {ApiVersion = 0};
-            var response = request.Decode(data); 
-                // doesn't include the size in the decode -- the framework deals with it, I'd assume
+            var context = new RequestContext(clientId.GetHashCode(), 0, clientId);
+            var response = KafkaEncoder.Decode<OffsetCommitResponse>(context, data); // doesn't include the size in the decode
             data.PrefixWithInt32Length().AssertProtocol(
                      reader => {
-                         reader.AssertResponseHeader(correlationId);
-                         reader.AssertOffsetCommitResponse(response);
+                         reader.AssertResponseHeader(context);
+                         reader.AssertOffsetCommitResponse(context, response);
                      });
         }
 
@@ -653,25 +608,20 @@ namespace kafka_tests.Unit
         {
             var clientId = "OffsetFetchApiRequest";
 
-            var request = new OffsetFetchRequest {
-                ClientId = clientId,
-                CorrelationId = clientId.GetHashCode(),
-                ConsumerGroup = groupId,
-                Topics = new List<Topic>(),
-                ApiVersion = 0
-            };
-
+            var topics = new List<Topic>();
             for (var t = 0; t < topicsPerRequest; t++) {
-                request.Topics.Add(new Topic(topic + t, t % maxPartitions));
+                topics.Add(new Topic(topic + t, t % maxPartitions));
             }
+            var request = new OffsetFetchRequest(groupId, topics);
 
-            var data = request.Encode();
+            var context = new RequestContext(clientId.GetHashCode(), 0, clientId);
+            var data = KafkaEncoder.EncodeRequestBytes(context, request);
 
-            data.Buffer.AssertProtocol(
+            data.AssertProtocol(
                      reader =>
                      {
-                         reader.AssertRequestHeader(request);
-                         reader.AssertOffsetFetchRequest(request);
+                         reader.AssertRequestHeader(context, request);
+                         reader.AssertOffsetFetchRequest(context, request);
                      });
         }
 
@@ -726,13 +676,12 @@ namespace kafka_tests.Unit
                 Buffer.BlockCopy(stream.GetBuffer(), 0, data, 0, data.Length);
             }
 
-            var request = new OffsetFetchRequest {ApiVersion = 0};
-            var response = request.Decode(data); 
-                // doesn't include the size in the decode -- the framework deals with it, I'd assume
+            var context = new RequestContext(clientId.GetHashCode(), 0, clientId);
+            var response = KafkaEncoder.Decode<OffsetFetchResponse>(context, data); // doesn't include the size in the decode
             data.PrefixWithInt32Length().AssertProtocol(
                      reader => {
-                         reader.AssertResponseHeader(correlationId);
-                         reader.AssertOffsetFetchResponse(response);
+                         reader.AssertResponseHeader(context);
+                         reader.AssertOffsetFetchResponse(context, response);
                      });
         }
 
@@ -747,20 +696,16 @@ namespace kafka_tests.Unit
         {
             var clientId = "GroupCoordinatorApiRequest";
 
-            var request = new GroupCoordinatorRequest {
-                ClientId = clientId,
-                CorrelationId = clientId.GetHashCode(),
-                ConsumerGroup = groupId,
-                ApiVersion = 0
-            };
+            var request = new GroupCoordinatorRequest(groupId);
 
-            var data = request.Encode();
+            var context = new RequestContext(clientId.GetHashCode(), 0, clientId);
+            var data = KafkaEncoder.EncodeRequestBytes(context, request);
 
-            data.Buffer.AssertProtocol(
+            data.AssertProtocol(
                      reader =>
                      {
-                         reader.AssertRequestHeader(request);
-                         reader.AssertGroupCoordinatorRequest(request);
+                         reader.AssertRequestHeader(context, request);
+                         reader.AssertGroupCoordinatorRequest(context, request);
                      });
         }
 
@@ -799,13 +744,12 @@ namespace kafka_tests.Unit
                 Buffer.BlockCopy(stream.GetBuffer(), 0, data, 0, data.Length);
             }
 
-            var request = new GroupCoordinatorRequest {ApiVersion = 0};
-            var response = request.Decode(data); 
-                // doesn't include the size in the decode -- the framework deals with it, I'd assume
+            var context = new RequestContext(clientId.GetHashCode(), 0, clientId);
+            var response = KafkaEncoder.Decode<GroupCoordinatorResponse>(context, data); // doesn't include the size in the decode
             data.PrefixWithInt32Length().AssertProtocol(
                      reader => {
-                         reader.AssertResponseHeader(correlationId);
-                         reader.AssertGroupCoordinatorResponse(response);
+                         reader.AssertResponseHeader(context);
+                         reader.AssertGroupCoordinatorResponse(context, response);
                      });
         }
 
@@ -819,18 +763,14 @@ namespace kafka_tests.Unit
         {
             var clientId = "ApiVersionsApiRequest";
 
-            var request = new ApiVersionsRequest {
-                ClientId = clientId,
-                CorrelationId = clientId.GetHashCode(),
-                ApiVersion = 0
-            };
+            var request = new ApiVersionsRequest();
+            var context = new RequestContext(clientId.GetHashCode(), 0, clientId);
+            var data = KafkaEncoder.EncodeRequestBytes(context, request);
 
-            var data = request.Encode();
-
-            data.Buffer.AssertProtocol(
+            data.AssertProtocol(
                      reader =>
                      {
-                         reader.AssertRequestHeader(request);
+                         reader.AssertRequestHeader(context, request);
                      });
         }
 
@@ -873,13 +813,12 @@ namespace kafka_tests.Unit
                 Buffer.BlockCopy(stream.GetBuffer(), 0, data, 0, data.Length);
             }
 
-            var request = new ApiVersionsRequest {ApiVersion = 0};
-            var responses = request.Decode(data); 
-                // doesn't include the size in the decode -- the framework deals with it, I'd assume
+            var context = new RequestContext(clientId.GetHashCode(), 0, clientId);
+            var response = KafkaEncoder.Decode<ApiVersionsResponse>(context, data); // doesn't include the size in the decode
             data.PrefixWithInt32Length().AssertProtocol(
                      reader => {
-                         reader.AssertResponseHeader(correlationId);
-                         reader.AssertApiVersionsResponse(responses);
+                         reader.AssertResponseHeader(context);
+                         reader.AssertApiVersionsResponse(context, response);
                      });
         }
 
@@ -890,17 +829,14 @@ namespace kafka_tests.Unit
             var randomizer = new Randomizer();
             var messages = new List<Message>();
             for (var m = 0; m < count; m++) {
-                var message = new Message {
-                    MagicNumber = version,
-                    Timestamp = DateTime.UtcNow,
-                    Key = m > 0 ? new byte[8] : null,
-                    Value = new byte[8*(m + 1)]
-                };
-                if (message.Key != null) {
-                    randomizer.NextBytes(message.Key);
+                var key = m > 0 ? new byte[8] : null;
+                var value = new byte[8*(m + 1)];
+                if (key != null) {
+                    randomizer.NextBytes(key);
                 }
-                randomizer.NextBytes(message.Value);
-                messages.Add(message);
+                randomizer.NextBytes(value);
+
+                messages.Add(new Message(value, 0, version: version, key: key, timestamp: DateTime.UtcNow));
             }
             return messages;
         }

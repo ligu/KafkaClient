@@ -242,26 +242,13 @@ namespace KafkaNet
                 var sendTasks = new List<BrokerRouteSendBatch>();
                 foreach (var group in messageByRouter)
                 {
-                    var payload = new Payload
-                    {
-                        Codec = group.Key.Codec,
-                        Topic = group.Key.Topic,
-                        Partition = group.Key.Route.PartitionId,
-                        Messages = group.Select(x => x.TopicMessage.Message).ToList()
-                    };
-
-                    var request = new ProduceRequest
-                    {
-                        Acks = ackLevelBatch.Key.Acks,
-                        TimeoutMS = (int)ackLevelBatch.Key.Timeout.TotalMilliseconds,
-                        Payload = new List<Payload> { payload }
-                    };
+                    var payload = new Payload(group.Key.Topic, group.Key.Route.PartitionId, group.Select(x => x.TopicMessage.Message), group.Key.Codec);
+                    var request = new ProduceRequest(payload, ackLevelBatch.Key.Timeout, ackLevelBatch.Key.Acks);
 
                     await _semaphoreMaximumAsync.WaitAsync(cancellationToken).ConfigureAwait(false);
 
                     var sendGroupTask = _protocolGateway.SendProtocolRequest(request, group.Key.Topic, group.Key.Route.PartitionId);
-                    var brokerSendTask = new BrokerRouteSendBatch
-                    {
+                    var brokerSendTask = new BrokerRouteSendBatch {
                         Route = group.Key.Route,
                         Task = sendGroupTask,
                         MessagesSent = group.Select(x => x.TopicMessage).ToList(),

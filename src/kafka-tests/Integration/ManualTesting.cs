@@ -60,7 +60,7 @@ namespace kafka_tests.Integration
                 var blockingEnumerableOfMessage = consumer.Consume();
                 foreach (var message in blockingEnumerableOfMessage)
                 {
-                    _log.InfoFormat("Offset{0}", message.Meta.Offset);
+                    _log.InfoFormat("Offset{0}", message.Offset);
                 }
             }
         }
@@ -97,9 +97,9 @@ namespace kafka_tests.Integration
                     {
                         foreach (var message in messages)
                         {
-                            _log.InfoFormat("Offset{0}  ", message.Meta.Offset);
+                            _log.InfoFormat("Offset{0}  ", message.Offset);
                         }
-                        offset = messages.Max(x => x.Meta.Offset) + 1;
+                        offset = messages.Max(x => x.Offset) + 1;
                     }
                     else
                     {

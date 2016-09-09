@@ -7,6 +7,11 @@ namespace KafkaNet.Protocol
 {
     public class ProduceResponse : IKafkaResponse
     {
+        public ProduceResponse(ProduceTopic topic, TimeSpan? throttleTime = null)
+            : this (new []{ topic }, throttleTime)
+        {
+        }
+
         public ProduceResponse(IEnumerable<ProduceTopic> topics = null, TimeSpan? throttleTime = null)
         {
             Topics = topics != null ? ImmutableList<ProduceTopic>.Empty.AddRange(topics) : ImmutableList<ProduceTopic>.Empty;

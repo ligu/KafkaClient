@@ -8,8 +8,13 @@ namespace KafkaNet.Protocol
     /// for a given consumer group.  Essentially this part of the api allows a user to save/load a given offset position
     /// under any abritrary name.
     /// </summary>
-    public class OffsetFetchRequest : KafkaRequest
+    public class OffsetFetchRequest : KafkaRequest, IKafkaRequest<OffsetFetchResponse>
     {
+        public OffsetFetchRequest(string consumerGroup, params Topic[] topics) 
+            : this(consumerGroup, (IEnumerable<Topic>)topics)
+        {
+        }
+
         public OffsetFetchRequest(string consumerGroup, IEnumerable<Topic> topics) 
             : base(ApiKeyRequestType.OffsetFetch)
         {

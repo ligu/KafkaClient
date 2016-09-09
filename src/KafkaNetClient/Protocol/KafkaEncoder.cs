@@ -11,9 +11,14 @@ namespace KafkaNet.Protocol
     {
         public static T Decode<T>(IRequestContext context, byte[] payload) where T : class, IKafkaResponse
         {
-            if (typeof(T) == typeof(ApiVersionsResponse)) {
-                return (T)(object)DecodeApiVersionsResponse(context, payload);
-            }
+            if (typeof(T) == typeof(FetchResponse)) return (T)FetchResponse(context, payload);
+            if (typeof(T) == typeof(MetadataResponse)) return (T)MetadataResponse(context, payload);
+            if (typeof(T) == typeof(ProduceResponse)) return (T)ProduceResponse(context, payload);
+            if (typeof(T) == typeof(OffsetResponse)) return (T)OffsetResponse(context, payload);
+            if (typeof(T) == typeof(OffsetCommitResponse)) return (T)OffsetCommitResponse(context, payload);
+            if (typeof(T) == typeof(OffsetFetchResponse)) return (T)OffsetFetchResponse(context, payload);
+            if (typeof(T) == typeof(GroupCoordinatorResponse)) return (T)GroupCoordinatorResponse(context, payload);
+            if (typeof(T) == typeof(ApiVersionsResponse)) return (T)ApiVersionsResponse(context, payload);
             return default(T);
         }
 
@@ -240,7 +245,7 @@ namespace KafkaNet.Protocol
             using (var message = EncodeHeader(context, request)) {
                 var topicGroups = request.Fetches.GroupBy(x => x.TopicName).ToList();
                 message.Pack(ReplicaId)
-                        .Pack((int)request.MaxWaitTime.TotalMilliseconds)
+                        .Pack((int)Math.Min(int.MaxValue, request.MaxWaitTime.TotalMilliseconds))
                         .Pack(request.MinBytes)
                         .Pack(topicGroups.Count);
 
@@ -473,7 +478,7 @@ namespace KafkaNet.Protocol
         /// 
         /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-Messagesets
         /// </summary>
-        public static ProduceResponse DecodeProduceResponse(IRequestContext context, byte[] data)
+        private static IKafkaResponse ProduceResponse(IRequestContext context, byte[] data)
         {
             using (var stream = new BigEndianBinaryReader(data, 4)) {
                 TimeSpan? throttleTime = null;
@@ -523,7 +528,7 @@ namespace KafkaNet.Protocol
         /// 
         /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-FetchResponse
         /// </summary>
-        public static FetchResponse DecodeFetchResponse(IRequestContext context, byte[] payload)
+        private static IKafkaResponse FetchResponse(IRequestContext context, byte[] payload)
         {
             using (var stream = new BigEndianBinaryReader(payload, 4)) {
                 TimeSpan? throttleTime = null;
@@ -643,7 +648,7 @@ namespace KafkaNet.Protocol
         /// 
         /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetAPI(AKAListOffset)
         /// </summary>
-        public static OffsetResponse DecodeOffsetResponse(IRequestContext context, byte[] payload)
+        private static IKafkaResponse OffsetResponse(IRequestContext context, byte[] payload)
         {
             using (var stream = new BigEndianBinaryReader(payload, 4)) {
                 var topics = new List<OffsetTopic>();
@@ -689,7 +694,7 @@ namespace KafkaNet.Protocol
         ///
         /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-MetadataAPI
         /// </summary>
-        public static MetadataResponse DecodeMetadataResponse(IRequestContext context, byte[] payload)
+        private static IKafkaResponse MetadataResponse(IRequestContext context, byte[] payload)
         {
             using (var stream = new BigEndianBinaryReader(payload, 4)) {
                 var brokers = new List<Broker>();
@@ -739,7 +744,7 @@ namespace KafkaNet.Protocol
         ///
         /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
         /// </summary>
-        public static OffsetCommitResponse DecodeOffsetCommitResponse(IRequestContext context, byte[] payload)
+        private static IKafkaResponse OffsetCommitResponse(IRequestContext context, byte[] payload)
         {
             using (var stream = new BigEndianBinaryReader(payload, 4)) {
                 var topics = new List<TopicResponse>();
@@ -770,7 +775,7 @@ namespace KafkaNet.Protocol
         ///
         /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
         /// </summary>
-        public static OffsetFetchResponse DecodeOffsetFetchResponse(IRequestContext context, byte[] payload)
+        private static IKafkaResponse OffsetFetchResponse(IRequestContext context, byte[] payload)
         {
             using (var stream = new BigEndianBinaryReader(payload, 4)) {
                 var topics = new List<OffsetFetchTopic>();
@@ -802,7 +807,7 @@ namespace KafkaNet.Protocol
         ///
         /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
         /// </summary>
-        public static GroupCoordinatorResponse DecodeGroupCoordinatorResponse(IRequestContext context, byte[] payload)
+        private static IKafkaResponse GroupCoordinatorResponse(IRequestContext context, byte[] payload)
         {
             using (var stream = new BigEndianBinaryReader(payload, 4)) {
                 var errorCode = (ErrorResponseCode)stream.ReadInt16();
@@ -823,7 +828,7 @@ namespace KafkaNet.Protocol
         ///
         /// From http://kafka.apache.org/protocol.html#protocol_messages
         /// </summary>
-        public static ApiVersionsResponse DecodeApiVersionsResponse(IRequestContext context, byte[] payload)
+        private static IKafkaResponse ApiVersionsResponse(IRequestContext context, byte[] payload)
         {
             using (var stream = new BigEndianBinaryReader(payload, 4)) {
                 var errorCode = (ErrorResponseCode)stream.ReadInt16();

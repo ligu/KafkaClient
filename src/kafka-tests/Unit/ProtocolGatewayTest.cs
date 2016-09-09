@@ -187,7 +187,7 @@ namespace kafka_tests.Unit
             routerProxy.BrokerConn0.MetadataResponseFunction = async () =>
             {
                 var response = await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers();
-                return new MetadataResponse(response.CorrelationId, response.Brokers, response.Topics.Select(t => new MetadataTopic("test2", t.ErrorCode, t.Partitions)));
+                return new MetadataResponse(response.Brokers, response.Topics.Select(t => new MetadataTopic("test2", t.ErrorCode, t.Partitions)));
             };
 
             for (int i = 0; i < numberOfCall / 2; i++)

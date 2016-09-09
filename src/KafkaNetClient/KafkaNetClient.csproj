@@ -63,7 +63,6 @@
     <Compile Include="CachedMetadataException.cs" />
     <Compile Include="Protocol\CrcValidationException.cs" />
     <Compile Include="Protocol\FetchOutOfRangeException.cs" />
-    <Compile Include="Protocol\IKafkaSerializer.cs" />
     <Compile Include="Protocol\IRequestContext.cs" />
     <Compile Include="KafkaConnectionException.cs" />
     <Compile Include="Protocol\KafkaEncoder.cs" />
@@ -140,9 +139,7 @@
     <None Include="KafkaNetClient.nuspec" />
     <None Include="packages.config" />
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="lib\net45\" />
-  </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

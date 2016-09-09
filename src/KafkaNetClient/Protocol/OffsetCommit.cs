@@ -4,7 +4,7 @@ namespace KafkaNet.Protocol
 {
     public class OffsetCommit : Topic, IEquatable<OffsetCommit>
     {
-        public OffsetCommit(string topicName, int partitionId, long offset, string metadata, long? timeStamp = null) 
+        public OffsetCommit(string topicName, int partitionId, long offset, string metadata = null, long? timeStamp = null) 
             : base(topicName, partitionId)
         {
             Offset = offset;

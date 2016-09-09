@@ -3,7 +3,6 @@ using KafkaNet.Model;
 using KafkaNet.Protocol;
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Threading;
@@ -95,49 +94,39 @@ namespace KafkaNet
         /// </summary>
         /// <typeparam name="T">A Kafka response object return by decode function.</typeparam>
         /// <param name="request">The IKafkaRequest to send to the kafka servers.</param>
+        /// <param name="context">The context for the request.</param>
         /// <returns></returns>
-
-        public async Task<T> SendAsync<T>(IKafkaRequest<T> request) where T : IKafkaResponse
+        public async Task<T> SendAsync<T>(IKafkaRequest<T> request, IRequestContext context = null) where T : class, IKafkaResponse
         {
             //assign unique correlationId
-            request.CorrelationId = NextCorrelationId();
+            context = context.WithCorrelation(NextCorrelationId());
 
-            _log.DebugFormat("Entered SendAsync for CorrelationId:{0} Connection:{1} ", request.CorrelationId,Endpoint);
-            //if response is expected, register a receive data task and send request
-            if (request.ExpectResponse)
-            {
-                using (var asyncRequest = new AsyncRequestItem(request.CorrelationId, request.ApiKey))
-                {
-                    try
-                    {
-                        AddAsyncRequestItemToResponseQueue(asyncRequest);
-                        ExceptionDispatchInfo exceptionDispatchInfo = null;
-
-                        try
-                        {
-                            await _client.WriteAsync(request.Encode()).ConfigureAwait(false);
-                        }
-                        catch (Exception ex)
-                        {
-                            exceptionDispatchInfo = ExceptionDispatchInfo.Capture(ex);
-                        }
-
-                        asyncRequest.MarkRequestAsSent(exceptionDispatchInfo, _responseTimeoutMs, TriggerMessageTimeout);
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        TriggerMessageTimeout(asyncRequest);
-                    }
-
-                    var response = await asyncRequest.ReceiveTask.Task.ConfigureAwait(false);
-
-                    return request.Decode(response);
-                }
+            _log.DebugFormat("Entered SendAsync for CorrelationId:{0} Connection:{1} ", context.CorrelationId, Endpoint);
+            if (!request.ExpectResponse) {
+                await _client.WriteAsync(KafkaEncoder.Encode(context, request)).ConfigureAwait(false);
+                return default(T);
             }
 
-            // no response needed, just send
-            await _client.WriteAsync(request.Encode()).ConfigureAwait(false);
-            return default(T);
+            using (var asyncRequest = new AsyncRequestItem(context.CorrelationId, request.ApiKey)) {
+                try {
+                    AddAsyncRequestItemToResponseQueue(asyncRequest);
+                    ExceptionDispatchInfo exceptionDispatchInfo = null;
+
+                    try {
+                        await _client.WriteAsync(KafkaEncoder.Encode(context, request)).ConfigureAwait(false);
+                    } catch (Exception ex) {
+                        exceptionDispatchInfo = ExceptionDispatchInfo.Capture(ex);
+                    }
+
+                    asyncRequest.MarkRequestAsSent(exceptionDispatchInfo, _responseTimeoutMs, TriggerMessageTimeout);
+                } catch (OperationCanceledException) {
+                    TriggerMessageTimeout(asyncRequest);
+                }
+
+                var response = await asyncRequest.ReceiveTask.Task.ConfigureAwait(false);
+
+                return KafkaEncoder.Decode<T>(context, response);
+            }
         }
 
         #region Equals Override...

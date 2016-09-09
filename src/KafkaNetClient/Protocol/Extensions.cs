@@ -8,7 +8,7 @@ namespace KafkaNet.Protocol
     public static class Extensions
     {
         public static Exception ExtractExceptions<TRequest, TResponse>(this TRequest request, TResponse response, KafkaEndpoint endpoint = null) 
-            where TRequest : IKafkaRequest<TResponse> 
+            where TRequest : IKafkaRequest
             where TResponse : IKafkaResponse
         {
             var exceptions = new List<Exception>();
@@ -47,6 +47,11 @@ namespace KafkaNet.Protocol
         public static DateTime FromUnixEpochMilliseconds(this long milliseconds)
         {
             return UnixEpoch.AddMilliseconds(milliseconds);
+        }
+
+        public static IRequestContext WithCorrelation(this IRequestContext context, int correlationId)
+        {
+            return new RequestContext(correlationId, context?.ApiVersion, context?.ClientId);
         }
     }
 }
