@@ -295,7 +295,7 @@ namespace KafkaNet
                             if (topic == null) {
                                 sendTask.MessagesSent[i].Tcs.SetResult(null);
                             } else {
-                                var response = new ProduceTopic(topic.TopicName, topic.PartitionId, topic.ErrorCode, topic.Offset + 1, topic.Timestamp);
+                                var response = new ProduceTopic(topic.TopicName, topic.PartitionId, topic.ErrorCode, topic.Offset + i, topic.Timestamp);
                                 sendTask.MessagesSent[i].Tcs.SetResult(response);
                             }
                         }

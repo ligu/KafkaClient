@@ -150,7 +150,8 @@ namespace kafka_tests.Unit
                 await TaskTest.WaitFor(() => receivedData);
 
                 //should log a warning and keep going
-                mockLog.Verify(x => x.WarnFormat(It.IsAny<string>(), It.Is<int>(o => o == correlationId)));
+                mockLog.Verify(x => x.WarnFormat(It.Is<string>(f => f == "Unexpected Response from {0} with CorrelationId={1} (not in request queue)."), 
+                    It.Is<object[]>(o => o != null && o.Length == 2 && (int)o[1] == correlationId)));
             }
         }
 

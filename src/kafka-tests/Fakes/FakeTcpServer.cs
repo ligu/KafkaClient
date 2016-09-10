@@ -17,7 +17,7 @@ namespace kafka_tests.Fakes
 
         public event Action OnClientDisconnected;
 
-        private IKafkaLog _log;
+        private readonly IKafkaLog _log;
 
         private TcpClient _client;
         private readonly SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(0);
@@ -29,7 +29,7 @@ namespace kafka_tests.Fakes
 
         public int ConnectionEventcount = 0;
         public int DisconnectionEventCount = 0;
-        public Task HasClientConnected { get { return _clientConnectedTrigger.Task; } }
+        public Task HasClientConnected => _clientConnectedTrigger.Task;
 
         public FakeTcpServer(IKafkaLog log, int port)
         {
@@ -37,14 +37,12 @@ namespace kafka_tests.Fakes
             _listener = new TcpListener(IPAddress.Any, port);
             _listener.Start();
 
-            OnClientConnected += () =>
-            {
+            OnClientConnected += () => {
                 Interlocked.Increment(ref ConnectionEventcount);
                 _clientConnectedTrigger.TrySetResult(true);
             };
 
-            OnClientDisconnected += () =>
-            {
+            OnClientDisconnected += () => {
                 Interlocked.Increment(ref DisconnectionEventCount);
                 _clientConnectedTrigger = new TaskCompletionSource<bool>();
             };
@@ -54,18 +52,13 @@ namespace kafka_tests.Fakes
 
         public async Task SendDataAsync(byte[] data)
         {
-            try
-            {
+            try {
                 await _semaphoreSlim.WaitAsync();
                 _log.DebugFormat("FakeTcpServer: writing {0} bytes.", data.Length);
                 await _client.GetStream().WriteAsync(data, 0, data.Length).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
+            } catch (Exception ex) {
                 _log.ErrorFormat("error:{0} stack{1}", ex.Message, ex.StackTrace);
-            }
-            finally
-            {
+            } finally {
                 _semaphoreSlim.Release();
             }
         }
@@ -78,10 +71,8 @@ namespace kafka_tests.Fakes
 
         public void DropConnection()
         {
-            if (_client != null)
-            {
-                using (_client)
-                {
+            if (_client != null) {
+                using (_client) {
                     _client.Close();
                 }
 
@@ -91,57 +82,46 @@ namespace kafka_tests.Fakes
 
         private async Task StartHandlingClientRequestAsync()
         {
-            while (_disposeToken.IsCancellationRequested == false)
-            {
+            while (_disposeToken.IsCancellationRequested == false) {
                 _log.InfoFormat("FakeTcpServer: Accepting clients.");
                 _client = await _listener.AcceptTcpClientAsync();
 
                 _log.InfoFormat("FakeTcpServer: Connected client");
-                if (OnClientConnected != null) OnClientConnected();
+                OnClientConnected?.Invoke();
                 _semaphoreSlim.Release();
 
-                try
-                {
-                    using (_client)
-                    {
+                try {
+                    using (_client) {
                         var buffer = new byte[4096];
                         var stream = _client.GetStream();
 
-                        while (!_disposeToken.IsCancellationRequested)
-                        {
+                        while (!_disposeToken.IsCancellationRequested) {
                             //connect client
                             var connectTask = stream.ReadAsync(buffer, 0, buffer.Length, _disposeToken.Token);
 
                             var bytesReceived = await connectTask;
 
-                            if (bytesReceived > 0)
-                            {
-                                if (OnBytesReceived != null) OnBytesReceived(buffer.Take(bytesReceived).ToArray());
+                            if (bytesReceived > 0) {
+                                OnBytesReceived?.Invoke(buffer.Take(bytesReceived).ToArray());
                             }
                         }
                     }
-                }
-                catch (Exception ex)
-                {
+                } catch (Exception ex) {
                     _log.ErrorFormat("FakeTcpServer: Client exception...  Exception:{0}", ex.Message);
                 }
 
                 _log.ErrorFormat("FakeTcpServer: Client Disconnected.");
                 await _semaphoreSlim.WaitAsync(); //remove the one client
-                if (OnClientDisconnected != null) OnClientDisconnected();
+                OnClientDisconnected?.Invoke();
             }
         }
 
         public void Dispose()
         {
-            if (_disposeToken != null) _disposeToken.Cancel();
+            _disposeToken?.Cancel();
 
-            using (_disposeToken)
-            {
-                if (_clientConnectionHandlerTask != null)
-                {
-                    _clientConnectionHandlerTask.Wait(TimeSpan.FromSeconds(5));
-                }
+            using (_disposeToken) {
+                _clientConnectionHandlerTask?.Wait(TimeSpan.FromSeconds(5));
 
                 _listener.Stop();
             }
