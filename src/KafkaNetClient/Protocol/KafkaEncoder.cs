@@ -30,7 +30,8 @@ namespace KafkaNet.Protocol
                     return new KafkaDataPayload {
                         Buffer = EncodeRequest(context, produceRequest),
                         CorrelationId = context.CorrelationId,
-                        MessageCount = produceRequest.Payload.Sum(x => x.Messages.Count)
+                        MessageCount = produceRequest.Payload.Sum(x => x.Messages.Count),
+                        ApiKey = request.ApiKey
                     };
                 }
 

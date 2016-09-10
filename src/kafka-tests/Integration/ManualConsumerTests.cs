@@ -185,7 +185,7 @@ namespace kafka_tests.Integration
         }
 
         [Test]
-        [ExpectedException(typeof(KafkaNet.Protocol.KafkaRequestException))]
+        [ExpectedException(typeof(KafkaRequestException))]
         public async Task FetchMessagesTopicDoesntExist()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
@@ -195,7 +195,7 @@ namespace kafka_tests.Integration
 
             ManualConsumer consumer = new ManualConsumer(_partitionId, topic, protocolGateway, "TestClient", DefaultMaxMessageSetSize * 2);
 
-            var offset = await consumer.FetchLastOffset();
+            var offset = 0;
 
             // Now let's consume
             var result = (await consumer.FetchMessages(5, offset)).ToList();
