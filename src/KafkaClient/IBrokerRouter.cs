@@ -1,9 +1,10 @@
-﻿using KafkaNet.Protocol;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using KafkaClient.Common;
+using KafkaClient.Protocol;
 
-namespace KafkaNet
+namespace KafkaClient
 {
     public interface IBrokerRouter : IDisposable
     {

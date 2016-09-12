@@ -1,8 +1,8 @@
-﻿using KafkaNet.Protocol;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Threading.Tasks;
+using KafkaClient.Protocol;
 
-namespace KafkaNet.Interfaces
+namespace KafkaClient
 {
     public interface IManualConsumer
     {

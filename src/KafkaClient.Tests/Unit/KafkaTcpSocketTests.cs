@@ -1,22 +1,17 @@
-﻿using kafka_tests.Fakes;
-using kafka_tests.Helpers;
-using KafkaNet;
-using KafkaNet.Common;
-using KafkaNet.Model;
-using KafkaNet.Protocol;
-using NSubstitute;
-using NUnit.Framework;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
-using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using KafkaClient.Common;
+using KafkaClient.Connection;
+using KafkaClient.Tests.Fakes;
+using KafkaClient.Tests.Helpers;
+using NUnit.Framework;
 
-namespace kafka_tests.Unit
+namespace KafkaClient.Tests.Unit
 {
     /// <summary>
     /// Note these integration tests require an actively running kafka server defined in the app.config file.

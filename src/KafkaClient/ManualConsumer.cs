@@ -1,13 +1,12 @@
-﻿using KafkaNet.Interfaces;
-using KafkaNet.Protocol;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Threading.Tasks;
+using KafkaClient.Protocol;
 
-namespace KafkaNet
+namespace KafkaClient
 {
     /// <summary>
     /// This class implements the ManualConsumer in a thread safe manner.

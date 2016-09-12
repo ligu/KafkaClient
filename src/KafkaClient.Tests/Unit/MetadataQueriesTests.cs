@@ -1,13 +1,12 @@
-﻿using kafka_tests.Helpers;
-using KafkaNet;
-using KafkaNet.Protocol;
+﻿using System;
+using System.Threading.Tasks;
+using KafkaClient.Tests.Fakes;
+using KafkaClient.Tests.Helpers;
 using Moq;
 using Ninject.MockingKernel.Moq;
 using NUnit.Framework;
-using System;
-using System.Threading.Tasks;
 
-namespace kafka_tests.Unit
+namespace KafkaClient.Tests.Unit
 {
     [TestFixture]
     [Category("Unit")]

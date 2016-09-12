@@ -1,13 +1,12 @@
-﻿using KafkaNet.Model;
-using KafkaNet.Protocol;
-using NUnit.Framework;
-using System;
+﻿using System;
 using System.IO;
 using System.Net;
 using System.Runtime.Serialization.Formatters.Binary;
-using KafkaNet;
+using KafkaClient.Connection;
+using KafkaClient.Protocol;
+using NUnit.Framework;
 
-namespace kafka_tests.Unit
+namespace KafkaClient.Tests.Unit
 {
     [Category("Unit")]
     [TestFixture]

@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 
-namespace KafkaNet.Protocol
+namespace KafkaClient.Protocol
 {
     /// <summary>
     /// A funky Protocol for requesting the starting offset of each segment for the requested partition

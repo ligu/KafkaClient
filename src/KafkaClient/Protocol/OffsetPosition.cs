@@ -1,6 +1,6 @@
 using System;
 
-namespace KafkaNet.Protocol
+namespace KafkaClient.Protocol
 {
     public class OffsetPosition : IEquatable<OffsetPosition>
     {

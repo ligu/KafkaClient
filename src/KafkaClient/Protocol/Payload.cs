@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Collections.Immutable;
 
-namespace KafkaNet.Protocol
+namespace KafkaClient.Protocol
 {
     /// <summary>
     /// Buffer represents a collection of messages to be posted to a specified Topic on specified Partition.

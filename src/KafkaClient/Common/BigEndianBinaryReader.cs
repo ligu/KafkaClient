@@ -3,7 +3,7 @@ using System.Diagnostics.Contracts;
 using System.IO;
 using System.Text;
 
-namespace KafkaNet.Common
+namespace KafkaClient.Common
 {
     /// <summary>
     /// A BinaryReader that is BigEndian aware binary reader.

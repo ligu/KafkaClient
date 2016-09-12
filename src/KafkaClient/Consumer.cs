@@ -1,14 +1,13 @@
-﻿using KafkaNet.Model;
-using KafkaNet.Protocol;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using KafkaNet.Common;
+using KafkaClient.Connection;
+using KafkaClient.Protocol;
 
-namespace KafkaNet
+namespace KafkaClient
 {
     /// <summary>
     /// Provides a basic consumer of one Topic across all partitions or over a given whitelist of partitions.

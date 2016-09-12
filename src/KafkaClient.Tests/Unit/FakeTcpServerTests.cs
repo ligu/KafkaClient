@@ -1,14 +1,13 @@
-﻿using kafka_tests.Fakes;
-using kafka_tests.Helpers;
-using KafkaNet;
-using KafkaNet.Common;
-using NUnit.Framework;
-using System;
+﻿using System;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
+using KafkaClient.Common;
+using KafkaClient.Tests.Fakes;
+using KafkaClient.Tests.Helpers;
+using NUnit.Framework;
 
-namespace kafka_tests.Unit
+namespace KafkaClient.Tests.Unit
 {
     [TestFixture]
     [Category("Integration")]

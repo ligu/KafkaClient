@@ -1,9 +1,9 @@
-﻿using KafkaNet.Protocol;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using KafkaClient.Protocol;
 
-namespace KafkaNet
+namespace KafkaClient
 {
     /// <summary>
     /// This class provides a set of common queries that are useful for both the Consumer and Producer classes.

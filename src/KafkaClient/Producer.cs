@@ -1,12 +1,12 @@
-﻿using KafkaNet.Common;
-using KafkaNet.Protocol;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using KafkaClient.Common;
+using KafkaClient.Protocol;
 
-namespace KafkaNet
+namespace KafkaClient
 {
     /// <summary>
     /// Provides a simplified high level API for producing messages on a topic.

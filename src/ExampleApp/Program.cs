@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
-using KafkaNet;
-using KafkaNet.Common;
-using KafkaNet.Model;
-using KafkaNet.Protocol;
+using KafkaClient;
+using KafkaClient.Common;
+using KafkaClient.Connection;
+using KafkaClient.Protocol;
 
-namespace TestHarness
+namespace ExampleApp
 {
     class Program
     {

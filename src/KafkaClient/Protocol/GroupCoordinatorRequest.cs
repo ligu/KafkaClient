@@ -1,4 +1,4 @@
-﻿namespace KafkaNet.Protocol
+﻿namespace KafkaClient.Protocol
 {
     /// <summary>
     /// https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetFetchRequest

@@ -4,7 +4,7 @@ using System.Diagnostics.Contracts;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace KafkaNet.Common
+namespace KafkaClient.Common
 {
     /// <summary>
     /// Utility functions for dealing with Task's.

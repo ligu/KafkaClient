@@ -1,6 +1,6 @@
 ﻿using System.Collections.Immutable;
 
-namespace KafkaNet.Protocol
+namespace KafkaClient.Protocol
 {
     public interface IKafkaResponse
     {

@@ -1,14 +1,13 @@
-﻿using kafka_tests.Fakes;
-using KafkaNet;
-using KafkaNet.Model;
-using KafkaNet.Protocol;
-using NSubstitute;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Threading;
+using KafkaClient.Common;
+using KafkaClient.Connection;
+using KafkaClient.Protocol;
+using NSubstitute;
 
-namespace kafka_tests
+namespace KafkaClient.Tests.Fakes
 {
     public class FakeBrokerRouter
     {
@@ -55,7 +54,7 @@ namespace kafka_tests
 
         public IBrokerRouter Create()
         {
-            return new BrokerRouter(new KafkaNet.Model.KafkaOptions
+            return new BrokerRouter(new KafkaOptions
             {
                 KafkaServerUri = new List<Uri> { new Uri("http://localhost:1"), new Uri("http://localhost:2") },
                 KafkaConnectionFactory = _mockKafkaConnectionFactory,

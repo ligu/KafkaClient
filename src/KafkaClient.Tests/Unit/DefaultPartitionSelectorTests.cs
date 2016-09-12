@@ -1,15 +1,14 @@
-﻿using kafka_tests.Helpers;
-using KafkaNet;
-using KafkaNet.Common;
-using KafkaNet.Protocol;
-using NUnit.Framework;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using KafkaClient.Common;
+using KafkaClient.Protocol;
+using KafkaClient.Tests.Helpers;
+using NUnit.Framework;
 
-namespace kafka_tests.Unit
+namespace KafkaClient.Tests.Unit
 {
     [TestFixture]
     [Category("Unit")]

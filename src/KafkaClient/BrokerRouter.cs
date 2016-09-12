@@ -1,13 +1,13 @@
-﻿using KafkaNet.Common;
-using KafkaNet.Model;
-using KafkaNet.Protocol;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using KafkaClient.Common;
+using KafkaClient.Connection;
+using KafkaClient.Protocol;
 
-namespace KafkaNet
+namespace KafkaClient
 {
     /// <summary>
     /// This class provides an abstraction from querying multiple Kafka servers for Metadata details and caching this data.

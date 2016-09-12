@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.Serialization;
 
-namespace KafkaNet.Protocol
+namespace KafkaClient.Protocol
 {
     /// <summary>
     /// An exception caused by a Kafka Request for fetching (FetchRequest, FetchOffset, etc)

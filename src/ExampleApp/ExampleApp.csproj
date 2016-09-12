@@ -7,8 +7,8 @@
     <ProjectGuid>{53E0B3CE-6C41-4C8A-8B66-9BD03667B1E0}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>TestHarness</RootNamespace>
-    <AssemblyName>TestHarness</AssemblyName>
+    <RootNamespace>ExampleApp</RootNamespace>
+    <AssemblyName>ExampleApp</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\</SolutionDir>
@@ -57,7 +57,7 @@
   <ItemGroup>
     <ProjectReference Include="..\KafkaClient\KafkaClient.csproj">
       <Project>{1343eb68-55cb-4452-8386-24a9989de1c0}</Project>
-      <Name>KafkaNetClient</Name>
+      <Name>KafkaClient</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

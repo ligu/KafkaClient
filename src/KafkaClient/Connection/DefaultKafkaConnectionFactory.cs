@@ -1,10 +1,10 @@
-﻿using KafkaNet.Model;
-using System;
+﻿using System;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using KafkaClient.Common;
 
-namespace KafkaNet
+namespace KafkaClient.Connection
 {
     public class DefaultKafkaConnectionFactory : IKafkaConnectionFactory
     {

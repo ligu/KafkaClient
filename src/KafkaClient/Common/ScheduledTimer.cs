@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Timers;
 
-namespace KafkaNet.Common
+namespace KafkaClient.Common
 {
     /// <summary>
     /// TODO there is a bug in this that sometimes calls the do function twice on startup

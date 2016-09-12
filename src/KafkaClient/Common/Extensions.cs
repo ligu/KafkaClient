@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace KafkaNet.Common
+namespace KafkaClient.Common
 {
     /// <summary>
     /// Provides Big Endian conversion extensions to required types for the Kafka protocol.

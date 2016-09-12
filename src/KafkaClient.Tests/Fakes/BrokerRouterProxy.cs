@@ -1,16 +1,15 @@
-﻿using kafka_tests.Fakes;
-using KafkaNet;
-using KafkaNet.Model;
-using KafkaNet.Protocol;
-using Moq;
-using Ninject.MockingKernel.Moq;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using KafkaClient.Common;
+using KafkaClient.Connection;
+using KafkaClient.Protocol;
+using Moq;
+using Ninject.MockingKernel.Moq;
 
-namespace kafka_tests
+namespace KafkaClient.Tests.Fakes
 {
     public class BrokerRouterProxy
     {
@@ -59,7 +58,7 @@ namespace kafka_tests
 
         public IBrokerRouter Create()
         {
-            return new BrokerRouter(new KafkaNet.Model.KafkaOptions
+            return new BrokerRouter(new KafkaOptions
             {
                 KafkaServerUri = new List<Uri> { new Uri("http://localhost:1"), new Uri("http://localhost:2") },
                 CacheExpiration = _cacheExpiration,

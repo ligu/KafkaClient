@@ -1,4 +1,4 @@
-﻿namespace KafkaNet.Common
+﻿namespace KafkaClient.Common
 {
     public enum ScheduledTimerStatus
     {

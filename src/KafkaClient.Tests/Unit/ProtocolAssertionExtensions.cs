@@ -2,12 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using KafkaNet;
-using KafkaNet.Common;
-using KafkaNet.Protocol;
+using KafkaClient.Common;
+using KafkaClient.Protocol;
 using NUnit.Framework;
 
-namespace kafka_tests.Unit
+namespace KafkaClient.Tests.Unit
 {
     public static class ProtocolAssertionExtensions
     {

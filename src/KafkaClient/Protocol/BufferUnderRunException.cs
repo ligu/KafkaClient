@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.Serialization;
 
-namespace KafkaNet.Protocol
+namespace KafkaClient.Protocol
 {
     [Serializable]
     public class BufferUnderRunException : KafkaException

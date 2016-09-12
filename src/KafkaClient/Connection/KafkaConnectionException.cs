@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Runtime.Serialization;
-using KafkaNet.Model;
-using KafkaNet.Protocol;
+using KafkaClient.Protocol;
 
-namespace KafkaNet
+namespace KafkaClient.Connection
 {
     /// <summary>
     /// An exception cause by a failure in the connection to Kafka

@@ -1,8 +1,8 @@
-﻿using KafkaNet;
-using System;
+﻿using System;
 using System.Configuration;
+using KafkaClient.Common;
 
-namespace kafka_tests.Helpers
+namespace KafkaClient.Tests.Helpers
 {
     public static class IntegrationConfig
     {

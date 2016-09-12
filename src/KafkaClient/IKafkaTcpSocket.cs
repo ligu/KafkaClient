@@ -1,9 +1,9 @@
-﻿using KafkaNet.Model;
-using System;
+﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using KafkaClient.Connection;
 
-namespace KafkaNet
+namespace KafkaClient
 {
     public interface IKafkaTcpSocket : IDisposable
     {

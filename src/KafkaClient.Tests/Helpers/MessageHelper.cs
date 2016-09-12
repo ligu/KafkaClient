@@ -1,8 +1,8 @@
-﻿using KafkaNet.Common;
-using KafkaNet.Protocol;
-using System;
+﻿using System;
+using KafkaClient.Common;
+using KafkaClient.Protocol;
 
-namespace kafka_tests.Helpers
+namespace KafkaClient.Tests.Helpers
 {
     public static class MessageHelper
     {

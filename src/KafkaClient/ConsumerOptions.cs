@@ -1,8 +1,9 @@
-﻿using KafkaNet.Protocol;
-using System;
+﻿using System;
 using System.Collections.Generic;
+using KafkaClient.Common;
+using KafkaClient.Protocol;
 
-namespace KafkaNet.Model
+namespace KafkaClient
 {
     public class ConsumerOptions
     {

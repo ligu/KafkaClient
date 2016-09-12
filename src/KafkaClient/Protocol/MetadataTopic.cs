@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Collections.Immutable;
 
-namespace KafkaNet.Protocol
+namespace KafkaClient.Protocol
 {
     public class MetadataTopic
     {

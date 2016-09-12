@@ -1,4 +1,4 @@
-﻿namespace KafkaNet.Protocol
+﻿namespace KafkaClient.Protocol
 {
     /// <summary>
     /// Enumeration which specifies the compression type of messages

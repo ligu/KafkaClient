@@ -1,14 +1,13 @@
-using KafkaNet.Common;
-using KafkaNet.Model;
-using KafkaNet.Protocol;
 using System;
 using System.Collections.Concurrent;
 using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
+using KafkaClient.Common;
+using KafkaClient.Protocol;
 
-namespace KafkaNet
+namespace KafkaClient.Connection
 {
     /// <summary>
     /// KafkaConnection represents the lowest level TCP stream connection to a Kafka broker.

@@ -1,10 +1,12 @@
-﻿using KafkaNet.Protocol;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using KafkaClient.Common;
+using KafkaClient.Connection;
+using KafkaClient.Protocol;
 
-namespace KafkaNet
+namespace KafkaClient
 {
     /// <summary>
     /// This provider blocks while it attempts to get the Metadata configuration of the Kafka servers.  If any retry errors occurs it will

@@ -2,10 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using KafkaNet.Common;
-using KafkaNet.Statistics;
+using KafkaClient.Common;
 
-namespace KafkaNet.Protocol
+namespace KafkaClient.Protocol
 {
     public static class KafkaEncoder
     {

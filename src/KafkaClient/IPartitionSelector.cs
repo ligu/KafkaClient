@@ -1,6 +1,6 @@
-﻿using KafkaNet.Protocol;
+﻿using KafkaClient.Protocol;
 
-namespace KafkaNet
+namespace KafkaClient
 {
     public interface IPartitionSelector
     {

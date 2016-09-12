@@ -1,16 +1,15 @@
-﻿using KafkaNet.Common;
-using KafkaNet.Model;
-using KafkaNet.Protocol;
-using KafkaNet.Statistics;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
+using KafkaClient.Common;
+using KafkaClient.Connection;
+using KafkaClient.Protocol;
 
-namespace KafkaNet
+namespace KafkaClient
 {
     /// <summary>
     /// The TcpSocket provides an abstraction from the main driver from having to handle connection to and reconnections with a server.

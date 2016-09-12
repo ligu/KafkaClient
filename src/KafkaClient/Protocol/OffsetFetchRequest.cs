@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Collections.Immutable;
 
-namespace KafkaNet.Protocol
+namespace KafkaClient.Protocol
 {
     /// <summary>
     /// Class that represents both the request and the response from a kafka server of requesting a stored offset value

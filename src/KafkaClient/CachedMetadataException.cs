@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Runtime.Serialization;
-using KafkaNet.Protocol;
+using KafkaClient.Protocol;
 
-namespace KafkaNet
+namespace KafkaClient
 {
     /// <summary>
     /// An exception cause by invalid/missing/out-of-date metadata in the local metadata cache

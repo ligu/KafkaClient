@@ -1,7 +1,7 @@
-﻿using KafkaNet.Common;
-using System;
+﻿using System;
+using KafkaClient.Common;
 
-namespace KafkaNet.Protocol
+namespace KafkaClient.Protocol
 {
     /// <summary>
     /// Message represents the data from a single event occurance.

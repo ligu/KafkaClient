@@ -2,7 +2,7 @@
 using System.Net;
 using System.Runtime.Serialization;
 
-namespace KafkaNet.Model
+namespace KafkaClient.Connection
 {
     [Serializable]
     public class KafkaEndpoint

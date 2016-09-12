@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Threading;
 
-namespace KafkaNet.Common
+namespace KafkaClient.Common
 {
     /// <summary>
     /// don't use this class out side the StatisticsTracker has unexpected behavior

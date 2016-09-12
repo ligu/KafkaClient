@@ -1,12 +1,12 @@
-﻿using KafkaNet.Common;
-using KafkaNet.Model;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using KafkaClient.Common;
+using KafkaClient.Connection;
 
-namespace KafkaNet.Statistics
+namespace KafkaClient
 {
     /// <summary>
     /// Statistics tracker uses circular buffers to capture a maximum set of current statistics.

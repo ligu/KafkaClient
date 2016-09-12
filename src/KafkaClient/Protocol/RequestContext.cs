@@ -1,4 +1,4 @@
-namespace KafkaNet.Protocol
+namespace KafkaClient.Protocol
 {
     public class RequestContext : IRequestContext
     {

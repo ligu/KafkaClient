@@ -1,6 +1,6 @@
-﻿using KafkaNet.Protocol;
+﻿using KafkaClient.Protocol;
 
-namespace kafka_tests
+namespace KafkaClient.Tests
 {
     public static class RequestFactory
     {

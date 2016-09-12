@@ -1,4 +1,4 @@
-﻿namespace KafkaNet.Model
+﻿namespace KafkaClient
 {
     public class StatisticsTrackerOptions
     {

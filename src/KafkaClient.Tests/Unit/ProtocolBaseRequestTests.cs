@@ -1,9 +1,9 @@
 ﻿using System;
-using kafka_tests.Helpers;
-using KafkaNet.Protocol;
+using KafkaClient.Protocol;
+using KafkaClient.Tests.Helpers;
 using NUnit.Framework;
 
-namespace kafka_tests.Unit
+namespace KafkaClient.Tests.Unit
 {
     [TestFixture]
     [Category("Unit")]

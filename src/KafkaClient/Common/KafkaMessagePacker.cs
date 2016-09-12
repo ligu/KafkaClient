@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 
-namespace KafkaNet.Common
+namespace KafkaClient.Common
 {
     public class KafkaMessagePacker : IDisposable
     {

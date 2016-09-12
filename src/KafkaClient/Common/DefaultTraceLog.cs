@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 
-namespace KafkaNet
+namespace KafkaClient.Common
 {
     /// <summary>
     /// This class simply logs all information out to the Trace log provided by windows.

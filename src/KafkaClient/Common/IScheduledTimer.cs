@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace KafkaNet.Common
+namespace KafkaClient.Common
 {
     public interface IScheduledTimer : IDisposable
     {

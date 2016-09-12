@@ -1,12 +1,11 @@
-﻿using KafkaNet;
-using KafkaNet.Model;
-using KafkaNet.Protocol;
-using System;
-using System.Collections.Generic;
+﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using KafkaClient.Common;
+using KafkaClient.Connection;
+using KafkaClient.Protocol;
 
-namespace kafka_tests.Fakes
+namespace KafkaClient.Tests.Fakes
 {
     public class FakeKafkaConnection : IKafkaConnection
     {

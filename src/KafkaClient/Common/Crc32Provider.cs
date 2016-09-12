@@ -5,7 +5,7 @@
 
 using System;
 
-namespace KafkaNet.Common
+namespace KafkaClient.Common
 {
     /// <summary>
     /// This code was originally from the copyrighted code listed above but was modified significantly

@@ -1,4 +1,4 @@
-﻿namespace KafkaNet
+﻿namespace KafkaClient.Common
 {
     //TODO add  [CallerMemberName], [CallerFilePath], [CallerLineNumber] .
     //TODO add log Exception.

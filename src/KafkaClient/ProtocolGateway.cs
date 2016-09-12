@@ -1,13 +1,13 @@
-﻿using KafkaNet.Model;
-using KafkaNet.Protocol;
-using System;
+﻿using System;
 using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
+using KafkaClient.Connection;
+using KafkaClient.Protocol;
 
-namespace KafkaNet
+namespace KafkaClient
 {
     public static class Extensions
     {

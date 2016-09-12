@@ -1,4 +1,4 @@
-﻿namespace KafkaNet.Protocol
+﻿namespace KafkaClient.Protocol
 {
     /// <summary>
     /// Enumeration of error codes that might be returned from a Kafka server

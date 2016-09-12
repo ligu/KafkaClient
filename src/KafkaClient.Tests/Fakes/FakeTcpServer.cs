@@ -1,13 +1,13 @@
-﻿using KafkaNet;
-using System;
+﻿using System;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using KafkaClient.Common;
 
-namespace kafka_tests.Fakes
+namespace KafkaClient.Tests.Fakes
 {
     public class FakeTcpServer : IDisposable
     {

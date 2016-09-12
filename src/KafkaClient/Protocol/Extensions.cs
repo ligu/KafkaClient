@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using KafkaNet.Model;
+using KafkaClient.Connection;
 
-namespace KafkaNet.Protocol
+namespace KafkaClient.Protocol
 {
     public static class Extensions
     {

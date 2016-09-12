@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace KafkaNet.Common
+namespace KafkaClient.Common
 {
     public class AsyncCollection<T>
     {

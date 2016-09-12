@@ -1,4 +1,6 @@
-﻿namespace KafkaNet
+﻿using KafkaClient.Connection;
+
+namespace KafkaClient
 {
     public class BrokerRoute
     {

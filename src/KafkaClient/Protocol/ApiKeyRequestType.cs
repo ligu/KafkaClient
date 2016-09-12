@@ -1,4 +1,4 @@
-﻿namespace KafkaNet.Protocol
+﻿namespace KafkaClient.Protocol
 {
     /// <summary>
     /// Enumeration of numeric codes that the ApiKey in the request can take for each request types.

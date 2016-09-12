@@ -2,7 +2,7 @@
 using System.Diagnostics;
 using System.Threading.Tasks;
 
-namespace kafka_tests.Helpers
+namespace KafkaClient.Tests.Helpers
 {
     public static class TaskTest
     {

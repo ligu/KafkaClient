@@ -1,7 +1,7 @@
-﻿using KafkaNet.Model;
-using System;
+﻿using System;
+using KafkaClient.Common;
 
-namespace KafkaNet
+namespace KafkaClient.Connection
 {
     public interface IKafkaConnectionFactory
     {
