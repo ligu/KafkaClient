@@ -5,14 +5,14 @@ Native C# client for Apache Kafka.
 
 License
 -----------
-Copyright 2015, Gigya Inc under Apache License, V2.0. See LICENSE file.
+Copyright 2016, Nudge Software Inc under Apache License, V2.0. See LICENSE file.
 
 Summary
 -----------
 
-This library is a fork of Jroland's [kafka-net](https://github.com/Jroland/kafka-net) library, with adjustments and improvements (not interchangeable with kafka-net, as there are breaking changes).
+This library is a fork of Gigya's [KafkaClient](), itself a fork of Jroland's [kafka-net](https://github.com/Jroland/kafka-net) library. In both cases there are breaking changes.
 
-The original project is a .NET implementation of the [Apache Kafka] protocol.  The wire protocol portion is based on the [kafka-python] library writen by [David Arthur] and the general class layout attempts to follow a similar pattern as his project.  To that end, this project builds up from the low level KafkaConnection object for handling async requests to/from the kafka server, all the way up to a higher level Producer/Consumer classes.
+The original project is a .NET implementation of the [Apache Kafka] protocol. The wire protocol portion is based on the [kafka-python] library writen by [David Arthur] and the general class layout attempts to follow a similar pattern as his project. To that end, this project builds up from the low level KafkaConnection object for handling async requests to/from the kafka server, all the way up to a higher level Producer/Consumer classes.
 
 ##### Improvements and Changes:
 
@@ -28,9 +28,6 @@ The original project is a .NET implementation of the [Apache Kafka] protocol.  T
     * New class (uses `ProtocolGateway`) that allows simple fetches from Kafka brokers (in contrast to the high-level `Consumer` class that includes internal caching and other optimizations).
 - Bug fixes
     * When sending messages to the same partition with the same Ack level, order is guaranteed.    
-
-
-
 
 
 Examples

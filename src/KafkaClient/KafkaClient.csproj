@@ -7,8 +7,8 @@
     <ProjectGuid>{1343EB68-55CB-4452-8386-24A9989DE1C0}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>KafkaNet</RootNamespace>
-    <AssemblyName>KafkaNetClient</AssemblyName>
+    <RootNamespace>KafkaClient</RootNamespace>
+    <AssemblyName>KafkaClient</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
@@ -35,7 +35,7 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Collections.Immutable, Version=1.2.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Collections.Immutable.1.2.0\lib\portable-net45+win8+wp8+wpa81\System.Collections.Immutable.dll</HintPath>
+      <HintPath>..\..\packages\System.Collections.Immutable.1.2.0\lib\portable-net45+win8+wp8+wpa81\System.Collections.Immutable.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="System.Core" />
@@ -139,7 +139,9 @@
     <Compile Include="KafkaTcpSocket.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="KafkaNetClient.nuspec" />
+    <None Include="KafkaClient.nuspec">
+      <SubType>Designer</SubType>
+    </None>
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup />
