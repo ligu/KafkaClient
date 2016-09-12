@@ -57,6 +57,10 @@
     <Compile Include="Common\ScheduledTimerStatus.cs" />
     <Compile Include="Common\StringPrefixEncoding.cs" />
     <Compile Include="Common\TaskExtensions.cs" />
+    <Compile Include="Connection\KafkaDataPayload.cs" />
+    <Compile Include="Connection\SocketPayloadReadTask.cs" />
+    <Compile Include="Connection\SocketPayloadSendTask.cs" />
+    <Compile Include="Connection\SocketPayloadTask.cs" />
     <Compile Include="IManualConsumer.cs" />
     <Compile Include="ManualConsumer.cs" />
     <Compile Include="StatisticsTrackerOptions.cs" />
@@ -101,9 +105,9 @@
     <Compile Include="Protocol\ProduceResponse.cs" />
     <Compile Include="Protocol\ProduceTopic.cs" />
     <Compile Include="StatisticsTracker.cs" />
-    <Compile Include="Connection\DefaultKafkaConnectionFactory.cs" />
+    <Compile Include="Connection\KafkaConnectionFactory.cs" />
     <Compile Include="IMetadataQueries.cs" />
-    <Compile Include="IKafkaTcpSocket.cs" />
+    <Compile Include="Connection\IKafkaTcpSocket.cs" />
     <Compile Include="BrokerRoute.cs" />
     <Compile Include="Common\ScheduledTimer.cs" />
     <Compile Include="Consumer.cs" />
@@ -122,7 +126,7 @@
     <Compile Include="Producer.cs" />
     <Compile Include="Connection\KafkaConnection.cs" />
     <Compile Include="Common\Extensions.cs" />
-    <Compile Include="Connection\KafkaOptions.cs" />
+    <Compile Include="KafkaOptions.cs" />
     <Compile Include="Protocol\GroupCoordinatorRequest.cs" />
     <Compile Include="Protocol\OffsetFetchRequest.cs" />
     <Compile Include="Protocol\Compression.cs" />
@@ -135,8 +139,8 @@
     <Compile Include="Protocol\OffsetCommitRequest.cs" />
     <Compile Include="Protocol\OffsetRequest.cs" />
     <Compile Include="Protocol\ProduceRequest.cs" />
-    <Compile Include="Common\DefaultTraceLog.cs" />
-    <Compile Include="KafkaTcpSocket.cs" />
+    <Compile Include="Common\TraceLog.cs" />
+    <Compile Include="Connection\KafkaTcpSocket.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="KafkaClient.nuspec">

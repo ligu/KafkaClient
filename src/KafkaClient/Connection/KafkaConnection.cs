@@ -48,7 +48,7 @@ namespace KafkaClient.Connection
         public KafkaConnection(IKafkaTcpSocket client, TimeSpan? responseTimeout = null, IKafkaLog log = null)
         {
             _client = client;
-            _log = log ?? new DefaultTraceLog();
+            _log = log ?? new TraceLog();
             _responseTimeoutMs = responseTimeout ?? TimeSpan.FromMilliseconds(DefaultResponseTimeoutMs);
 
             StartReadStreamPoller();
@@ -260,13 +260,9 @@ namespace KafkaClient.Connection
             if (Interlocked.Increment(ref _disposeCount) != 1) return;
 
             _disposeToken.Cancel();
-
             _connectionReadPollingTask?.Wait(TimeSpan.FromSeconds(1));
-
-            using (_disposeToken)
-            using (_client)
-            {
-            }
+            _disposeToken.Dispose();
+            _client.Dispose();
         }
 
         #region Class AsyncRequestItem...

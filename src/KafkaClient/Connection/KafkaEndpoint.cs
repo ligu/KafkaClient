@@ -7,12 +7,13 @@ namespace KafkaClient.Connection
     [Serializable]
     public class KafkaEndpoint
     {
-        public Uri ServeUri { get; }
+        public Uri ServerUri { get; }
         public IPEndPoint Endpoint { get; }
 
         protected bool Equals(KafkaEndpoint other)
         {
             if (ReferenceEquals(null, other)) return false;
+            if (ReferenceEquals(this, other)) return true;
             return Equals(Endpoint, other.Endpoint);
         }
 
@@ -24,31 +25,26 @@ namespace KafkaClient.Connection
 
         public override bool Equals(object obj)
         {
-            if (ReferenceEquals(null, obj)) return false;
-            if (ReferenceEquals(this, obj)) return true;
             return Equals(obj as KafkaEndpoint);
         }
 
-        public override string ToString()
-        {
-            return ServeUri.ToString();
-        }
+        public override string ToString() => ServerUri.ToString();
 
         public KafkaEndpoint(Uri serverUri, IPEndPoint endpoint)
         {
-            ServeUri = serverUri;
+            ServerUri = serverUri;
             Endpoint = endpoint;
         }
 
         public KafkaEndpoint(SerializationInfo info, StreamingContext context)
         {
-            ServeUri = info.GetValue<Uri>("ServeUri");
+            ServerUri = info.GetValue<Uri>("ServerUri");
             Endpoint = info.GetValue<IPEndPoint>("Endpoint");
         }
 
         public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
-            info.AddValue("ServeUri", ServeUri);
+            info.AddValue("ServerUri", ServerUri);
             info.AddValue("Endpoint", Endpoint);
         }
     }

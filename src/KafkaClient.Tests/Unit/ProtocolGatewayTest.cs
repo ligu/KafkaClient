@@ -203,7 +203,7 @@ namespace KafkaClient.Tests.Unit
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         public async Task ShouldRecoverFromFailerByUpdateMetadataOnce() //Do not debug this test !!
         {
-            var log = new DefaultTraceLog();
+            var log = new TraceLog();
             var routerProxy = new BrokerRouterProxy(_kernel);
             routerProxy._cacheExpiration = TimeSpan.FromMilliseconds(1000);
             var router = routerProxy.Create();

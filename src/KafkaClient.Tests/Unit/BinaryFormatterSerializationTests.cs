@@ -70,7 +70,7 @@ namespace KafkaClient.Tests.Unit
             };
             var actual = SerializeDeserialize(expected);
 
-            Assert.AreEqual(expected.Endpoint.ServeUri, actual.Endpoint.ServeUri);
+            Assert.AreEqual(expected.Endpoint.ServerUri, actual.Endpoint.ServerUri);
             Assert.AreEqual(expected.Endpoint.Endpoint, actual.Endpoint.Endpoint);
         }
 

@@ -6,10 +6,8 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Common;
-using KafkaClient.Connection;
-using KafkaClient.Protocol;
 
-namespace KafkaClient
+namespace KafkaClient.Connection
 {
     /// <summary>
     /// The TcpSocket provides an abstraction from the main driver from having to handle connection to and reconnections with a server.
@@ -443,62 +441,5 @@ namespace KafkaClient
             using (_disposeRegistration)
             using (_client) { }
         }
-    }
-
-    internal class SocketPayloadReadTask : IDisposable
-    {
-        public CancellationToken CancellationToken { get; private set; }
-        public TaskCompletionSource<byte[]> Tcp { get; set; }
-        public int ReadSize { get; set; }
-
-        private readonly CancellationTokenRegistration _cancellationTokenRegistration;
-
-        public SocketPayloadReadTask(int readSize, CancellationToken cancellationToken)
-        {
-            CancellationToken = cancellationToken;
-            Tcp = new TaskCompletionSource<byte[]>();
-            ReadSize = readSize;
-            _cancellationTokenRegistration = cancellationToken.Register(() => Tcp.TrySetCanceled());
-        }
-
-        public void Dispose()
-        {
-            using (_cancellationTokenRegistration)
-            {
-            }
-        }
-    }
-
-    internal class SocketPayloadSendTask : IDisposable
-    {
-        public TaskCompletionSource<KafkaDataPayload> Tcp { get; set; }
-        public KafkaDataPayload Payload { get; set; }
-
-        private readonly CancellationTokenRegistration _cancellationTokenRegistration;
-
-        public SocketPayloadSendTask(KafkaDataPayload payload, CancellationToken cancellationToken)
-        {
-            Tcp = new TaskCompletionSource<KafkaDataPayload>();
-            Payload = payload;
-            _cancellationTokenRegistration = cancellationToken.Register(() => { Tcp.TrySetCanceled(); });
-        }
-
-        public void Dispose()
-        {
-            using (_cancellationTokenRegistration)
-            {
-            }
-        }
-    }
-
-    public class KafkaDataPayload
-    {
-        public int CorrelationId { get; set; }
-        public ApiKeyRequestType ApiKey { get; set; }
-        public int MessageCount { get; set; }
-
-        public bool TrackPayload => MessageCount > 0;
-
-        public byte[] Buffer { get; set; }
     }
 }

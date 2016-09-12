@@ -253,14 +253,8 @@ namespace KafkaClient
         private BrokerRoute TryGetRouteFromCache(string topic, MetadataPartition partition)
         {
             IKafkaConnection conn;
-            if (_brokerConnectionIndex.TryGetValue(partition.LeaderId, out conn))
-            {
-                return new BrokerRoute
-                {
-                    Topic = topic,
-                    PartitionId = partition.PartitionId,
-                    Connection = conn
-                };
+            if (_brokerConnectionIndex.TryGetValue(partition.LeaderId, out conn)) {
+                return new BrokerRoute(topic, partition.PartitionId, conn);
             }
 
             return null;

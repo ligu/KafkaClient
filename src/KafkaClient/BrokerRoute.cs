@@ -1,41 +1,18 @@
 ﻿using KafkaClient.Connection;
+using KafkaClient.Protocol;
 
 namespace KafkaClient
 {
-    public class BrokerRoute
+    public class BrokerRoute : Topic
     {
-        public string Topic { get; set; }
-        public int PartitionId { get; set; }
-        public IKafkaConnection Connection { get; set; }
-
-        public override string ToString()
+        public BrokerRoute(string topicName, int partitionId, IKafkaConnection connection) : base(topicName, partitionId)
         {
-            return $"{Connection.Endpoint.ServeUri} Topic:{Topic} PartitionId:{PartitionId}";
+            Connection = connection;
         }
 
-        #region Equals Override...
+        public IKafkaConnection Connection { get; }
 
-        protected bool Equals(BrokerRoute other)
-        {
-            return string.Equals(Topic, other.Topic) && PartitionId == other.PartitionId;
-        }
+        public override string ToString() => $"{Connection.Endpoint.ServerUri} {base.ToString()}";
 
-        public override int GetHashCode()
-        {
-            unchecked
-            {
-                return ((Topic?.GetHashCode() ?? 0) * 397) ^ PartitionId;
-            }
-        }
-
-        public override bool Equals(object obj)
-        {
-            if (ReferenceEquals(null, obj)) return false;
-            if (ReferenceEquals(this, obj)) return true;
-            if (obj.GetType() != this.GetType()) return false;
-            return Equals((BrokerRoute)obj);
-        }
-
-        #endregion Equals Override...
     }
 }

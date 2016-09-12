@@ -2,20 +2,40 @@
 using System.Collections.Generic;
 using System.Linq;
 using KafkaClient.Common;
+using KafkaClient.Connection;
 
-namespace KafkaClient.Connection
+namespace KafkaClient
 {
     public class KafkaOptions
     {
+        public KafkaOptions(params Uri[] kafkaServerUri)
+        {
+            KafkaServerUri = kafkaServerUri.ToList();
+            PartitionSelector = new DefaultPartitionSelector();
+            Log = new TraceLog();
+            KafkaConnectionFactory = new KafkaConnectionFactory();
+            ResponseTimeoutMs = TimeSpan.FromMilliseconds(DefaultResponseTimeout);
+            CacheExpiration = TimeSpan.FromMilliseconds(DefaultCacheExpirationTimeoutMS);
+            RefreshMetadataTimeout = TimeSpan.FromMilliseconds(DefaultRefreshMetadataTimeout);
+            MaxRetry = DefaultMaxRetry;
+            StatisticsTrackerOptions = new StatisticsTrackerOptions();
+        }
+
+        public KafkaOptions()
+        {
+            
+        }
+
         private const int DefaultResponseTimeout = 60000;
         private const int DefaultCacheExpirationTimeoutMS = 10;
         private const int DefaultRefreshMetadataTimeout = 200000;
         private const int DefaultMaxRetry = 5;
+
         /// <summary>
         /// Refresh metadata Request will try to refresh only the topics that were expired in the cache.
         /// </summary>
 
-        public StatisticsTrackerOptions StatisticsTrackerOptions { get; set; }
+        public StatisticsTrackerOptions StatisticsTrackerOptions { get; }
         public TimeSpan CacheExpiration { get; set; }
         public TimeSpan RefreshMetadataTimeout { get; set; }
         public int MaxRetry { get; set; }
@@ -32,16 +52,12 @@ namespace KafkaClient.Connection
         {
             get
             {
-                foreach (var uri in KafkaServerUri)
-                {
+                foreach (var uri in KafkaServerUri) {
                     KafkaEndpoint endpoint = null;
-                    try
-                    {
+                    try {
                         endpoint = KafkaConnectionFactory.Resolve(uri, Log);
-                    }
-                    catch (KafkaConnectionException ex)
-                    {
-                        Log.WarnFormat("Ignoring the following uri as it could not be resolved. Uri:{0}  Exception:{1}", uri, ex);
+                    } catch (KafkaConnectionException ex) {
+                        Log.WarnFormat(ex, "Ignoring uri that could not be resolved: {0}", uri);
                     }
 
                     if (endpoint != null) yield return endpoint;
@@ -73,18 +89,5 @@ namespace KafkaClient.Connection
         /// The maximum time to wait when backing off on reconnection attempts.
         /// </summary>
         public TimeSpan? MaximumReconnectionTimeout { get; set; }
-
-        public KafkaOptions(params Uri[] kafkaServerUri)
-        {
-            KafkaServerUri = kafkaServerUri.ToList();
-            PartitionSelector = new DefaultPartitionSelector();
-            Log = new DefaultTraceLog();
-            KafkaConnectionFactory = new DefaultKafkaConnectionFactory();
-            ResponseTimeoutMs = TimeSpan.FromMilliseconds(DefaultResponseTimeout);
-            CacheExpiration = TimeSpan.FromMilliseconds(DefaultCacheExpirationTimeoutMS);
-            RefreshMetadataTimeout = TimeSpan.FromMilliseconds(DefaultRefreshMetadataTimeout);
-            MaxRetry = DefaultMaxRetry;
-            StatisticsTrackerOptions = new StatisticsTrackerOptions();
-        }
     }
 }

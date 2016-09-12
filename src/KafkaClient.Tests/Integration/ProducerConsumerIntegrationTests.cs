@@ -404,7 +404,7 @@ namespace KafkaClient.Tests.Integration
         public async void ConsumerShouldMoveToNextAvailableOffsetWhenQueryingForNextMessage()
         {
             const int expectedCount = 1000;
-            var options = new KafkaOptions(IntegrationConfig.IntegrationUri) { Log = new DefaultTraceLog() };
+            var options = new KafkaOptions(IntegrationConfig.IntegrationUri) { Log = new TraceLog() };
 
             using (var producerRouter = new BrokerRouter(options))
             using (var producer = new Producer(producerRouter))

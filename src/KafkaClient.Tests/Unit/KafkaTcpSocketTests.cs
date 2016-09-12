@@ -23,13 +23,13 @@ namespace KafkaClient.Tests.Unit
         private const int FakeServerPort = 8999;
         private readonly KafkaEndpoint _fakeServerUrl;
         private readonly KafkaEndpoint _badServerUrl;
-        private IKafkaLog _log = new DefaultTraceLog(LogLevel.Info);
+        private IKafkaLog _log = new TraceLog(LogLevel.Info);
         private int _maxRetry = 5;
 
         public KafkaTcpSocketTests()
         {
-            _fakeServerUrl = new DefaultKafkaConnectionFactory().Resolve(new Uri("http://localhost:8999"), _log);
-            _badServerUrl = new DefaultKafkaConnectionFactory().Resolve(new Uri("http://localhost:1"), _log);
+            _fakeServerUrl = new KafkaConnectionFactory().Resolve(new Uri("http://localhost:8999"), _log);
+            _badServerUrl = new KafkaConnectionFactory().Resolve(new Uri("http://localhost:1"), _log);
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
@@ -415,7 +415,7 @@ namespace KafkaClient.Tests.Unit
 
                 var payload = new KafkaMessagePacker().Pack(messages);
 
-                var socket = new KafkaTcpSocket(new DefaultTraceLog(LogLevel.Warn), _fakeServerUrl, _maxRetry);
+                var socket = new KafkaTcpSocket(new TraceLog(LogLevel.Warn), _fakeServerUrl, _maxRetry);
 
                 var tasks = messages.Select(x => socket.ReadAsync(x.Length)).ToArray();
 
@@ -438,7 +438,7 @@ namespace KafkaClient.Tests.Unit
         public async Task WriteAsyncShouldSendData()
         {
             using (var server = new FakeTcpServer(_log, FakeServerPort))
-            using (var test = new KafkaTcpSocket(new DefaultTraceLog(LogLevel.Warn), _fakeServerUrl, _maxRetry))
+            using (var test = new KafkaTcpSocket(new TraceLog(LogLevel.Warn), _fakeServerUrl, _maxRetry))
             {
                 const int testData = 99;
                 int result = 0;
@@ -537,7 +537,7 @@ namespace KafkaClient.Tests.Unit
             var write = new ConcurrentBag<int>();
             int percent = 0;
             using (var server = new FakeTcpServer(_log, FakeServerPort))
-            using (var test = new KafkaTcpSocket(new DefaultTraceLog(LogLevel.Warn), _fakeServerUrl, _maxRetry))
+            using (var test = new KafkaTcpSocket(new TraceLog(LogLevel.Warn), _fakeServerUrl, _maxRetry))
             {
                 int numberOfWrite = 10000;
                 server.OnBytesReceived += data =>

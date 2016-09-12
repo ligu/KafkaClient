@@ -287,7 +287,7 @@ namespace KafkaClient
                     var numberOfMessage = sendTask.MessagesSent.Count;
                     for (int i = 0; i < numberOfMessage; i++) {
                         if (sendTask.AckLevel == 0) {
-                            var response = new ProduceTopic(sendTask.Route.Topic, sendTask.Route.PartitionId, ErrorResponseCode.NoError, -1);
+                            var response = new ProduceTopic(sendTask.Route.TopicName, sendTask.Route.PartitionId, ErrorResponseCode.NoError, -1);
                             sendTask.MessagesSent[i].Tcs.SetResult(response);
                         } else {
                             // HACK: assume there is at most one ...
@@ -303,7 +303,7 @@ namespace KafkaClient
                 }
                 catch (Exception ex)
                 {
-                    BrokerRouter.Log.ErrorFormat("failed to send batch Topic[{0}] ackLevel[{1}] partition[{2}] EndPoint[{3}] Exception[{4}] stacktrace[{5}]", sendTask.Route.Topic, sendTask.AckLevel, sendTask.Route.PartitionId, sendTask.Route.Connection.Endpoint, ex.Message, ex.StackTrace);
+                    BrokerRouter.Log.ErrorFormat("failed to send batch Topic[{0}] ackLevel[{1}] partition[{2}] EndPoint[{3}] Exception[{4}] stacktrace[{5}]", sendTask.Route.TopicName, sendTask.AckLevel, sendTask.Route.PartitionId, sendTask.Route.Connection.Endpoint, ex.Message, ex.StackTrace);
                     sendTask.MessagesSent.ForEach(x => x.Tcs.TrySetException(ex));
                 }
             }

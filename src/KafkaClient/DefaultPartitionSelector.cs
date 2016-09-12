@@ -17,13 +17,9 @@ namespace KafkaClient
 
             //use round robin
             var partitions = topic.Partitions;
-            if (key == null)
-            {
+            if (key == null) {
                 //use round robin
-                var paritionIndex = _roundRobinTracker.AddOrUpdate(topic.TopicName, p => 0, (s, i) =>
-                    {
-                        return ((i + 1) % partitions.Count);
-                    });
+                var paritionIndex = _roundRobinTracker.AddOrUpdate(topic.TopicName, p => 0, (s, i) => (i + 1) % partitions.Count);
 
                 return partitions[paritionIndex];
             }

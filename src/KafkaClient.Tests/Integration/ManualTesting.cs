@@ -13,8 +13,8 @@ namespace KafkaClient.Tests.Integration
     [TestFixture]
     internal class ManualTesting
     {
-        private readonly KafkaOptions _options = new KafkaOptions(new Uri("http://S1.com:9092"), new Uri("http://S2.com:9092"), new Uri("http://S3.com:9092")) { Log = new DefaultTraceLog(LogLevel.Warn) };
-        public readonly  DefaultTraceLog _log = new DefaultTraceLog(LogLevel.Debug);
+        private readonly KafkaOptions _options = new KafkaOptions(new Uri("http://S1.com:9092"), new Uri("http://S2.com:9092"), new Uri("http://S3.com:9092")) { Log = new TraceLog(LogLevel.Warn) };
+        public readonly  TraceLog _log = new TraceLog(LogLevel.Debug);
 
         /// <summary>
         /// These tests are for manual run. You need to stop the partition leader and then start it again and let it became the leader.        

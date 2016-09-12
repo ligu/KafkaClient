@@ -17,15 +17,15 @@ namespace KafkaClient.Tests.Unit
     [TestFixture]
     public class KafkaConnectionTests
     {
-        private readonly DefaultTraceLog _log;
+        private readonly TraceLog _log;
         private readonly KafkaEndpoint _kafkaEndpoint;
         private MoqMockingKernel _kernel;
         private int _maxRetry = 5;
 
         public KafkaConnectionTests()
         {
-            _log = new DefaultTraceLog();
-            _kafkaEndpoint = new DefaultKafkaConnectionFactory().Resolve(new Uri("http://localhost:8999"), _log);
+            _log = new TraceLog();
+            _kafkaEndpoint = new KafkaConnectionFactory().Resolve(new Uri("http://localhost:8999"), _log);
         }
 
         [SetUp]
@@ -95,7 +95,7 @@ namespace KafkaClient.Tests.Unit
         public async Task KafkaConnectionShouldLogDisconnectAndRecover()
         {
             var mockLog =new Mock<IKafkaLog>();
-            var log= new DefaultTraceLog(LogLevel.Error);
+            var log= new TraceLog(LogLevel.Error);
             using (var server = new FakeTcpServer(log, 8999))
             using (var socket = new KafkaTcpSocket(log, _kafkaEndpoint, _maxRetry))
             using (var conn = new KafkaConnection(socket, log: mockLog.Object))
