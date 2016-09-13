@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using KafkaClient.Common;
@@ -48,40 +49,36 @@ namespace KafkaClient
             ProduceRequestStatistics.Enqueue(new ProduceRequestStatistic(messageCount, payloadBytes, compressedBytes));
         }
 
-        public static void IncrementGauge(StatisticGauge gauge)
+        public static IDisposable Gauge(StatisticGauge type)
         {
-            switch (gauge)
+            switch (type)
             {
                 case StatisticGauge.ActiveReadOperation:
                     Interlocked.Increment(ref Gauges.ActiveReadOperation);
-                    break;
+                    return new Disposable(() => Interlocked.Decrement(ref Gauges.ActiveReadOperation));
 
                 case StatisticGauge.ActiveWriteOperation:
                     Interlocked.Increment(ref Gauges.ActiveWriteOperation);
-                    break;
+                    return new Disposable(() => Interlocked.Decrement(ref Gauges.ActiveWriteOperation));
 
                 case StatisticGauge.QueuedWriteOperation:
                     Interlocked.Increment(ref Gauges.QueuedWriteOperation);
-                    break;
+                    return new Disposable(() => Interlocked.Decrement(ref Gauges.QueuedWriteOperation));
+
+                default:
+                    return Disposable.None;
             }
         }
 
-        public static void DecrementGauge(StatisticGauge gauge)
+        internal static IDisposable TrackNetworkWrite(SocketPayloadSendTask sendTask)
         {
-            switch (gauge)
-            {
-                case StatisticGauge.ActiveReadOperation:
-                    Interlocked.Decrement(ref Gauges.ActiveReadOperation);
-                    break;
-
-                case StatisticGauge.ActiveWriteOperation:
+            var sw = Stopwatch.StartNew();
+            Interlocked.Increment(ref Gauges.ActiveWriteOperation);
+            return new Disposable(
+                () => {
                     Interlocked.Decrement(ref Gauges.ActiveWriteOperation);
-                    break;
-
-                case StatisticGauge.QueuedWriteOperation:
-                    Interlocked.Decrement(ref Gauges.QueuedWriteOperation);
-                    break;
-            }
+                    CompleteNetworkWrite(sendTask.Payload, sw.ElapsedMilliseconds, sendTask.Tcp.Task.Exception != null);
+                });
         }
 
         public static void QueueNetworkWrite(KafkaEndpoint endpoint, KafkaDataPayload payload)

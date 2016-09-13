@@ -21,11 +21,6 @@ namespace KafkaClient
             StatisticsTrackerOptions = new StatisticsTrackerOptions();
         }
 
-        public KafkaOptions()
-        {
-            
-        }
-
         private const int DefaultResponseTimeout = 60000;
         private const int DefaultCacheExpirationTimeoutMS = 10;
         private const int DefaultRefreshMetadataTimeout = 200000;

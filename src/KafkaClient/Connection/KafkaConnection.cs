@@ -74,7 +74,7 @@ namespace KafkaClient.Connection
         /// <returns>Task which signals the completion of the upload of data to the server.</returns>
         public Task SendAsync(KafkaDataPayload payload)
         {
-            return _client.WriteAsync(payload);
+            return _client.WriteAsync(payload, CancellationToken.None);
         }
 
         /// <summary>
@@ -102,7 +102,7 @@ namespace KafkaClient.Connection
 
             _log.DebugFormat("SendAsync Api={0} CorrelationId={1} to {2} ", request.ApiKey, context.CorrelationId, Endpoint);
             if (!request.ExpectResponse) {
-                await _client.WriteAsync(KafkaEncoder.Encode(context, request)).ConfigureAwait(false);
+                await _client.WriteAsync(KafkaEncoder.Encode(context, request), CancellationToken.None).ConfigureAwait(false);
                 return default(T);
             }
 
@@ -112,7 +112,7 @@ namespace KafkaClient.Connection
                     ExceptionDispatchInfo exceptionDispatchInfo = null;
 
                     try {
-                        await _client.WriteAsync(KafkaEncoder.Encode(context, request)).ConfigureAwait(false);
+                        await _client.WriteAsync(KafkaEncoder.Encode(context, request), CancellationToken.None).ConfigureAwait(false);
                     } catch (Exception ex) {
                         exceptionDispatchInfo = ExceptionDispatchInfo.Capture(ex);
                     }
@@ -261,8 +261,11 @@ namespace KafkaClient.Connection
 
             _disposeToken.Cancel();
             _connectionReadPollingTask?.Wait(TimeSpan.FromSeconds(1));
-            _disposeToken.Dispose();
-            _client.Dispose();
+
+            using (_disposeToken) {
+                using (_client) {
+                }
+            }
         }
 
         #region Class AsyncRequestItem...

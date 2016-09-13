@@ -2,9 +2,9 @@ using System.Threading;
 
 namespace KafkaClient.Connection
 {
-    internal class SocketPayloadReadTask : SocketPayloadTask<byte[]>
+    internal class SocketPayloadReceiveTask : SocketPayloadTask<byte[]>
     {
-        public SocketPayloadReadTask(int readSize, CancellationToken cancellationToken)
+        public SocketPayloadReceiveTask(int readSize, CancellationToken cancellationToken)
             : base(cancellationToken)
         {
             ReadSize = readSize;

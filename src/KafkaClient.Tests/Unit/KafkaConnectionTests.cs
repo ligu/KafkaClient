@@ -137,7 +137,7 @@ namespace KafkaClient.Tests.Unit
             using (var conn = new KafkaConnection(socket, log: mockLog.Object))
             {
                 var receivedData = false;
-                socket.OnBytesReceived += i => receivedData = true;
+                socket.OnReceivedFromSocket += i => receivedData = true;
 
                 //send correlation message
                 server.SendDataAsync(CreateCorrelationMessage(correlationId)).Wait(TimeSpan.FromSeconds(5));
