@@ -27,29 +27,19 @@ namespace KafkaClient.Protocol
             switch (request.ApiKey) {
                 case ApiKeyRequestType.Produce: {
                     var produceRequest = (ProduceRequest)(IKafkaRequest)request;
-                    return new KafkaDataPayload {
-                        Buffer = EncodeRequest(context, produceRequest),
-                        CorrelationId = context.CorrelationId,
-                        MessageCount = produceRequest.Payload.Sum(x => x.Messages.Count),
-                        ApiKey = request.ApiKey
-                    };
+                    return new KafkaDataPayload(
+                        EncodeRequest(context, produceRequest), 
+                        context.CorrelationId, 
+                        request.ApiKey, 
+                        produceRequest.Payload.Sum(x => x.Messages.Count));
                 }
 
                 default:
-                    return WrapEncodedBytes(context, request, EncodeRequestBytes(context, request));
+                    return new KafkaDataPayload(EncodeRequestBytes(context, request), context.CorrelationId, request.ApiKey);
             }
         }
 
         #region Encode
-
-        private static KafkaDataPayload WrapEncodedBytes(IRequestContext context, IKafkaRequest request, byte[] buffer)
-        {
-            return new KafkaDataPayload {
-                Buffer = buffer,
-                CorrelationId = context.CorrelationId,
-                ApiKey = request.ApiKey
-            };
-        }
 
         public static byte[] EncodeRequestBytes(IRequestContext context, IKafkaRequest request)
         {

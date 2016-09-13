@@ -57,25 +57,12 @@ namespace KafkaClient.Connection
         /// <summary>
         /// Indicates a thread is polling the stream for data to read.
         /// </summary>
-        public bool ReadPolling
-        {
-            get { return _ensureOneActiveReader >= 1; }
-        }
+        public bool ReadPolling => _ensureOneActiveReader >= 1;
 
         /// <summary>
         /// Provides the unique ip/port endpoint for this connection
         /// </summary>
-        public KafkaEndpoint Endpoint { get { return _client.Endpoint; } }
-
-        /// <summary>
-        /// Send raw byte[] payload to the kafka server with a task indicating upload is complete.
-        /// </summary>
-        /// <param name="payload">kafka protocol formatted byte[] payload</param>
-        /// <returns>Task which signals the completion of the upload of data to the server.</returns>
-        public Task SendAsync(KafkaDataPayload payload)
-        {
-            return _client.WriteAsync(payload, CancellationToken.None);
-        }
+        public KafkaEndpoint Endpoint => _client.Endpoint;
 
         /// <summary>
         /// Send raw byte[] payload to the kafka server with a task indicating upload is complete.

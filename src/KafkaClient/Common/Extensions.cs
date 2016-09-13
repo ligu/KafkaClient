@@ -46,11 +46,6 @@ namespace KafkaClient.Common
             return Encoding.UTF8.GetString(value);
         }
 
-        public static KafkaDataPayload ToPayload(this byte[] data)
-        {
-            return new KafkaDataPayload { Buffer = data };
-        }
-
         public static byte[] ToBytes(this string value)
         {
             if (string.IsNullOrEmpty(value)) return (-1).ToBytes();

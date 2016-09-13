@@ -4,12 +4,19 @@ namespace KafkaClient.Connection
 {
     public class KafkaDataPayload
     {
-        public int CorrelationId { get; set; }
-        public ApiKeyRequestType ApiKey { get; set; }
-        public int MessageCount { get; set; }
+        public KafkaDataPayload(byte[] buffer, int correlationId = 0, ApiKeyRequestType apiKey = ApiKeyRequestType.Produce, int messageCount = 0)
+        {
+            Buffer = buffer;
+            CorrelationId = correlationId;
+            ApiKey = apiKey;
+            MessageCount = messageCount;
+        }
+
+        public byte[] Buffer { get; }
+        public int CorrelationId { get; }
+        public ApiKeyRequestType ApiKey { get; }
+        public int MessageCount { get; }
 
         public bool TrackPayload => MessageCount > 0;
-
-        public byte[] Buffer { get; set; }
     }
 }
