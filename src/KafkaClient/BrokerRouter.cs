@@ -36,9 +36,8 @@ namespace KafkaClient
             _kafkaOptions = kafkaOptions;
             _kafkaMetadataProvider = new KafkaMetadataProvider(_kafkaOptions.Log);
 
-            foreach (var endpoint in _kafkaOptions.KafkaServerEndpoints)
-            {
-                var conn = _kafkaOptions.KafkaConnectionFactory.Create(endpoint, _kafkaOptions.ResponseTimeoutMs, _kafkaOptions.Log, _kafkaOptions.MaxRetry, _kafkaOptions.MaximumReconnectionTimeout, kafkaOptions.StatisticsTrackerOptions);
+            foreach (var endpoint in _kafkaOptions.KafkaServerEndpoints) {
+                var conn = _kafkaOptions.KafkaConnectionFactory.Create(endpoint, _kafkaOptions.ResponseTimeoutMs, _kafkaOptions.Log, _kafkaOptions.MaxRetry, _kafkaOptions.MaximumReconnectionTimeout, kafkaOptions.TrackTelemetry);
                 _defaultConnectionIndex.AddOrUpdate(endpoint, e => conn, (e, c) => conn);
             }
 

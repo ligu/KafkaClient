@@ -33,7 +33,7 @@ namespace KafkaClient.Connection
         private readonly Task _disposeTask;
         private readonly AsyncCollection<SocketPayloadSendTask> _sendTaskQueue;
         private readonly AsyncCollection<SocketPayloadReceiveTask> _readTaskQueue;
-        private readonly bool _trackStatistics;
+        private readonly bool _trackTelemetry;
         private readonly Task _socketTask;
         private readonly AsyncLock _clientLock = new AsyncLock();
         private TcpClient _client;
@@ -45,18 +45,20 @@ namespace KafkaClient.Connection
         /// </summary>
         /// <param name="log">Logging facility for verbose messaging of actions.</param>
         /// <param name="endpoint">The IP endpoint to connect to.</param>
+        /// <param name="maxRetry">The maximum number of retries.</param>
         /// <param name="maximumReconnectionTimeout">The maximum time to wait when backing off on reconnection attempts.</param>
-        public KafkaTcpSocket(IKafkaLog log, KafkaEndpoint endpoint, int maxRetry, TimeSpan? maximumReconnectionTimeout = null, StatisticsTrackerOptions statisticsTrackerOptions = null)
+        /// <param name="trackTelemetry">Whether to track telemetry.</param>
+        public KafkaTcpSocket(IKafkaLog log, KafkaEndpoint endpoint, int maxRetry, TimeSpan? maximumReconnectionTimeout = null, bool trackTelemetry = false)
         {
             _log = log;
             Endpoint = endpoint;
             _maximumReconnectionTimeout = maximumReconnectionTimeout ?? TimeSpan.FromMinutes(MaxReconnectionTimeoutMinutes);
             _maxRetry = maxRetry;
-            _trackStatistics = statisticsTrackerOptions == null || statisticsTrackerOptions.Enable;
             _sendTaskQueue = new AsyncCollection<SocketPayloadSendTask>();
             _readTaskQueue = new AsyncCollection<SocketPayloadReceiveTask>();
+            _trackTelemetry = trackTelemetry;
 
-            //dedicate a long running task to the read/write operations
+            // dedicate a long running task to the read/write operations
             _socketTask = Task.Run(async () => { await DedicatedSocketTask(); });
 
             _disposeTask = _disposeToken.Token.CreateTask();
@@ -96,7 +98,7 @@ namespace KafkaClient.Connection
         {
             var sendTask = new SocketPayloadSendTask(payload, cancellationToken);
             _sendTaskQueue.Add(sendTask);
-            if (_trackStatistics) {
+            if (_trackTelemetry) {
                 StatisticsTracker.QueueNetworkWrite(Endpoint, payload);
             }
             return sendTask.Tcp.Task;
@@ -182,7 +184,7 @@ namespace KafkaClient.Connection
         private async Task ProcessReceiveTaskAsync(Stream stream, SocketPayloadReceiveTask receiveTask)
         {
             using (receiveTask) {
-                using (_trackStatistics ? StatisticsTracker.Gauge(StatisticGauge.ActiveReadOperation) : Disposable.None) {
+                using (_trackTelemetry ? StatisticsTracker.Gauge(StatisticGauge.ActiveReadOperation) : Disposable.None) {
                     try {
                         var readSize = receiveTask.ReadSize;
                         var result = new List<byte>();
@@ -245,7 +247,7 @@ namespace KafkaClient.Connection
             if (sendTask == null) return;
 
             using (sendTask) {
-                using (_trackStatistics ? StatisticsTracker.TrackNetworkWrite(sendTask) : Disposable.None) {
+                using (_trackTelemetry ? StatisticsTracker.TrackNetworkWrite(sendTask) : Disposable.None) {
                     try {
                         _log.DebugFormat("Sending data to {0} with CorrelationId {1}", Endpoint, sendTask.Payload.CorrelationId);
                         OnSendingToSocket?.Invoke(sendTask.Payload);

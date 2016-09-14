@@ -50,22 +50,22 @@ namespace KafkaClient.Common
             var bytes = GetNextBytesNativeEndian(16);
 
             var ints = new int[4];
-            ints[0] = (int)bytes[0] << 0
-                | (int)bytes[1] << 8
-                | (int)bytes[2] << 16
-                | (int)bytes[3] << 24;
-            ints[1] = (int)bytes[4] << 0
-                | (int)bytes[5] << 8
-                | (int)bytes[6] << 16
-                | (int)bytes[7] << 24;
-            ints[2] = (int)bytes[8] << 0
-                | (int)bytes[9] << 8
-                | (int)bytes[10] << 16
-                | (int)bytes[11] << 24;
-            ints[3] = (int)bytes[12] << 0
-                | (int)bytes[13] << 8
-                | (int)bytes[14] << 16
-                | (int)bytes[15] << 24;
+            ints[0] = bytes[0] << 0
+                | bytes[1] << 8
+                | bytes[2] << 16
+                | bytes[3] << 24;
+            ints[1] = bytes[4] << 0
+                | bytes[5] << 8
+                | bytes[6] << 16
+                | bytes[7] << 24;
+            ints[2] = bytes[8] << 0
+                | bytes[9] << 8
+                | bytes[10] << 16
+                | bytes[11] << 24;
+            ints[3] = bytes[12] << 0
+                | bytes[13] << 8
+                | bytes[14] << 16
+                | bytes[15] << 24;
 
             return new decimal(ints);
         }

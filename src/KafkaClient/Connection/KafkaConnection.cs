@@ -11,7 +11,7 @@ namespace KafkaClient.Connection
 {
     /// <summary>
     /// KafkaConnection represents the lowest level TCP stream connection to a Kafka broker.
-    /// The Send and Receive are separated into two disconnected paths and must be combine outside
+    /// The Send and Receive are separated into two disconnected paths and must be combined outside
     /// this class by the correlation ID contained within the returned message.
     ///
     /// The SendAsync function will return a Task and complete once the data has been sent to the outbound stream.
@@ -20,7 +20,7 @@ namespace KafkaClient.Connection
     /// </summary>
     public class KafkaConnection : IKafkaConnection
     {
-        private const int DefaultResponseTimeoutMs = 60000;
+        private const int DefaultResponseTimeoutSeconds = 60;
         bool _isInErrorState = false;
 
         public bool IsOnErrorState()
@@ -49,7 +49,7 @@ namespace KafkaClient.Connection
         {
             _client = client;
             _log = log ?? new TraceLog();
-            _responseTimeoutMs = responseTimeout ?? TimeSpan.FromMilliseconds(DefaultResponseTimeoutMs);
+            _responseTimeoutMs = responseTimeout ?? TimeSpan.FromSeconds(DefaultResponseTimeoutSeconds);
 
             StartReadStreamPoller();
         }

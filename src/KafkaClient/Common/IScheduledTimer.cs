@@ -5,7 +5,7 @@ namespace KafkaClient.Common
     public interface IScheduledTimer : IDisposable
     {
         /// <summary>
-        ///     Current running status of the timer.
+        /// Current running status of the timer.
         /// </summary>
         ScheduledTimerStatus Status { get; }
 
@@ -15,7 +15,7 @@ namespace KafkaClient.Common
         bool Enabled { get; }
 
         /// <summary>
-        ///     Set the time to start a replication.
+        /// Set the time to start a replication.
         /// </summary>
         /// <param name="start">Start date and time for the replication timer.</param>
         /// <returns>Instance of ScheduledTimer for fluent configuration.</returns>
@@ -23,7 +23,7 @@ namespace KafkaClient.Common
         IScheduledTimer StartingAt(DateTime start);
 
         /// <summary>
-        ///     Set the interval to send a replication command to a Solr server.
+        /// Set the interval to send a replication command to a Solr server.
         /// </summary>
         /// <param name="interval">Interval this command is to be called.</param>
         /// <returns>Instance of ScheduledTimer for fluent configuration.</returns>
@@ -31,7 +31,7 @@ namespace KafkaClient.Common
         IScheduledTimer Every(TimeSpan interval);
 
         /// <summary>
-        ///     Action to perform when the timer expires.
+        /// Action to perform when the timer expires.
         /// </summary>
         IScheduledTimer Do(Action action);
 
@@ -42,12 +42,12 @@ namespace KafkaClient.Common
         IScheduledTimer DontWait();
 
         /// <summary>
-        ///     Starts the timer
+        /// Starts the timer
         /// </summary>
         IScheduledTimer Begin();
 
         /// <summary>
-        ///     Stop the timer.
+        /// Stop the timer.
         /// </summary>
         IScheduledTimer End();
     }

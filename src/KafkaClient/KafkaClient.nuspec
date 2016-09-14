@@ -15,8 +15,13 @@
     <copyright>Copyright Nudge 2016</copyright>
     <tags>C# Apache Kafka</tags>
     <releaseNotes>https://github.com/awr/KafkaClient/releases</releaseNotes>
+    <dependencies>
+      <group>
+        <dependency id="System.Collections.Immutable" />
+      </group>
+    </dependencies>
   </metadata>
   <files>
-    <file src="bin\*" target="lib\net45" />
+    <file src="bin\KafkaClient.dll" target="lib\net45" />
   </files>
 </package>

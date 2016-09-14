@@ -32,7 +32,7 @@ namespace KafkaClient.Tests.Unit
             _mockPartitionSelector = _kernel.GetMock<IPartitionSelector>();
             _mockKafkaConnection1 = _kernel.GetMock<IKafkaConnection>();
             _mockKafkaConnectionFactory = _kernel.GetMock<IKafkaConnectionFactory>();
-            _mockKafkaConnectionFactory.Setup(x => x.Create(It.Is<KafkaEndpoint>(e => e.Endpoint.Port == 1), It.IsAny<TimeSpan>(), It.IsAny<IKafkaLog>(), It.IsAny<int>(), It.IsAny<TimeSpan?>(), It.IsAny<StatisticsTrackerOptions>())).Returns(() => _mockKafkaConnection1.Object);
+            _mockKafkaConnectionFactory.Setup(x => x.Create(It.Is<KafkaEndpoint>(e => e.Endpoint.Port == 1), It.IsAny<TimeSpan>(), It.IsAny<IKafkaLog>(), It.IsAny<int>(), It.IsAny<TimeSpan?>(), It.IsAny<bool>())).Returns(() => _mockKafkaConnection1.Object);
             _mockKafkaConnectionFactory.Setup(x => x.Resolve(It.IsAny<Uri>(), It.IsAny<IKafkaLog>()))
                 .Returns<Uri, IKafkaLog>((uri, log) => new KafkaEndpoint(uri, new IPEndPoint(IPAddress.Parse("127.0.0.1"), uri.Port)));
         }
@@ -81,7 +81,7 @@ namespace KafkaClient.Tests.Unit
                       .Returns(() => Task.Run(async () => await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers()));
             await router.RefreshMissingTopicMetadata(TestTopic);
             var topics = router.GetTopicMetadataFromLocalCache(TestTopic);
-            _mockKafkaConnectionFactory.Verify(x => x.Create(It.Is<KafkaEndpoint>(e => e.Endpoint.Port == 2), It.IsAny<TimeSpan>(), It.IsAny<IKafkaLog>(), It.IsAny<int>(), It.IsAny<TimeSpan?>(), It.IsAny<StatisticsTrackerOptions>()), Times.Once());
+            _mockKafkaConnectionFactory.Verify(x => x.Create(It.Is<KafkaEndpoint>(e => e.Endpoint.Port == 2), It.IsAny<TimeSpan>(), It.IsAny<IKafkaLog>(), It.IsAny<int>(), It.IsAny<TimeSpan?>(), It.IsAny<bool>()), Times.Once());
         }
 
         #region MetadataRequest Tests...

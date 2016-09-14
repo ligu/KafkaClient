@@ -257,7 +257,7 @@ namespace KafkaClient
                     };
 
                     //ensure the async is released as soon as each task is completed //TODO: remove it from ack level 0 , don't like it
-                    brokerSendTask.Task.ContinueWith(t => { _semaphoreMaximumAsync.Release(); }, cancellationToken);
+                    var continuation = brokerSendTask.Task.ContinueWith(t => { _semaphoreMaximumAsync.Release(); }, cancellationToken);
 
                     sendTasks.Add(brokerSendTask);
                 }

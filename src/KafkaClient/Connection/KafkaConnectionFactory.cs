@@ -8,9 +8,9 @@ namespace KafkaClient.Connection
 {
     public class KafkaConnectionFactory : IKafkaConnectionFactory
     {
-        public IKafkaConnection Create(KafkaEndpoint endpoint, TimeSpan responseTimeoutMs, IKafkaLog log, int maxRetry, TimeSpan? maximumReconnectionTimeout = null, StatisticsTrackerOptions statisticsTrackerOptions = null)
+        public IKafkaConnection Create(KafkaEndpoint endpoint, TimeSpan responseTimeoutMs, IKafkaLog log, int maxRetry, TimeSpan? maximumReconnectionTimeout = null, bool trackTelemetry = false)
         {
-            var socket = new KafkaTcpSocket(log, endpoint, maxRetry, maximumReconnectionTimeout, statisticsTrackerOptions);
+            var socket = new KafkaTcpSocket(log, endpoint, maxRetry, maximumReconnectionTimeout, trackTelemetry);
             return new KafkaConnection(socket, responseTimeoutMs, log);
         }
 

@@ -18,7 +18,7 @@ namespace KafkaClient
             CacheExpiration = TimeSpan.FromMilliseconds(DefaultCacheExpirationTimeoutMS);
             RefreshMetadataTimeout = TimeSpan.FromMilliseconds(DefaultRefreshMetadataTimeout);
             MaxRetry = DefaultMaxRetry;
-            StatisticsTrackerOptions = new StatisticsTrackerOptions();
+            TrackTelemetry = false;
         }
 
         private const int DefaultResponseTimeout = 60000;
@@ -29,8 +29,7 @@ namespace KafkaClient
         /// <summary>
         /// Refresh metadata Request will try to refresh only the topics that were expired in the cache.
         /// </summary>
-
-        public StatisticsTrackerOptions StatisticsTrackerOptions { get; }
+        public bool TrackTelemetry { get; }
         public TimeSpan CacheExpiration { get; set; }
         public TimeSpan RefreshMetadataTimeout { get; set; }
         public int MaxRetry { get; set; }
