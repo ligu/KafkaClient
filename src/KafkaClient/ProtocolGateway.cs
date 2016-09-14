@@ -3,6 +3,7 @@ using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Runtime.Serialization;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Connection;
 using KafkaClient.Protocol;
@@ -63,7 +64,7 @@ namespace KafkaClient
                     // route can change after Metadata Refresh
                     var route = _brokerRouter.SelectBrokerRouteFromLocalCache(topic, partition);
                     connection = route.Connection;
-                    response = await route.Connection.SendAsync(request, context).ConfigureAwait(false);
+                    response = await route.Connection.SendAsync(request, CancellationToken.None, context).ConfigureAwait(false);
 
                     if (response == null) {
                         // this can happen if you send ProduceRequest with ack level=0

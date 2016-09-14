@@ -59,7 +59,7 @@ namespace KafkaClient.Connection
             _trackTelemetry = trackTelemetry;
 
             // dedicate a long running task to the read/write operations
-            _socketTask = Task.Run(async () => { await DedicatedSocketTask(); });
+            _socketTask = Task.Run(DedicatedSocketTask);
 
             _disposeTask = _disposeToken.Token.CreateTask();
             _disposeRegistration = _disposeToken.Token.Register(() => {
@@ -114,7 +114,7 @@ namespace KafkaClient.Connection
         /// <returns></returns>
         private async Task DedicatedSocketTask()
         {
-            while (_disposeToken.IsCancellationRequested == false) {
+            while (!_disposeToken.IsCancellationRequested) {
                 // block here until we can get connections then start loop pushing data through network stream
                 try {
                     var netStreamTask = GetStreamAsync();

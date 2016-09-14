@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Protocol;
 
@@ -37,7 +38,7 @@ namespace KafkaClient
                         var route = _brokerRouter.SelectBrokerRouteFromLocalCache(topic, p.Key);
                         var request = new OffsetRequest(new Offset(topic, p.Key, time, maxOffsets));
 
-                        return route.Connection.SendAsync(request);
+                        return route.Connection.SendAsync(request, CancellationToken.None);
                     }).ToArray();
 
             await Task.WhenAll(sendRequests).ConfigureAwait(false);

@@ -34,7 +34,7 @@ namespace KafkaClient.Tests.Fakes
         }
 
         /// <exception cref="Exception">A delegate callback throws an exception.</exception>
-        public async Task<T> SendAsync<T>(IKafkaRequest<T> request, IRequestContext context = null) where T : class, IKafkaResponse
+        public async Task<T> SendAsync<T>(IKafkaRequest<T> request, CancellationToken token, IRequestContext context = null) where T : class, IKafkaResponse
         {
             T result;
 

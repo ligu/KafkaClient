@@ -1,8 +1,10 @@
-﻿using System.Threading.Tasks;
+﻿using System.Threading;
+using System.Threading.Tasks;
 using KafkaClient.Common;
 using KafkaClient.Connection;
 using KafkaClient.Protocol;
 using KafkaClient.Tests.Helpers;
+using Moq;
 using NSubstitute;
 using NUnit.Framework;
 
@@ -28,7 +30,7 @@ namespace KafkaClient.Tests.Unit
         {
             var conn = Substitute.For<IKafkaConnection>();
 
-            conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>())
+            conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>(), It.IsAny<CancellationToken>())
                 .Returns(x => CreateMetadataResponse(errorCode), x => CreateMetadataResponse(errorCode));
 
             using (var provider = new KafkaMetadataProvider(_log))
@@ -38,9 +40,9 @@ namespace KafkaClient.Tests.Unit
 
             Received.InOrder(() =>
             {
-                conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>());
+                conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
                 _log.WarnFormat("Backing off metadata request retry.  Waiting for {0}ms.", 100);
-                conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>());
+                conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
             });
         }
 
@@ -49,7 +51,7 @@ namespace KafkaClient.Tests.Unit
         {
             var conn = Substitute.For<IKafkaConnection>();
 
-            conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>(), Arg.Any<IRequestContext>())
+            conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>(), It.IsAny<CancellationToken>(), Arg.Any<IRequestContext>())
                 .Returns(x => CreateMetadataResponse(-1, "123", 1), x => CreateMetadataResponse(ErrorResponseCode.NoError));
 
             using (var provider = new KafkaMetadataProvider(_log))
@@ -59,9 +61,9 @@ namespace KafkaClient.Tests.Unit
 
             Received.InOrder(() =>
             {
-                conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>());
+                conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
                 _log.WarnFormat("Backing off metadata request retry.  Waiting for {0}ms.", 100);
-                conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>());
+                conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
             });
         }
 
@@ -70,7 +72,7 @@ namespace KafkaClient.Tests.Unit
         {
             var conn = Substitute.For<IKafkaConnection>();
 
-            conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>())
+            conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>(), It.IsAny<CancellationToken>())
                 .Returns(x => CreateMetadataResponse(ErrorResponseCode.NoError));
 
             using (var provider = new KafkaMetadataProvider(_log))
@@ -78,7 +80,7 @@ namespace KafkaClient.Tests.Unit
                 var response = provider.Get(new[] { conn }, new[] { "Test" });
             }
 
-            conn.Received(1).SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>());
+            conn.Received(1).SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
@@ -86,7 +88,7 @@ namespace KafkaClient.Tests.Unit
         {
             var conn = Substitute.For<IKafkaConnection>();
 
-            conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>())
+            conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>(), It.IsAny<CancellationToken>())
                 .Returns(x => CreateMetadataResponse(ErrorResponseCode.NoError));
 
             using (var provider = new KafkaMetadataProvider(_log))
@@ -94,7 +96,7 @@ namespace KafkaClient.Tests.Unit
                 var response = provider.Get(new[] { conn });
             }
 
-            conn.Received(1).SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>());
+            conn.Received(1).SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
@@ -106,7 +108,7 @@ namespace KafkaClient.Tests.Unit
         {
             var conn = Substitute.For<IKafkaConnection>();
 
-            conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>()).Returns(x => CreateMetadataResponse(errorCode));
+            conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>(), It.IsAny<CancellationToken>()).Returns(x => CreateMetadataResponse(errorCode));
 
             using (var provider = new KafkaMetadataProvider(_log))
             {
@@ -122,7 +124,7 @@ namespace KafkaClient.Tests.Unit
         {
             var conn = Substitute.For<IKafkaConnection>();
 
-            conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>()).Returns(x => CreateMetadataResponse(1, host, 1));
+            conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>(), It.IsAny<CancellationToken>()).Returns(x => CreateMetadataResponse(1, host, 1));
 
             using (var provider = new KafkaMetadataProvider(_log))
             {
@@ -138,7 +140,7 @@ namespace KafkaClient.Tests.Unit
         {
             var conn = Substitute.For<IKafkaConnection>();
 
-            conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>()).Returns(x => CreateMetadataResponse(1, "123", port));
+            conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>(), It.IsAny<CancellationToken>()).Returns(x => CreateMetadataResponse(1, "123", port));
 
             using (var provider = new KafkaMetadataProvider(_log))
             {

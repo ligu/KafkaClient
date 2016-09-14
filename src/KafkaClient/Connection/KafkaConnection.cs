@@ -81,15 +81,15 @@ namespace KafkaClient.Connection
         /// <typeparam name="T">A Kafka response object return by decode function.</typeparam>
         /// <param name="request">The IKafkaRequest to send to the kafka servers.</param>
         /// <param name="context">The context for the request.</param>
+        /// <param name="token">Cancellation token used to cancel the transfer.</param>
         /// <returns></returns>
-        public async Task<T> SendAsync<T>(IKafkaRequest<T> request, IRequestContext context = null) where T : class, IKafkaResponse
+        public async Task<T> SendAsync<T>(IKafkaRequest<T> request, CancellationToken token, IRequestContext context = null) where T : class, IKafkaResponse
         {
-            //assign unique correlationId
             context = context.WithCorrelation(NextCorrelationId());
 
             _log.DebugFormat("SendAsync Api={0} CorrelationId={1} to {2} ", request.ApiKey, context.CorrelationId, Endpoint);
             if (!request.ExpectResponse) {
-                await _client.WriteAsync(KafkaEncoder.Encode(context, request), CancellationToken.None).ConfigureAwait(false);
+                await _client.WriteAsync(KafkaEncoder.Encode(context, request), token).ConfigureAwait(false);
                 return default(T);
             }
 
@@ -99,7 +99,7 @@ namespace KafkaClient.Connection
                     ExceptionDispatchInfo exceptionDispatchInfo = null;
 
                     try {
-                        await _client.WriteAsync(KafkaEncoder.Encode(context, request), CancellationToken.None).ConfigureAwait(false);
+                        await _client.WriteAsync(KafkaEncoder.Encode(context, request), token).ConfigureAwait(false);
                     } catch (Exception ex) {
                         exceptionDispatchInfo = ExceptionDispatchInfo.Capture(ex);
                     }
@@ -109,8 +109,7 @@ namespace KafkaClient.Connection
                     TriggerMessageTimeout(asyncRequest);
                 }
 
-                var response = await asyncRequest.ReceiveTask.Task.ConfigureAwait(false);
-
+                var response = await asyncRequest.ReceiveTask.Task.WithCancellation(token).ConfigureAwait(false);
                 return KafkaEncoder.Decode<T>(context, response);
             }
         }

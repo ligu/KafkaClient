@@ -80,7 +80,7 @@ namespace KafkaClient.Tests.Unit
             using (var socket = new KafkaTcpSocket(_log, _kafkaEndpoint, _maxRetry))
             using (var conn = new KafkaConnection(socket, log: _log))
             {
-                var task = conn.SendAsync(new MetadataRequest());
+                var task = conn.SendAsync(new MetadataRequest(), CancellationToken.None);
                 task.Wait(TimeSpan.FromMilliseconds(1000));
                 Assert.That(task.IsCompleted, Is.False, "The send task should still be pending.");
             }
@@ -168,7 +168,7 @@ namespace KafkaClient.Tests.Unit
                 await TaskTest.WaitFor(() => server.ConnectionEventcount > 0);
                 Assert.That(server.ConnectionEventcount, Is.EqualTo(1));
 
-                var taskResult = conn.SendAsync(new MetadataRequest());
+                var taskResult = conn.SendAsync(new MetadataRequest(), CancellationToken.None);
 
                 taskResult.ContinueWith(t => taskResult = t).Wait(TimeSpan.FromMilliseconds(100));
 
@@ -184,7 +184,7 @@ namespace KafkaClient.Tests.Unit
             using (var conn = new KafkaConnection(socket, TimeSpan.FromMilliseconds(1000000), log: _log))
             {
                 Console.WriteLine("SendAsync blocked by reconnection attempts...");
-                var taskResult = conn.SendAsync(new MetadataRequest());
+                var taskResult = conn.SendAsync(new MetadataRequest(), CancellationToken.None);
 
                 Console.WriteLine("Task result should be WaitingForActivation...");
                 Assert.That(taskResult.IsFaulted, Is.False);
@@ -219,9 +219,9 @@ namespace KafkaClient.Tests.Unit
                 Assert.That(server.ConnectionEventcount, Is.EqualTo(1));
 
                 var tasks = new[] {
-                    conn.SendAsync(new MetadataRequest()),
-                    conn.SendAsync(new MetadataRequest()),
-                    conn.SendAsync(new MetadataRequest())
+                    conn.SendAsync(new MetadataRequest(), CancellationToken.None),
+                    conn.SendAsync(new MetadataRequest(), CancellationToken.None),
+                    conn.SendAsync(new MetadataRequest(), CancellationToken.None)
                 };
 
                 await TaskTest.WaitFor(() => tasks.All(t => t.IsFaulted));

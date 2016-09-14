@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Common;
 using KafkaClient.Connection;
@@ -105,7 +106,7 @@ namespace KafkaClient
         {
             foreach (var conn in connections) {
                 try {
-                    return await conn.SendAsync(request).ConfigureAwait(false);
+                    return await conn.SendAsync(request, CancellationToken.None).ConfigureAwait(false);
                 } catch (Exception ex) {
                     _log.WarnFormat("Failed to contact Kafka server={0}. Trying next default server. Exception={1}", conn.Endpoint, ex);
                 }

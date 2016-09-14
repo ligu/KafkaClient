@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Connection;
 using KafkaClient.Protocol;
@@ -33,7 +34,7 @@ namespace KafkaClient.Tests.Integration
             await router.RefreshMissingTopicMetadata(IntegrationConfig.IntegrationTopic);
             var conn = router.SelectBrokerRouteFromLocalCache(IntegrationConfig.IntegrationTopic, partitionId);
 
-            var response = await conn.Connection.SendAsync(request);
+            var response = await conn.Connection.SendAsync(request, CancellationToken.None);
             var topic = response.Topics.FirstOrDefault();
 
             Assert.That(topic, Is.Not.Null);
@@ -52,7 +53,7 @@ namespace KafkaClient.Tests.Integration
             var conn = router.SelectBrokerRouteFromLocalCache(IntegrationConfig.IntegrationTopic, partitionId);
 
             var commit = CreateOffsetCommitRequest(IntegrationConfig.IntegrationConsumer, partitionId, 10);
-            var response = await conn.Connection.SendAsync(commit);
+            var response = await conn.Connection.SendAsync(commit, CancellationToken.None);
             var topic = response.Topics.FirstOrDefault();
 
             Assert.That(topic, Is.Not.Null);
@@ -73,14 +74,14 @@ namespace KafkaClient.Tests.Integration
             var conn = router.SelectBrokerRouteFromLocalCache(IntegrationConfig.IntegrationTopic, partitionId);
 
             var commit = CreateOffsetCommitRequest(IntegrationConfig.IntegrationConsumer, partitionId, offset);
-            var commitResponse = await conn.Connection.SendAsync(commit);
+            var commitResponse = await conn.Connection.SendAsync(commit, CancellationToken.None);
             var commitTopic = commitResponse.Topics.SingleOrDefault();
 
             Assert.That(commitTopic, Is.Not.Null);
             Assert.That(commitTopic.ErrorCode, Is.EqualTo(ErrorResponseCode.NoError));
 
             var fetch = CreateOffsetFetchRequest(IntegrationConfig.IntegrationConsumer, partitionId);
-            var fetchResponse = await conn.Connection.SendAsync(fetch);
+            var fetchResponse = await conn.Connection.SendAsync(fetch, CancellationToken.None);
             var fetchTopic = fetchResponse.Topics.SingleOrDefault();
 
             Assert.That(fetchTopic, Is.Not.Null);
@@ -102,14 +103,14 @@ namespace KafkaClient.Tests.Integration
             var conn = router.SelectBrokerRouteFromLocalCache(IntegrationConfig.IntegrationTopic, partitionId);
 
             var commit = CreateOffsetCommitRequest(IntegrationConfig.IntegrationConsumer, partitionId, offset, metadata);
-            var commitResponse = conn.Connection.SendAsync(commit).Result;
+            var commitResponse = conn.Connection.SendAsync(commit, CancellationToken.None).Result;
             var commitTopic = commitResponse.Topics.SingleOrDefault();
 
             Assert.That(commitTopic, Is.Not.Null);
             Assert.That(commitTopic.ErrorCode, Is.EqualTo(ErrorResponseCode.NoError));
 
             var fetch = CreateOffsetFetchRequest(IntegrationConfig.IntegrationConsumer, partitionId);
-            var fetchResponse = conn.Connection.SendAsync(fetch).Result;
+            var fetchResponse = conn.Connection.SendAsync(fetch, CancellationToken.None).Result;
             var fetchTopic = fetchResponse.Topics.SingleOrDefault();
 
             Assert.That(fetchTopic, Is.Not.Null);
@@ -129,7 +130,7 @@ namespace KafkaClient.Tests.Integration
 
                 var request = new GroupCoordinatorRequest(IntegrationConfig.IntegrationConsumer);
 
-                var response = conn.Connection.SendAsync(request).Result;
+                var response = conn.Connection.SendAsync(request, CancellationToken.None).Result;
 
                 Assert.That(response, Is.Not.Null);
                 Assert.That(response.ErrorCode, Is.EqualTo((int)ErrorResponseCode.NoError));

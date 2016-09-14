@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Net;
+using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Common;
 using KafkaClient.Connection;
@@ -77,7 +78,7 @@ namespace KafkaClient.Tests.Unit
                 KafkaConnectionFactory = _mockKafkaConnectionFactory.Object
             });
 
-            _mockKafkaConnection1.Setup(x => x.SendAsync(It.IsAny<IKafkaRequest<MetadataResponse>>(), It.IsAny<IRequestContext>()))
+            _mockKafkaConnection1.Setup(x => x.SendAsync(It.IsAny<IKafkaRequest<MetadataResponse>>(), It.IsAny<CancellationToken>(), It.IsAny<IRequestContext>()))
                       .Returns(() => Task.Run(async () => await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers()));
             await router.RefreshMissingTopicMetadata(TestTopic);
             var topics = router.GetTopicMetadataFromLocalCache(TestTopic);

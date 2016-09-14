@@ -150,7 +150,7 @@ namespace KafkaClient
                             //make request and post to queue
                             var route = _options.Router.SelectBrokerRouteFromLocalCache(topic, partitionId);
 
-                            var taskSend = route.Connection.SendAsync(fetchRequest);
+                            var taskSend = route.Connection.SendAsync(fetchRequest, CancellationToken.None);
 
                             await Task.WhenAny(taskSend, _disposeTask.Task).ConfigureAwait(false);
                             if (_disposeTask.Task.IsCompleted) return;

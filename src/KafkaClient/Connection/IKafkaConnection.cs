@@ -30,8 +30,9 @@ namespace KafkaClient.Connection
         /// </summary>
         /// <typeparam name="T">The type of the KafkaResponse expected from the request being sent.</typeparam>
         /// <param name="request">The KafkaRequest to send to the connected endpoint.</param>
+        /// <param name="token">The token for cancelling the send request.</param>
         /// <param name="context">The context for the request.</param>
         /// <returns>Task representing the future responses from the sent request.</returns>
-        Task<T> SendAsync<T>(IKafkaRequest<T> request, IRequestContext context = null) where T : class, IKafkaResponse;
+        Task<T> SendAsync<T>(IKafkaRequest<T> request, CancellationToken token, IRequestContext context = null) where T : class, IKafkaResponse;
     }
 }

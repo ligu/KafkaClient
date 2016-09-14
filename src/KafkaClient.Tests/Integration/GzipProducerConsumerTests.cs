@@ -30,7 +30,7 @@ namespace KafkaClient.Tests.Integration
             IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("start EnsureGzipCompressedMessageCanSend"));
             using (var conn = GetKafkaConnection())
             {
-                conn.SendAsync(new MetadataRequest(IntegrationConfig.IntegrationCompressionTopic))
+                conn.SendAsync(new MetadataRequest(IntegrationConfig.IntegrationCompressionTopic), CancellationToken.None)
                     .Wait(TimeSpan.FromSeconds(10));
             }
 
@@ -47,7 +47,7 @@ namespace KafkaClient.Tests.Integration
                                     new Message("2", "1")
                                 }, MessageCodec.CodecGzip));
                 IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("start SendAsync"));
-                var response = conn.Connection.SendAsync(request).Result;
+                var response = conn.Connection.SendAsync(request, CancellationToken.None).Result;
                 IntegrationConfig.NoDebugLog.InfoFormat("end SendAsync");
                 Assert.That(response.Errors.Any(e => e != ErrorResponseCode.NoError), Is.False);
                 IntegrationConfig.NoDebugLog.InfoFormat("start dispose");
