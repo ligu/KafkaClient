@@ -35,7 +35,7 @@ namespace KafkaClient.Tests.Unit
 
             using (var provider = new KafkaMetadataProvider(_log))
             {
-                var response = await provider.Get(new[] { conn }, new[] { "Test" });
+                var response = await provider.GetAsync(new[] { conn }, new[] { "Test" }, CancellationToken.None);
             }
 
             Received.InOrder(() =>
@@ -56,7 +56,7 @@ namespace KafkaClient.Tests.Unit
 
             using (var provider = new KafkaMetadataProvider(_log))
             {
-                var response = await provider.Get(new[] { conn }, new[] { "Test" });
+                var response = await provider.GetAsync(new[] { conn }, new[] { "Test" }, CancellationToken.None);
             }
 
             Received.InOrder(() =>
@@ -77,7 +77,7 @@ namespace KafkaClient.Tests.Unit
 
             using (var provider = new KafkaMetadataProvider(_log))
             {
-                var response = provider.Get(new[] { conn }, new[] { "Test" });
+                var response = provider.GetAsync(new[] { conn }, new[] { "Test" }, CancellationToken.None);
             }
 
             conn.Received(1).SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
@@ -93,7 +93,7 @@ namespace KafkaClient.Tests.Unit
 
             using (var provider = new KafkaMetadataProvider(_log))
             {
-                var response = provider.Get(new[] { conn });
+                var response = provider.GetAsync(new[] { conn }, CancellationToken.None);
             }
 
             conn.Received(1).SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
@@ -112,7 +112,7 @@ namespace KafkaClient.Tests.Unit
 
             using (var provider = new KafkaMetadataProvider(_log))
             {
-                var response = await provider.Get(new[] { conn }, new[] { "Test" });
+                var response = await provider.GetAsync(new[] { conn }, new[] { "Test" }, CancellationToken.None);
             }
         }
 
@@ -128,7 +128,7 @@ namespace KafkaClient.Tests.Unit
 
             using (var provider = new KafkaMetadataProvider(_log))
             {
-                var response = await provider.Get(new[] { conn }, new[] { "Test" });
+                var response = await provider.GetAsync(new[] { conn }, new[] { "Test" }, CancellationToken.None);
             }
         }
 
@@ -144,7 +144,7 @@ namespace KafkaClient.Tests.Unit
 
             using (var provider = new KafkaMetadataProvider(_log))
             {
-                var response = await provider.Get(new[] { conn }, new[] { "Test" });
+                var response = await provider.GetAsync(new[] { conn }, new[] { "Test" }, CancellationToken.None);
             }
         }
 

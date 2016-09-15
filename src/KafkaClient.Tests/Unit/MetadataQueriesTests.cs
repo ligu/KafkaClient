@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Tests.Fakes;
 using KafkaClient.Tests.Helpers;
@@ -58,7 +59,7 @@ namespace KafkaClient.Tests.Unit
         {
             var routerProxy = new BrokerRouterProxy(_kernel);
             var router = routerProxy.Create();
-            await router.RefreshMissingTopicMetadata(BrokerRouterProxy.TestTopic);
+            await router.RefreshMissingTopicMetadataAsync(BrokerRouterProxy.TestTopic, CancellationToken.None);
             var common = new MetadataQueries(router);
 
             var result = common.GetTopicFromCache(BrokerRouterProxy.TestTopic);

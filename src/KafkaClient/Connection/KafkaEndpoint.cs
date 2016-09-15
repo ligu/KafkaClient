@@ -5,12 +5,19 @@ using System.Runtime.Serialization;
 namespace KafkaClient.Connection
 {
     [Serializable]
-    public class KafkaEndpoint
+    public class KafkaEndpoint : IEquatable<KafkaEndpoint>
     {
         public Uri ServerUri { get; }
         public IPEndPoint Endpoint { get; }
 
-        protected bool Equals(KafkaEndpoint other)
+        #region Equality
+
+        public override bool Equals(object obj)
+        {
+            return Equals(obj as KafkaEndpoint);
+        }
+
+        public bool Equals(KafkaEndpoint other)
         {
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
@@ -19,14 +26,21 @@ namespace KafkaClient.Connection
 
         public override int GetHashCode()
         {
-            // calculated like this to ensure ports on same address sort in the desc order
+            // calculated like this to ensure ports on same address sort in descending order
             return Endpoint?.Address.GetHashCode() + Endpoint?.Port ?? 0;
         }
 
-        public override bool Equals(object obj)
+        public static bool operator ==(KafkaEndpoint left, KafkaEndpoint right)
         {
-            return Equals(obj as KafkaEndpoint);
+            return Equals(left, right);
         }
+
+        public static bool operator !=(KafkaEndpoint left, KafkaEndpoint right)
+        {
+            return !Equals(left, right);
+        }
+
+        #endregion
 
         public override string ToString() => ServerUri.ToString();
 

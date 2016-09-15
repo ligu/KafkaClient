@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Common;
 using KafkaClient.Connection;
@@ -28,7 +29,7 @@ namespace KafkaClient.Tests.Integration
         {
             var expectedTopic = Guid.NewGuid().ToString();
             var repo = new KafkaMetadataProvider(_options.Log);
-            var response = repo.Get(new[] { GetKafkaConnection() }, new[] { expectedTopic });
+            var response = repo.GetAsync(new[] { GetKafkaConnection() }, new[] { expectedTopic }, CancellationToken.None);
             var topic = (await response).Topics.FirstOrDefault();
 
             Assert.That(topic, Is.Not.Null);

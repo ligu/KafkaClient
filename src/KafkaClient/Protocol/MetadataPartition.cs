@@ -29,6 +29,8 @@ namespace KafkaClient.Protocol
         /// </summary>
         public int LeaderId { get; }
 
+        public bool IsElectingLeader => LeaderId == -1;
+
         /// <summary>
         /// The set of alive nodes that currently acts as slaves for the leader for this partition.
         /// </summary>

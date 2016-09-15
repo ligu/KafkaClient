@@ -27,7 +27,7 @@ namespace KafkaClient
         /// <returns></returns>
         public async Task<List<OffsetTopic>> GetTopicOffsetAsync(string topic, int maxOffsets = 2, int time = -1)
         {
-            await _brokerRouter.RefreshMissingTopicMetadata(topic).ConfigureAwait(false);
+            await _brokerRouter.RefreshMissingTopicMetadataAsync(topic, CancellationToken.None).ConfigureAwait(false);
             var topicMetadata = GetTopicFromCache(topic);
 
             //send the offset request to each partition leader
@@ -52,11 +52,7 @@ namespace KafkaClient
         /// <returns>Topic object containing the metadata on the requested topic.</returns>
         public MetadataTopic GetTopicFromCache(string topic)
         {
-            var response = _brokerRouter.GetTopicMetadataFromLocalCache(topic);
-
-            if (response.Count <= 0) throw new CachedMetadataException($"No metadata could be found for topic: {topic}") { Topic = topic };
-
-            return response.First();
+            return _brokerRouter.GetTopicMetadataFromLocalCache(topic);
         }
 
         public void Dispose()

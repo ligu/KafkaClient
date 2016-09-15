@@ -86,10 +86,8 @@ namespace KafkaClient
                 if (Interlocked.Increment(ref _ensureOneThread) == 1)
                 {
                     _options.Log.DebugFormat("Consumer: Refreshing partitions for topic: {0}", _options.Topic);
-                    _options.Router.RefreshMissingTopicMetadata(_options.Topic).Wait();
-                    var topic = _options.Router.GetTopicMetadataFromLocalCache(_options.Topic);
-                    if (topic.Count <= 0) throw new ApplicationException(string.Format("Unable to get metadata for topic:{0}.", _options.Topic));
-                    _topic = topic.First();
+                    _options.Router.RefreshMissingTopicMetadataAsync(_options.Topic, CancellationToken.None).Wait();
+                    _topic = _options.Router.GetTopicMetadataFromLocalCache(_options.Topic);
 
                     //create one thread per partition, if they are in the white list.
                     foreach (var partition in _topic.Partitions)
@@ -131,7 +129,7 @@ namespace KafkaClient
                             //after error
                             if (needToRefreshMetadata)
                             {
-                                await _options.Router.RefreshTopicMetadata(topic).ConfigureAwait(false);
+                                await _options.Router.RefreshMissingTopicMetadataAsync(topic, CancellationToken.None).ConfigureAwait(false);
                                 EnsurePartitionPollingThreads();
                                 needToRefreshMetadata = false;
                             }

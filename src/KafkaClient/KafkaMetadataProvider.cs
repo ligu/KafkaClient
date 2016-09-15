@@ -41,35 +41,37 @@ namespace KafkaClient
         /// </summary>
         /// <param name="connections">The server connections to query.  Will cycle through the collection, starting at zero until a response is received.</param>
         /// <param name="topics">The collection of topics to get metadata for.</param>
+        /// <param name="cancellationToken">Token for cancelling async action.</param>
         /// <returns>MetadataResponse validated to be complete.</returns>
-        public Task<MetadataResponse> Get(IKafkaConnection[] connections, IEnumerable<string> topics)
+        public Task<MetadataResponse> GetAsync(IEnumerable<IKafkaConnection> connections, IEnumerable<string> topics, CancellationToken cancellationToken)
         {
             var request = new MetadataRequest(topics);
             if (request.Topics.Count <= 0) return null;
-            return Get(connections, request);
+            return GetAsync(connections, request, cancellationToken);
         }
 
         /// <summary>
         /// Given a collection of server connections, query for all topics metadata.
         /// </summary>
         /// <param name="connections">The server connections to query.  Will cycle through the collection, starting at zero until a response is received.</param>
+        /// <param name="cancellationToken">Token for cancelling async action.</param>
         /// <returns>MetadataResponse validated to be complete.</returns>
-        public Task<MetadataResponse> Get(IKafkaConnection[] connections)
+        public Task<MetadataResponse> GetAsync(IEnumerable<IKafkaConnection> connections, CancellationToken cancellationToken)
         {
             var request = new MetadataRequest();
-            return Get(connections, request);
+            return GetAsync(connections, request, cancellationToken);
         }
 
-        private async Task<MetadataResponse> Get(IKafkaConnection[] connections, MetadataRequest request)
+        private async Task<MetadataResponse> GetAsync(IEnumerable<IKafkaConnection> connections, MetadataRequest request, CancellationToken cancellationToken)
         {
-            var maxRetryAttempt = 2;
-            var performRetry = false;
+            const int maxRetryAttempt = 2;
+            bool performRetry;
             var retryAttempt = 0;
-            MetadataResponse metadataResponse = null;
+            MetadataResponse metadataResponse;
 
             do {
                 performRetry = false;
-                metadataResponse = await GetMetadataResponse(connections, request);
+                metadataResponse = await GetMetadataResponseAsync(connections, request, cancellationToken);
                 if (metadataResponse == null) return null;
 
                 foreach (var validation in ValidateResponse(metadataResponse)) {
@@ -86,33 +88,35 @@ namespace KafkaClient
                     }
                 }
 
-                await BackoffOnRetry(++retryAttempt, performRetry).ConfigureAwait(false);
+                await BackoffOnRetryAsync(++retryAttempt, performRetry, cancellationToken).ConfigureAwait(false);
             } while (retryAttempt < maxRetryAttempt && _interrupted == false && performRetry);
 
             return metadataResponse;
         }
 
-        private async Task BackoffOnRetry(int retryAttempt, bool performRetry)
+        private async Task BackoffOnRetryAsync(int retryAttempt, bool performRetry, CancellationToken cancellationToken)
         {
             if (performRetry && retryAttempt > 0)
             {
                 var backoff = retryAttempt * retryAttempt * BackoffMilliseconds;
                 _log.WarnFormat("Backing off metadata request retry.  Waiting for {0}ms.", backoff);
-                await Task.Delay(TimeSpan.FromMilliseconds(backoff)).ConfigureAwait(false);
+                await Task.Delay(TimeSpan.FromMilliseconds(backoff), cancellationToken).ConfigureAwait(false);
             }
         }
 
-        private async Task<MetadataResponse> GetMetadataResponse(IKafkaConnection[] connections, MetadataRequest request)
+        private async Task<MetadataResponse> GetMetadataResponseAsync(IEnumerable<IKafkaConnection> connections, MetadataRequest request, CancellationToken cancellationToken)
         {
+            var servers = "";
             foreach (var conn in connections) {
                 try {
-                    return await conn.SendAsync(request, CancellationToken.None).ConfigureAwait(false);
+                    servers += " " + conn.Endpoint;
+                    return await conn.SendAsync(request, cancellationToken).ConfigureAwait(false);
                 } catch (Exception ex) {
-                    _log.WarnFormat("Failed to contact Kafka server={0}. Trying next default server. Exception={1}", conn.Endpoint, ex);
+                    _log.WarnFormat("Failed to contact Kafka server {0}. Trying next default server. Exception={1}", conn.Endpoint, ex);
                 }
             }
 
-            throw new KafkaRequestException(request.ApiKey, ErrorResponseCode.NoError, $"Unable to query for metadata from any of the provided Kafka servers. Server list: {string.Join(", ", connections.Select(x => x?.Endpoint?.ToString()))}");
+            throw new KafkaRequestException(request.ApiKey, ErrorResponseCode.NoError, $"Unable to query for metadata from any of the provided Kafka servers: {servers}");
         }
 
         private IEnumerable<MetadataValidationResult> ValidateResponse(MetadataResponse metadata)

@@ -59,6 +59,8 @@
     <Compile Include="Common\ScheduledTimerStatus.cs" />
     <Compile Include="Common\StringPrefixEncoding.cs" />
     <Compile Include="Common\TaskExtensions.cs" />
+    <Compile Include="Common\TimedCancellation.cs" />
+    <Compile Include="Connection\KafkaConnectionComparer.cs" />
     <Compile Include="Connection\KafkaDataPayload.cs" />
     <Compile Include="Connection\SocketPayloadReceiveTask.cs" />
     <Compile Include="Connection\SocketPayloadSendTask.cs" />
