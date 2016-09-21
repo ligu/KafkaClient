@@ -55,12 +55,19 @@ namespace KafkaClient
         /// This function does not use any selector criteria.  If the given partitionId does not exist an exception will be thrown.
         /// </remarks>
         /// <exception cref="CachedMetadataException">Thrown if the given topic or partitionId does not exist for the given topic.</exception>
-        public BrokerRoute SelectBrokerRouteFromLocalCache(string topicName, int partitionId)
+        public BrokerRoute GetBrokerRoute(string topicName, int partitionId)
         {
-            var topic = GetCachedTopic(topicName);
+            return GetBrokerRoute(topicName, partitionId, GetCachedTopic(topicName));
+        }
 
+        private BrokerRoute GetBrokerRoute(string topicName, int partitionId, MetadataTopic topic)
+        {
             var partition = topic.Partitions.FirstOrDefault(x => x.PartitionId == partitionId);
-            if (partition == null) throw new CachedMetadataException($"The topic: {topicName} has no partitionId: {partitionId} defined.") { Topic = topicName, Partition = partitionId };
+            if (partition == null)
+                throw new CachedMetadataException($"The topic: {topicName} has no partitionId: {partitionId} defined.") {
+                    Topic = topicName,
+                    Partition = partitionId
+                };
 
             return GetCachedRoute(topicName, partition);
         }
@@ -72,10 +79,27 @@ namespace KafkaClient
         /// <param name="key">The key used by the IPartitionSelector to collate to a consistent partition. Null value means key will be ignored in selection process.</param>
         /// <returns>A broker route for the given topic.</returns>
         /// <exception cref="CachedMetadataException">Thrown if the topic metadata does not exist in the cache.</exception>
-        public BrokerRoute SelectBrokerRouteFromLocalCache(string topicName, byte[] key = null)
+        public BrokerRoute GetBrokerRoute(string topicName, byte[] key = null)
         {
             var topic = GetCachedTopic(topicName);
             return GetCachedRoute(topicName, _options.PartitionSelector.Select(topic, key));
+        }
+
+        /// <summary>
+        /// Get a broker for a specific topic and partitionId.
+        /// </summary>
+        /// <param name="topicName">The topic name to select a broker for.</param>
+        /// <param name="partitionId">The exact partition to select a broker for.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>A broker route for the given partition of the given topic.</returns>
+        /// <remarks>
+        /// This function does not use any selector criteria. This method will check the cache first, and if the topic and partition
+        /// is missing it will initiate a call to the kafka servers, updating the cache with the resulting metadata.
+        /// </remarks>
+        /// <exception cref="CachedMetadataException">Thrown if the given topic or partitionId does not exist for the given topic even after a refresh.</exception>
+        public async Task<BrokerRoute> GetBrokerRouteAsync(string topicName, int partitionId, CancellationToken cancellationToken)
+        {
+            return GetBrokerRoute(topicName, partitionId, await GetTopicMetadataAsync(topicName, cancellationToken));
         }
 
         /// <summary>
@@ -83,12 +107,11 @@ namespace KafkaClient
         /// </summary>
         /// <returns>List of Topics currently in the cache.</returns>
         /// <remarks>
-        /// The topic metadata returned is from what is currently in the cache. To ensure data is not too stale, call 
-        /// <see cref="RefreshMissingTopicMetadataAsync(string, CancellationToken)"/> first or 
+        /// The topic metadata returned is from what is currently in the cache. To ensure data is not too stale, 
         /// use <see cref="GetTopicMetadataAsync(string, CancellationToken)"/>.
         /// </remarks>
         /// <exception cref="CachedMetadataException">Thrown if the topic metadata does not exist in the cache.</exception>
-        public MetadataTopic GetTopicMetadataFromLocalCache(string topicName)
+        public MetadataTopic GetTopicMetadata(string topicName)
         {
             return GetCachedTopic(topicName);
         }
@@ -98,12 +121,11 @@ namespace KafkaClient
         /// </summary>
         /// <returns>List of Topics currently in the cache.</returns>
         /// <remarks>
-        /// The topic metadata returned is from what is currently in the cache. To ensure data is not too stale, call 
-        /// <see cref="RefreshMissingTopicMetadataAsync(IEnumerable&lt;string&gt;, CancellationToken)"/> first or 
+        /// The topic metadata returned is from what is currently in the cache. To ensure data is not too stale, 
         /// use <see cref="GetTopicMetadataAsync(IEnumerable&lt;string&gt;, CancellationToken)"/>.
         /// </remarks>
         /// <exception cref="CachedMetadataException">Thrown if the topic metadata does not exist in the cache.</exception>
-        public ImmutableList<MetadataTopic> GetTopicMetadataFromLocalCache(IEnumerable<string> topicNames)
+        public ImmutableList<MetadataTopic> GetTopicMetadata(IEnumerable<string> topicNames)
         {
             var topicSearchResult = TryGetCachedTopics(topicNames, _options.CacheExpiration);
             if (topicSearchResult.Missing.Count > 0) throw new CachedMetadataException($"No metadata defined for topics: {string.Join(",", topicSearchResult.Missing)}");
@@ -114,7 +136,7 @@ namespace KafkaClient
         /// <summary>
         /// Returns all cached topic metadata.
         /// </summary>
-        public ImmutableList<MetadataTopic> GetTopicMetadataFromLocalCache()
+        public ImmutableList<MetadataTopic> GetTopicMetadata()
         {
             return ImmutableList<MetadataTopic>.Empty.AddRange(_topicCache.Values.Select(t => t.Item1));
         }
@@ -145,36 +167,6 @@ namespace KafkaClient
             return searchResult.Missing.IsEmpty 
                 ? searchResult.Topics 
                 : searchResult.Topics.AddRange(await UpdateTopicMetadataFromServerIfMissingAsync(searchResult.Missing, cancellationToken).ConfigureAwait(false));
-        }
-
-        /// <summary>
-        /// Refresh metadata for the given topic if it isn't present in the cache.
-        /// </summary>
-        /// <remarks>
-        /// This method will check the cache first, and if it doesn't find the topic will initiate a call to the kafka servers, updating the cache with the resulting metadata.
-        /// </remarks>
-        public async Task<bool> RefreshMissingTopicMetadataAsync(string topicName, CancellationToken cancellationToken)
-        {
-            var topic = TryGetCachedTopic(topicName, _options.CacheExpiration);
-            if (topic != null) return false;
-
-            await UpdateTopicMetadataFromServerIfMissingAsync(topicName, cancellationToken).ConfigureAwait(false);
-            return true;
-        }
-
-        /// <summary>
-        /// Force a call to the kafka servers to refresh metadata for the given topics.
-        /// </summary>
-        /// <remarks>
-        /// This method will initiate a call to the kafka servers and retrieve metadata for all given topics, updating the broker cache in the process.
-        /// </remarks>
-        public async Task<bool> RefreshMissingTopicMetadataAsync(IEnumerable<string> topicNames, CancellationToken cancellationToken)
-        {
-            var searchResult = TryGetCachedTopics(topicNames, _options.CacheExpiration);
-            if (searchResult.Missing.IsEmpty) return false;
-
-            await UpdateTopicMetadataFromServerIfMissingAsync(searchResult.Missing, cancellationToken).ConfigureAwait(false);
-            return true;
         }
 
         /// <summary>

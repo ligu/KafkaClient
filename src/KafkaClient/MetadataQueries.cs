@@ -27,15 +27,14 @@ namespace KafkaClient
         /// <returns></returns>
         public async Task<List<OffsetTopic>> GetTopicOffsetAsync(string topic, int maxOffsets = 2, int time = -1)
         {
-            await _brokerRouter.RefreshMissingTopicMetadataAsync(topic, CancellationToken.None).ConfigureAwait(false);
-            var topicMetadata = GetTopicFromCache(topic);
+            var topicMetadata = await _brokerRouter.GetTopicMetadataAsync(topic, CancellationToken.None).ConfigureAwait(false);
 
             //send the offset request to each partition leader
             var sendRequests = topicMetadata.Partitions
                 .GroupBy(x => x.PartitionId)
                 .Select(p =>
                     {
-                        var route = _brokerRouter.SelectBrokerRouteFromLocalCache(topic, p.Key);
+                        var route = _brokerRouter.GetBrokerRoute(topic, p.Key);
                         var request = new OffsetRequest(new Offset(topic, p.Key, time, maxOffsets));
 
                         return route.Connection.SendAsync(request, CancellationToken.None);
@@ -52,7 +51,7 @@ namespace KafkaClient
         /// <returns>Topic object containing the metadata on the requested topic.</returns>
         public MetadataTopic GetTopicFromCache(string topic)
         {
-            return _brokerRouter.GetTopicMetadataFromLocalCache(topic);
+            return _brokerRouter.GetTopicMetadata(topic);
         }
 
         public void Dispose()

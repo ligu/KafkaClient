@@ -59,7 +59,7 @@ namespace KafkaClient.Tests.Unit
         {
             var routerProxy = new BrokerRouterProxy(_kernel);
             var router = routerProxy.Create();
-            await router.RefreshMissingTopicMetadataAsync(BrokerRouterProxy.TestTopic, CancellationToken.None);
+            await router.GetTopicMetadataAsync(BrokerRouterProxy.TestTopic, CancellationToken.None);
             var common = new MetadataQueries(router);
 
             var result = common.GetTopicFromCache(BrokerRouterProxy.TestTopic);

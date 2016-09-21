@@ -31,8 +31,8 @@ namespace KafkaClient.Tests.Integration
             var router = new BrokerRouter(Options);
 
             var request = CreateOffsetFetchRequest(Guid.NewGuid().ToString(), partitionId);
-            await router.RefreshMissingTopicMetadataAsync(IntegrationConfig.IntegrationTopic, CancellationToken.None);
-            var conn = router.SelectBrokerRouteFromLocalCache(IntegrationConfig.IntegrationTopic, partitionId);
+            await router.GetTopicMetadataAsync(IntegrationConfig.IntegrationTopic, CancellationToken.None);
+            var conn = router.GetBrokerRoute(IntegrationConfig.IntegrationTopic, partitionId);
 
             var response = await conn.Connection.SendAsync(request, CancellationToken.None);
             var topic = response.Topics.FirstOrDefault();
@@ -49,8 +49,8 @@ namespace KafkaClient.Tests.Integration
             const int partitionId = 0;
             var router = new BrokerRouter(Options);
 
-            await router.RefreshMissingTopicMetadataAsync(IntegrationConfig.IntegrationTopic, CancellationToken.None);
-            var conn = router.SelectBrokerRouteFromLocalCache(IntegrationConfig.IntegrationTopic, partitionId);
+            await router.GetTopicMetadataAsync(IntegrationConfig.IntegrationTopic, CancellationToken.None);
+            var conn = router.GetBrokerRoute(IntegrationConfig.IntegrationTopic, partitionId);
 
             var commit = CreateOffsetCommitRequest(IntegrationConfig.IntegrationConsumer, partitionId, 10);
             var response = await conn.Connection.SendAsync(commit, CancellationToken.None);
@@ -70,8 +70,8 @@ namespace KafkaClient.Tests.Integration
 
             var router = new BrokerRouter(Options);
 
-            await router.RefreshMissingTopicMetadataAsync(IntegrationConfig.IntegrationTopic, CancellationToken.None);
-            var conn = router.SelectBrokerRouteFromLocalCache(IntegrationConfig.IntegrationTopic, partitionId);
+            await router.GetTopicMetadataAsync(IntegrationConfig.IntegrationTopic, CancellationToken.None);
+            var conn = router.GetBrokerRoute(IntegrationConfig.IntegrationTopic, partitionId);
 
             var commit = CreateOffsetCommitRequest(IntegrationConfig.IntegrationConsumer, partitionId, offset);
             var commitResponse = await conn.Connection.SendAsync(commit, CancellationToken.None);
@@ -100,7 +100,7 @@ namespace KafkaClient.Tests.Integration
 
             var router = new BrokerRouter(Options);
 
-            var conn = router.SelectBrokerRouteFromLocalCache(IntegrationConfig.IntegrationTopic, partitionId);
+            var conn = router.GetBrokerRoute(IntegrationConfig.IntegrationTopic, partitionId);
 
             var commit = CreateOffsetCommitRequest(IntegrationConfig.IntegrationConsumer, partitionId, offset, metadata);
             var commitResponse = conn.Connection.SendAsync(commit, CancellationToken.None).Result;
@@ -126,7 +126,7 @@ namespace KafkaClient.Tests.Integration
         {
             using (var router = new BrokerRouter(Options))
             {
-                var conn = router.SelectBrokerRouteFromLocalCache(IntegrationConfig.IntegrationTopic);
+                var conn = router.GetBrokerRoute(IntegrationConfig.IntegrationTopic);
 
                 var request = new GroupCoordinatorRequest(IntegrationConfig.IntegrationConsumer);
 

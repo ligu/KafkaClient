@@ -37,9 +37,9 @@ namespace KafkaClient.Tests.Integration
             using (var router = new BrokerRouter(_options))
             {
                 IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("start RefreshMissingTopicMetadataAsync"));
-                await router.RefreshMissingTopicMetadataAsync(IntegrationConfig.IntegrationCompressionTopic, CancellationToken.None);
+                await router.GetTopicMetadataAsync(IntegrationConfig.IntegrationCompressionTopic, CancellationToken.None);
                 IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("end RefreshMissingTopicMetadataAsync"));
-                var conn = router.SelectBrokerRouteFromLocalCache(IntegrationConfig.IntegrationCompressionTopic, 0);
+                var conn = router.GetBrokerRoute(IntegrationConfig.IntegrationCompressionTopic, 0);
 
                 var request = new ProduceRequest(new Payload(IntegrationConfig.IntegrationCompressionTopic, 0, new [] {
                                     new Message("0", "1"),

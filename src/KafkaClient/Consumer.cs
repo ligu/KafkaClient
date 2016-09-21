@@ -86,8 +86,7 @@ namespace KafkaClient
                 if (Interlocked.Increment(ref _ensureOneThread) == 1)
                 {
                     _options.Log.DebugFormat("Consumer: Refreshing partitions for topic: {0}", _options.Topic);
-                    _options.Router.RefreshMissingTopicMetadataAsync(_options.Topic, CancellationToken.None).Wait();
-                    _topic = _options.Router.GetTopicMetadataFromLocalCache(_options.Topic);
+                    _topic = _options.Router.GetTopicMetadataAsync(_options.Topic, CancellationToken.None).Result;
 
                     //create one thread per partition, if they are in the white list.
                     foreach (var partition in _topic.Partitions)
@@ -129,7 +128,7 @@ namespace KafkaClient
                             //after error
                             if (needToRefreshMetadata)
                             {
-                                await _options.Router.RefreshMissingTopicMetadataAsync(topic, CancellationToken.None).ConfigureAwait(false);
+                                await _options.Router.GetTopicMetadataAsync(topic, CancellationToken.None).ConfigureAwait(false);
                                 EnsurePartitionPollingThreads();
                                 needToRefreshMetadata = false;
                             }
@@ -146,7 +145,7 @@ namespace KafkaClient
                             var fetchRequest = new FetchRequest(fetch, _options.MaxWaitTimeForMinimumBytes, _options.MinimumBytes);
 
                             //make request and post to queue
-                            var route = _options.Router.SelectBrokerRouteFromLocalCache(topic, partitionId);
+                            var route = _options.Router.GetBrokerRoute(topic, partitionId);
 
                             var taskSend = route.Connection.SendAsync(fetchRequest, CancellationToken.None);
 

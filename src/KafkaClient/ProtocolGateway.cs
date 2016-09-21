@@ -60,10 +60,7 @@ namespace KafkaClient
                 var errorDetails = "";
 
                 try {
-                    await _brokerRouter.RefreshMissingTopicMetadataAsync(topic, CancellationToken.None);
-
-                    // route can change after Metadata Refresh
-                    var route = _brokerRouter.SelectBrokerRouteFromLocalCache(topic, partition);
+                    var route = await _brokerRouter.GetBrokerRouteAsync(topic, partition, CancellationToken.None);
                     connection = route.Connection;
                     response = await route.Connection.SendAsync(request, CancellationToken.None, context).ConfigureAwait(false);
 
@@ -100,7 +97,7 @@ namespace KafkaClient
 
                 _brokerRouter.Log.WarnFormat("ProtocolGateway error sending request, retrying (attempt number {0}): {1}", retryTime, errorDetails);
                 if (needToRefreshTopicMetadata && hasMoreRetry) {
-                    await _brokerRouter.RefreshMissingTopicMetadataAsync(topic, CancellationToken.None).ConfigureAwait(false);
+                    await _brokerRouter.RefreshTopicMetadataAsync(topic, CancellationToken.None).ConfigureAwait(false);
                 } else {
                     _brokerRouter.Log.ErrorFormat("ProtocolGateway sending request failed");
 

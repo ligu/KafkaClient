@@ -80,8 +80,8 @@ namespace KafkaClient.Tests.Unit
 
             _mockKafkaConnection1.Setup(x => x.SendAsync(It.IsAny<IKafkaRequest<MetadataResponse>>(), It.IsAny<CancellationToken>(), It.IsAny<IRequestContext>()))
                       .Returns(() => Task.Run(async () => await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers()));
-            await router.RefreshMissingTopicMetadataAsync(TestTopic, CancellationToken.None);
-            var topics = router.GetTopicMetadataFromLocalCache(TestTopic);
+            await router.GetTopicMetadataAsync(TestTopic, CancellationToken.None);
+            var topics = router.GetTopicMetadata(TestTopic);
             _mockKafkaConnectionFactory.Verify(x => x.Create(It.Is<KafkaEndpoint>(e => e.Endpoint.Port == 2), It.IsAny<TimeSpan>(), It.IsAny<IKafkaLog>(), It.IsAny<int>(), It.IsAny<TimeSpan?>(), It.IsAny<bool>()), Times.Once());
         }
 
@@ -93,8 +93,8 @@ namespace KafkaClient.Tests.Unit
             var routerProxy = new BrokerRouterProxy(_kernel);
             routerProxy.BrokerConn0.MetadataResponseFunction = () => { throw new Exception("some error"); };
             var router = routerProxy.Create();
-            await router.RefreshMissingTopicMetadataAsync(TestTopic, CancellationToken.None);
-            var result = router.GetTopicMetadataFromLocalCache(TestTopic);
+            await router.GetTopicMetadataAsync(TestTopic, CancellationToken.None);
+            var result = router.GetTopicMetadata(TestTopic);
             Assert.That(result, Is.Not.Null);
             Assert.That(routerProxy.BrokerConn0.MetadataRequestCallCount, Is.EqualTo(1));
             Assert.That(routerProxy.BrokerConn1.MetadataRequestCallCount, Is.EqualTo(1));
@@ -111,8 +111,8 @@ namespace KafkaClient.Tests.Unit
 
             try
             {
-                await router.RefreshMissingTopicMetadataAsync(TestTopic, CancellationToken.None);
-                router.GetTopicMetadataFromLocalCache(TestTopic);
+                await router.GetTopicMetadataAsync(TestTopic, CancellationToken.None);
+                router.GetTopicMetadata(TestTopic);
             }
             catch
             {
@@ -127,11 +127,11 @@ namespace KafkaClient.Tests.Unit
         {
             var routerProxy = new BrokerRouterProxy(_kernel);
             var router = routerProxy.Create();
-            await router.RefreshMissingTopicMetadataAsync(TestTopic, CancellationToken.None);
-            var result1 = router.GetTopicMetadataFromLocalCache(TestTopic);
-            var result2 = router.GetTopicMetadataFromLocalCache(TestTopic);
+            await router.GetTopicMetadataAsync(TestTopic, CancellationToken.None);
+            var result1 = router.GetTopicMetadata(TestTopic);
+            var result2 = router.GetTopicMetadata(TestTopic);
 
-            Assert.AreEqual(1, router.GetTopicMetadataFromLocalCache().Count);
+            Assert.AreEqual(1, router.GetTopicMetadata().Count);
             Assert.That(routerProxy.BrokerConn0.MetadataRequestCallCount, Is.EqualTo(1));
             Assert.That(result1.TopicName, Is.EqualTo(TestTopic));
             Assert.That(result2.TopicName, Is.EqualTo(TestTopic));
@@ -144,8 +144,8 @@ namespace KafkaClient.Tests.Unit
             routerProxy.MetadataResponse = BrokerRouterProxy.CreateMetadataResponseWithNotEndToElectLeader;
 
             var router = routerProxy.Create();
-            Assert.Throws<CachedMetadataException>(async () =>await router.RefreshMissingTopicMetadataAsync(TestTopic, CancellationToken.None));
-            Assert.AreEqual(0, router.GetTopicMetadataFromLocalCache().Count);
+            Assert.Throws<CachedMetadataException>(async () =>await router.GetTopicMetadataAsync(TestTopic, CancellationToken.None));
+            Assert.AreEqual(0, router.GetTopicMetadata().Count);
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
@@ -154,8 +154,8 @@ namespace KafkaClient.Tests.Unit
             var routerProxy = new BrokerRouterProxy(_kernel);
             var router = routerProxy.Create();
             await router.RefreshTopicMetadataAsync(CancellationToken.None);
-            var result1 = router.GetTopicMetadataFromLocalCache();
-            var result2 = router.GetTopicMetadataFromLocalCache();
+            var result1 = router.GetTopicMetadata();
+            var result2 = router.GetTopicMetadata();
 
             Assert.That(routerProxy.BrokerConn0.MetadataRequestCallCount, Is.EqualTo(1));
             Assert.That(result1.Count, Is.EqualTo(1));
@@ -199,14 +199,14 @@ namespace KafkaClient.Tests.Unit
             routerProxy.MetadataResponse = BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers;
             await router.RefreshTopicMetadataAsync(TestTopic, CancellationToken.None);
 
-            var router1 = router.SelectBrokerRouteFromLocalCache(TestTopic, 0);
+            var router1 = router.GetBrokerRoute(TestTopic, 0);
 
             Assert.That(routerProxy.BrokerConn0.MetadataRequestCallCount, Is.EqualTo(1));
             await Task.Delay(routerProxy._cacheExpiration);
             await Task.Delay(1);//After cache is expair
             routerProxy.MetadataResponse = BrokerRouterProxy.CreateMetadataResponseWithSingleBroker;
             await router.RefreshTopicMetadataAsync(TestTopic, CancellationToken.None);
-            var router2 = router.SelectBrokerRouteFromLocalCache(TestTopic, 0);
+            var router2 = router.GetBrokerRoute(TestTopic, 0);
 
             Assert.That(routerProxy.BrokerConn0.MetadataRequestCallCount, Is.EqualTo(2));
             Assert.That(router1.Connection.Endpoint, Is.EqualTo(routerProxy.BrokerConn0.Endpoint));
@@ -234,8 +234,8 @@ namespace KafkaClient.Tests.Unit
             var router = routerProxy.Create();
 
             List<Task> x = new List<Task>();
-            x.Add(router.RefreshMissingTopicMetadataAsync(TestTopic, CancellationToken.None));//do not debug
-            x.Add(router.RefreshMissingTopicMetadataAsync(TestTopic, CancellationToken.None));//do not debug
+            x.Add(router.GetTopicMetadataAsync(TestTopic, CancellationToken.None));//do not debug
+            x.Add(router.GetTopicMetadataAsync(TestTopic, CancellationToken.None));//do not debug
             await Task.WhenAll(x.ToArray());
             Assert.That(routerProxy.BrokerConn0.MetadataRequestCallCount, Is.EqualTo(1));
         }
@@ -249,9 +249,9 @@ namespace KafkaClient.Tests.Unit
         {
             var routerProxy = new BrokerRouterProxy(_kernel);
             var router = routerProxy.Create();
-            await router.RefreshMissingTopicMetadataAsync(TestTopic, CancellationToken.None);
-            var p0 = router.SelectBrokerRouteFromLocalCache(TestTopic, 0);
-            var p1 = router.SelectBrokerRouteFromLocalCache(TestTopic, 1);
+            await router.GetTopicMetadataAsync(TestTopic, CancellationToken.None);
+            var p0 = router.GetBrokerRoute(TestTopic, 0);
+            var p1 = router.GetBrokerRoute(TestTopic, 1);
 
             Assert.That(p0.PartitionId, Is.EqualTo(0));
             Assert.That(p1.PartitionId, Is.EqualTo(1));
@@ -263,8 +263,8 @@ namespace KafkaClient.Tests.Unit
         {
             var routerProxy = new BrokerRouterProxy(_kernel);
             var router = routerProxy.Create();
-            await router.RefreshMissingTopicMetadataAsync(TestTopic, CancellationToken.None);
-            router.SelectBrokerRouteFromLocalCache(TestTopic, 3);
+            await router.GetTopicMetadataAsync(TestTopic, CancellationToken.None);
+            router.GetBrokerRoute(TestTopic, 3);
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
@@ -279,7 +279,7 @@ namespace KafkaClient.Tests.Unit
             routerProxy.BrokerConn0.MetadataResponseFunction = async () => metadataResponse;
 #pragma warning restore 1998
 
-            routerProxy.Create().SelectBrokerRouteFromLocalCache(TestTopic, 1);
+            routerProxy.Create().GetBrokerRoute(TestTopic, 1);
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
@@ -294,8 +294,8 @@ namespace KafkaClient.Tests.Unit
             routerProxy.BrokerConn0.MetadataResponseFunction = async () => metadataResponse;
 #pragma warning restore 1998
             var router = routerProxy.Create();
-            await router.RefreshMissingTopicMetadataAsync(TestTopic, CancellationToken.None);
-            router.SelectBrokerRouteFromLocalCache(TestTopic, 1);
+            await router.GetTopicMetadataAsync(TestTopic, CancellationToken.None);
+            router.GetBrokerRoute(TestTopic, 1);
         }
 
         #endregion SelectBrokerRouteAsync Exact Tests...
@@ -315,8 +315,8 @@ namespace KafkaClient.Tests.Unit
 
             routerProxy.PartitionSelector = _mockPartitionSelector.Object;
             var router = routerProxy.Create();
-            await router.RefreshMissingTopicMetadataAsync(TestTopic, CancellationToken.None);
-            var result = router.SelectBrokerRouteFromLocalCache(TestTopic, key);
+            await router.GetTopicMetadataAsync(TestTopic, CancellationToken.None);
+            var result = router.GetBrokerRoute(TestTopic, key);
 
             _mockPartitionSelector.Verify(f => f.Select(It.Is<MetadataTopic>(x => x.TopicName == TestTopic), key), Times.Once());
         }
@@ -333,7 +333,7 @@ namespace KafkaClient.Tests.Unit
             routerProxy.BrokerConn0.MetadataResponseFunction = async () => metadataResponse;
 #pragma warning restore 1998
 
-            routerProxy.Create().SelectBrokerRouteFromLocalCache(TestTopic);
+            routerProxy.Create().GetBrokerRoute(TestTopic);
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
@@ -349,8 +349,8 @@ namespace KafkaClient.Tests.Unit
             routerProxy.BrokerConn0.MetadataResponseFunction = async () => metadataResponse;
 #pragma warning restore 1998
             var routerProxy1 = routerProxy.Create();
-            await routerProxy1.RefreshMissingTopicMetadataAsync(TestTopic, CancellationToken.None);
-            routerProxy1.SelectBrokerRouteFromLocalCache(TestTopic);
+            await routerProxy1.GetTopicMetadataAsync(TestTopic, CancellationToken.None);
+            routerProxy1.GetBrokerRoute(TestTopic);
         }
 
         #endregion SelectBrokerRouteAsync Select Tests...

@@ -222,7 +222,7 @@ namespace KafkaClient
             Interlocked.Add(ref _inFlightMessageCount, messages.Count);
 
             var topics = messages.GroupBy(batch => batch.Topic).Select(batch => batch.Key).ToArray();
-            await BrokerRouter.RefreshMissingTopicMetadataAsync(topics, cancellationToken).ConfigureAwait(false);
+            await BrokerRouter.GetTopicMetadataAsync(topics, cancellationToken).ConfigureAwait(false);
 
             //we must send a different produce request for each ack level and timeout combination.
             foreach (var ackLevelBatch in messages.GroupBy(batch => new { batch.Acks, batch.Timeout }))
@@ -231,7 +231,7 @@ namespace KafkaClient
                 {
                     TopicMessage = batch,
                     AckLevel = ackLevelBatch.Key.Acks,
-                    Route = batch.Partition.HasValue ? BrokerRouter.SelectBrokerRouteFromLocalCache(batch.Topic, batch.Partition.Value) : BrokerRouter.SelectBrokerRouteFromLocalCache(batch.Topic, batch.Message.Key)
+                    Route = batch.Partition.HasValue ? BrokerRouter.GetBrokerRoute(batch.Topic, batch.Partition.Value) : BrokerRouter.GetBrokerRoute(batch.Topic, batch.Message.Key)
                 }).GroupBy(x => new { x.Route, x.TopicMessage.Topic, x.TopicMessage.Codec, x.AckLevel });
 
                 var sendTasks = new List<BrokerRouteSendBatch>();
