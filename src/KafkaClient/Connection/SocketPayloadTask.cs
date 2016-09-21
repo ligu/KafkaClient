@@ -16,7 +16,7 @@ namespace KafkaClient.Connection
         public CancellationToken CancellationToken { get; }
         public TaskCompletionSource<T> Tcp { get; }
 
-        private readonly CancellationTokenRegistration _cancellationTokenRegistration;
+        private CancellationTokenRegistration _cancellationTokenRegistration;
 
         public void Dispose()
         {

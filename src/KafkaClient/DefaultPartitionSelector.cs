@@ -12,7 +12,7 @@ namespace KafkaClient
 
         public MetadataPartition Select(MetadataTopic topic, byte[] key)
         {
-            if (topic == null) throw new ArgumentNullException("topic");
+            if (topic == null) throw new ArgumentNullException(nameof(topic));
             if (topic.Partitions.Count <= 0) throw new CachedMetadataException($"Topic: {topic.TopicName} has no partitions.") { Topic = topic.TopicName };
 
             //use round robin

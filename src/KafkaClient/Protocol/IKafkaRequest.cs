@@ -1,5 +1,8 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace KafkaClient.Protocol
 {
+    [SuppressMessage("ReSharper", "UnusedTypeParameter")]
     public interface IKafkaRequest<T> : IKafkaRequest
         where T : IKafkaResponse
     {

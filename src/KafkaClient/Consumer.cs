@@ -17,12 +17,12 @@ namespace KafkaClient
     /// I don't use this consumer so i stop develop it i am using manual consumer instend
     /// </summary>
 
-    public class Consumer : IMetadataQueries, IDisposable
+    public class Consumer : IMetadataQueries
     {
         private readonly ConsumerOptions _options;
         private readonly BlockingCollection<Message> _fetchResponseQueue;
         private readonly CancellationTokenSource _disposeToken = new CancellationTokenSource();
-        private TaskCompletionSource<int> _disposeTask;
+        private readonly TaskCompletionSource<int> _disposeTask;
         private readonly ConcurrentDictionary<int, Task> _partitionPollingIndex = new ConcurrentDictionary<int, Task>();
         private readonly ConcurrentDictionary<int, long> _partitionOffsetIndex = new ConcurrentDictionary<int, long>();
         private readonly IMetadataQueries _metadataQueries;
@@ -43,7 +43,7 @@ namespace KafkaClient
         /// <summary>
         /// Get the number of tasks created for consuming each partition.
         /// </summary>
-        public int ConsumerTaskCount { get { return _partitionPollingIndex.Count; } }
+        public int ConsumerTaskCount => _partitionPollingIndex.Count;
 
         /// <summary>
         /// Returns a blocking enumerable of messages received from Kafka.

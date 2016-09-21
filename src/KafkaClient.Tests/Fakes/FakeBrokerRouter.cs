@@ -58,8 +58,7 @@ namespace KafkaClient.Tests.Fakes
             {
                 KafkaServerUri = new List<Uri> { new Uri("http://localhost:1"), new Uri("http://localhost:2") },
                 KafkaConnectionFactory = _mockKafkaConnectionFactory,
-                PartitionSelector = PartitionSelector
-                ,
+                PartitionSelector = PartitionSelector,
                 CacheExpiration = _cacheExpiration
             });
         }

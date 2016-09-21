@@ -11,7 +11,7 @@ namespace KafkaClient.Common
         private readonly object _lock = new object();
         private readonly AsyncManualResetEvent _dataAvailableEvent = new AsyncManualResetEvent();
         private readonly ConcurrentQueue<T> _queue = new ConcurrentQueue<T>();
-        private long _dataInBufferCount = 0;
+        private long _dataInBufferCount;
 
         public int Count => _queue.Count + (int)Interlocked.Read(ref _dataInBufferCount);
 

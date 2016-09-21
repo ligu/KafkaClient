@@ -8,7 +8,7 @@ namespace KafkaClient
     public class ConsumerOptions
     {
         private const int DefaultMaxConsumerBufferSize = 50;
-        private const int DefaultBackoffIntervalMS = 1000;
+        private const int DefaultBackoffIntervalMilliseconds = 1000;
         private const double DefaulFetchBufferMultiplier = 1.5;
 
         /// <summary>
@@ -77,7 +77,7 @@ namespace KafkaClient
             Log = router.Log;
             TopicPartitionQueryTimeMs = (int)TimeSpan.FromMinutes(15).TotalMilliseconds;
             ConsumerBufferSize = DefaultMaxConsumerBufferSize;
-            BackoffInterval = TimeSpan.FromMilliseconds(DefaultBackoffIntervalMS);
+            BackoffInterval = TimeSpan.FromMilliseconds(DefaultBackoffIntervalMilliseconds);
             FetchBufferMultiplier = DefaulFetchBufferMultiplier;
             MaxWaitTimeForMinimumBytes = TimeSpan.FromMilliseconds(FetchRequest.DefaultMaxBlockingWaitTime);
             MinimumBytes = FetchRequest.DefaultMinBlockingByteBufferSize;

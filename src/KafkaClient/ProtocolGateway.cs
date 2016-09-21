@@ -49,7 +49,8 @@ namespace KafkaClient
         /// <exception cref="FormatException">Thrown in case the topic name is invalid</exception>
         public async Task<T> SendProtocolRequest<T>(IKafkaRequest<T> request, string topic, int partition, IRequestContext context = null) where T : class, IKafkaResponse
         {
-            ValidateTopic(topic);
+            if (topic.Contains(" ")) throw new FormatException($"topic name ({topic}) is invalid");
+
             T response = null;
             var retryTime = 0;
             IKafkaConnection connection = null;
@@ -125,13 +126,6 @@ namespace KafkaClient
         public void Dispose()
         {
             _brokerRouter.Dispose();
-        }
-
-        private void ValidateTopic(string topic)
-        {
-            if (topic.Contains(" ")) {
-                throw new FormatException("topic name is invalid");
-            }
         }
     }
 }

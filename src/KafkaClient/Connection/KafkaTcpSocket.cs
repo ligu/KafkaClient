@@ -34,7 +34,9 @@ namespace KafkaClient.Connection
         private readonly AsyncCollection<SocketPayloadSendTask> _sendTaskQueue;
         private readonly AsyncCollection<SocketPayloadReceiveTask> _readTaskQueue;
         private readonly bool _trackTelemetry;
+        // ReSharper disable NotAccessedField.Local
         private readonly Task _socketTask;
+        // ReSharper restore NotAccessedField.Local
         private readonly AsyncLock _clientLock = new AsyncLock();
         private TcpClient _client;
         private int _disposeCount;

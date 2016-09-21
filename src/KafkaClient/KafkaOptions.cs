@@ -15,14 +15,14 @@ namespace KafkaClient
             Log = new TraceLog();
             KafkaConnectionFactory = new KafkaConnectionFactory();
             ResponseTimeoutMs = TimeSpan.FromMilliseconds(DefaultResponseTimeout);
-            CacheExpiration = TimeSpan.FromMilliseconds(DefaultCacheExpirationTimeoutMS);
+            CacheExpiration = TimeSpan.FromMilliseconds(DefaultCacheExpirationTimeoutMilliseconds);
             RefreshMetadataTimeout = TimeSpan.FromMilliseconds(DefaultRefreshMetadataTimeout);
             MaxRetry = DefaultMaxRetry;
             TrackTelemetry = false;
         }
 
         private const int DefaultResponseTimeout = 60000;
-        private const int DefaultCacheExpirationTimeoutMS = 10;
+        private const int DefaultCacheExpirationTimeoutMilliseconds = 10;
         private const int DefaultRefreshMetadataTimeout = 200000;
         private const int DefaultMaxRetry = 5;
 

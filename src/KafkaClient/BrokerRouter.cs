@@ -57,7 +57,7 @@ namespace KafkaClient
         /// <exception cref="CachedMetadataException">Thrown if the given topic or partitionId does not exist for the given topic.</exception>
         public BrokerRoute SelectBrokerRouteFromLocalCache(string topicName, int partitionId)
         {
-            var topic = GetCachedTopic(topicName, _options.CacheExpiration);
+            var topic = GetCachedTopic(topicName);
 
             var partition = topic.Partitions.FirstOrDefault(x => x.PartitionId == partitionId);
             if (partition == null) throw new CachedMetadataException($"The topic: {topicName} has no partitionId: {partitionId} defined.") { Topic = topicName, Partition = partitionId };
@@ -74,7 +74,7 @@ namespace KafkaClient
         /// <exception cref="CachedMetadataException">Thrown if the topic metadata does not exist in the cache.</exception>
         public BrokerRoute SelectBrokerRouteFromLocalCache(string topicName, byte[] key = null)
         {
-            var topic = GetCachedTopic(topicName, _options.CacheExpiration);
+            var topic = GetCachedTopic(topicName);
             return GetCachedRoute(topicName, _options.PartitionSelector.Select(topic, key));
         }
 
@@ -90,7 +90,7 @@ namespace KafkaClient
         /// <exception cref="CachedMetadataException">Thrown if the topic metadata does not exist in the cache.</exception>
         public MetadataTopic GetTopicMetadataFromLocalCache(string topicName)
         {
-            return GetCachedTopic(topicName, _options.CacheExpiration);
+            return GetCachedTopic(topicName);
         }
 
         /// <summary>
@@ -129,7 +129,7 @@ namespace KafkaClient
         public async Task<MetadataTopic> GetTopicMetadataAsync(string topicName, CancellationToken cancellationToken)
         {
             return TryGetCachedTopic(topicName, _options.CacheExpiration) 
-                ?? await UpdateTopicMetadataFromServerAsync(topicName, cancellationToken).ConfigureAwait(false);
+                ?? await UpdateTopicMetadataFromServerIfMissingAsync(topicName, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -144,7 +144,7 @@ namespace KafkaClient
             var searchResult = TryGetCachedTopics(topicNames, _options.CacheExpiration);
             return searchResult.Missing.IsEmpty 
                 ? searchResult.Topics 
-                : searchResult.Topics.AddRange(await UpdateTopicMetadataFromServerAsync(searchResult.Missing, cancellationToken).ConfigureAwait(false));
+                : searchResult.Topics.AddRange(await UpdateTopicMetadataFromServerIfMissingAsync(searchResult.Missing, cancellationToken).ConfigureAwait(false));
         }
 
         /// <summary>
@@ -158,7 +158,7 @@ namespace KafkaClient
             var topic = TryGetCachedTopic(topicName, _options.CacheExpiration);
             if (topic != null) return false;
 
-            await UpdateTopicMetadataFromServerAsync(topicName, cancellationToken).ConfigureAwait(false);
+            await UpdateTopicMetadataFromServerIfMissingAsync(topicName, cancellationToken).ConfigureAwait(false);
             return true;
         }
 
@@ -173,7 +173,7 @@ namespace KafkaClient
             var searchResult = TryGetCachedTopics(topicNames, _options.CacheExpiration);
             if (searchResult.Missing.IsEmpty) return false;
 
-            await UpdateTopicMetadataFromServerAsync(searchResult.Missing, cancellationToken, false).ConfigureAwait(false);
+            await UpdateTopicMetadataFromServerIfMissingAsync(searchResult.Missing, cancellationToken).ConfigureAwait(false);
             return true;
         }
 
@@ -185,7 +185,7 @@ namespace KafkaClient
         /// </remarks>
         public Task RefreshTopicMetadataAsync(string topicName, CancellationToken cancellationToken)
         {
-            return UpdateTopicMetadataFromServerAsync(new List<string> { topicName }, cancellationToken, false);
+            return UpdateTopicMetadataFromServerAsync(topicName, cancellationToken);
         }
 
         /// <summary>
@@ -196,40 +196,43 @@ namespace KafkaClient
         /// </remarks>
         public Task RefreshTopicMetadataAsync(CancellationToken cancellationToken)
         {
-            return UpdateTopicMetadataFromServerAsync((IList<string>)null, cancellationToken, false);
+            return UpdateTopicMetadataFromServerAsync(null, cancellationToken);
         }
 
-        private async Task<MetadataTopic> UpdateTopicMetadataFromServerAsync(string topicName, CancellationToken cancellationToken, bool onlyUpdateMissing = true)
+        private async Task<MetadataTopic> UpdateTopicMetadataFromServerIfMissingAsync(string topicName, CancellationToken cancellationToken)
         {
-            var topics = await UpdateTopicMetadataFromServerAsync(new [] { topicName }, cancellationToken, onlyUpdateMissing).ConfigureAwait(false);
+            var topics = await UpdateTopicMetadataFromServerIfMissingAsync(new [] { topicName }, cancellationToken).ConfigureAwait(false);
             return topics.Single();
         }
 
-        private async Task<ImmutableList<MetadataTopic>> UpdateTopicMetadataFromServerAsync(IList<string> topicNames, CancellationToken cancellationToken, bool onlyUpdateMissing = true)
+        private async Task<ImmutableList<MetadataTopic>> UpdateTopicMetadataFromServerIfMissingAsync(IEnumerable<string> topicNames, CancellationToken cancellationToken)
         {
             using (await _lock.LockAsync(cancellationToken).ConfigureAwait(false)) {
-                CachedTopicsResult searchResult = null;
-                if (onlyUpdateMissing) {
-                    searchResult = TryGetCachedTopics(topicNames, _options.CacheExpiration);
-                    if (searchResult.Missing.Count == 0) return searchResult.Topics;
+                var searchResult = TryGetCachedTopics(topicNames, _options.CacheExpiration);
+                if (searchResult.Missing.Count == 0) return searchResult.Topics;
 
-                    topicNames = searchResult.Missing;
-                }
-
-                if (topicNames != null) {
-                    _options.Log.DebugFormat("BrokerRouter refreshing metadata for topics: {0}", string.Join(",", topicNames));
-                } else {
-                    _options.Log.DebugFormat("BrokerRouter refreshing metadata for all topics");
-                }
-                var response = await GetTopicMetadataFromServerAsync(topicNames, cancellationToken);
+                _options.Log.DebugFormat("BrokerRouter refreshing metadata for topics {0}", string.Join(",", searchResult.Missing));
+                var response = await GetTopicMetadataFromServerAsync(searchResult.Missing, cancellationToken);
                 UpdateConnectionCache(response);
                 UpdateTopicCache(response);
 
                 // since the above may take some time to complete, it's necessary to hold on to the topics we found before
                 // just in case they expired between when we searched for them and now.
-                return searchResult?.Topics.IsEmpty ?? true
-                           ? response.Topics
-                           : searchResult.Topics.AddRange(response.Topics);
+                return response.Topics.AddRange(searchResult.Topics);
+            }
+        }
+
+        private async Task UpdateTopicMetadataFromServerAsync(string topicName, CancellationToken cancellationToken)
+        {
+            using (await _lock.LockAsync(cancellationToken).ConfigureAwait(false)) {
+                if (topicName != null) {
+                    _options.Log.DebugFormat("BrokerRouter refreshing metadata for topic {0}", topicName);
+                } else {
+                    _options.Log.DebugFormat("BrokerRouter refreshing metadata for all topics");
+                }
+                var response = await GetTopicMetadataFromServerAsync(new [] { topicName }, cancellationToken);
+                UpdateConnectionCache(response);
+                UpdateTopicCache(response);
             }
         }
 
@@ -260,7 +263,7 @@ namespace KafkaClient
             return new CachedTopicsResult(topics, missing);
         }
 
-        private MetadataTopic GetCachedTopic(string topicName, TimeSpan expiration)
+        private MetadataTopic GetCachedTopic(string topicName, TimeSpan? expiration = null)
         {
             var topic = TryGetCachedTopic(topicName, expiration);
             if (topic != null) return topic;
@@ -268,11 +271,11 @@ namespace KafkaClient
             throw new CachedMetadataException($"No metadata defined for topic: {topicName}") { Topic = topicName };
         }
 
-        private MetadataTopic TryGetCachedTopic(string topicName, TimeSpan expiration)
+        private MetadataTopic TryGetCachedTopic(string topicName, TimeSpan? expiration)
         {
             Tuple<MetadataTopic, DateTime> cachedTopic;
             if (_topicCache.TryGetValue(topicName, out cachedTopic)) {
-                if (expiration.TotalMilliseconds > (DateTime.UtcNow - cachedTopic.Item2).TotalMilliseconds) {
+                if (!expiration.HasValue || DateTime.UtcNow - cachedTopic.Item2 < expiration.Value) {
                     return cachedTopic.Item1;
                 }
             }
@@ -298,13 +301,13 @@ namespace KafkaClient
                 : null;
         }
 
-        private CachedMetadataException GetPartitionElectionException(IEnumerable<Topic> partitionElections)
+        private CachedMetadataException GetPartitionElectionException(IList<Topic> partitionElections)
         {
             var topic = partitionElections.FirstOrDefault();
             if (topic == null) return null;
 
             var message = $"Leader Election for topic {topic.TopicName} partition {topic.PartitionId}";
-            var innerException = GetPartitionElectionException(partitionElections.Skip(1));
+            var innerException = GetPartitionElectionException(partitionElections.Skip(1).ToList());
             var exception = innerException != null
                                 ? new CachedMetadataException(message, innerException)
                                 : new CachedMetadataException(message);
@@ -318,7 +321,8 @@ namespace KafkaClient
             var partitionElections = metadata.Topics.SelectMany(
                 t => t.Partitions
                       .Where(p => p.IsElectingLeader)
-                      .Select(p => new Topic(t.TopicName, p.PartitionId))).ToList();
+                      .Select(p => new Topic(t.TopicName, p.PartitionId)))
+                      .ToList();
             if (partitionElections.Any()) throw GetPartitionElectionException(partitionElections);
 
             var topicCache = _topicCache;
@@ -376,7 +380,7 @@ namespace KafkaClient
             }
         }
 
-        private int _disposeCount = 0;
+        private int _disposeCount;
 
         public void Dispose()
         {

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -69,9 +70,10 @@ namespace KafkaClient
             var retryAttempt = 0;
             MetadataResponse metadataResponse;
 
+            var connectionList = ImmutableList<IKafkaConnection>.Empty.AddRange(connections);
             do {
                 performRetry = false;
-                metadataResponse = await GetMetadataResponseAsync(connections, request, cancellationToken);
+                metadataResponse = await GetMetadataResponseAsync(connectionList, request, cancellationToken);
                 if (metadataResponse == null) return null;
 
                 foreach (var validation in ValidateResponse(metadataResponse)) {
@@ -112,7 +114,7 @@ namespace KafkaClient
                     servers += " " + conn.Endpoint;
                     return await conn.SendAsync(request, cancellationToken).ConfigureAwait(false);
                 } catch (Exception ex) {
-                    _log.WarnFormat("Failed to contact Kafka server {0}. Trying next default server. Exception={1}", conn.Endpoint, ex);
+                    _log.WarnFormat(ex, "Failed to contact Kafka server {0}. Trying next server", conn.Endpoint);
                 }
             }
 
@@ -158,7 +160,7 @@ namespace KafkaClient
         {
             try
             {
-                var errorCode = (ErrorResponseCode)topic.ErrorCode;
+                var errorCode = topic.ErrorCode;
 
                 if (errorCode == ErrorResponseCode.NoError) return new MetadataValidationResult();
 

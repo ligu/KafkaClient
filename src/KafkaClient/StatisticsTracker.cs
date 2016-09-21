@@ -36,13 +36,11 @@ namespace KafkaClient
 
         private static void HeartBeatAction()
         {
-            if (OnStatisticsHeartbeat != null)
-            {
-                OnStatisticsHeartbeat(new StatisticsSummary(ProduceRequestStatistics.ToList(),
+            OnStatisticsHeartbeat?.Invoke(
+                new StatisticsSummary(ProduceRequestStatistics.ToList(),
                     NetworkWriteQueuedIndex.Values.ToList(),
                     CompletedNetworkWriteStatistics.ToList(),
                     Gauges));
-            }
         }
 
         public static void RecordProduceRequest(int messageCount, int payloadBytes, int compressedBytes)
@@ -169,12 +167,12 @@ namespace KafkaClient
     public class StatisticsSummary
     {
         public ProduceRequestSummary ProduceRequestSummary { get; private set; }
-        public List<NetworkWriteSummary> NetworkWriteSummaries { get; private set; }
+        public List<NetworkWriteSummary> NetworkWriteSummaries { get; }
 
-        public List<ProduceRequestStatistic> ProduceRequestStatistics { get; private set; }
+        public List<ProduceRequestStatistic> ProduceRequestStatistics { get; }
         public List<NetworkWriteStatistic> CompletedNetworkWriteStatistics { get; private set; }
         public List<NetworkWriteStatistic> QueuedNetworkWriteStatistics { get; private set; }
-        public Gauges Gauges { get; private set; }
+        public Gauges Gauges { get; }
 
         public StatisticsSummary(List<ProduceRequestStatistic> produceRequestStatistics,
                                  List<NetworkWriteStatistic> queuedWrites,
@@ -279,13 +277,13 @@ namespace KafkaClient
 
     public class NetworkWriteStatistic
     {
-        public DateTime CreatedOnUtc { get; private set; }
+        public DateTime CreatedOnUtc { get; }
         public DateTime CompletedOnUtc { get; private set; }
         public bool IsCompleted { get; private set; }
         public bool IsFailed { get; private set; }
-        public KafkaEndpoint Endpoint { get; private set; }
-        public KafkaDataPayload Payload { get; private set; }
-        public TimeSpan TotalDuration { get { return (IsCompleted ? CompletedOnUtc : DateTime.UtcNow) - CreatedOnUtc; } }
+        public KafkaEndpoint Endpoint { get; }
+        public KafkaDataPayload Payload { get; }
+        public TimeSpan TotalDuration => (IsCompleted ? CompletedOnUtc : DateTime.UtcNow) - CreatedOnUtc;
         public TimeSpan WriteDuration { get; private set; }
 
         public NetworkWriteStatistic(KafkaEndpoint endpoint, KafkaDataPayload payload)
@@ -320,7 +318,7 @@ namespace KafkaClient
     public class NetworkQueueSummary
     {
         public int BytesQueued;
-        public double KilobytesQueued { get { return MathHelper.ConvertToKilobytes(BytesQueued); } }
+        public double KilobytesQueued => MathHelper.ConvertToKilobytes(BytesQueued);
         public TimeSpan OldestBatchInQueue { get; set; }
         public int QueuedMessages { get; set; }
         public int QueuedBatchCount;
@@ -333,7 +331,7 @@ namespace KafkaClient
         public int MaxMessagesPerSecond;
         public int BytesPerSecond;
         public TimeSpan AverageWriteDuration;
-        public double KilobytesPerSecond { get { return MathHelper.ConvertToKilobytes(BytesPerSecond); } }
+        public double KilobytesPerSecond => MathHelper.ConvertToKilobytes(BytesPerSecond);
         public TimeSpan AverageTotalDuration { get; set; }
         public int SampleSize { get; set; }
         public int MessagesLastBatch { get; set; }
@@ -345,22 +343,22 @@ namespace KafkaClient
         public int MessageCount;
         public int MessagesPerSecond;
         public int MessageBytesPerSecond;
-        public double MessageKilobytesPerSecond { get { return MathHelper.ConvertToKilobytes(MessageBytesPerSecond); } }
+        public double MessageKilobytesPerSecond => MathHelper.ConvertToKilobytes(MessageBytesPerSecond);
         public int PayloadBytesPerSecond;
-        public double PayloadKilobytesPerSecond { get { return MathHelper.ConvertToKilobytes(PayloadBytesPerSecond); } }
+        public double PayloadKilobytesPerSecond => MathHelper.ConvertToKilobytes(PayloadBytesPerSecond);
         public int CompressedBytesPerSecond;
-        public double CompressedKilobytesPerSecond { get { return MathHelper.ConvertToKilobytes(CompressedBytesPerSecond); } }
+        public double CompressedKilobytesPerSecond => MathHelper.ConvertToKilobytes(CompressedBytesPerSecond);
         public double AverageCompressionRatio;
     }
 
     public class ProduceRequestStatistic
     {
-        public DateTime CreatedOnUtc { get; private set; }
-        public int MessageCount { get; private set; }
-        public int MessageBytes { get; private set; }
-        public int PayloadBytes { get; private set; }
-        public int CompressedBytes { get; private set; }
-        public double CompressionRatio { get; private set; }
+        public DateTime CreatedOnUtc { get; }
+        public int MessageCount { get; }
+        public int MessageBytes { get; }
+        public int PayloadBytes { get; }
+        public int CompressedBytes { get; }
+        public double CompressionRatio { get; }
 
         public ProduceRequestStatistic(int messageCount, int payloadBytes, int compressedBytes)
         {

@@ -21,7 +21,7 @@ namespace KafkaClient.Connection
     public class KafkaConnection : IKafkaConnection
     {
         private const int DefaultResponseTimeoutSeconds = 60;
-        bool _isInErrorState = false;
+        private bool _isInErrorState;
 
         public bool IsOnErrorState()
         {
@@ -118,14 +118,13 @@ namespace KafkaClient.Connection
 
         public override bool Equals(object obj)
         {
-            if (ReferenceEquals(null, obj)) return false;
-            if (ReferenceEquals(this, obj)) return true;
-            if (obj.GetType() != this.GetType()) return false;
-            return Equals((KafkaConnection)obj);
+            return Equals(obj as KafkaConnection);
         }
 
         protected bool Equals(KafkaConnection other)
         {
+            if (ReferenceEquals(null, other)) return false;
+            if (ReferenceEquals(this, other)) return true;
             return Equals(_client.Endpoint, other.Endpoint);
         }
 
@@ -267,9 +266,9 @@ namespace KafkaClient.Connection
                 ReceiveTask = new TaskCompletionSource<byte[]>();
             }
 
-            public int CorrelationId { get; private set; }
+            public int CorrelationId { get; }
             public ApiKeyRequestType ApiKey { get; }
-            public TaskCompletionSource<byte[]> ReceiveTask { get; private set; }
+            public TaskCompletionSource<byte[]> ReceiveTask { get; }
 
             public void MarkRequestAsSent(ExceptionDispatchInfo exceptionDispatchInfo, TimeSpan timeout, Action<AsyncRequestItem> timeoutFunction)
             {

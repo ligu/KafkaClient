@@ -282,7 +282,7 @@ namespace KafkaClient.Tests.Unit
                 await Task.Delay(200);
                 return new ProduceResponse();
             };
-            using (var producer = new Producer(routerProxy.Create(), maximumMessageBuffer: 1) {
+            using (var producer = new Producer(routerProxy.Create()) {
                 BatchSize = 10,
                 BatchDelayTime = TimeSpan.FromMilliseconds(500)
             })
@@ -320,7 +320,7 @@ namespace KafkaClient.Tests.Unit
             routerProxy.BrokerConn1.ProduceResponseFunction = async () => { semaphore.Wait(); return new ProduceResponse(); };
 #pragma warning restore 1998
 
-            var producer = new Producer(routerProxy.Create(), maximumMessageBuffer: 5, maximumAsyncRequests: 1) { BatchSize = 1, BatchDelayTime = TimeSpan.FromMilliseconds(500) };
+            var producer = new Producer(routerProxy.Create(), maximumAsyncRequests: 1) { BatchSize = 1, BatchDelayTime = TimeSpan.FromMilliseconds(500) };
             using (producer)
             {
                 var sendTasks = Enumerable.Range(0, 5)

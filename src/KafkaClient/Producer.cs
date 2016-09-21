@@ -14,10 +14,9 @@ namespace KafkaClient
     public class Producer : IMetadataQueries
     {
         private const int MaxDisposeWaitSeconds = 30;
-        private const int DefaultAckTimeoutMS = 1000;
+        private const int DefaultAckTimeoutMilliseconds = 1000;
         private const int MaximumAsyncRequests = 20;
-        private const int MaximumMessageBuffer = 1000;
-        private const int DefaultBatchDelayMS = 100;
+        private const int DefaultBatchDelayMilliseconds = 100;
         private const int DefaultBatchSize = 100;
 
         private readonly ProtocolGateway _protocolGateway;
@@ -28,7 +27,7 @@ namespace KafkaClient
         private readonly IMetadataQueries _metadataQueries;
         private readonly Task _postTask;
 
-        private int _inFlightMessageCount = 0;
+        private int _inFlightMessageCount;
 
         /// <summary>
         /// Get the number of messages sitting in the buffer waiting to be sent.
@@ -58,14 +57,13 @@ namespace KafkaClient
         /// <summary>
         /// The broker router this producer uses to route messages.
         /// </summary>
-        public IBrokerRouter BrokerRouter { get; private set; }
+        public IBrokerRouter BrokerRouter { get; }
 
         /// <summary>
         /// Construct a Producer class.
         /// </summary>
         /// <param name="brokerRouter">The router used to direct produced messages to the correct partition.</param>
         /// <param name="maximumAsyncRequests">The maximum async calls allowed before blocking new requests.  -1 indicates unlimited.</param>
-        /// <param name="maximumMessageBuffer">The maximum amount of messages to buffer if the async calls are blocking from sending.</param>
         /// <remarks>
         /// The maximumAsyncRequests parameter provides a mechanism for minimizing the amount of async requests in flight at any one time
         /// by blocking the caller requesting the async call.  This affectively puts an upper limit on the amount of times a caller can
@@ -79,7 +77,7 @@ namespace KafkaClient
         /// messages sitting in the async queue then a message may spend its entire timeout cycle waiting in this queue and never getting
         /// attempted to send to Kafka before a timeout exception is thrown.
         /// </remarks>
-        public Producer(IBrokerRouter brokerRouter, int maximumAsyncRequests = MaximumAsyncRequests, int maximumMessageBuffer = MaximumMessageBuffer)
+        public Producer(IBrokerRouter brokerRouter, int maximumAsyncRequests = MaximumAsyncRequests)
         {
             BrokerRouter = brokerRouter;
             _protocolGateway = new ProtocolGateway(BrokerRouter);
@@ -89,7 +87,7 @@ namespace KafkaClient
             _semaphoreMaximumAsync = new SemaphoreSlim(maximumAsyncRequests, maximumAsyncRequests);
 
             BatchSize = DefaultBatchSize;
-            BatchDelayTime = TimeSpan.FromMilliseconds(DefaultBatchDelayMS);
+            BatchDelayTime = TimeSpan.FromMilliseconds(DefaultBatchDelayMilliseconds);
 
             _postTask = Task.Run(async () => {
                 await BatchSendAsync();
@@ -112,7 +110,7 @@ namespace KafkaClient
         {
             if (_stopToken.IsCancellationRequested) throw new ObjectDisposedException("Cannot send new documents as producer is disposing.");
             if (timeout == null) {
-                timeout = TimeSpan.FromMilliseconds(DefaultAckTimeoutMS);
+                timeout = TimeSpan.FromMilliseconds(DefaultAckTimeoutMilliseconds);
             }
 
             var batch = messages.Select(message => new TopicMessage {
@@ -208,12 +206,8 @@ namespace KafkaClient
                     if (batch != null)
                         await ProduceAndSendBatchAsync(batch, _stopToken.Token).ConfigureAwait(false);
                 }
-                catch (Exception ex)
-                {
-                    if (batch != null)
-                    {
-                        batch.ForEach(x => x.Tcs.TrySetException(ex));
-                    }
+                catch (Exception ex) {
+                    batch?.ForEach(x => x.Tcs.TrySetException(ex));
                 }
             }
         }
@@ -256,8 +250,10 @@ namespace KafkaClient
                         AckLevel = group.Key.AckLevel
                     };
 
+                    // ReSharper disable UnusedVariable
                     //ensure the async is released as soon as each task is completed //TODO: remove it from ack level 0 , don't like it
                     var continuation = brokerSendTask.Task.ContinueWith(t => { _semaphoreMaximumAsync.Release(); }, cancellationToken);
+                    // ReSharper restore UnusedVariable
 
                     sendTasks.Add(brokerSendTask);
                 }
@@ -314,12 +310,13 @@ namespace KafkaClient
         public void Dispose()
         {
             //Clients really should call Stop() first, but just in case they didn't...
-            this.Stop(false);
+            Stop(false);
 
             //dispose
-            using (_stopToken)
-            using (_metadataQueries)
-            {
+            using (_stopToken) {
+                using (_metadataQueries)
+                {
+                }
             }
         }
 

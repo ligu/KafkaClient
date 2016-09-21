@@ -21,7 +21,7 @@ namespace KafkaClient.Tests.Fakes
         private readonly FakeKafkaConnection _fakeConn0;
         private readonly FakeKafkaConnection _fakeConn1;
         private readonly Mock<IKafkaConnectionFactory> _mockKafkaConnectionFactory;
-        public TimeSpan _cacheExpiration = TimeSpan.FromMilliseconds(10);
+        public TimeSpan _cacheExpiration = TimeSpan.FromMilliseconds(1);
         public FakeKafkaConnection BrokerConn0 { get { return _fakeConn0; } }
         public FakeKafkaConnection BrokerConn1 { get { return _fakeConn1; } }
         public Mock<IKafkaConnectionFactory> KafkaConnectionMockKafkaConnectionFactory { get { return _mockKafkaConnectionFactory; } }

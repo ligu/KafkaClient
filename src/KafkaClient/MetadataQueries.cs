@@ -32,7 +32,7 @@ namespace KafkaClient
 
             //send the offset request to each partition leader
             var sendRequests = topicMetadata.Partitions
-                .GroupBy((MetadataPartition x) => x.PartitionId)
+                .GroupBy(x => x.PartitionId)
                 .Select(p =>
                     {
                         var route = _brokerRouter.SelectBrokerRouteFromLocalCache(topic, p.Key);
