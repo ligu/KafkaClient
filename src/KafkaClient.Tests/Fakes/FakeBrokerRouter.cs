@@ -45,8 +45,8 @@ namespace KafkaClient.Tests.Fakes
 #pragma warning restore 1998
 
             _mockKafkaConnectionFactory = Substitute.For<IKafkaConnectionFactory>();
-            _mockKafkaConnectionFactory.Create(Arg.Is<KafkaEndpoint>(e => e.Endpoint.Port == 1), Arg.Any<IKafkaConnectionOptions>(), Arg.Any<IKafkaLog>()).Returns(_fakeConn0);
-            _mockKafkaConnectionFactory.Create(Arg.Is<KafkaEndpoint>(e => e.Endpoint.Port == 2), Arg.Any<IKafkaConnectionOptions>(), Arg.Any<IKafkaLog>()).Returns(_fakeConn1);
+            _mockKafkaConnectionFactory.Create(Arg.Is<KafkaEndpoint>(e => e.Endpoint.Port == 1), Arg.Any<IKafkaConnectionConfiguration>(), Arg.Any<IKafkaLog>()).Returns(_fakeConn0);
+            _mockKafkaConnectionFactory.Create(Arg.Is<KafkaEndpoint>(e => e.Endpoint.Port == 2), Arg.Any<IKafkaConnectionConfiguration>(), Arg.Any<IKafkaLog>()).Returns(_fakeConn1);
             _mockKafkaConnectionFactory.Resolve(Arg.Any<Uri>(), Arg.Any<IKafkaLog>())
                                        .Returns(info => new KafkaEndpoint((Uri)info[0], new IPEndPoint(IPAddress.Parse("127.0.0.1"), ((Uri)info[0]).Port)));
         }
@@ -57,7 +57,7 @@ namespace KafkaClient.Tests.Fakes
                 new [] { new Uri("http://localhost:1"), new Uri("http://localhost:2") },
                 _mockKafkaConnectionFactory,
                 partitionSelector: PartitionSelector,
-                cacheOptions: new MetadataCacheOptions(cacheExpiration: _cacheExpiration));
+                cacheConfiguration: new CacheConfiguration(cacheExpiration: _cacheExpiration));
         }
 
         public static MetadataResponse DefaultMetadataResponse()

@@ -24,7 +24,7 @@ namespace KafkaClient.Tests.Fakes
         public long OffsetRequestCallCount; //{ get; set; }
         public long FetchRequestCallCount; // { get; set; }
 
-        public KafkaEndpoint Endpoint { get; private set; }
+        public KafkaEndpoint Endpoint { get; }
 
         public bool ReadPolling => true;
 

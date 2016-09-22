@@ -2,9 +2,9 @@ using System;
 
 namespace KafkaClient
 {
-    public class MetadataCacheOptions : IMetadataCacheOptions
+    public class CacheConfiguration : ICacheConfiguration
     {
-        public MetadataCacheOptions(TimeSpan? refreshTimeout = null, int? maxRetries = null, TimeSpan? cacheExpiration = null)
+        public CacheConfiguration(TimeSpan? refreshTimeout = null, int? maxRetries = null, TimeSpan? cacheExpiration = null)
         {
             RefreshTimeout = refreshTimeout ?? TimeSpan.FromSeconds(DefaultRefreshTimeoutSeconds);
             MaxRetries = maxRetries.GetValueOrDefault(DefaultMaxRetries);

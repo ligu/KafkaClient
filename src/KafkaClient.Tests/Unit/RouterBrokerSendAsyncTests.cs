@@ -29,7 +29,7 @@ namespace KafkaClient.Tests.Unit
             _kernel = new MoqMockingKernel();
             _mockKafkaConnection1 = _kernel.GetMock<IKafkaConnection>();
             _mockKafkaConnectionFactory = _kernel.GetMock<IKafkaConnectionFactory>();
-            _mockKafkaConnectionFactory.Setup(x => x.Create(It.Is<KafkaEndpoint>(e => e.Endpoint.Port == 1), It.IsAny<IKafkaConnectionOptions>(), It.IsAny<IKafkaLog>())).Returns(() => _mockKafkaConnection1.Object);
+            _mockKafkaConnectionFactory.Setup(x => x.Create(It.Is<KafkaEndpoint>(e => e.Endpoint.Port == 1), It.IsAny<IKafkaConnectionConfiguration>(), It.IsAny<IKafkaLog>())).Returns(() => _mockKafkaConnection1.Object);
             _mockKafkaConnectionFactory.Setup(x => x.Resolve(It.IsAny<Uri>(), It.IsAny<IKafkaLog>()))
                 .Returns<Uri, IKafkaLog>((uri, log) => new KafkaEndpoint(uri, new IPEndPoint(IPAddress.Parse("127.0.0.1"), uri.Port)));
         }

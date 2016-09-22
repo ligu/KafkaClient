@@ -2,9 +2,9 @@
 
 namespace KafkaClient.Connection
 {
-    public class KafkaConnectionOptions : IKafkaConnectionOptions
+    public class KafkaConnectionConfiguration : IKafkaConnectionConfiguration
     {
-        public KafkaConnectionOptions(TimeSpan? connectingTimeout = null, int? maxRetries = null, TimeSpan? requestTimeout = null, bool trackTelemetry = false)
+        public KafkaConnectionConfiguration(TimeSpan? connectingTimeout = null, int? maxRetries = null, TimeSpan? requestTimeout = null, bool trackTelemetry = false)
         {
             ConnectingTimeout = connectingTimeout;
             MaxRetries = maxRetries ?? DefaultMaxRetries;

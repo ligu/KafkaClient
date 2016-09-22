@@ -20,7 +20,7 @@ namespace KafkaClient.Tests.Integration
         private KafkaConnection GetKafkaConnection()
         {
             var endpoint = new KafkaConnectionFactory().Resolve(_options.ServerUris.First(), _options.Log);
-            return new KafkaConnection(new KafkaTcpSocket(new TraceLog(), endpoint, 5), _options.ConnectionOptions.RequestTimeout, _options.Log);
+            return new KafkaConnection(new KafkaTcpSocket(new TraceLog(), endpoint, 5), _options.ConnectionConfiguration.RequestTimeout, _options.Log);
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
@@ -61,7 +61,7 @@ namespace KafkaClient.Tests.Integration
             var router = new BrokerRouter(_options);
             var producer = new Producer(router);
 
-            var offsets = producer.GetTopicOffsetAsync(IntegrationConfig.IntegrationCompressionTopic).Result;
+            var offsets = producer.BrokerRouter.GetTopicOffsetAsync(IntegrationConfig.IntegrationCompressionTopic, CancellationToken.None).Result;
 
             var consumer = new Consumer(new ConsumerOptions(IntegrationConfig.IntegrationCompressionTopic, router) { PartitionWhitelist = new List<int>() { 0 } },
                 offsets.Select(x => new OffsetPosition(x.PartitionId, x.Offsets.Max())).ToArray());

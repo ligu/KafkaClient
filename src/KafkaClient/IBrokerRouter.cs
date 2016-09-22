@@ -8,6 +8,9 @@ using KafkaClient.Protocol;
 
 namespace KafkaClient
 {
+    /// <summary>
+    /// Provides access to Brokers for a topic (and partition) as well as topic metadata.
+    /// </summary>
     public interface IBrokerRouter : IDisposable
     {
         /// <summary>

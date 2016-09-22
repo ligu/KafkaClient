@@ -3,7 +3,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using KafkaClient;
 using KafkaClient.Common;
-using KafkaClient.Connection;
 using KafkaClient.Protocol;
 
 namespace ExampleApp
@@ -49,7 +48,7 @@ namespace ExampleApp
                 }
                 else
                 {
-                    producer.SendMessageAsync(topicName, new[] { new Message(message) });
+                    producer.SendMessageAsync(topicName, new Message(message));
                 }
             }
 

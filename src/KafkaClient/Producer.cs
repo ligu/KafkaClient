@@ -11,7 +11,7 @@ namespace KafkaClient
     /// <summary>
     /// Provides a simplified high level API for producing messages on a topic.
     /// </summary>
-    public class Producer : IMetadataQueries
+    public class Producer : IKafkaClient
     {
         private const int MaxDisposeWaitSeconds = 30;
         private const int DefaultAckTimeoutMilliseconds = 1000;
@@ -137,21 +137,6 @@ namespace KafkaClient
         public Task<ProduceTopic[]> SendMessageAsync(string topic, params Message[] messages)
         {
             return SendMessageAsync(topic, messages, acks: 1);
-        }
-
-        /// <summary>
-        /// Get the metadata about a given topic.
-        /// </summary>
-        /// <param name="topicName">The name of the topic to get metadata for.</param>
-        /// <returns>Topic with metadata information.</returns>
-        public MetadataTopic GetTopicFromCache(string topicName)
-        {
-            return BrokerRouter.GetTopicMetadata(topicName);
-        }
-
-        public Task<List<OffsetTopic>> GetTopicOffsetAsync(string topicName, int maxOffsets = 2, int time = -1)
-        {
-            return BrokerRouter.GetTopicOffsetAsync(topicName, maxOffsets, time, CancellationToken.None);
         }
 
         /// <summary>

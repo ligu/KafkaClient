@@ -24,7 +24,7 @@ namespace KafkaClient.Tests.Unit
         private const int FakeServerPort = 8999;
         private readonly KafkaEndpoint _fakeServerUrl;
         private readonly KafkaEndpoint _badServerUrl;
-        private IKafkaLog _log = new TraceLog(LogLevel.Info);
+        private readonly IKafkaLog _log = new TraceLog(LogLevel.Info);
         private int _maxRetry = 5;
 
         public KafkaTcpSocketTests()

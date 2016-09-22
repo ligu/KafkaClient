@@ -129,7 +129,7 @@ namespace KafkaClient.Common
             if (value == null) {
                 switch (encoding) {
                     case StringPrefixEncoding.Int16:
-                        Write((short)(-1));
+                        Write((short)-1);
                         return;
 
                     default:

@@ -10,15 +10,15 @@ namespace KafkaClient
     {
         public KafkaOptions(
             IEnumerable<Uri> kafkaServerUris = null, 
-            IKafkaConnectionOptions connectionOptions = null, 
-            IMetadataCacheOptions cacheOptions = null,
+            IKafkaConnectionConfiguration connectionConfiguration = null, 
+            ICacheConfiguration cacheConfiguration = null,
             IKafkaConnectionFactory connectionFactory = null,
             IPartitionSelector partitionSelector = null,
             IKafkaLog log = null)
         {
             ServerUris = ImmutableList<Uri>.Empty.AddNotNullRange(kafkaServerUris);
-            CacheOptions = cacheOptions;
-            ConnectionOptions = connectionOptions;
+            CacheConfiguration = cacheConfiguration;
+            ConnectionConfiguration = connectionConfiguration;
             ConnectionFactory = connectionFactory ?? new KafkaConnectionFactory();
             PartitionSelector = partitionSelector ?? new PartitionSelector();
             Log = log ?? new TraceLog();
@@ -26,12 +26,12 @@ namespace KafkaClient
 
         public KafkaOptions(
             Uri kafkaServerUri = null, 
-            IKafkaConnectionOptions connectionOptions = null, 
-            IMetadataCacheOptions cacheOptions = null,
+            IKafkaConnectionConfiguration connectionConfiguration = null, 
+            ICacheConfiguration cacheConfiguration = null,
             IKafkaConnectionFactory connectionFactory = null,
             IPartitionSelector partitionSelector = null,
             IKafkaLog log = null)
-            : this (ImmutableList<Uri>.Empty.AddNotNull(kafkaServerUri), connectionOptions, cacheOptions, connectionFactory, partitionSelector, log)
+            : this (ImmutableList<Uri>.Empty.AddNotNull(kafkaServerUri), connectionConfiguration, cacheConfiguration, connectionFactory, partitionSelector, log)
         {
         }
 
@@ -43,12 +43,12 @@ namespace KafkaClient
         /// <summary>
         /// Connection backoff and retry settings.
         /// </summary>
-        public IKafkaConnectionOptions ConnectionOptions { get; }
+        public IKafkaConnectionConfiguration ConnectionConfiguration { get; }
 
         /// <summary>
         /// Cache expiry and retry settings.
         /// </summary>
-        public IMetadataCacheOptions CacheOptions { get; }
+        public ICacheConfiguration CacheConfiguration { get; }
 
         /// <summary>
         /// Provides a factory for creating new kafka connections.

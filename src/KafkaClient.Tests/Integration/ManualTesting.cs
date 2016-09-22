@@ -28,7 +28,7 @@ namespace KafkaClient.Tests.Integration
             using (var router = new BrokerRouter(_options))
             {
                 var producer = new Producer(router);
-                var offsets = producer.GetTopicOffsetAsync(topic).Result;
+                var offsets = producer.BrokerRouter.GetTopicOffsetAsync(topic, CancellationToken.None).Result;
                 var maxOffsets = offsets.Select(x => new OffsetPosition(x.PartitionId, x.Offsets.Max())).ToArray();
                 var consumerOptions = new ConsumerOptions(topic, router) { PartitionWhitelist = new List<int>() { 0 }, MaxWaitTimeForMinimumBytes = TimeSpan.Zero };
 

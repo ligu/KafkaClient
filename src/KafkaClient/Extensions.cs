@@ -42,6 +42,17 @@ namespace KafkaClient
             return sendRequests.SelectMany(x => x.Result.Topics).ToList();
         }
 
+        /// <summary>
+        /// Get offsets for each partition from a given topic.
+        /// </summary>
+        /// <param name="brokerRouter">The router which provides the route and metadata.</param>
+        /// <param name="topicName">Name of the topic to get offset information from.</param>
+        /// <param name="cancellationToken"></param>
+        public static Task<List<OffsetTopic>> GetTopicOffsetAsync(this IBrokerRouter brokerRouter, string topicName, CancellationToken cancellationToken)
+        {
+            return brokerRouter.GetTopicOffsetAsync(topicName, Offset.DefaultMaxOffsets, Offset.DefaultTime, cancellationToken);
+        }
+
         /// <exception cref="CachedMetadataException">Thrown if the cached metadata for the given topic is invalid or missing.</exception>
         /// <exception cref="FetchOutOfRangeException">Thrown if the fetch request is not valid.</exception>
         /// <exception cref="TimeoutException">Thrown if there request times out</exception>

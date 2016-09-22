@@ -2,7 +2,7 @@
 
 namespace KafkaClient
 {
-    public interface IMetadataCacheOptions
+    public interface ICacheConfiguration
     {
         /// <summary>
         /// The maximum time to wait when refreshing metadata.

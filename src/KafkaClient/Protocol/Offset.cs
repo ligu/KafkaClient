@@ -4,7 +4,7 @@ namespace KafkaClient.Protocol
 {
     public class Offset : Topic, IEquatable<Offset>
     {
-        public Offset(string topicName, int partitionId, long time = -1, int maxOffsets = 1) : base(topicName, partitionId)
+        public Offset(string topicName, int partitionId, long time = DefaultTime, int maxOffsets = DefaultMaxOffsets) : base(topicName, partitionId)
         {
             Time = time;
             MaxOffsets = maxOffsets;
@@ -18,6 +18,9 @@ namespace KafkaClient.Protocol
         public long Time { get; }
 
         public int MaxOffsets { get; }
+
+        public const long DefaultTime = -1L;
+        public const int DefaultMaxOffsets = 1;
 
         #region Equality
 

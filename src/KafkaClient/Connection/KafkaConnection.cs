@@ -130,7 +130,7 @@ namespace KafkaClient.Connection
 
         public override int GetHashCode()
         {
-            return (_client.Endpoint != null ? _client.Endpoint.GetHashCode() : 0);
+            return _client.Endpoint != null ? _client.Endpoint.GetHashCode() : 0;
         }
 
         #endregion Equals Override...

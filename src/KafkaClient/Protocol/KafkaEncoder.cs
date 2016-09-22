@@ -568,7 +568,7 @@ namespace KafkaClient.Protocol
                     var messageSize = stream.ReadInt32();
 
                     //if messagessize is greater than the total payload, our max buffer is insufficient.
-                    if ((stream.Length - MessageHeaderSize) < messageSize)
+                    if (stream.Length - MessageHeaderSize < messageSize)
                         throw new BufferUnderRunException(MessageHeaderSize, messageSize, stream.Length);
 
                     //if the stream does not have enough left in the payload, we got only a partial message

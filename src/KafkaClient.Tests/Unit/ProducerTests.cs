@@ -91,7 +91,7 @@ namespace KafkaClient.Tests.Unit
             }
         }
 
-        private IKafkaLog _log = new TraceLog();
+        private readonly IKafkaLog _log = new TraceLog();
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         public async Task SendAsyncShouldBlockWhenMaximumAsyncQueueReached()

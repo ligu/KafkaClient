@@ -2,7 +2,7 @@
 
 namespace KafkaClient.Connection
 {
-    public interface IKafkaConnectionOptions
+    public interface IKafkaConnectionConfiguration
     {
         bool TrackTelemetry { get; }
 

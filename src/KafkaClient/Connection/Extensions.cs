@@ -4,7 +4,7 @@
     {
         public static IKafkaConnection Create(this KafkaOptions options, KafkaEndpoint endpoint)
         {
-            return options.ConnectionFactory.Create(endpoint, options.ConnectionOptions, options.Log);
+            return options.ConnectionFactory.Create(endpoint, options.ConnectionConfiguration, options.Log);
         }
     }
 }

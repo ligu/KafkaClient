@@ -147,7 +147,7 @@ namespace KafkaClient
             {
                 long head = Interlocked.Read(ref _head);
                 for (int i = 0; i < Count; i++) {
-                    yield return _values[(head % MaxSize) + i];
+                    yield return _values[head % MaxSize + i];
                 }
             }
 

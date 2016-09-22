@@ -17,7 +17,7 @@ namespace KafkaClient
     /// I don't use this consumer so i stop develop it i am using manual consumer instend
     /// </summary>
 
-    public class Consumer : IMetadataQueries
+    public class Consumer : IKafkaClient
     {
         private readonly ConsumerOptions _options;
         private readonly BlockingCollection<Message> _fetchResponseQueue;
@@ -37,6 +37,8 @@ namespace KafkaClient
             _disposeTask = new TaskCompletionSource<int>();
             SetOffsetPosition(positions);
         }
+
+        public IBrokerRouter BrokerRouter => _options.Router;
 
         /// <summary>
         /// Get the number of tasks created for consuming each partition.
@@ -222,7 +224,7 @@ namespace KafkaClient
                     Task tempTask;
                     _partitionPollingIndex.TryRemove(partitionId, out tempTask);
                 }
-            });
+            }, cancellationToken);
         }
 
         private void HandleResponseErrors(FetchRequest request, FetchTopicResponse response, IKafkaConnection connection)
@@ -267,16 +269,6 @@ namespace KafkaClient
                                fetch.TopicName, fetch.PartitionId, ex);
                        }
                    });
-        }
-
-        public MetadataTopic GetTopicFromCache(string topicName)
-        {
-            return _options.Router.GetTopicMetadata(topicName);
-        }
-
-        public Task<List<OffsetTopic>> GetTopicOffsetAsync(string topicName, int maxOffsets = 2, int time = -1)
-        {
-            return _options.Router.GetTopicOffsetAsync(topicName, maxOffsets, time, CancellationToken.None);
         }
 
         public void Dispose()
