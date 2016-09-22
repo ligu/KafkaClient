@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Protocol;
 
@@ -6,12 +7,12 @@ namespace KafkaClient
 {
     public interface IManualConsumer
     {
-        Task UpdateOrCreateOffset(string consumerGroup, long offset);
+        Task UpdateOrCreateOffsetAsync(string consumerGroup, long offset, CancellationToken cancellationToken);
 
-        Task<long> FetchLastOffset();
+        Task<long> FetchLastOffsetAsync(CancellationToken cancellationToken);
 
-        Task<long> FetchOffset(string consumerGroup);
+        Task<long> FetchOffsetAsync(string consumerGroup, CancellationToken cancellationToken);
 
-        Task<IEnumerable<Message>> FetchMessages(int maxCount, long offset);
+        Task<IEnumerable<Message>> FetchMessagesAsync(int maxCount, long offset, CancellationToken cancellationToken);
     }
 }

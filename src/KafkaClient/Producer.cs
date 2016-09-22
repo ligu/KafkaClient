@@ -242,7 +242,7 @@ namespace KafkaClient
 
                     await _semaphoreMaximumAsync.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-                    var sendGroupTask = _protocolGateway.SendProtocolRequest(request, group.Key.Topic, group.Key.Route.PartitionId);
+                    var sendGroupTask = _protocolGateway.SendProtocolRequestAsync(request, group.Key.Topic, group.Key.Route.PartitionId, cancellationToken);
                     var brokerSendTask = new BrokerRouteSendBatch {
                         Route = group.Key.Route,
                         Task = sendGroupTask,
@@ -278,7 +278,7 @@ namespace KafkaClient
             {
                 try
                 {
-                    // already done don't need to await but it none blocking syntext
+                    // already done don't need to await but it none blocking syntax
                     var batchResult = await sendTask.Task.ConfigureAwait(false);
                     var numberOfMessage = sendTask.MessagesSent.Count;
                     for (int i = 0; i < numberOfMessage; i++) {

@@ -2,6 +2,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Runtime.Serialization;
+using KafkaClient.Common;
 
 namespace KafkaClient.Connection
 {

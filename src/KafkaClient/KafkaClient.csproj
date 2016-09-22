@@ -55,6 +55,7 @@
     <Compile Include="Common\Disposable.cs" />
     <Compile Include="Common\IScheduledTimer.cs" />
     <Compile Include="Common\KafkaMessagePacker.cs" />
+    <Compile Include="Common\LilliputianExtensions.cs" />
     <Compile Include="Common\LogLevel.cs" />
     <Compile Include="Common\ScheduledTimerStatus.cs" />
     <Compile Include="Common\StringPrefixEncoding.cs" />

@@ -32,8 +32,7 @@ namespace KafkaClient.Common
 
             return wait.IsCompleted ?
                 _releaser :
-                wait.ContinueWith((t, state) =>
-                {
+                wait.ContinueWith((t, state) => {
                     if (t.IsCanceled) throw new OperationCanceledException("Unable to aquire lock within timeout alloted.");
                     return new Releaser((AsyncLock)state);
                 }, this, canceller, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
@@ -41,12 +40,7 @@ namespace KafkaClient.Common
 
         public Task<Releaser> LockAsync()
         {
-            var wait = _semaphore.WaitAsync();
-            return wait.IsCompleted ?
-                _releaser :
-                wait.ContinueWith((_, state) => new Releaser((AsyncLock)state),
-                    this, CancellationToken.None,
-                    TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+            return LockAsync(CancellationToken.None);
         }
 
         public void Dispose()

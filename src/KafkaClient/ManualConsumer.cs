@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.Contracts;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Protocol;
 
@@ -45,8 +46,9 @@ namespace KafkaClient
         /// </summary>
         /// <param name="consumerGroup">The consumer group</param>
         /// <param name="offset">The new offset. must be larger than or equal to zero</param>
+        /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public async Task UpdateOrCreateOffset(string consumerGroup, long offset)
+        public async Task UpdateOrCreateOffsetAsync(string consumerGroup, long offset, CancellationToken cancellationToken)
         {
             if (string.IsNullOrEmpty(consumerGroup)) throw new ArgumentNullException(nameof(consumerGroup));
             if (offset < 0) throw new ArgumentOutOfRangeException(nameof(offset), "offset must be positive or zero");
@@ -55,17 +57,17 @@ namespace KafkaClient
 
             var commit = new OffsetCommit(_topic, _partitionId, offset, timeStamp: UseBrokerTimestamp);
             var request = new OffsetCommitRequest(consumerGroup, new []{ commit });
-            await MakeRequestAsync(request).ConfigureAwait(false);
+            await MakeRequestAsync(request, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
         /// Get the max offset of the partition in the topic.
         /// </summary>
         /// <returns>The max offset, if no such offset found then returns -1</returns>
-        public async Task<long> FetchLastOffset()
+        public async Task<long> FetchLastOffsetAsync(CancellationToken cancellationToken)
         {
             var request = new OffsetRequest(new Offset(_topic, _partitionId));
-            var response = await MakeRequestAsync(request).ConfigureAwait(false);
+            var response = await MakeRequestAsync(request, cancellationToken).ConfigureAwait(false);
             var topicOffset = response.Topics.SingleOrDefault(t => t.TopicName == _topic && t.PartitionId == _partitionId);
             return topicOffset == null || topicOffset.Offsets.Count == 0 ? NoOffsetFound : topicOffset.Offsets.First();
         }
@@ -74,14 +76,15 @@ namespace KafkaClient
         /// Getting the offset of a specific consumer group
         /// </summary>
         /// <param name="consumerGroup">The name of the consumer group</param>
+        /// <param name="cancellationToken"></param>
         /// <returns>The current offset of the consumerGroup</returns>
-        public async Task<long> FetchOffset(string consumerGroup)
+        public async Task<long> FetchOffsetAsync(string consumerGroup, CancellationToken cancellationToken)
         {
             if (string.IsNullOrEmpty(consumerGroup)) throw new ArgumentNullException(nameof(consumerGroup));
             Contract.Requires(!string.IsNullOrEmpty(consumerGroup));
 
             var request = new OffsetFetchRequest(consumerGroup, new Topic(_topic, _partitionId));
-            var response = await MakeRequestAsync(request).ConfigureAwait(false);
+            var response = await MakeRequestAsync(request, cancellationToken).ConfigureAwait(false);
             var topicOffset = response.Topics.Single(t => t.TopicName == _topic && t.PartitionId == _partitionId);
             return topicOffset.Offset;
         }
@@ -91,8 +94,9 @@ namespace KafkaClient
         /// </summary>
         /// <param name="maxCount">The maximum amount of messages wanted. The function will return at most the wanted number of messages</param>
         /// <param name="offset">The offset to start from</param>
+        /// <param name="cancellationToken"></param>
         /// <returns>An enumerable of the messages</returns>
-        public async Task<IEnumerable<Message>> FetchMessages(int maxCount, long offset)
+        public async Task<IEnumerable<Message>> FetchMessagesAsync(int maxCount, long offset, CancellationToken cancellationToken)
         {
             if (offset < 0) throw new ArgumentOutOfRangeException(nameof(offset), "offset must be positive or zero");
 
@@ -108,7 +112,7 @@ namespace KafkaClient
             // If we arrived here, then we need to make a new fetch request and work with it
             var fetch = new Fetch(_topic, _partitionId, offset, _maxSizeOfMessageSet);
             var request = new FetchRequest(fetch, MaxWaitTimeForKafka, 0);
-            var response = await MakeRequestAsync(request).ConfigureAwait(false);
+            var response = await MakeRequestAsync(request, cancellationToken).ConfigureAwait(false);
             var topic = response.Topics.SingleOrDefault();
 
             if (topic?.Messages?.Count == 0) {
@@ -122,10 +126,9 @@ namespace KafkaClient
             return messagesToReturn;
         }
 
-        private Task<T> MakeRequestAsync<T>(IKafkaRequest<T> request) where T : class, IKafkaResponse
+        private Task<T> MakeRequestAsync<T>(IKafkaRequest<T> request, CancellationToken cancellationToken) where T : class, IKafkaResponse
         {
-            var context = new RequestContext(clientId: _clientId);
-            return _gateway.SendProtocolRequest(request, _topic, _partitionId, context);
+            return _gateway.SendProtocolRequestAsync(request, _topic, _partitionId, cancellationToken, new RequestContext(clientId: _clientId));
         }
     }
 }

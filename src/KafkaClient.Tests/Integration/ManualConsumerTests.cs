@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Connection;
 using KafkaClient.Protocol;
@@ -40,7 +41,7 @@ namespace KafkaClient.Tests.Integration
             Producer producer = new Producer(brokerRouter);
             ManualConsumer consumer = new ManualConsumer(_partitionId, topic, protocolGateway, "TestClient", DefaultMaxMessageSetSize);
 
-            var offset = await consumer.FetchLastOffset();
+            var offset = await consumer.FetchLastOffsetAsync(CancellationToken.None);
 
             // Creating 5 messages
             List<Message> messages = CreateTestMessages(5, 1);
@@ -48,7 +49,7 @@ namespace KafkaClient.Tests.Integration
             await producer.SendMessageAsync(topic, messages, partition: _partitionId, timeout: TimeSpan.FromSeconds(3));
 
             // Now let's consume
-            var result = (await consumer.FetchMessages(5, offset)).ToList();
+            var result = (await consumer.FetchMessagesAsync(5, offset, CancellationToken.None)).ToList();
 
             CheckMessages(messages, result);
         }
@@ -63,7 +64,7 @@ namespace KafkaClient.Tests.Integration
             Producer producer = new Producer(brokerRouter);
             ManualConsumer consumer = new ManualConsumer(_partitionId, _topic, protocolGateway, "TestClient", DefaultMaxMessageSetSize);
 
-            var offset = await consumer.FetchLastOffset();
+            var offset = await consumer.FetchLastOffsetAsync(CancellationToken.None);
 
             // Creating 5 messages
             List<Message> messages = CreateTestMessages(10, 1);
@@ -71,12 +72,12 @@ namespace KafkaClient.Tests.Integration
             await producer.SendMessageAsync(_topic, messages, partition: _partitionId, timeout: TimeSpan.FromSeconds(3));
 
             // Now let's consume
-            var result = (await consumer.FetchMessages(5, offset)).ToList();
+            var result = (await consumer.FetchMessagesAsync(5, offset, CancellationToken.None)).ToList();
 
             CheckMessages(messages.Take(5).ToList(), result);
 
             // Now let's consume again
-            result = (await consumer.FetchMessages(5, offset + 5)).ToList();
+            result = (await consumer.FetchMessagesAsync(5, offset + 5, CancellationToken.None)).ToList();
 
             CheckMessages(messages.Skip(5).ToList(), result);
         }
@@ -91,7 +92,7 @@ namespace KafkaClient.Tests.Integration
             Producer producer = new Producer(brokerRouter);
             ManualConsumer consumer = new ManualConsumer(_partitionId, _topic, protocolGateway, "TestClient", DefaultMaxMessageSetSize);
 
-            var offset = await consumer.FetchLastOffset();
+            var offset = await consumer.FetchLastOffsetAsync(CancellationToken.None);
 
             // Creating 5 messages
             List<Message> messages = CreateTestMessages(10, 4096);
@@ -99,12 +100,12 @@ namespace KafkaClient.Tests.Integration
             await producer.SendMessageAsync(_topic, messages, partition: _partitionId, timeout: TimeSpan.FromSeconds(3));
 
             // Now let's consume
-            var result = (await consumer.FetchMessages(7, offset)).ToList();
+            var result = (await consumer.FetchMessagesAsync(7, offset, CancellationToken.None)).ToList();
 
             CheckMessages(messages.Take(7).ToList(), result);
 
             // Now let's consume again
-            result = (await consumer.FetchMessages(2, offset + 8)).ToList();
+            result = (await consumer.FetchMessagesAsync(2, offset + 8, CancellationToken.None)).ToList();
 
             CheckMessages(messages.Skip(8).ToList(), result);
         }
@@ -119,7 +120,7 @@ namespace KafkaClient.Tests.Integration
             Producer producer = new Producer(brokerRouter);
             ManualConsumer consumer = new ManualConsumer(_partitionId, _topic, protocolGateway, "TestClient", DefaultMaxMessageSetSize);
 
-            var offset = await consumer.FetchLastOffset();
+            var offset = await consumer.FetchLastOffsetAsync(CancellationToken.None);
 
             // Creating 5 messages
             List<Message> messages = CreateTestMessages(10, 4096);
@@ -127,12 +128,12 @@ namespace KafkaClient.Tests.Integration
             await producer.SendMessageAsync(_topic, messages, partition: _partitionId, timeout: TimeSpan.FromSeconds(3));
 
             // Now let's consume
-            var result = (await consumer.FetchMessages(5, offset)).ToList();
+            var result = (await consumer.FetchMessagesAsync(5, offset, CancellationToken.None)).ToList();
 
             CheckMessages(messages.Take(5).ToList(), result);
 
             // Now let's consume again
-            result = (await consumer.FetchMessages(5, offset + 5)).ToList();
+            result = (await consumer.FetchMessagesAsync(5, offset + 5, CancellationToken.None)).ToList();
 
             CheckMessages(messages.Skip(5).ToList(), result);
         }
@@ -145,10 +146,10 @@ namespace KafkaClient.Tests.Integration
 
             ManualConsumer consumer = new ManualConsumer(_partitionId, _topic, protocolGateway, "TestClient", DefaultMaxMessageSetSize);
 
-            var offset = await consumer.FetchLastOffset();
+            var offset = await consumer.FetchLastOffsetAsync(CancellationToken.None);
 
             // Now let's consume
-            var result = (await consumer.FetchMessages(5, offset)).ToList();
+            var result = (await consumer.FetchMessagesAsync(5, offset, CancellationToken.None)).ToList();
 
             Assert.AreEqual(0, result.Count, "Should not get any messages");
         }
@@ -162,10 +163,10 @@ namespace KafkaClient.Tests.Integration
 
             ManualConsumer consumer = new ManualConsumer(_partitionId, _topic, protocolGateway, "TestClient", DefaultMaxMessageSetSize);
 
-            var offset = await consumer.FetchLastOffset();
+            var offset = await consumer.FetchLastOffsetAsync(CancellationToken.None);
 
             // Now let's consume throw KafkaServerException
-            await consumer.FetchMessages(5, offset + 1);
+            await consumer.FetchMessagesAsync(5, offset + 1, CancellationToken.None);
         }
 
         [Test]
@@ -180,7 +181,7 @@ namespace KafkaClient.Tests.Integration
             var offset = -1;
 
             // Now let's consume
-            await consumer.FetchMessages(5, offset);
+            await consumer.FetchMessagesAsync(5, offset, CancellationToken.None);
         }
 
         [Test]
@@ -197,7 +198,7 @@ namespace KafkaClient.Tests.Integration
             var offset = 0;
 
             // Now let's consume
-            var result = (await consumer.FetchMessages(5, offset)).ToList();
+            var result = (await consumer.FetchMessagesAsync(5, offset, CancellationToken.None)).ToList();
 
             Assert.AreEqual(0, result.Count);
         }
@@ -215,7 +216,7 @@ namespace KafkaClient.Tests.Integration
 
             var offset = 0;
 
-            await consumer.FetchMessages(5, offset);
+            await consumer.FetchMessagesAsync(5, offset, CancellationToken.None);
         }
 
         [Test]
@@ -231,7 +232,7 @@ namespace KafkaClient.Tests.Integration
             Producer producer = new Producer(brokerRouter);
             ManualConsumer consumer = new ManualConsumer(_partitionId, _topic, protocolGateway, "TestClient", smallMessageSet);
 
-            var offset = await consumer.FetchLastOffset();
+            var offset = await consumer.FetchLastOffsetAsync(CancellationToken.None);
 
             // Creating 5 messages
             List<Message> messages = CreateTestMessages(10, 4096);
@@ -239,7 +240,7 @@ namespace KafkaClient.Tests.Integration
             await producer.SendMessageAsync(_topic, messages, partition: _partitionId, timeout: TimeSpan.FromSeconds(3));
 
             // Now let's consume
-            var result = (await consumer.FetchMessages(5, offset)).ToList();
+            var result = (await consumer.FetchMessagesAsync(5, offset, CancellationToken.None)).ToList();
 
             CheckMessages(messages.Take(5).ToList(), result);
         }
@@ -255,7 +256,7 @@ namespace KafkaClient.Tests.Integration
 
             ManualConsumer consumer = new ManualConsumer(partitionId, _topic, protocolGateway, "TestClient", DefaultMaxMessageSetSize);
 
-            await consumer.FetchOffset(consumerGroup);
+            await consumer.FetchOffsetAsync(consumerGroup, CancellationToken.None);
         }
 
         [Test]
@@ -269,7 +270,7 @@ namespace KafkaClient.Tests.Integration
 
             ManualConsumer consumer = new ManualConsumer(partitionId, _topic, protocolGateway, "TestClient", DefaultMaxMessageSetSize);
 
-            await consumer.FetchOffset(consumerGroup);
+            await consumer.FetchOffsetAsync(consumerGroup, CancellationToken.None);
         }
 
         [Test]
@@ -284,7 +285,7 @@ namespace KafkaClient.Tests.Integration
 
             ManualConsumer consumer = new ManualConsumer(_partitionId, topic, protocolGateway, "TestClient", DefaultMaxMessageSetSize);
 
-            await consumer.FetchOffset(consumerGroup);
+            await consumer.FetchOffsetAsync(consumerGroup, CancellationToken.None);
         }
 
         [Test]
@@ -299,8 +300,8 @@ namespace KafkaClient.Tests.Integration
 
             var offest = 5;
 
-            await consumer.UpdateOrCreateOffset(consumerGroup, offest);
-            var res = await consumer.FetchOffset(consumerGroup);
+            await consumer.UpdateOrCreateOffsetAsync(consumerGroup, offest, CancellationToken.None);
+            var res = await consumer.FetchOffsetAsync(consumerGroup, CancellationToken.None);
 
             Assert.AreEqual(offest, res);
         }
@@ -318,8 +319,8 @@ namespace KafkaClient.Tests.Integration
 
             var offest = 5;
 
-            await consumer.UpdateOrCreateOffset(consumerGroup, offest);
-            await consumer.FetchOffset(null);
+            await consumer.UpdateOrCreateOffsetAsync(consumerGroup, offest, CancellationToken.None);
+            await consumer.FetchOffsetAsync(null, CancellationToken.None);
         }
 
         [Test]
@@ -335,8 +336,8 @@ namespace KafkaClient.Tests.Integration
 
             var offest = 5;
 
-            await consumer.UpdateOrCreateOffset(consumerGroup, offest);
-            await consumer.FetchOffset(string.Empty);
+            await consumer.UpdateOrCreateOffsetAsync(consumerGroup, offest, CancellationToken.None);
+            await consumer.FetchOffsetAsync(string.Empty, CancellationToken.None);
         }
 
         [Test]
@@ -351,8 +352,8 @@ namespace KafkaClient.Tests.Integration
 
             var offest = 5;
 
-            await consumer.UpdateOrCreateOffset(consumerGroup, offest);
-            var res = await consumer.FetchOffset(consumerGroup);
+            await consumer.UpdateOrCreateOffsetAsync(consumerGroup, offest, CancellationToken.None);
+            var res = await consumer.FetchOffsetAsync(consumerGroup, CancellationToken.None);
 
             Assert.AreEqual(offest, res);
         }
@@ -370,13 +371,13 @@ namespace KafkaClient.Tests.Integration
             var offest = 5;
             var newOffset = 10;
 
-            await consumer.UpdateOrCreateOffset(consumerGroup, offest);
-            var res = await consumer.FetchOffset(consumerGroup);
+            await consumer.UpdateOrCreateOffsetAsync(consumerGroup, offest, CancellationToken.None);
+            var res = await consumer.FetchOffsetAsync(consumerGroup, CancellationToken.None);
             Assert.AreEqual(offest, res);
 
-            await consumer.UpdateOrCreateOffset(consumerGroup, newOffset);
+            await consumer.UpdateOrCreateOffsetAsync(consumerGroup, newOffset, CancellationToken.None);
 
-            res = await consumer.FetchOffset(consumerGroup);
+            res = await consumer.FetchOffsetAsync(consumerGroup, CancellationToken.None);
 
             Assert.AreEqual(newOffset, res);
         }
@@ -394,7 +395,7 @@ namespace KafkaClient.Tests.Integration
 
             var offest = 5;
 
-            await consumer.UpdateOrCreateOffset(consumerGroup, offest);
+            await consumer.UpdateOrCreateOffsetAsync(consumerGroup, offest, CancellationToken.None);
         }
 
         [Test]
@@ -411,7 +412,7 @@ namespace KafkaClient.Tests.Integration
 
             var offest = 5;
 
-            await consumer.UpdateOrCreateOffset(consumerGroup, offest);
+            await consumer.UpdateOrCreateOffsetAsync(consumerGroup, offest, CancellationToken.None);
         }
 
         [Test]
@@ -427,7 +428,7 @@ namespace KafkaClient.Tests.Integration
 
             var offest = 5;
 
-            await consumer.UpdateOrCreateOffset(null, offest);
+            await consumer.UpdateOrCreateOffsetAsync(null, offest, CancellationToken.None);
         }
 
         [Test]
@@ -443,7 +444,7 @@ namespace KafkaClient.Tests.Integration
 
             var offest = 5;
 
-            await consumer.UpdateOrCreateOffset(string.Empty, offest);
+            await consumer.UpdateOrCreateOffsetAsync(string.Empty, offest, CancellationToken.None);
         }
 
         [Test]
@@ -460,7 +461,7 @@ namespace KafkaClient.Tests.Integration
 
             var offest = -5;
 
-            await consumer.UpdateOrCreateOffset(consumerGroup, offest);
+            await consumer.UpdateOrCreateOffsetAsync(consumerGroup, offest, CancellationToken.None);
         }
 
         [Test]
@@ -473,7 +474,7 @@ namespace KafkaClient.Tests.Integration
 
             ManualConsumer consumer = new ManualConsumer(_partitionId, topic, protocolGateway, "TestClient", DefaultMaxMessageSetSize * 2);
 
-            var offset = await consumer.FetchLastOffset();
+            var offset = await consumer.FetchLastOffsetAsync(CancellationToken.None);
 
             Assert.AreNotEqual(-1, offset);
         }
@@ -489,7 +490,7 @@ namespace KafkaClient.Tests.Integration
 
             ManualConsumer consumer = new ManualConsumer(partitionId, topic, protocolGateway, "TestClient", DefaultMaxMessageSetSize * 2);
 
-            await consumer.FetchLastOffset();
+            await consumer.FetchLastOffsetAsync(CancellationToken.None);
         }
 
         [Test]
@@ -503,7 +504,7 @@ namespace KafkaClient.Tests.Integration
 
             ManualConsumer consumer = new ManualConsumer(_partitionId, topic, protocolGateway, "TestClient", DefaultMaxMessageSetSize * 2);
 
-            var res = await consumer.FetchLastOffset();
+            var res = await consumer.FetchLastOffsetAsync(CancellationToken.None);
 
             Assert.AreEqual(0, res);
         }

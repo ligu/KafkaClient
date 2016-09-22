@@ -95,7 +95,7 @@ namespace KafkaClient
                         if (_options.PartitionWhitelist.Count == 0 || _options.PartitionWhitelist.Any(x => x == partitionId))
                         {
                             _partitionPollingIndex.AddOrUpdate(partitionId,
-                                                               i => ConsumeTopicPartitionAsync(_topic.TopicName, partitionId),
+                                                               i => ConsumeTopicPartitionAsync(_topic.TopicName, partitionId, CancellationToken.None),
                                                                (i, task) => task);
                         }
                     }
@@ -111,7 +111,7 @@ namespace KafkaClient
             }
         }
 
-        private Task ConsumeTopicPartitionAsync(string topic, int partitionId)
+        private Task ConsumeTopicPartitionAsync(string topic, int partitionId, CancellationToken cancellationToken)
         {
             bool needToRefreshMetadata = false;
             return Task.Run(async () =>
@@ -128,7 +128,7 @@ namespace KafkaClient
                             //after error
                             if (needToRefreshMetadata)
                             {
-                                await _options.Router.GetTopicMetadataAsync(topic, CancellationToken.None).ConfigureAwait(false);
+                                await _options.Router.GetTopicMetadataAsync(topic, cancellationToken).ConfigureAwait(false);
                                 EnsurePartitionPollingThreads();
                                 needToRefreshMetadata = false;
                             }
@@ -147,7 +147,7 @@ namespace KafkaClient
                             //make request and post to queue
                             var route = _options.Router.GetBrokerRoute(topic, partitionId);
 
-                            var taskSend = route.Connection.SendAsync(fetchRequest, CancellationToken.None);
+                            var taskSend = route.Connection.SendAsync(fetchRequest, cancellationToken);
 
                             await Task.WhenAny(taskSend, _disposeTask.Task).ConfigureAwait(false);
                             if (_disposeTask.Task.IsCompleted) return;

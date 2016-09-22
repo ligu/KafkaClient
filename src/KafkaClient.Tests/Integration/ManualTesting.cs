@@ -43,7 +43,7 @@ namespace KafkaClient.Tests.Integration
         {
             string topic = "TestTopicIssue13-3R-1P";
             var manualConsumer = new ManualConsumer(0, topic, new ProtocolGateway(_options), "test client", 10000);
-            long offset = await manualConsumer.FetchLastOffset();
+            long offset = await manualConsumer.FetchLastOffsetAsync(CancellationToken.None);
 
             var router = new BrokerRouter(_options);
             var producer = new Producer(router);
@@ -91,7 +91,7 @@ namespace KafkaClient.Tests.Integration
             {
                 try
                 {
-                    var messages = await manualConsumer.FetchMessages(1000, offset);
+                    var messages = await manualConsumer.FetchMessagesAsync(1000, offset, CancellationToken.None);
 
                     if (messages.Any())
                     {

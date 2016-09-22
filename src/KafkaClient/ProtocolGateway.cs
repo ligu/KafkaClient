@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Linq;
 using System.Runtime.ExceptionServices;
-using System.Runtime.Serialization;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -10,14 +9,6 @@ using KafkaClient.Protocol;
 
 namespace KafkaClient
 {
-    public static class Extensions
-    {
-        public static T GetValue<T>(this SerializationInfo info, string name)
-        {
-            return (T)info.GetValue(name, typeof(T));
-        }
-    }
-
     public class ProtocolGateway : IDisposable
     {
         private readonly IBrokerRouter _brokerRouter;
@@ -47,7 +38,7 @@ namespace KafkaClient
         /// <exception cref="KafkaConnectionException">Thrown in case of network error contacting broker (after retries), or if none of the default brokers can be contacted.</exception>
         /// <exception cref="KafkaRequestException">Thrown in case of an unexpected error in the request</exception>
         /// <exception cref="FormatException">Thrown in case the topic name is invalid</exception>
-        public async Task<T> SendProtocolRequest<T>(IKafkaRequest<T> request, string topic, int partition, IRequestContext context = null) where T : class, IKafkaResponse
+        public async Task<T> SendProtocolRequestAsync<T>(IKafkaRequest<T> request, string topic, int partition, CancellationToken cancellationToken, IRequestContext context = null) where T : class, IKafkaResponse
         {
             if (topic.Contains(" ")) throw new FormatException($"topic name ({topic}) is invalid");
 
@@ -61,9 +52,9 @@ namespace KafkaClient
                 var errorDetails = "";
 
                 try {
-                    var route = await _brokerRouter.GetBrokerRouteAsync(topic, partition, CancellationToken.None);
+                    var route = await _brokerRouter.GetBrokerRouteAsync(topic, partition, cancellationToken);
                     connection = route.Connection;
-                    response = await route.Connection.SendAsync(request, CancellationToken.None, context).ConfigureAwait(false);
+                    response = await route.Connection.SendAsync(request, cancellationToken, context).ConfigureAwait(false);
 
                     if (response == null) {
                         // this can happen if you send ProduceRequest with ack level=0
@@ -78,7 +69,6 @@ namespace KafkaClient
                     errorDetails = errors.Aggregate(new StringBuilder($"{route} - "), (buffer, e) => buffer.Append(" ").Append(e)).ToString();
                     metadataKnownInvalid = errors.All(CanRecoverByRefreshMetadata);
                 } catch (TimeoutException ex) {
-                    // TODO: wrap this in another exception type?
                     exceptionInfo = ExceptionDispatchInfo.Capture(ex);
                 } catch (KafkaConnectionException ex) {
                     exceptionInfo = ExceptionDispatchInfo.Capture(ex);
@@ -98,7 +88,7 @@ namespace KafkaClient
 
                 _brokerRouter.Log.WarnFormat("ProtocolGateway error sending request, retrying (attempt number {0}): {1}", retryTime, errorDetails);
                 if ((metadataKnownInvalid || metadataPotentiallyInvalid) && hasMoreRetry) {
-                    await _brokerRouter.RefreshTopicMetadataAsync(topic, metadataKnownInvalid, CancellationToken.None).ConfigureAwait(false);
+                    await _brokerRouter.RefreshTopicMetadataAsync(topic, metadataKnownInvalid, cancellationToken).ConfigureAwait(false);
                 } else {
                     _brokerRouter.Log.ErrorFormat("ProtocolGateway sending request failed");
 

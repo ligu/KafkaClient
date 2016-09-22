@@ -50,7 +50,7 @@ namespace KafkaClient.Tests.Unit
             routerProxy.BrokerConn0.FetchResponseFunction = FailedInFirstMessageError(code, routerProxy._cacheExpiration);
             routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers;
 
-            await protocolGateway.SendProtocolRequest(new FetchRequest(), BrokerRouterProxy.TestTopic, _partitionId);
+            await protocolGateway.SendProtocolRequestAsync(new FetchRequest(), BrokerRouterProxy.TestTopic, _partitionId, CancellationToken.None);
 
             Assert.That(routerProxy.BrokerConn0.MetadataRequestCallCount, Is.EqualTo(2));
             Assert.That(routerProxy.BrokerConn0.FetchRequestCallCount, Is.EqualTo(2));
@@ -65,7 +65,7 @@ namespace KafkaClient.Tests.Unit
             string invalidTopic = " ";
             var fetchRequest = new FetchRequest();
             ProtocolGateway protocolGateway = new ProtocolGateway(router);
-            await protocolGateway.SendProtocolRequest(fetchRequest, invalidTopic, 0);
+            await protocolGateway.SendProtocolRequestAsync(fetchRequest, invalidTopic, 0, CancellationToken.None);
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
@@ -82,7 +82,7 @@ namespace KafkaClient.Tests.Unit
             routerProxy.BrokerConn0.FetchResponseFunction = FailedInFirstMessageException(exceptionType, routerProxy._cacheExpiration);
             routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers;
 
-            await protocolGateway.SendProtocolRequest(new FetchRequest(), BrokerRouterProxy.TestTopic, _partitionId);
+            await protocolGateway.SendProtocolRequestAsync(new FetchRequest(), BrokerRouterProxy.TestTopic, _partitionId, CancellationToken.None);
 
             Assert.That(routerProxy.BrokerConn0.MetadataRequestCallCount, Is.EqualTo(2));
             Assert.That(routerProxy.BrokerConn0.FetchRequestCallCount, Is.EqualTo(2));
@@ -101,7 +101,7 @@ namespace KafkaClient.Tests.Unit
             routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers;
             try
             {
-                await protocolGateway.SendProtocolRequest(new FetchRequest(), BrokerRouterProxy.TestTopic, _partitionId);
+                await protocolGateway.SendProtocolRequestAsync(new FetchRequest(), BrokerRouterProxy.TestTopic, _partitionId, CancellationToken.None);
                 Assert.IsTrue(false, "Should throw exception");
             }
             catch (Exception ex)
@@ -134,7 +134,7 @@ namespace KafkaClient.Tests.Unit
 
             routerProxy.BrokerConn0.FetchResponseFunction = FailedInFirstMessageError(code, routerProxy._cacheExpiration);
             routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers;
-            await protocolGateway.SendProtocolRequest(new FetchRequest(), BrokerRouterProxy.TestTopic, _partitionId);
+            await protocolGateway.SendProtocolRequestAsync(new FetchRequest(), BrokerRouterProxy.TestTopic, _partitionId, CancellationToken.None);
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
@@ -151,13 +151,13 @@ namespace KafkaClient.Tests.Unit
             Task[] tasks = new Task[numberOfCall];
             for (int i = 0; i < numberOfCall / 2; i++)
             {
-                tasks[i] = protocolGateway.SendProtocolRequest(new FetchRequest(), BrokerRouterProxy.TestTopic, _partitionId);
+                tasks[i] = protocolGateway.SendProtocolRequestAsync(new FetchRequest(), BrokerRouterProxy.TestTopic, _partitionId, CancellationToken.None);
             }
             await Task.Delay(routerProxy._cacheExpiration);
             await Task.Delay(1);
             for (int i = 0; i < numberOfCall / 2; i++)
             {
-                tasks[i + numberOfCall / 2] = protocolGateway.SendProtocolRequest(new FetchRequest(), BrokerRouterProxy.TestTopic, _partitionId);
+                tasks[i + numberOfCall / 2] = protocolGateway.SendProtocolRequestAsync(new FetchRequest(), BrokerRouterProxy.TestTopic, _partitionId, CancellationToken.None);
             }
 
             await Task.WhenAll(tasks);
@@ -181,7 +181,7 @@ namespace KafkaClient.Tests.Unit
             Task[] tasks = new Task[numberOfCall];
             for (int i = 0; i < numberOfCall / 2; i++)
             {
-                tasks[i] = protocolGateway.SendProtocolRequest(fetchRequest, BrokerRouterProxy.TestTopic, _partitionId);
+                tasks[i] = protocolGateway.SendProtocolRequestAsync(fetchRequest, BrokerRouterProxy.TestTopic, _partitionId, CancellationToken.None);
             }
 
             routerProxy.BrokerConn0.MetadataResponseFunction = async () =>
@@ -192,7 +192,7 @@ namespace KafkaClient.Tests.Unit
 
             for (int i = 0; i < numberOfCall / 2; i++)
             {
-                tasks[i + numberOfCall / 2] = protocolGateway.SendProtocolRequest(fetchRequest, "test2", _partitionId);
+                tasks[i + numberOfCall / 2] = protocolGateway.SendProtocolRequestAsync(fetchRequest, "test2", _partitionId, CancellationToken.None);
             }
 
             await Task.WhenAll(tasks);
@@ -244,7 +244,7 @@ namespace KafkaClient.Tests.Unit
 
             for (int i = 0; i < numberOfCall; i++)
             {
-                tasks[i] = protocolGateway.SendProtocolRequest(fetchRequest, BrokerRouterProxy.TestTopic, partitionId);
+                tasks[i] = protocolGateway.SendProtocolRequestAsync(fetchRequest, BrokerRouterProxy.TestTopic, partitionId, CancellationToken.None);
             }
 
             await Task.WhenAll(tasks);
@@ -283,7 +283,7 @@ namespace KafkaClient.Tests.Unit
             CreateSuccessfulSendMock(routerProxy);
 
             //Send Successful Message
-            await protocolGateway.SendProtocolRequest(fetchRequest, BrokerRouterProxy.TestTopic, partitionId);
+            await protocolGateway.SendProtocolRequestAsync(fetchRequest, BrokerRouterProxy.TestTopic, partitionId, CancellationToken.None);
 
             Assert.That(routerProxy.BrokerConn0.FetchRequestCallCount, Is.EqualTo(1), "FetchRequestCallCount");
             Assert.That(routerProxy.BrokerConn0.MetadataRequestCallCount, Is.EqualTo(1), "MetadataRequestCallCount");
@@ -301,7 +301,7 @@ namespace KafkaClient.Tests.Unit
             routerProxy.BrokerConn1.MetadataRequestCallCount = 0;
 
             //Send Successful Message that was recover from exception
-            await protocolGateway.SendProtocolRequest(fetchRequest, BrokerRouterProxy.TestTopic, partitionId);
+            await protocolGateway.SendProtocolRequestAsync(fetchRequest, BrokerRouterProxy.TestTopic, partitionId, CancellationToken.None);
 
             Assert.That(routerProxy.BrokerConn0.FetchRequestCallCount, Is.EqualTo(1), "FetchRequestCallCount");
             Assert.That(routerProxy.BrokerConn0.MetadataRequestCallCount, Is.EqualTo(1), "MetadataRequestCallCount");

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Common;
 using KafkaClient.Protocol;
@@ -28,8 +29,8 @@ namespace KafkaClient.Tests.Integration
 
             var fetchRequest = new FetchRequest(fetch, minBytes: 10);
 
-            var r = await protocolGateway.SendProtocolRequest(fetchRequest, IntegrationConfig.IntegrationTopic, partitionId);
-            //  var r1 = await protocolGateway.SendProtocolRequest(fetchRequest, IntegrationConfig.IntegrationTopic, partitionId);
+            var r = await protocolGateway.SendProtocolRequestAsync(fetchRequest, IntegrationConfig.IntegrationTopic, partitionId, CancellationToken.None);
+            //  var r1 = await protocolGateway.SendProtocolRequestAsync(fetchRequest, IntegrationConfig.IntegrationTopic, partitionId);
             Assert.IsTrue(r.Topics.First().Messages.FirstOrDefault().Value.ToUtf8String() == messageValue);
         }
     }
