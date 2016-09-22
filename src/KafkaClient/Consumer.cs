@@ -25,7 +25,6 @@ namespace KafkaClient
         private readonly TaskCompletionSource<int> _disposeTask;
         private readonly ConcurrentDictionary<int, Task> _partitionPollingIndex = new ConcurrentDictionary<int, Task>();
         private readonly ConcurrentDictionary<int, long> _partitionOffsetIndex = new ConcurrentDictionary<int, long>();
-        private readonly IMetadataQueries _metadataQueries;
 
         private int _disposeCount;
         private int _ensureOneThread;
@@ -35,7 +34,6 @@ namespace KafkaClient
         {
             _options = options;
             _fetchResponseQueue = new BlockingCollection<Message>(_options.ConsumerBufferSize);
-            _metadataQueries = new MetadataQueries(_options.Router);
             _disposeTask = new TaskCompletionSource<int>();
             SetOffsetPosition(positions);
         }
@@ -249,7 +247,7 @@ namespace KafkaClient
 
         private async Task FixOffsetOutOfRangeExceptionAsync(Fetch fetch)
         {
-            await _metadataQueries.GetTopicOffsetAsync(fetch.TopicName)
+            await _options.Router.GetTopicOffsetAsync(fetch.TopicName, 2, -1, CancellationToken.None)
                    .ContinueWith(t =>
                    {
                        try
@@ -271,14 +269,14 @@ namespace KafkaClient
                    });
         }
 
-        public MetadataTopic GetTopicFromCache(string topic)
+        public MetadataTopic GetTopicFromCache(string topicName)
         {
-            return _metadataQueries.GetTopicFromCache(topic);
+            return _options.Router.GetTopicMetadata(topicName);
         }
 
-        public Task<List<OffsetTopic>> GetTopicOffsetAsync(string topic, int maxOffsets = 2, int time = -1)
+        public Task<List<OffsetTopic>> GetTopicOffsetAsync(string topicName, int maxOffsets = 2, int time = -1)
         {
-            return _metadataQueries.GetTopicOffsetAsync(topic, maxOffsets, time);
+            return _options.Router.GetTopicOffsetAsync(topicName, maxOffsets, time, CancellationToken.None);
         }
 
         public void Dispose()
@@ -289,14 +287,14 @@ namespace KafkaClient
             _disposeToken.Cancel();
             _disposeTask.SetResult(1);
             //wait for all threads to unwind
-            foreach (var task in _partitionPollingIndex.Values.Where(task => task != null))
-            {
+            foreach (var task in _partitionPollingIndex.Values.Where(task => task != null)) {
                 task.Wait(TimeSpan.FromSeconds(5));
             }
 
-            using (_metadataQueries)
-            using (_disposeToken)
-            { }
+            using (_options.Router) {
+                using (_disposeToken)
+                { }
+            }
         }
     }
 }

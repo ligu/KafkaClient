@@ -24,7 +24,6 @@ namespace KafkaClient
         private readonly int _maximumAsyncRequests;
         private readonly AsyncCollection<TopicMessage> _asyncCollection;
         private readonly SemaphoreSlim _semaphoreMaximumAsync;
-        private readonly IMetadataQueries _metadataQueries;
         private readonly Task _postTask;
 
         private int _inFlightMessageCount;
@@ -82,7 +81,6 @@ namespace KafkaClient
             BrokerRouter = brokerRouter;
             _protocolGateway = new ProtocolGateway(BrokerRouter);
             _maximumAsyncRequests = maximumAsyncRequests;
-            _metadataQueries = new MetadataQueries(BrokerRouter);
             _asyncCollection = new AsyncCollection<TopicMessage>();
             _semaphoreMaximumAsync = new SemaphoreSlim(maximumAsyncRequests, maximumAsyncRequests);
 
@@ -146,16 +144,16 @@ namespace KafkaClient
         /// <summary>
         /// Get the metadata about a given topic.
         /// </summary>
-        /// <param name="topic">The name of the topic to get metadata for.</param>
+        /// <param name="topicName">The name of the topic to get metadata for.</param>
         /// <returns>Topic with metadata information.</returns>
-        public MetadataTopic GetTopicFromCache(string topic)
+        public MetadataTopic GetTopicFromCache(string topicName)
         {
-            return _metadataQueries.GetTopicFromCache(topic);
+            return BrokerRouter.GetTopicMetadata(topicName);
         }
 
-        public Task<List<OffsetTopic>> GetTopicOffsetAsync(string topic, int maxOffsets = 2, int time = -1)
+        public Task<List<OffsetTopic>> GetTopicOffsetAsync(string topicName, int maxOffsets = 2, int time = -1)
         {
-            return _metadataQueries.GetTopicOffsetAsync(topic, maxOffsets, time);
+            return BrokerRouter.GetTopicOffsetAsync(topicName, maxOffsets, time, CancellationToken.None);
         }
 
         /// <summary>
@@ -314,7 +312,7 @@ namespace KafkaClient
 
             //dispose
             using (_stopToken) {
-                using (_metadataQueries)
+                using (BrokerRouter)
                 {
                 }
             }

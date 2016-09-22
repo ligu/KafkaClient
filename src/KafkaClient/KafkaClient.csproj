@@ -118,7 +118,7 @@
     <Compile Include="Consumer.cs" />
     <Compile Include="Connection\IKafkaConnection.cs" />
     <Compile Include="IBrokerRouter.cs" />
-    <Compile Include="MetadataQueries.cs" />
+    <Compile Include="Extensions.cs" />
     <Compile Include="ConsumerOptions.cs" />
     <Compile Include="DefaultPartitionSelector.cs" />
     <Compile Include="Common\IKafkaLog.cs" />

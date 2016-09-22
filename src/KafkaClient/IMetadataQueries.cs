@@ -13,17 +13,17 @@ namespace KafkaClient
         /// <summary>
         /// Get metadata on the given topic.
         /// </summary>
-        /// <param name="topic">The metadata on the requested topic.</param>
+        /// <param name="topicName">The metadata on the requested topic.</param>
         /// <returns>Topic object containing the metadata on the requested topic.</returns>
-        MetadataTopic GetTopicFromCache(string topic);
+        MetadataTopic GetTopicFromCache(string topicName);
 
         /// <summary>
         /// Get offsets for each partition from a given topic.
         /// </summary>
-        /// <param name="topic">Name of the topic to get offset information from.</param>
+        /// <param name="topicName">Name of the topic to get offset information from.</param>
         /// <param name="maxOffsets"></param>
         /// <param name="time"></param>
         /// <returns></returns>
-        Task<List<OffsetTopic>> GetTopicOffsetAsync(string topic, int maxOffsets = 2, int time = -1);
+        Task<List<OffsetTopic>> GetTopicOffsetAsync(string topicName, int maxOffsets = 2, int time = -1);
     }
 }

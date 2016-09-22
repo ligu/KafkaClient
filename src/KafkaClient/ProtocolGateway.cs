@@ -30,7 +30,7 @@ namespace KafkaClient
             _brokerRouter = new BrokerRouter(kafkaOptions);
         }
 
-        private readonly int _maxRetry = 3;
+        private const int MaxRetry = 3;
 
         /// <exception cref="CachedMetadataException">Thrown if the cached metadata for the given topic is invalid or missing.</exception>
         /// <exception cref="FetchOutOfRangeException">Thrown if the fetch request is not valid.</exception>
@@ -45,7 +45,7 @@ namespace KafkaClient
             T response = null;
             var retryTime = 0;
             IKafkaConnection connection = null;
-            while (retryTime < _maxRetry) {
+            while (retryTime < MaxRetry) {
                 var metadataPotentiallyInvalid = false;
                 var metadataKnownInvalid = false;
                 ExceptionDispatchInfo exceptionInfo = null;
@@ -84,7 +84,7 @@ namespace KafkaClient
                 }
 
                 retryTime++;
-                var hasMoreRetry = retryTime < _maxRetry;
+                var hasMoreRetry = retryTime < MaxRetry;
 
                 _brokerRouter.Log.WarnFormat("ProtocolGateway error sending request, retrying (attempt number {0}): {1}", retryTime, errorDetails);
                 if ((metadataKnownInvalid || metadataPotentiallyInvalid) && hasMoreRetry) {

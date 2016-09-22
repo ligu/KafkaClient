@@ -28,9 +28,8 @@ namespace KafkaClient.Tests.Unit
         {
             var routerProxy = new BrokerRouterProxy(_kernel);
             var router = routerProxy.Create();
-            var common = new MetadataQueries(router);
 
-            var result = common.GetTopicOffsetAsync(BrokerRouterProxy.TestTopic).Result;
+            var result = router.GetTopicOffsetAsync(BrokerRouterProxy.TestTopic, 2, -1, CancellationToken.None).Result;
             Assert.That(routerProxy.BrokerConn0.OffsetRequestCallCount, Is.EqualTo(1));
             Assert.That(routerProxy.BrokerConn1.OffsetRequestCallCount, Is.EqualTo(1));
         }
@@ -41,9 +40,8 @@ namespace KafkaClient.Tests.Unit
             var routerProxy = new BrokerRouterProxy(_kernel);
             routerProxy.BrokerConn0.OffsetResponseFunction = () => { throw new ApplicationException("test 99"); };
             var router = routerProxy.Create();
-            var common = new MetadataQueries(router);
 
-            common.GetTopicOffsetAsync(BrokerRouterProxy.TestTopic).ContinueWith(t =>
+            router.GetTopicOffsetAsync(BrokerRouterProxy.TestTopic, 2,  -1, CancellationToken.None).ContinueWith(t =>
             {
                 Assert.That(t.IsFaulted, Is.True);
                 Assert.That(t.Exception.Flatten().ToString(), Is.StringContaining("test 99"));
@@ -60,9 +58,8 @@ namespace KafkaClient.Tests.Unit
             var routerProxy = new BrokerRouterProxy(_kernel);
             var router = routerProxy.Create();
             await router.GetTopicMetadataAsync(BrokerRouterProxy.TestTopic, CancellationToken.None);
-            var common = new MetadataQueries(router);
 
-            var result = common.GetTopicFromCache(BrokerRouterProxy.TestTopic);
+            var result = router.GetTopicMetadata(BrokerRouterProxy.TestTopic);
             Assert.That(result.TopicName, Is.EqualTo(BrokerRouterProxy.TestTopic));
         }
 
@@ -72,20 +69,11 @@ namespace KafkaClient.Tests.Unit
         {
             var routerProxy = new BrokerRouterProxy(_kernel);
             var router = routerProxy.Create();
-            var common = new MetadataQueries(router);
 
-            common.GetTopicFromCache("MissingTopic");
+            router.GetTopicMetadata("MissingTopic");
         }
 
         #endregion GetTopic Tests...
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
-        public void EnsureCommonQueriesDisposesRouter()
-        {
-            var router = _kernel.GetMock<IBrokerRouter>();
-            var common = new MetadataQueries(router.Object);
-            using (common) { }
-            router.Verify(x => x.Dispose(), Times.Once());
-        }
     }
 }
