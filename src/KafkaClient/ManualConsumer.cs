@@ -64,7 +64,7 @@ namespace KafkaClient
         /// <returns>The max offset, if no such offset found then returns -1</returns>
         public async Task<long> FetchLastOffset()
         {
-            var request = new OffsetRequest(new Offset(_topic, _partitionId, maxOffsets: 1));
+            var request = new OffsetRequest(new Offset(_topic, _partitionId));
             var response = await MakeRequestAsync(request).ConfigureAwait(false);
             var topicOffset = response.Topics.SingleOrDefault(t => t.TopicName == _topic && t.PartitionId == _partitionId);
             return topicOffset == null || topicOffset.Offsets.Count == 0 ? NoOffsetFound : topicOffset.Offsets.First();

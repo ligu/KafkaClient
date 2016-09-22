@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
-using System.Diagnostics.Contracts;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -22,6 +21,7 @@ namespace KafkaClient.Common
         /// </summary>
         /// <param name="task">The task to be ignored.</param>
         [SuppressMessage("Microsoft.Performance", "CA1804:RemoveUnusedLocals", MessageId = "ignored")]
+        [SuppressMessage("ReSharper", "UnusedVariable")]
         public static void Ignore(this Task task)
         {
             if (task.IsCompleted) {
@@ -125,43 +125,6 @@ namespace KafkaClient.Common
         {
             var tcs = new TaskCompletionSource<bool>();
             cancellationToken.Register(source => ((TaskCompletionSource<bool>)source).TrySetResult(true), tcs);
-            return tcs.Task;
-        }
-
-        /// <summary>
-        /// Returns true if <see cref="WaitHandle"/> before timeout expires./>
-        /// </summary>
-        /// <param name="handle">The handle whose signal triggers the task to be completed.</param>
-        /// <param name="timeout">The timespan to wait before returning false</param>
-        /// <returns>The task returns true if the handle is signaled before the timeout has expired.</returns>
-        /// <remarks>
-        /// Original code from: http://blog.nerdbank.net/2011/07/c-await-for-waithandle.html
-        /// There is a (brief) time delay between when the handle is signaled and when the task is marked as completed.
-        /// </remarks>
-        public static Task<bool> WaitAsync(this WaitHandle handle, TimeSpan timeout)
-        {
-            Contract.Requires(handle != null);
-            Contract.Ensures(Contract.Result<Task>() != null);
-
-            var tcs = new TaskCompletionSource<bool>();
-            var localVariableInitLock = new object();
-            lock (localVariableInitLock) {
-                RegisteredWaitHandle callbackHandle = null;
-                callbackHandle = ThreadPool.RegisterWaitForSingleObject(
-                    handle,
-                    (state, timedOut) => {
-                        tcs.TrySetResult(!timedOut);
-
-                        // We take a lock here to make sure the outer method has completed setting the local variable callbackHandle.
-                        lock (localVariableInitLock) {
-                            callbackHandle?.Unregister(null);
-                        }
-                    },
-                    state: null,
-                    millisecondsTimeOutInterval: (long)timeout.TotalMilliseconds,
-                    executeOnlyOnce: true);
-            }
-
             return tcs.Task;
         }
 

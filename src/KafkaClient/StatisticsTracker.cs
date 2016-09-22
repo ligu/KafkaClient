@@ -19,6 +19,7 @@ namespace KafkaClient
     {
         public static event Action<StatisticsSummary> OnStatisticsHeartbeat;
 
+        // ReSharper disable once NotAccessedField.Local
         private static readonly IScheduledTimer HeartbeatTimer;
         private static readonly Gauges Gauges = new Gauges();
         private static readonly ConcurrentCircularBuffer<ProduceRequestStatistic> ProduceRequestStatistics = new ConcurrentCircularBuffer<ProduceRequestStatistic>(500);

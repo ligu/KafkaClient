@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
 using KafkaClient.Common;
@@ -7,6 +8,7 @@ using KafkaClient.Connection;
 
 namespace KafkaClient.Protocol
 {
+    [SuppressMessage("ReSharper", "UnusedParameter.Local")]
     public static class KafkaEncoder
     {
         public static T Decode<T>(IRequestContext context, byte[] payload) where T : class, IKafkaResponse

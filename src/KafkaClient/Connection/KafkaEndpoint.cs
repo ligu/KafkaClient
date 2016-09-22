@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Runtime.Serialization;
 
@@ -50,6 +51,7 @@ namespace KafkaClient.Connection
             Endpoint = endpoint;
         }
 
+        [SuppressMessage("ReSharper", "UnusedParameter.Local")]
         public KafkaEndpoint(SerializationInfo info, StreamingContext context)
         {
             ServerUri = info.GetValue<Uri>("ServerUri");

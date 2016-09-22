@@ -93,7 +93,7 @@ namespace KafkaClient.Connection
                 return default(T);
             }
 
-            using (var asyncRequest = new AsyncRequestItem(context.CorrelationId, request.ApiKey)) {
+            using (var asyncRequest = new AsyncRequestItem(context.CorrelationId)) {
                 try {
                     AddAsyncRequestItemToResponseQueue(asyncRequest);
                     ExceptionDispatchInfo exceptionDispatchInfo = null;
@@ -259,15 +259,13 @@ namespace KafkaClient.Connection
         {
             private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
 
-            public AsyncRequestItem(int correlationId, ApiKeyRequestType apiKey)
+            public AsyncRequestItem(int correlationId)
             {
                 CorrelationId = correlationId;
-                ApiKey = apiKey;
                 ReceiveTask = new TaskCompletionSource<byte[]>();
             }
 
             public int CorrelationId { get; }
-            public ApiKeyRequestType ApiKey { get; }
             public TaskCompletionSource<byte[]> ReceiveTask { get; }
 
             public void MarkRequestAsSent(ExceptionDispatchInfo exceptionDispatchInfo, TimeSpan timeout, Action<AsyncRequestItem> timeoutFunction)
