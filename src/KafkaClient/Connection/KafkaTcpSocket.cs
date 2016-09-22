@@ -29,7 +29,7 @@ namespace KafkaClient.Connection
         private readonly CancellationTokenSource _disposeToken = new CancellationTokenSource();
         private readonly CancellationTokenRegistration _disposeRegistration;
         private readonly IKafkaLog _log;
-        private readonly TimeSpan _maximumReconnectionTimeout;
+        private readonly TimeSpan _connectingTimeout;
         private readonly Task _disposeTask;
         private readonly AsyncCollection<SocketPayloadSendTask> _sendTaskQueue;
         private readonly AsyncCollection<SocketPayloadReceiveTask> _readTaskQueue;
@@ -48,13 +48,13 @@ namespace KafkaClient.Connection
         /// <param name="log">Logging facility for verbose messaging of actions.</param>
         /// <param name="endpoint">The IP endpoint to connect to.</param>
         /// <param name="maxRetry">The maximum number of retries.</param>
-        /// <param name="maximumReconnectionTimeout">The maximum time to wait when backing off on reconnection attempts.</param>
+        /// <param name="connectingTimeout">The maximum time to wait when backing off on reconnection attempts.</param>
         /// <param name="trackTelemetry">Whether to track telemetry.</param>
-        public KafkaTcpSocket(IKafkaLog log, KafkaEndpoint endpoint, int maxRetry, TimeSpan? maximumReconnectionTimeout = null, bool trackTelemetry = false)
+        public KafkaTcpSocket(IKafkaLog log, KafkaEndpoint endpoint, int maxRetry, TimeSpan? connectingTimeout = null, bool trackTelemetry = false)
         {
             _log = log;
             Endpoint = endpoint;
-            _maximumReconnectionTimeout = maximumReconnectionTimeout ?? TimeSpan.FromMinutes(MaxReconnectionTimeoutMinutes);
+            _connectingTimeout = connectingTimeout ?? TimeSpan.FromMinutes(MaxReconnectionTimeoutMinutes);
             _maxRetry = maxRetry;
             _sendTaskQueue = new AsyncCollection<SocketPayloadSendTask>();
             _readTaskQueue = new AsyncCollection<SocketPayloadReceiveTask>();
@@ -319,7 +319,7 @@ namespace KafkaClient.Connection
                     }
 
                     reconnectionDelay = reconnectionDelay * DefaultReconnectionTimeoutMultiplier;
-                    reconnectionDelay = Math.Min(reconnectionDelay, (int)_maximumReconnectionTimeout.TotalMilliseconds);
+                    reconnectionDelay = Math.Min(reconnectionDelay, (int)_connectingTimeout.TotalMilliseconds);
                     _log.WarnFormat(ex, "Failed connection to {0}: Will retry in {1}", Endpoint, reconnectionDelay);
                 }
 

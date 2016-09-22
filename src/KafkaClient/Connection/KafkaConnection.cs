@@ -20,7 +20,7 @@ namespace KafkaClient.Connection
     /// </summary>
     public class KafkaConnection : IKafkaConnection
     {
-        private const int DefaultResponseTimeoutSeconds = 60;
+        private const int DefaultRequestTimeoutSeconds = 60;
         private bool _isInErrorState;
 
         public bool IsOnErrorState()
@@ -29,7 +29,7 @@ namespace KafkaClient.Connection
         }
 
         private readonly ConcurrentDictionary<int, AsyncRequestItem> _requestIndex = new ConcurrentDictionary<int, AsyncRequestItem>();
-        private readonly TimeSpan _responseTimeoutMs;
+        private readonly TimeSpan _requestTimeout;
         private readonly IKafkaLog _log;
         private readonly IKafkaTcpSocket _client;
         private readonly CancellationTokenSource _disposeToken = new CancellationTokenSource();
@@ -44,12 +44,12 @@ namespace KafkaClient.Connection
         /// </summary>
         /// <param name="log">Logging interface used to record any log messages created by the connection.</param>
         /// <param name="client">The kafka socket initialized to the kafka server.</param>
-        /// <param name="responseTimeout">The amount of time to wait for a message response to be received after sending message to Kafka.  Defaults to 30s.</param>
-        public KafkaConnection(IKafkaTcpSocket client, TimeSpan? responseTimeout = null, IKafkaLog log = null)
+        /// <param name="requestTimeout">The amount of time to wait for a message response to be received after sending message to Kafka.  Defaults to 30s.</param>
+        public KafkaConnection(IKafkaTcpSocket client, TimeSpan? requestTimeout = null, IKafkaLog log = null)
         {
             _client = client;
             _log = log ?? new TraceLog();
-            _responseTimeoutMs = responseTimeout ?? TimeSpan.FromSeconds(DefaultResponseTimeoutSeconds);
+            _requestTimeout = requestTimeout ?? TimeSpan.FromSeconds(DefaultRequestTimeoutSeconds);
 
             StartReadStreamPoller();
         }
@@ -104,7 +104,7 @@ namespace KafkaClient.Connection
                         exceptionDispatchInfo = ExceptionDispatchInfo.Capture(ex);
                     }
 
-                    asyncRequest.MarkRequestAsSent(exceptionDispatchInfo, _responseTimeoutMs, TriggerMessageTimeout);
+                    asyncRequest.MarkRequestAsSent(exceptionDispatchInfo, _requestTimeout, TriggerMessageTimeout);
                 } catch (OperationCanceledException) {
                     TriggerMessageTimeout(asyncRequest);
                 }
@@ -235,7 +235,7 @@ namespace KafkaClient.Connection
                     new ObjectDisposedException("The object is being disposed and the connection is closing."));
             } else {
                 asyncRequestItem.ReceiveTask.TrySetException(
-                    new TimeoutException($"Timeout expired after {_responseTimeoutMs.TotalMilliseconds} ms."));
+                    new TimeoutException($"Timeout expired after {_requestTimeout.TotalMilliseconds} ms."));
             }
         }
 

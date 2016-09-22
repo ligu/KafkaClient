@@ -24,14 +24,13 @@ namespace KafkaClient.Tests.Integration
             var response = await producer.SendMessageAsync(new Message(messageValue), IntegrationConfig.IntegrationTopic, partitionId);
             var offset = response.Offset;
 
-            ProtocolGateway protocolGateway = new ProtocolGateway(IntegrationConfig.IntegrationUri);
             var fetch = new Fetch(IntegrationConfig.IntegrationTopic, partitionId, offset, 32000);
 
             var fetchRequest = new FetchRequest(fetch, minBytes: 10);
 
-            var r = await protocolGateway.SendProtocolRequestAsync(fetchRequest, IntegrationConfig.IntegrationTopic, partitionId, CancellationToken.None);
-            //  var r1 = await protocolGateway.SendProtocolRequestAsync(fetchRequest, IntegrationConfig.IntegrationTopic, partitionId);
-            Assert.IsTrue(r.Topics.First().Messages.FirstOrDefault().Value.ToUtf8String() == messageValue);
+            var r = await router.SendAsync(fetchRequest, IntegrationConfig.IntegrationTopic, partitionId, CancellationToken.None);
+            //  var r1 = await protocolGateway.SendAsync(fetchRequest, IntegrationConfig.IntegrationTopic, partitionId);
+            Assert.IsTrue(r.Topics.First().Messages.First().Value.ToUtf8String() == messageValue);
         }
     }
 }

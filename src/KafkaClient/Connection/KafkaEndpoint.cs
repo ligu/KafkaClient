@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Net;
+using System.Net.Sockets;
 using System.Runtime.Serialization;
 using KafkaClient.Common;
 
@@ -9,6 +11,25 @@ namespace KafkaClient.Connection
     [Serializable]
     public class KafkaEndpoint : IEquatable<KafkaEndpoint>
     {
+        public KafkaEndpoint(Uri serverUri, IPEndPoint endpoint)
+        {
+            ServerUri = serverUri;
+            Endpoint = endpoint;
+        }
+
+        [SuppressMessage("ReSharper", "UnusedParameter.Local")]
+        public KafkaEndpoint(SerializationInfo info, StreamingContext context)
+        {
+            ServerUri = info.GetValue<Uri>("ServerUri");
+            Endpoint = info.GetValue<IPEndPoint>("Endpoint");
+        }
+
+        public void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            info.AddValue("ServerUri", ServerUri);
+            info.AddValue("Endpoint", Endpoint);
+        }
+
         public Uri ServerUri { get; }
         public IPEndPoint Endpoint { get; }
 
@@ -46,23 +67,31 @@ namespace KafkaClient.Connection
 
         public override string ToString() => ServerUri.ToString();
 
-        public KafkaEndpoint(Uri serverUri, IPEndPoint endpoint)
+        public static KafkaEndpoint Resolve(Uri serverUri, IKafkaLog log)
         {
-            ServerUri = serverUri;
-            Endpoint = endpoint;
+            var ipEndpoint = new IPEndPoint(GetFirstAddress(serverUri.Host, log), serverUri.Port);
+            return new KafkaEndpoint(serverUri, ipEndpoint);
         }
 
-        [SuppressMessage("ReSharper", "UnusedParameter.Local")]
-        public KafkaEndpoint(SerializationInfo info, StreamingContext context)
+        private static IPAddress GetFirstAddress(string hostname, IKafkaLog log)
         {
-            ServerUri = info.GetValue<Uri>("ServerUri");
-            Endpoint = info.GetValue<IPEndPoint>("Endpoint");
+            try {
+                var addresses = Dns.GetHostAddresses(hostname);
+                if (addresses.Length > 0) {
+                    foreach (var address in addresses) {
+                        log.DebugFormat("Found address {0} for {1}", address, hostname);
+                    }
+
+                    var selectedAddress = addresses.FirstOrDefault(item => item.AddressFamily == AddressFamily.InterNetwork) ?? addresses.First();
+                    log.DebugFormat("Using address {0} for {1}", selectedAddress, hostname);
+                    return selectedAddress;
+                }
+            } catch (Exception ex) {
+                log.InfoFormat(ex);
+            }
+
+            throw new KafkaConnectionException($"Could not resolve the following hostname: {hostname}");
         }
 
-        public void GetObjectData(SerializationInfo info, StreamingContext context)
-        {
-            info.AddValue("ServerUri", ServerUri);
-            info.AddValue("Endpoint", Endpoint);
-        }
     }
 }

@@ -20,12 +20,4 @@ namespace KafkaClient.Connection
             return obj?.Endpoint.GetHashCode() ?? 0;
         }
     }
-
-    public static class Extensions
-    {
-        public static IKafkaConnection Create(this KafkaOptions options, KafkaEndpoint endpoint)
-        {
-            return options.KafkaConnectionFactory.Create(endpoint, options.ResponseTimeoutMs, options.Log, options.MaxRetry, options.MaximumReconnectionTimeout, options.TrackTelemetry);
-        }
-    }
 }

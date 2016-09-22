@@ -19,7 +19,6 @@ namespace KafkaClient
         private const int DefaultBatchDelayMilliseconds = 100;
         private const int DefaultBatchSize = 100;
 
-        private readonly ProtocolGateway _protocolGateway;
         private readonly CancellationTokenSource _stopToken = new CancellationTokenSource();
         private readonly int _maximumAsyncRequests;
         private readonly AsyncCollection<TopicMessage> _asyncCollection;
@@ -79,7 +78,6 @@ namespace KafkaClient
         public Producer(IBrokerRouter brokerRouter, int maximumAsyncRequests = MaximumAsyncRequests)
         {
             BrokerRouter = brokerRouter;
-            _protocolGateway = new ProtocolGateway(BrokerRouter);
             _maximumAsyncRequests = maximumAsyncRequests;
             _asyncCollection = new AsyncCollection<TopicMessage>();
             _semaphoreMaximumAsync = new SemaphoreSlim(maximumAsyncRequests, maximumAsyncRequests);
@@ -240,7 +238,7 @@ namespace KafkaClient
 
                     await _semaphoreMaximumAsync.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-                    var sendGroupTask = _protocolGateway.SendProtocolRequestAsync(request, group.Key.Topic, group.Key.Route.PartitionId, cancellationToken);
+                    var sendGroupTask = BrokerRouter.SendAsync(request, group.Key.Topic, group.Key.Route.PartitionId, cancellationToken);
                     var brokerSendTask = new BrokerRouteSendBatch {
                         Route = group.Key.Route,
                         Task = sendGroupTask,

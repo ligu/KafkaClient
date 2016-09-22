@@ -16,25 +16,25 @@ namespace KafkaClient
     {
         private readonly string _topic;
         private readonly int _partitionId;
-        private readonly ProtocolGateway _gateway;
         private readonly int _maxSizeOfMessageSet;
         private readonly string _clientId;
         private ImmutableList<Message> _lastMessages;
+        private readonly IBrokerRouter _brokerRouter;
 
         private static readonly TimeSpan MaxWaitTimeForKafka = TimeSpan.Zero;
         private const int UseBrokerTimestamp = -1;
         private const int NoOffsetFound = -1;
 
-        public ManualConsumer(int partitionId, string topic, ProtocolGateway gateway, string clientId, int maxSizeOfMessageSet)
+        public ManualConsumer(int partitionId, string topic, IBrokerRouter brokerRouter, string clientId, int maxSizeOfMessageSet)
         {
             if (string.IsNullOrEmpty(topic)) throw new ArgumentNullException(nameof(topic));
-            if (gateway == null) throw new ArgumentNullException(nameof(gateway));
+            if (brokerRouter == null) throw new ArgumentNullException(nameof(brokerRouter));
             if (maxSizeOfMessageSet <= 0) throw new ArgumentOutOfRangeException(nameof(maxSizeOfMessageSet), "argument must be larger than zero");
             Contract.Requires(!string.IsNullOrEmpty(topic));
-            Contract.Requires(gateway != null);
+            Contract.Requires(brokerRouter != null);
             Contract.Requires(maxSizeOfMessageSet > 0);
 
-            _gateway = gateway;
+            _brokerRouter = brokerRouter;
             _partitionId = partitionId;
             _topic = topic;
             _clientId = clientId;
@@ -128,7 +128,7 @@ namespace KafkaClient
 
         private Task<T> MakeRequestAsync<T>(IKafkaRequest<T> request, CancellationToken cancellationToken) where T : class, IKafkaResponse
         {
-            return _gateway.SendProtocolRequestAsync(request, _topic, _partitionId, cancellationToken, new RequestContext(clientId: _clientId));
+            return _brokerRouter.SendAsync(request, _topic, _partitionId, cancellationToken, new RequestContext(clientId: _clientId));
         }
     }
 }

@@ -98,7 +98,7 @@
     <Compile Include="Unit\ConsumerTests.cs" />
     <Compile Include="Unit\DefaultPartitionSelectorTests.cs" />
     <Compile Include="Unit\ProducerTests.cs" />
-    <Compile Include="Unit\ProtocolGatewayTest.cs" />
+    <Compile Include="Unit\RouterBrokerSendAsyncTests.cs" />
     <Compile Include="Unit\ProtocolAssertionExtensions.cs" />
     <Compile Include="Unit\ProtocolByteTests.cs" />
     <Compile Include="Unit\ProtocolTests.cs" />

@@ -6,7 +6,7 @@ using KafkaClient.Connection;
 
 namespace KafkaClient
 {
-    public class KafkaOptions
+    public class KafkaOptions : IKafkaConnectionOptions
     {
         public KafkaOptions(params Uri[] kafkaServerUri)
         {
@@ -14,16 +14,16 @@ namespace KafkaClient
             PartitionSelector = new PartitionSelector();
             Log = new TraceLog();
             KafkaConnectionFactory = new KafkaConnectionFactory();
-            ResponseTimeoutMs = TimeSpan.FromMilliseconds(DefaultResponseTimeout);
-            CacheExpiration = TimeSpan.FromMilliseconds(DefaultCacheExpirationTimeoutMilliseconds);
-            RefreshMetadataTimeout = TimeSpan.FromMilliseconds(DefaultRefreshMetadataTimeout);
+            RequestTimeout = TimeSpan.FromSeconds(DefaultRequestTimeoutSeconds);
+            CacheExpiration = TimeSpan.FromMilliseconds(DefaultCacheExpirationMilliseconds);
+            RefreshMetadataTimeout = TimeSpan.FromSeconds(DefaultRefreshMetadataTimeoutSeconds);
             MaxRetry = DefaultMaxRetry;
             TrackTelemetry = false;
         }
 
-        private const int DefaultResponseTimeout = 60000;
-        private const int DefaultCacheExpirationTimeoutMilliseconds = 10;
-        private const int DefaultRefreshMetadataTimeout = 200000;
+        private const int DefaultRequestTimeoutSeconds = 60;
+        private const int DefaultCacheExpirationMilliseconds = 10;
+        private const int DefaultRefreshMetadataTimeoutSeconds = 200;
         private const int DefaultMaxRetry = 5;
 
         /// <summary>
@@ -70,9 +70,9 @@ namespace KafkaClient
         public IPartitionSelector PartitionSelector { get; set; }
 
         /// <summary>
-        /// Timeout length in milliseconds waiting for a response from kafka.
+        /// The maximum time to wait for a response from kafka.
         /// </summary>
-        public TimeSpan ResponseTimeoutMs { get; set; }
+        public TimeSpan? RequestTimeout { get; set; }
 
         /// <summary>
         /// Log object to record operational messages.
@@ -82,6 +82,6 @@ namespace KafkaClient
         /// <summary>
         /// The maximum time to wait when backing off on reconnection attempts.
         /// </summary>
-        public TimeSpan? MaximumReconnectionTimeout { get; set; }
+        public TimeSpan? ConnectingTimeout { get; set; }
     }
 }

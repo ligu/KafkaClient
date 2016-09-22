@@ -42,7 +42,7 @@ namespace KafkaClient.Tests.Integration
         public async Task ManualConsumerFailure()
         {
             string topic = "TestTopicIssue13-3R-1P";
-            var manualConsumer = new ManualConsumer(0, topic, new ProtocolGateway(_options), "test client", 10000);
+            var manualConsumer = new ManualConsumer(0, topic, new BrokerRouter(_options), "test client", 10000);
             long offset = await manualConsumer.FetchLastOffsetAsync(CancellationToken.None);
 
             var router = new BrokerRouter(_options);

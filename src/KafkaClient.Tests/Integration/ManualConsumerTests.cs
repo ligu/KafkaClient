@@ -34,12 +34,11 @@ namespace KafkaClient.Tests.Integration
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
             var brokerRouter = new BrokerRouter(_options);
-            var protocolGateway = new ProtocolGateway(_kafkaUri);
 
             var topic = "ManualConsumerTestTopic";
 
             Producer producer = new Producer(brokerRouter);
-            ManualConsumer consumer = new ManualConsumer(_partitionId, topic, protocolGateway, "TestClient", DefaultMaxMessageSetSize);
+            ManualConsumer consumer = new ManualConsumer(_partitionId, topic, brokerRouter, "TestClient", DefaultMaxMessageSetSize);
 
             var offset = await consumer.FetchLastOffsetAsync(CancellationToken.None);
 
@@ -59,10 +58,9 @@ namespace KafkaClient.Tests.Integration
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
             var brokerRouter = new BrokerRouter(_options);
-            var protocolGateway = new ProtocolGateway(_kafkaUri);
 
             Producer producer = new Producer(brokerRouter);
-            ManualConsumer consumer = new ManualConsumer(_partitionId, _topic, protocolGateway, "TestClient", DefaultMaxMessageSetSize);
+            ManualConsumer consumer = new ManualConsumer(_partitionId, _topic, brokerRouter, "TestClient", DefaultMaxMessageSetSize);
 
             var offset = await consumer.FetchLastOffsetAsync(CancellationToken.None);
 
@@ -87,10 +85,9 @@ namespace KafkaClient.Tests.Integration
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
             var brokerRouter = new BrokerRouter(_options);
-            var protocolGateway = new ProtocolGateway(_kafkaUri);
 
             Producer producer = new Producer(brokerRouter);
-            ManualConsumer consumer = new ManualConsumer(_partitionId, _topic, protocolGateway, "TestClient", DefaultMaxMessageSetSize);
+            ManualConsumer consumer = new ManualConsumer(_partitionId, _topic, brokerRouter, "TestClient", DefaultMaxMessageSetSize);
 
             var offset = await consumer.FetchLastOffsetAsync(CancellationToken.None);
 
@@ -115,10 +112,9 @@ namespace KafkaClient.Tests.Integration
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
             var brokerRouter = new BrokerRouter(_options);
-            var protocolGateway = new ProtocolGateway(_kafkaUri);
 
             Producer producer = new Producer(brokerRouter);
-            ManualConsumer consumer = new ManualConsumer(_partitionId, _topic, protocolGateway, "TestClient", DefaultMaxMessageSetSize);
+            ManualConsumer consumer = new ManualConsumer(_partitionId, _topic, brokerRouter, "TestClient", DefaultMaxMessageSetSize);
 
             var offset = await consumer.FetchLastOffsetAsync(CancellationToken.None);
 
@@ -142,9 +138,9 @@ namespace KafkaClient.Tests.Integration
         public async Task FetchMessagesNoNewMessagesInQueueTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
-            var protocolGateway = new ProtocolGateway(_kafkaUri);
+            var brokerRouter = new BrokerRouter(new KafkaOptions(_kafkaUri) { ConnectingTimeout = TimeSpan.FromSeconds(60)});
 
-            ManualConsumer consumer = new ManualConsumer(_partitionId, _topic, protocolGateway, "TestClient", DefaultMaxMessageSetSize);
+            ManualConsumer consumer = new ManualConsumer(_partitionId, _topic, brokerRouter, "TestClient", DefaultMaxMessageSetSize);
 
             var offset = await consumer.FetchLastOffsetAsync(CancellationToken.None);
 
@@ -159,9 +155,9 @@ namespace KafkaClient.Tests.Integration
         public async Task FetchMessagesOffsetBiggerThanLastOffsetInQueueTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
-            var protocolGateway = new ProtocolGateway(_kafkaUri);
+            var brokerRouter = new BrokerRouter(new KafkaOptions(_kafkaUri) { ConnectingTimeout = TimeSpan.FromSeconds(60)});
 
-            ManualConsumer consumer = new ManualConsumer(_partitionId, _topic, protocolGateway, "TestClient", DefaultMaxMessageSetSize);
+            ManualConsumer consumer = new ManualConsumer(_partitionId, _topic, brokerRouter, "TestClient", DefaultMaxMessageSetSize);
 
             var offset = await consumer.FetchLastOffsetAsync(CancellationToken.None);
 
@@ -174,9 +170,9 @@ namespace KafkaClient.Tests.Integration
         public async Task FetchMessagesInvalidOffsetTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
-            var protocolGateway = new ProtocolGateway(_kafkaUri);
+            var brokerRouter = new BrokerRouter(new KafkaOptions(_kafkaUri) { ConnectingTimeout = TimeSpan.FromSeconds(60)});
 
-            ManualConsumer consumer = new ManualConsumer(_partitionId, _topic, protocolGateway, "TestClient", DefaultMaxMessageSetSize);
+            ManualConsumer consumer = new ManualConsumer(_partitionId, _topic, brokerRouter, "TestClient", DefaultMaxMessageSetSize);
 
             var offset = -1;
 
@@ -189,11 +185,11 @@ namespace KafkaClient.Tests.Integration
         public async Task FetchMessagesTopicDoesntExist()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
-            var protocolGateway = new ProtocolGateway(_kafkaUri);
+            var brokerRouter = new BrokerRouter(new KafkaOptions(_kafkaUri) { ConnectingTimeout = TimeSpan.FromSeconds(60)});
 
             var topic = _topic + Guid.NewGuid();
 
-            ManualConsumer consumer = new ManualConsumer(_partitionId, topic, protocolGateway, "TestClient", DefaultMaxMessageSetSize * 2);
+            ManualConsumer consumer = new ManualConsumer(_partitionId, topic, brokerRouter, "TestClient", DefaultMaxMessageSetSize * 2);
 
             var offset = 0;
 
@@ -208,11 +204,11 @@ namespace KafkaClient.Tests.Integration
         public async Task FetchMessagesPartitionDoesntExist()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
-            var protocolGateway = new ProtocolGateway(_kafkaUri);
+            var brokerRouter = new BrokerRouter(new KafkaOptions(_kafkaUri) { ConnectingTimeout = TimeSpan.FromSeconds(60)});
             var partitionId = 100;
             var topic = _topic;
 
-            ManualConsumer consumer = new ManualConsumer(partitionId, topic, protocolGateway, "TestClient", DefaultMaxMessageSetSize * 2);
+            ManualConsumer consumer = new ManualConsumer(partitionId, topic, brokerRouter, "TestClient", DefaultMaxMessageSetSize * 2);
 
             var offset = 0;
 
@@ -225,12 +221,11 @@ namespace KafkaClient.Tests.Integration
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
             var brokerRouter = new BrokerRouter(_options);
-            var protocolGateway = new ProtocolGateway(_kafkaUri);
 
             var smallMessageSet = 4096 / 2;
 
             Producer producer = new Producer(brokerRouter);
-            ManualConsumer consumer = new ManualConsumer(_partitionId, _topic, protocolGateway, "TestClient", smallMessageSet);
+            ManualConsumer consumer = new ManualConsumer(_partitionId, _topic, brokerRouter, "TestClient", smallMessageSet);
 
             var offset = await consumer.FetchLastOffsetAsync(CancellationToken.None);
 
@@ -250,11 +245,11 @@ namespace KafkaClient.Tests.Integration
         public async Task FetchOffsetConsumerGroupDoesntExistTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
-            var protocolGateway = new ProtocolGateway(_kafkaUri);
+            var brokerRouter = new BrokerRouter(new KafkaOptions(_kafkaUri) { ConnectingTimeout = TimeSpan.FromSeconds(60)});
             var partitionId = 0;
             var consumerGroup = Guid.NewGuid().ToString();
 
-            ManualConsumer consumer = new ManualConsumer(partitionId, _topic, protocolGateway, "TestClient", DefaultMaxMessageSetSize);
+            ManualConsumer consumer = new ManualConsumer(partitionId, _topic, brokerRouter, "TestClient", DefaultMaxMessageSetSize);
 
             await consumer.FetchOffsetAsync(consumerGroup, CancellationToken.None);
         }
@@ -264,11 +259,11 @@ namespace KafkaClient.Tests.Integration
         public async Task FetchOffsetPartitionDoesntExistTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
-            var protocolGateway = new ProtocolGateway(_kafkaUri);
+            var brokerRouter = new BrokerRouter(new KafkaOptions(_kafkaUri) { ConnectingTimeout = TimeSpan.FromSeconds(60)});
             var partitionId = 100;
             var consumerGroup = _defaultConsumerGroup;
 
-            ManualConsumer consumer = new ManualConsumer(partitionId, _topic, protocolGateway, "TestClient", DefaultMaxMessageSetSize);
+            ManualConsumer consumer = new ManualConsumer(partitionId, _topic, brokerRouter, "TestClient", DefaultMaxMessageSetSize);
 
             await consumer.FetchOffsetAsync(consumerGroup, CancellationToken.None);
         }
@@ -278,12 +273,12 @@ namespace KafkaClient.Tests.Integration
         public async Task FetchOffsetTopicDoesntExistTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
-            var protocolGateway = new ProtocolGateway(_kafkaUri);
+            var brokerRouter = new BrokerRouter(new KafkaOptions(_kafkaUri) { ConnectingTimeout = TimeSpan.FromSeconds(60)});
 
             var topic = _topic + Guid.NewGuid();
             var consumerGroup = _defaultConsumerGroup;
 
-            ManualConsumer consumer = new ManualConsumer(_partitionId, topic, protocolGateway, "TestClient", DefaultMaxMessageSetSize);
+            ManualConsumer consumer = new ManualConsumer(_partitionId, topic, brokerRouter, "TestClient", DefaultMaxMessageSetSize);
 
             await consumer.FetchOffsetAsync(consumerGroup, CancellationToken.None);
         }
@@ -292,11 +287,11 @@ namespace KafkaClient.Tests.Integration
         public async Task FetchOffsetConsumerGroupExistsTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
-            var protocolGateway = new ProtocolGateway(_kafkaUri);
+            var brokerRouter = new BrokerRouter(new KafkaOptions(_kafkaUri) { ConnectingTimeout = TimeSpan.FromSeconds(60)});
             var partitionId = 0;
             var consumerGroup = _defaultConsumerGroup;
 
-            ManualConsumer consumer = new ManualConsumer(partitionId, _topic, protocolGateway, "TestClient", DefaultMaxMessageSetSize);
+            ManualConsumer consumer = new ManualConsumer(partitionId, _topic, brokerRouter, "TestClient", DefaultMaxMessageSetSize);
 
             var offest = 5;
 
@@ -311,11 +306,11 @@ namespace KafkaClient.Tests.Integration
         public async Task FetchOffsetConsumerGroupIsNullTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
-            var protocolGateway = new ProtocolGateway(_kafkaUri);
+            var brokerRouter = new BrokerRouter(new KafkaOptions(_kafkaUri) { ConnectingTimeout = TimeSpan.FromSeconds(60)});
             var partitionId = 0;
             var consumerGroup = _defaultConsumerGroup;
 
-            ManualConsumer consumer = new ManualConsumer(partitionId, _topic, protocolGateway, "TestClient", DefaultMaxMessageSetSize);
+            ManualConsumer consumer = new ManualConsumer(partitionId, _topic, brokerRouter, "TestClient", DefaultMaxMessageSetSize);
 
             var offest = 5;
 
@@ -328,11 +323,11 @@ namespace KafkaClient.Tests.Integration
         public async Task FetchOffsetConsumerGroupIsEmptyTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
-            var protocolGateway = new ProtocolGateway(_kafkaUri);
+            var brokerRouter = new BrokerRouter(new KafkaOptions(_kafkaUri) { ConnectingTimeout = TimeSpan.FromSeconds(60)});
             var partitionId = 0;
             var consumerGroup = _defaultConsumerGroup;
 
-            ManualConsumer consumer = new ManualConsumer(partitionId, _topic, protocolGateway, "TestClient", DefaultMaxMessageSetSize);
+            ManualConsumer consumer = new ManualConsumer(partitionId, _topic, brokerRouter, "TestClient", DefaultMaxMessageSetSize);
 
             var offest = 5;
 
@@ -344,11 +339,11 @@ namespace KafkaClient.Tests.Integration
         public async Task UpdateOrCreateOffsetConsumerGroupDoesntExistTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
-            var protocolGateway = new ProtocolGateway(_kafkaUri);
+            var brokerRouter = new BrokerRouter(new KafkaOptions(_kafkaUri) { ConnectingTimeout = TimeSpan.FromSeconds(60)});
             var partitionId = 0;
             var consumerGroup = Guid.NewGuid().ToString();
 
-            ManualConsumer consumer = new ManualConsumer(partitionId, _topic, protocolGateway, "TestClient", DefaultMaxMessageSetSize);
+            ManualConsumer consumer = new ManualConsumer(partitionId, _topic, brokerRouter, "TestClient", DefaultMaxMessageSetSize);
 
             var offest = 5;
 
@@ -362,11 +357,11 @@ namespace KafkaClient.Tests.Integration
         public async Task UpdateOrCreateOffsetConsumerGroupExistsTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
-            var protocolGateway = new ProtocolGateway(_kafkaUri);
+            var brokerRouter = new BrokerRouter(new KafkaOptions(_kafkaUri) { ConnectingTimeout = TimeSpan.FromSeconds(60)});
             var partitionId = 0;
             var consumerGroup = _defaultConsumerGroup + Guid.NewGuid();
 
-            ManualConsumer consumer = new ManualConsumer(partitionId, _topic, protocolGateway, "TestClient", DefaultMaxMessageSetSize);
+            ManualConsumer consumer = new ManualConsumer(partitionId, _topic, brokerRouter, "TestClient", DefaultMaxMessageSetSize);
 
             var offest = 5;
             var newOffset = 10;
@@ -387,11 +382,11 @@ namespace KafkaClient.Tests.Integration
         public async Task UpdateOrCreateOffsetPartitionDoesntExistTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
-            var protocolGateway = new ProtocolGateway(_kafkaUri);
+            var brokerRouter = new BrokerRouter(new KafkaOptions(_kafkaUri) { ConnectingTimeout = TimeSpan.FromSeconds(60)});
             var partitionId = 100;
             var consumerGroup = Guid.NewGuid().ToString();
 
-            ManualConsumer consumer = new ManualConsumer(partitionId, _topic, protocolGateway, "TestClient", DefaultMaxMessageSetSize);
+            ManualConsumer consumer = new ManualConsumer(partitionId, _topic, brokerRouter, "TestClient", DefaultMaxMessageSetSize);
 
             var offest = 5;
 
@@ -403,12 +398,12 @@ namespace KafkaClient.Tests.Integration
         public async Task UpdateOrCreateOffsetTopicDoesntExistTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
-            var protocolGateway = new ProtocolGateway(_kafkaUri);
+            var brokerRouter = new BrokerRouter(new KafkaOptions(_kafkaUri) { ConnectingTimeout = TimeSpan.FromSeconds(60)});
             var partitionId = 0;
             var topic = _topic + Guid.NewGuid();
             var consumerGroup = _defaultConsumerGroup;
 
-            ManualConsumer consumer = new ManualConsumer(partitionId, topic, protocolGateway, "TestClient", DefaultMaxMessageSetSize);
+            ManualConsumer consumer = new ManualConsumer(partitionId, topic, brokerRouter, "TestClient", DefaultMaxMessageSetSize);
 
             var offest = 5;
 
@@ -420,11 +415,11 @@ namespace KafkaClient.Tests.Integration
         public async Task UpdateOrCreateOffsetConsumerGroupNullTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
-            var protocolGateway = new ProtocolGateway(_kafkaUri);
+            var brokerRouter = new BrokerRouter(new KafkaOptions(_kafkaUri) { ConnectingTimeout = TimeSpan.FromSeconds(60)});
             var partitionId = 0;
             var topic = _topic + Guid.NewGuid();
 
-            ManualConsumer consumer = new ManualConsumer(partitionId, topic, protocolGateway, "TestClient", DefaultMaxMessageSetSize);
+            ManualConsumer consumer = new ManualConsumer(partitionId, topic, brokerRouter, "TestClient", DefaultMaxMessageSetSize);
 
             var offest = 5;
 
@@ -436,11 +431,11 @@ namespace KafkaClient.Tests.Integration
         public async Task UpdateOrCreateOffsetConsumerGroupEmptyTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
-            var protocolGateway = new ProtocolGateway(_kafkaUri);
+            var brokerRouter = new BrokerRouter(new KafkaOptions(_kafkaUri) { ConnectingTimeout = TimeSpan.FromSeconds(60)});
             var partitionId = 0;
             var topic = _topic + Guid.NewGuid();
 
-            ManualConsumer consumer = new ManualConsumer(partitionId, topic, protocolGateway, "TestClient", DefaultMaxMessageSetSize);
+            ManualConsumer consumer = new ManualConsumer(partitionId, topic, brokerRouter, "TestClient", DefaultMaxMessageSetSize);
 
             var offest = 5;
 
@@ -452,12 +447,12 @@ namespace KafkaClient.Tests.Integration
         public async Task UpdateOrCreateOffsetNegativeOffsetTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
-            var protocolGateway = new ProtocolGateway(_kafkaUri);
+            var brokerRouter = new BrokerRouter(new KafkaOptions(_kafkaUri) { ConnectingTimeout = TimeSpan.FromSeconds(60)});
             var partitionId = 0;
             var topic = _topic + Guid.NewGuid();
             var consumerGroup = _defaultConsumerGroup;
 
-            ManualConsumer consumer = new ManualConsumer(partitionId, topic, protocolGateway, "TestClient", DefaultMaxMessageSetSize);
+            ManualConsumer consumer = new ManualConsumer(partitionId, topic, brokerRouter, "TestClient", DefaultMaxMessageSetSize);
 
             var offest = -5;
 
@@ -468,11 +463,11 @@ namespace KafkaClient.Tests.Integration
         public async Task FetchLastOffsetSimpleTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
-            var protocolGateway = new ProtocolGateway(_kafkaUri);
+            var brokerRouter = new BrokerRouter(new KafkaOptions(_kafkaUri) { ConnectingTimeout = TimeSpan.FromSeconds(60)});
 
             var topic = _topic;
 
-            ManualConsumer consumer = new ManualConsumer(_partitionId, topic, protocolGateway, "TestClient", DefaultMaxMessageSetSize * 2);
+            ManualConsumer consumer = new ManualConsumer(_partitionId, topic, brokerRouter, "TestClient", DefaultMaxMessageSetSize * 2);
 
             var offset = await consumer.FetchLastOffsetAsync(CancellationToken.None);
 
@@ -484,11 +479,11 @@ namespace KafkaClient.Tests.Integration
         public async Task FetchLastOffsetPartitionDoesntExistTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
-            var protocolGateway = new ProtocolGateway(_kafkaUri);
+            var brokerRouter = new BrokerRouter(new KafkaOptions(_kafkaUri) { ConnectingTimeout = TimeSpan.FromSeconds(60)});
             var partitionId = 100;
             var topic = _topic;
 
-            ManualConsumer consumer = new ManualConsumer(partitionId, topic, protocolGateway, "TestClient", DefaultMaxMessageSetSize * 2);
+            ManualConsumer consumer = new ManualConsumer(partitionId, topic, brokerRouter, "TestClient", DefaultMaxMessageSetSize * 2);
 
             await consumer.FetchLastOffsetAsync(CancellationToken.None);
         }
@@ -498,11 +493,11 @@ namespace KafkaClient.Tests.Integration
         public async Task FetchLastOffsetTopicDoesntExistTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
-            var protocolGateway = new ProtocolGateway(_kafkaUri);
+            var brokerRouter = new BrokerRouter(new KafkaOptions(_kafkaUri) { ConnectingTimeout = TimeSpan.FromSeconds(60)});
 
             var topic = _topic + Guid.NewGuid();
 
-            ManualConsumer consumer = new ManualConsumer(_partitionId, topic, protocolGateway, "TestClient", DefaultMaxMessageSetSize * 2);
+            ManualConsumer consumer = new ManualConsumer(_partitionId, topic, brokerRouter, "TestClient", DefaultMaxMessageSetSize * 2);
 
             var res = await consumer.FetchLastOffsetAsync(CancellationToken.None);
 
