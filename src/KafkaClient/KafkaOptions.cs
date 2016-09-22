@@ -17,8 +17,8 @@ namespace KafkaClient
             IKafkaLog log = null)
         {
             ServerUris = ImmutableList<Uri>.Empty.AddNotNullRange(kafkaServerUris);
-            CacheConfiguration = cacheConfiguration;
-            ConnectionConfiguration = connectionConfiguration;
+            CacheConfiguration = cacheConfiguration ?? new CacheConfiguration();
+            ConnectionConfiguration = connectionConfiguration ?? new KafkaConnectionConfiguration();
             ConnectionFactory = connectionFactory ?? new KafkaConnectionFactory();
             PartitionSelector = partitionSelector ?? new PartitionSelector();
             Log = log ?? new TraceLog();
