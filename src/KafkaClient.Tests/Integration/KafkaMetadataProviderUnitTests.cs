@@ -18,7 +18,7 @@ namespace KafkaClient.Tests.Integration
 
         private KafkaConnection GetKafkaConnection()
         {
-            var endpoint = new KafkaConnectionFactory().Resolve(_options.KafkaServerUri.First(), _options.Log);
+            var endpoint = new KafkaConnectionFactory().Resolve(_options.KafkaServerUris.First(), _options.Log);
             return new KafkaConnection(new KafkaTcpSocket(new TraceLog(), endpoint, 5), _options.RequestTimeout, _options.Log);
         }
 

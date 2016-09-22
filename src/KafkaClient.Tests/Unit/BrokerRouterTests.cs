@@ -41,11 +41,7 @@ namespace KafkaClient.Tests.Unit
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         public void BrokerRouterCanConstruct()
         {
-            var result = new BrokerRouter(new KafkaOptions
-            {
-                KafkaServerUri = new List<Uri> { new Uri("http://localhost:1") },
-                KafkaConnectionFactory = _mockKafkaConnectionFactory.Object
-            });
+            var result = new BrokerRouter(new Uri("http://localhost:1"), _mockKafkaConnectionFactory.Object);
 
             Assert.That(result, Is.Not.Null);
         }
@@ -54,29 +50,19 @@ namespace KafkaClient.Tests.Unit
         [ExpectedException(typeof(KafkaConnectionException))]
         public void BrokerRouterConstructorThrowsException()
         {
-            var result = new BrokerRouter(new KafkaOptions
-            {
-                KafkaServerUri = new List<Uri> { new Uri("http://noaddress:1") }
-            });
+            var result = new BrokerRouter(new Uri("http://noaddress:1"));
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         public void BrokerRouterConstructorShouldIgnoreUnresolvableUriWhenAtLeastOneIsGood()
         {
-            var result = new BrokerRouter(new KafkaOptions
-            {
-                KafkaServerUri = new List<Uri> { new Uri("http://noaddress:1"), new Uri("http://localhost:1") }
-            });
+            var result = new BrokerRouter(new [] { new Uri("http://noaddress:1"), new Uri("http://localhost:1") });
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         public async Task BrokerRouterUsesFactoryToAddNewBrokers()
         {
-            var router = new BrokerRouter(new KafkaOptions
-            {
-                KafkaServerUri = new List<Uri> { new Uri("http://localhost:1") },
-                KafkaConnectionFactory = _mockKafkaConnectionFactory.Object
-            });
+            var router = new BrokerRouter(new Uri("http://localhost:1"), _mockKafkaConnectionFactory.Object);
 
             _mockKafkaConnection1.Setup(x => x.SendAsync(It.IsAny<IKafkaRequest<MetadataResponse>>(), It.IsAny<CancellationToken>(), It.IsAny<IRequestContext>()))
                       .Returns(() => Task.Run(async () => await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers()));

@@ -92,6 +92,5 @@ namespace KafkaClient.Connection
 
             throw new KafkaConnectionException($"Could not resolve the following hostname: {hostname}");
         }
-
     }
 }

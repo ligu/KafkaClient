@@ -15,7 +15,7 @@ namespace KafkaClient.Connection
                 endpoint,
                 options.RequestTimeout,
                 log,
-                options.MaxRetry,
+                options.MaxRetries,
                 options.ConnectingTimeout,
                 options.TrackTelemetry);
         }

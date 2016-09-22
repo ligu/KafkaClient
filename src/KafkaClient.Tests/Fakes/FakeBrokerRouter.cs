@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Net;
 using System.Threading;
 using KafkaClient.Common;
@@ -54,13 +53,11 @@ namespace KafkaClient.Tests.Fakes
 
         public IBrokerRouter Create()
         {
-            return new BrokerRouter(new KafkaOptions
-            {
-                KafkaServerUri = new List<Uri> { new Uri("http://localhost:1"), new Uri("http://localhost:2") },
-                KafkaConnectionFactory = _mockKafkaConnectionFactory,
-                PartitionSelector = PartitionSelector,
-                CacheExpiration = _cacheExpiration
-            });
+            return new BrokerRouter(
+                new [] { new Uri("http://localhost:1"), new Uri("http://localhost:2") },
+                _mockKafkaConnectionFactory,
+                partitionSelector: PartitionSelector,
+                cacheOptions: new MetadataCacheOptions(cacheExpiration: _cacheExpiration));
         }
 
         public static MetadataResponse DefaultMetadataResponse()

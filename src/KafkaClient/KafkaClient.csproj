@@ -64,12 +64,15 @@
     <Compile Include="Connection\Extensions.cs" />
     <Compile Include="Connection\IKafkaConnectionOptions.cs" />
     <Compile Include="Connection\KafkaConnectionComparer.cs" />
+    <Compile Include="Connection\KafkaConnectionOptions.cs" />
     <Compile Include="Connection\KafkaDataPayload.cs" />
     <Compile Include="Connection\SocketPayloadReceiveTask.cs" />
     <Compile Include="Connection\SocketPayloadSendTask.cs" />
     <Compile Include="Connection\SocketPayloadTask.cs" />
+    <Compile Include="IMetadataCacheOptions.cs" />
     <Compile Include="IManualConsumer.cs" />
     <Compile Include="ManualConsumer.cs" />
+    <Compile Include="MetadataCacheOptions.cs" />
     <Compile Include="StatisticsTrackerOptions.cs" />
     <Compile Include="Protocol\ApiKeyRequestType.cs" />
     <Compile Include="Protocol\BufferUnderRunException.cs" />

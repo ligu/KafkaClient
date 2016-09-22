@@ -1,63 +1,37 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Collections.Immutable;
 using KafkaClient.Common;
 using KafkaClient.Connection;
 
 namespace KafkaClient
 {
-    public class KafkaOptions : IKafkaConnectionOptions
+    public class KafkaOptions : KafkaConnectionOptions
     {
-        public KafkaOptions(params Uri[] kafkaServerUri)
+        public KafkaOptions(IEnumerable<Uri> kafkaServerUris = null, TimeSpan? connectingTimeout = null, int? maxRetries = null, TimeSpan? requestTimeout = null, bool trackTelemetry = false)
+            : base (connectingTimeout, maxRetries, requestTimeout, trackTelemetry)
         {
-            KafkaServerUri = kafkaServerUri.ToList();
+            KafkaServerUris = ImmutableList<Uri>.Empty.AddRangeNotNull(kafkaServerUris);
             PartitionSelector = new PartitionSelector();
             Log = new TraceLog();
             KafkaConnectionFactory = new KafkaConnectionFactory();
-            RequestTimeout = TimeSpan.FromSeconds(DefaultRequestTimeoutSeconds);
-            CacheExpiration = TimeSpan.FromMilliseconds(DefaultCacheExpirationMilliseconds);
-            RefreshMetadataTimeout = TimeSpan.FromSeconds(DefaultRefreshMetadataTimeoutSeconds);
-            MaxRetry = DefaultMaxRetry;
-            TrackTelemetry = false;
         }
 
-        private const int DefaultRequestTimeoutSeconds = 60;
-        private const int DefaultCacheExpirationMilliseconds = 10;
-        private const int DefaultRefreshMetadataTimeoutSeconds = 200;
-        private const int DefaultMaxRetry = 5;
+        public KafkaOptions(Uri kafkaServerUri = null, TimeSpan? connectingTimeout = null, int? maxRetries = null, TimeSpan? requestTimeout = null, bool trackTelemetry = false)
+            : this (ImmutableList<Uri>.Empty.AddNotNull(kafkaServerUri), connectingTimeout, maxRetries, requestTimeout, trackTelemetry)
+        {
+        }
 
         /// <summary>
         /// Refresh metadata Request will try to refresh only the topics that were expired in the cache.
         /// </summary>
-        public bool TrackTelemetry { get; }
         public TimeSpan CacheExpiration { get; set; }
         public TimeSpan RefreshMetadataTimeout { get; set; }
-        public int MaxRetry { get; set; }
 
         /// <summary>
         /// List of Uri connections to kafka servers.  The are used to query for metadata from Kafka.  More than one is recommended.
         /// </summary>
-        public List<Uri> KafkaServerUri { get; set; }
-
-        /// <summary>
-        /// Safely attempts to resolve endpoints from the KafkaServerUri, ignoreing all resolvable ones.
-        /// </summary>
-        public IEnumerable<KafkaEndpoint> KafkaServerEndpoints
-        {
-            get
-            {
-                foreach (var uri in KafkaServerUri) {
-                    KafkaEndpoint endpoint = null;
-                    try {
-                        endpoint = KafkaConnectionFactory.Resolve(uri, Log);
-                    } catch (KafkaConnectionException ex) {
-                        Log.WarnFormat(ex, "Ignoring uri that could not be resolved: {0}", uri);
-                    }
-
-                    if (endpoint != null) yield return endpoint;
-                }
-            }
-        }
+        public ImmutableList<Uri> KafkaServerUris { get; set; }
 
         /// <summary>
         /// Provides a factory for creating new kafka connections.
@@ -70,18 +44,8 @@ namespace KafkaClient
         public IPartitionSelector PartitionSelector { get; set; }
 
         /// <summary>
-        /// The maximum time to wait for a response from kafka.
-        /// </summary>
-        public TimeSpan? RequestTimeout { get; set; }
-
-        /// <summary>
         /// Log object to record operational messages.
         /// </summary>
         public IKafkaLog Log { get; set; }
-
-        /// <summary>
-        /// The maximum time to wait when backing off on reconnection attempts.
-        /// </summary>
-        public TimeSpan? ConnectingTimeout { get; set; }
     }
 }

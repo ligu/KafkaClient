@@ -23,8 +23,11 @@ namespace KafkaClient
     /// </summary>
     public class BrokerRouter : IBrokerRouter
     {
-        private readonly KafkaOptions _options;
         private readonly KafkaMetadataProvider _kafkaMetadataProvider;
+        private readonly IKafkaConnectionFactory _connectionFactory;
+        private readonly IKafkaConnectionOptions _connectionOptions;
+        private readonly IMetadataCacheOptions _cacheOptions;
+        private readonly IPartitionSelector _partitionSelector;
 
         private ImmutableDictionary<KafkaEndpoint, IKafkaConnection> _allConnections = ImmutableDictionary<KafkaEndpoint, IKafkaConnection>.Empty;
         private ImmutableDictionary<int, IKafkaConnection> _brokerConnections = ImmutableDictionary<int, IKafkaConnection>.Empty;
@@ -34,15 +37,38 @@ namespace KafkaClient
 
         /// <exception cref="KafkaConnectionException">None of the provided Kafka servers are resolvable.</exception>
         public BrokerRouter(KafkaOptions options)
+            : this(options.KafkaServerUris, options.KafkaConnectionFactory, options, options.PartitionSelector, new MetadataCacheOptions(options.RefreshMetadataTimeout, cacheExpiration: options.CacheExpiration), options.Log)
         {
-            _options = options;
+        }
 
-            foreach (var endpoint in _options.KafkaServerEndpoints) {
-                _allConnections = _allConnections.SetItem(endpoint, _options.Create(endpoint));
+        /// <exception cref="KafkaConnectionException">None of the provided Kafka servers are resolvable.</exception>
+        public BrokerRouter(Uri serverUri, IKafkaConnectionFactory connectionFactory = null, IKafkaConnectionOptions connectionOptions = null, IPartitionSelector partitionSelector = null, IMetadataCacheOptions cacheOptions = null, IKafkaLog log = null)
+            : this (new []{ serverUri }, connectionFactory, connectionOptions, partitionSelector, cacheOptions, log)
+        {
+        }
+
+        /// <exception cref="KafkaConnectionException">None of the provided Kafka servers are resolvable.</exception>
+        public BrokerRouter(IEnumerable<Uri> serverUris, IKafkaConnectionFactory connectionFactory = null, IKafkaConnectionOptions connectionOptions = null, IPartitionSelector partitionSelector = null, IMetadataCacheOptions cacheOptions = null, IKafkaLog log = null)
+        {
+            Log = log ?? new TraceLog();
+            _connectionOptions = connectionOptions ?? new KafkaConnectionOptions();
+            _connectionFactory = connectionFactory ?? new KafkaConnectionFactory();
+
+            foreach (var uri in serverUris) {
+                try {
+                    var endpoint = _connectionFactory.Resolve(uri, Log);
+                    var connection = _connectionFactory.Create(endpoint, _connectionOptions, Log);
+                    _allConnections = _allConnections.SetItem(endpoint, connection);
+                } catch (KafkaConnectionException ex) {
+                    Log.WarnFormat(ex, "Ignoring uri that could not be resolved: {0}", uri);
+                }
             }
+
             if (_allConnections.IsEmpty) throw new KafkaConnectionException("None of the provided Kafka servers are resolvable.");
 
-            _kafkaMetadataProvider = new KafkaMetadataProvider(_options.Log);
+            _cacheOptions = cacheOptions ?? new MetadataCacheOptions();
+            _partitionSelector = partitionSelector ?? new PartitionSelector();
+            _kafkaMetadataProvider = new KafkaMetadataProvider(Log);
         }
 
         /// <summary>
@@ -64,7 +90,7 @@ namespace KafkaClient
         {
             var partition = topic.Partitions.FirstOrDefault(x => x.PartitionId == partitionId);
             if (partition == null)
-                throw new CachedMetadataException($"The topic: {topicName} has no partitionId: {partitionId} defined.") {
+                throw new CachedMetadataException($"The topic ({topicName}) has no partitionId {partitionId} defined.") {
                     Topic = topicName,
                     Partition = partitionId
                 };
@@ -82,7 +108,7 @@ namespace KafkaClient
         public BrokerRoute GetBrokerRoute(string topicName, byte[] key = null)
         {
             var topic = GetCachedTopic(topicName);
-            return GetCachedRoute(topicName, _options.PartitionSelector.Select(topic, key));
+            return GetCachedRoute(topicName, _partitionSelector.Select(topic, key));
         }
 
         /// <summary>
@@ -205,10 +231,10 @@ namespace KafkaClient
         private async Task<ImmutableList<MetadataTopic>> UpdateTopicMetadataFromServerIfMissingAsync(IEnumerable<string> topicNames, CancellationToken cancellationToken)
         {
             using (await _lock.LockAsync(cancellationToken).ConfigureAwait(false)) {
-                var searchResult = TryGetCachedTopics(topicNames, _options.CacheExpiration);
+                var searchResult = TryGetCachedTopics(topicNames, _cacheOptions.CacheExpiration);
                 if (searchResult.Missing.Count == 0) return searchResult.Topics;
 
-                _options.Log.DebugFormat("BrokerRouter refreshing metadata for topics {0}", string.Join(",", searchResult.Missing));
+                Log.DebugFormat("BrokerRouter refreshing metadata for topics {0}", string.Join(",", searchResult.Missing));
                 var response = await GetTopicMetadataFromServerAsync(searchResult.Missing, cancellationToken);
                 UpdateConnectionCache(response);
                 UpdateTopicCache(response);
@@ -223,9 +249,9 @@ namespace KafkaClient
         {
             using (await _lock.LockAsync(cancellationToken).ConfigureAwait(false)) {
                 if (topicName != null) {
-                    _options.Log.DebugFormat("BrokerRouter refreshing metadata for topic {0}", topicName);
+                    Log.DebugFormat("BrokerRouter refreshing metadata for topic {0}", topicName);
                 } else {
-                    _options.Log.DebugFormat("BrokerRouter refreshing metadata for all topics");
+                    Log.DebugFormat("BrokerRouter refreshing metadata for all topics");
                 }
                 var response = await GetTopicMetadataFromServerAsync(new [] { topicName }, cancellationToken);
                 UpdateConnectionCache(response);
@@ -235,7 +261,7 @@ namespace KafkaClient
 
         private async Task<MetadataResponse> GetTopicMetadataFromServerAsync(IEnumerable<string> topicNames, CancellationToken cancellationToken)
         {
-            using (var cancellation = new TimedCancellation(cancellationToken, _options.RefreshMetadataTimeout)) {
+            using (var cancellation = new TimedCancellation(cancellationToken, _cacheOptions.RefreshTimeout)) {
                 var requestTask = topicNames != null
                         ? _kafkaMetadataProvider.GetAsync(_allConnections.Values, topicNames, cancellation.Token)
                         : _kafkaMetadataProvider.GetAsync(_allConnections.Values, cancellation.Token);
@@ -339,24 +365,24 @@ namespace KafkaClient
             var connectionsToDispose = ImmutableList<IKafkaConnection>.Empty;
             try {
                 foreach (var broker in metadata.Brokers) {
-                    var endpoint = _options.KafkaConnectionFactory.Resolve(broker.Address, _options.Log);
+                    var endpoint = _connectionFactory.Resolve(broker.Address, Log);
 
                     IKafkaConnection connection;
                     if (brokerConnections.TryGetValue(broker.BrokerId, out connection)) {
                         if (connection.Endpoint.Equals(endpoint)) {
                             // existing connection, nothing to change
                         } else {
-                            _options.Log.WarnFormat("Broker {0} Uri changed from {1} to {2}", broker.BrokerId, connection.Endpoint, endpoint);
+                            Log.WarnFormat("Broker {0} Uri changed from {1} to {2}", broker.BrokerId, connection.Endpoint, endpoint);
                             
                             // A connection changed for a broker, so close the old connection and create a new one
                             connectionsToDispose = connectionsToDispose.Add(connection);
-                            connection = _options.Create(endpoint);
+                            connection = _connectionFactory.Create(endpoint, _connectionOptions, Log);
                             // important that we create it here rather than set to null or we'll get it again from allConnections
                         }
                     }
 
                     if (connection == null && !allConnections.TryGetValue(endpoint, out connection)) {
-                        connection = _options.Create(endpoint);
+                        connection = _connectionFactory.Create(endpoint, _connectionOptions, Log);
                     }
 
                     allConnections = allConnections.SetItem(endpoint, connection);
@@ -385,7 +411,7 @@ namespace KafkaClient
             DisposeConnections(_allConnections.Values);
         }
 
-        public IKafkaLog Log => _options.Log;
+        public IKafkaLog Log { get; }
 
         private class CachedTopicsResult
         {
