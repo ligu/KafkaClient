@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using KafkaClient.Common;
 
 namespace KafkaClient.Protocol
 {
@@ -9,7 +10,7 @@ namespace KafkaClient.Protocol
         {
             ErrorCode = errorCode;
             Errors = ImmutableList<ErrorResponseCode>.Empty.Add(ErrorCode);
-            SupportedVersions = supportedVersions != null ? ImmutableList<ApiVersionSupport>.Empty.AddRange(supportedVersions) : ImmutableList<ApiVersionSupport>.Empty;
+            SupportedVersions = ImmutableList<ApiVersionSupport>.Empty.AddNotNullRange(supportedVersions);
         }
 
         public ImmutableList<ErrorResponseCode> Errors { get; }

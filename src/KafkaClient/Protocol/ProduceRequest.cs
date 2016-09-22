@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using KafkaClient.Common;
 
 namespace KafkaClient.Protocol
 {
@@ -16,7 +17,7 @@ namespace KafkaClient.Protocol
         {
             Timeout = timeout.GetValueOrDefault(TimeSpan.FromSeconds(1));
             Acks = acks;
-            Payload = payload != null ? ImmutableList<Payload>.Empty.AddRange(payload) : ImmutableList<Payload>.Empty;
+            Payload = ImmutableList<Payload>.Empty.AddNotNullRange(payload);
         }
 
         /// <summary>

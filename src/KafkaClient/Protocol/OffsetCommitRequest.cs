@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using KafkaClient.Common;
 
 namespace KafkaClient.Protocol
 {
@@ -17,7 +18,7 @@ namespace KafkaClient.Protocol
             MemberId = memberId;
             ConsumerGroup = consumerGroup;
             OffsetRetention = offsetRetention;
-            OffsetCommits = offsetCommits != null ? ImmutableList<OffsetCommit>.Empty.AddRange(offsetCommits) : ImmutableList<OffsetCommit>.Empty;
+            OffsetCommits = ImmutableList<OffsetCommit>.Empty.AddNotNullRange(offsetCommits);
         }
 
         /// <summary>

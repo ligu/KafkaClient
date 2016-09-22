@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using KafkaClient.Common;
 
 namespace KafkaClient.Protocol
 {
@@ -13,7 +14,7 @@ namespace KafkaClient.Protocol
         public MetadataRequest(IEnumerable<string> topics = null) 
             : base(ApiKeyRequestType.Metadata)
         {
-            Topics = topics != null ? ImmutableList<string>.Empty.AddRange(topics) : ImmutableList<string>.Empty;
+            Topics = ImmutableList<string>.Empty.AddNotNullRange(topics);
         }
 
         /// <summary>

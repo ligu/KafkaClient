@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Collections.Immutable;
+using KafkaClient.Common;
 
 namespace KafkaClient.Protocol
 {
@@ -9,7 +10,7 @@ namespace KafkaClient.Protocol
         {
             ErrorCode = errorCode;
             TopicName = topicName;
-            Partitions = partitions != null ? ImmutableList<MetadataPartition>.Empty.AddRange(partitions) : ImmutableList<MetadataPartition>.Empty;
+            Partitions = ImmutableList<MetadataPartition>.Empty.AddNotNullRange(partitions);
         }
 
         public ErrorResponseCode ErrorCode { get; }

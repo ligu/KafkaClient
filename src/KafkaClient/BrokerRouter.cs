@@ -420,10 +420,8 @@ namespace KafkaClient
 
             public CachedTopicsResult(IEnumerable<MetadataTopic> topics, IEnumerable<string> missing)
             {
-                Topics = topics != null
-                             ? ImmutableList<MetadataTopic>.Empty.AddRange(topics)
-                             : ImmutableList<MetadataTopic>.Empty;
-                Missing = missing != null ? ImmutableList<string>.Empty.AddRange(missing) : ImmutableList<string>.Empty;
+                Topics = ImmutableList<MetadataTopic>.Empty.AddNotNullRange(topics);
+                Missing = ImmutableList<string>.Empty.AddNotNullRange(missing);
             }
         }
     }

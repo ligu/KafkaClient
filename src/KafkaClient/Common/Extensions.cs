@@ -54,7 +54,7 @@ namespace KafkaClient.Common
             return item != null ? list.Add(item) : list;
         }
 
-        public static ImmutableList<T> AddRangeNotNull<T>(this ImmutableList<T> list, IEnumerable<T> items) where T : class
+        public static ImmutableList<T> AddNotNullRange<T>(this ImmutableList<T> list, IEnumerable<T> items)
         {
             return items != null ? list.AddRange(items) : list;
         }

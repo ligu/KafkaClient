@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Collections.Immutable;
+using KafkaClient.Common;
 
 namespace KafkaClient.Protocol
 {
@@ -10,8 +11,8 @@ namespace KafkaClient.Protocol
             ErrorCode = errorCode;
             PartitionId = partitionId;
             LeaderId = leaderId;
-            Replicas = replicas != null ? ImmutableList<int>.Empty.AddRange(replicas) : ImmutableList<int>.Empty;
-            Isrs = isrs != null ? ImmutableList<int>.Empty.AddRange(isrs) : ImmutableList<int>.Empty;
+            Replicas = ImmutableList<int>.Empty.AddNotNullRange(replicas);
+            Isrs = ImmutableList<int>.Empty.AddNotNullRange(isrs);
         }
 
         /// <summary>

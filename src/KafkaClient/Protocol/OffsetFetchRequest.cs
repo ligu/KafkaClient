@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Collections.Immutable;
+using KafkaClient.Common;
 
 namespace KafkaClient.Protocol
 {
@@ -19,7 +20,7 @@ namespace KafkaClient.Protocol
             : base(ApiKeyRequestType.OffsetFetch)
         {
             ConsumerGroup = consumerGroup;
-            Topics = topics != null ? ImmutableList<Topic>.Empty.AddRange(topics) : ImmutableList<Topic>.Empty;
+            Topics = ImmutableList<Topic>.Empty.AddNotNullRange(topics);
         }
 
         public string ConsumerGroup { get; }

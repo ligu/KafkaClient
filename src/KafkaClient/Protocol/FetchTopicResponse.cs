@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using KafkaClient.Common;
 
 namespace KafkaClient.Protocol
 {
@@ -10,7 +11,7 @@ namespace KafkaClient.Protocol
             : base(topic, partitionId, errorCode)
         {
             HighWaterMark = highWaterMark;
-            Messages = messages != null ? ImmutableList<Message>.Empty.AddRange(messages) : ImmutableList<Message>.Empty;
+            Messages = ImmutableList<Message>.Empty.AddNotNullRange(messages);
         }
 
         /// <summary>

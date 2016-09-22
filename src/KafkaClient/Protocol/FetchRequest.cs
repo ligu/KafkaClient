@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using KafkaClient.Common;
 
 namespace KafkaClient.Protocol
 {
@@ -16,7 +17,7 @@ namespace KafkaClient.Protocol
         {
             MaxWaitTime = maxWaitTime.GetValueOrDefault(TimeSpan.FromMilliseconds(DefaultMaxBlockingWaitTime));
             MinBytes = minBytes;
-            Fetches = fetches != null ? ImmutableList<Fetch>.Empty.AddRange(fetches) : ImmutableList<Fetch>.Empty;
+            Fetches = ImmutableList<Fetch>.Empty.AddNotNullRange(fetches);
         }
 
         internal const int DefaultMinBlockingByteBufferSize = 4096;

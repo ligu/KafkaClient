@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using KafkaClient.Common;
 
 namespace KafkaClient.Protocol
 {
@@ -9,7 +10,7 @@ namespace KafkaClient.Protocol
     {
         public FetchResponse(IEnumerable<FetchTopicResponse> topics = null, TimeSpan? throttleTime = null)
         {
-            Topics = topics != null ? ImmutableList<FetchTopicResponse>.Empty.AddRange(topics) : ImmutableList<FetchTopicResponse>.Empty;
+            Topics = ImmutableList<FetchTopicResponse>.Empty.AddNotNullRange(topics);
             Errors = ImmutableList<ErrorResponseCode>.Empty.AddRange(Topics.Select(t => t.ErrorCode));
             ThrottleTime = throttleTime;
         }

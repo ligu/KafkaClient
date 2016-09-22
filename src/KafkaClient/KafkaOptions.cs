@@ -16,7 +16,7 @@ namespace KafkaClient
             IPartitionSelector partitionSelector = null,
             IKafkaLog log = null)
         {
-            ServerUris = ImmutableList<Uri>.Empty.AddRangeNotNull(kafkaServerUris);
+            ServerUris = ImmutableList<Uri>.Empty.AddNotNullRange(kafkaServerUris);
             CacheOptions = cacheOptions;
             ConnectionOptions = connectionOptions;
             ConnectionFactory = connectionFactory ?? new KafkaConnectionFactory();

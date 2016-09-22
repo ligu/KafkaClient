@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using KafkaClient.Common;
 
 namespace KafkaClient.Protocol
 {
@@ -16,7 +17,7 @@ namespace KafkaClient.Protocol
         public OffsetRequest(IEnumerable<Offset> offsets) 
             : base(ApiKeyRequestType.Offset)
         {
-            Offsets = offsets != null ? ImmutableList<Offset>.Empty.AddRange(offsets) : ImmutableList<Offset>.Empty;
+            Offsets = ImmutableList<Offset>.Empty.AddNotNullRange(offsets);
         }
 
         public ImmutableList<Offset> Offsets { get; }

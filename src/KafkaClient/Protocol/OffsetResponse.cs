@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using KafkaClient.Common;
 
 namespace KafkaClient.Protocol
 {
@@ -13,7 +14,7 @@ namespace KafkaClient.Protocol
 
         public OffsetResponse(IEnumerable<OffsetTopic> topics = null)
         {
-            Topics = topics != null ? ImmutableList<OffsetTopic>.Empty.AddRange(topics) : ImmutableList<OffsetTopic>.Empty;
+            Topics = ImmutableList<OffsetTopic>.Empty.AddNotNullRange(topics);
             Errors = ImmutableList<ErrorResponseCode>.Empty.AddRange(Topics.Select(t => t.ErrorCode));
         }
 

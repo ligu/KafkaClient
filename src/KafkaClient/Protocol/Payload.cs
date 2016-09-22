@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Collections.Immutable;
+using KafkaClient.Common;
 
 namespace KafkaClient.Protocol
 {
@@ -12,7 +13,7 @@ namespace KafkaClient.Protocol
             : base(topicName, partitionId)
         {
             Codec = codec;
-            Messages = messages != null ? ImmutableList<Message>.Empty.AddRange(messages) : ImmutableList<Message>.Empty;
+            Messages = ImmutableList<Message>.Empty.AddNotNullRange(messages);
         }
 
         public MessageCodec Codec { get; }

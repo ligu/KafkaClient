@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using KafkaClient.Common;
 
 namespace KafkaClient.Protocol
 {
@@ -8,8 +9,8 @@ namespace KafkaClient.Protocol
     {
         public MetadataResponse(IEnumerable<Broker> brokers = null, IEnumerable<MetadataTopic> topics = null)
         {
-            Brokers = brokers != null ? ImmutableList<Broker>.Empty.AddRange(brokers) : ImmutableList<Broker>.Empty;
-            Topics = topics != null ? ImmutableList<MetadataTopic>.Empty.AddRange(topics) : ImmutableList<MetadataTopic>.Empty;
+            Brokers = ImmutableList<Broker>.Empty.AddNotNullRange(brokers);
+            Topics = ImmutableList<MetadataTopic>.Empty.AddNotNullRange(topics);
             Errors = ImmutableList<ErrorResponseCode>.Empty.AddRange(Topics.Select(t => t.ErrorCode));
         }
 

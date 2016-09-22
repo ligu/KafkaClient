@@ -69,7 +69,7 @@ namespace KafkaClient
             var retryAttempt = 0;
             MetadataResponse metadataResponse;
 
-            var connectionList = ImmutableList<IKafkaConnection>.Empty.AddRange(connections);
+            var connectionList = ImmutableList<IKafkaConnection>.Empty.AddNotNullRange(connections);
             do {
                 performRetry = false;
                 metadataResponse = await GetMetadataResponseAsync(connectionList, request, cancellationToken);
