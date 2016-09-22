@@ -93,10 +93,13 @@ namespace KafkaClient
         /// <summary>
         /// Force a call to the kafka servers to refresh metadata for the given topic.
         /// </summary>
+        /// <param name="topicName">The topic name to refresh metadata for.</param>
+        /// <param name="ignoreCacheExpiry">True to ignore the local cache expiry and force the call to the server.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
         /// <remarks>
         /// This method will ignore the cache and initiate a call to the kafka servers for the given topic, updating the cache with the resulting metadata.
         /// </remarks>
-        Task RefreshTopicMetadataAsync(string topicName, CancellationToken cancellationToken);
+        Task RefreshTopicMetadataAsync(string topicName, bool ignoreCacheExpiry, CancellationToken cancellationToken);
 
         /// <summary>
         /// Force a call to the kafka servers to refresh metadata for all topics.

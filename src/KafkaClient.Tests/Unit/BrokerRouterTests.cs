@@ -170,11 +170,11 @@ namespace KafkaClient.Tests.Unit
             var routerProxy = new BrokerRouterProxy(_kernel);
             var router = routerProxy.Create();
             TimeSpan cacheExpiration = TimeSpan.FromMilliseconds(100);
-            await router.RefreshTopicMetadataAsync(TestTopic, CancellationToken.None);
+            await router.RefreshTopicMetadataAsync(TestTopic, true, CancellationToken.None);
             Assert.That(routerProxy.BrokerConn0.MetadataRequestCallCount, Is.EqualTo(1));
             await Task.Delay(routerProxy._cacheExpiration);
             await Task.Delay(1);//After cache is expair
-            await router.RefreshTopicMetadataAsync(TestTopic, CancellationToken.None);
+            await router.RefreshTopicMetadataAsync(TestTopic, true, CancellationToken.None);
             Assert.That(routerProxy.BrokerConn0.MetadataRequestCallCount, Is.EqualTo(2));
         }
 
@@ -197,7 +197,7 @@ namespace KafkaClient.Tests.Unit
             var router = routerProxy.Create();
 
             routerProxy.MetadataResponse = BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers;
-            await router.RefreshTopicMetadataAsync(TestTopic, CancellationToken.None);
+            await router.RefreshTopicMetadataAsync(TestTopic, true, CancellationToken.None);
 
             var router1 = router.GetBrokerRoute(TestTopic, 0);
 
@@ -205,7 +205,7 @@ namespace KafkaClient.Tests.Unit
             await Task.Delay(routerProxy._cacheExpiration);
             await Task.Delay(1);//After cache is expair
             routerProxy.MetadataResponse = BrokerRouterProxy.CreateMetadataResponseWithSingleBroker;
-            await router.RefreshTopicMetadataAsync(TestTopic, CancellationToken.None);
+            await router.RefreshTopicMetadataAsync(TestTopic, true, CancellationToken.None);
             var router2 = router.GetBrokerRoute(TestTopic, 0);
 
             Assert.That(routerProxy.BrokerConn0.MetadataRequestCallCount, Is.EqualTo(2));
@@ -221,8 +221,8 @@ namespace KafkaClient.Tests.Unit
             var router = routerProxy.Create();
 
             List<Task> x = new List<Task>();
-            x.Add(router.RefreshTopicMetadataAsync(TestTopic, CancellationToken.None));//do not debug
-            x.Add(router.RefreshTopicMetadataAsync(TestTopic, CancellationToken.None));//do not debug
+            x.Add(router.RefreshTopicMetadataAsync(TestTopic, true, CancellationToken.None));//do not debug
+            x.Add(router.RefreshTopicMetadataAsync(TestTopic, true, CancellationToken.None));//do not debug
             await Task.WhenAll(x.ToArray());
             Assert.That(routerProxy.BrokerConn0.MetadataRequestCallCount, Is.EqualTo(2));
         }

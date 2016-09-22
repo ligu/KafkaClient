@@ -55,7 +55,8 @@ namespace KafkaClient
             var retryTime = 0;
             IKafkaConnection connection = null;
             while (retryTime < _maxRetry) {
-                var needToRefreshTopicMetadata = false;
+                var metadataPotentiallyInvalid = false;
+                var metadataKnownInvalid = false;
                 ExceptionDispatchInfo exceptionInfo = null;
                 var errorDetails = "";
 
@@ -75,7 +76,7 @@ namespace KafkaClient
                     }
 
                     errorDetails = errors.Aggregate(new StringBuilder($"{route} - "), (buffer, e) => buffer.Append(" ").Append(e)).ToString();
-                    needToRefreshTopicMetadata = errors.All(CanRecoverByRefreshMetadata);
+                    metadataKnownInvalid = errors.All(CanRecoverByRefreshMetadata);
                 } catch (TimeoutException ex) {
                     // TODO: wrap this in another exception type?
                     exceptionInfo = ExceptionDispatchInfo.Capture(ex);
@@ -88,7 +89,7 @@ namespace KafkaClient
                 }
 
                 if (exceptionInfo != null) {
-                    needToRefreshTopicMetadata = true;
+                    metadataPotentiallyInvalid = true;
                     errorDetails = exceptionInfo.SourceException.GetType().Name;
                 }
 
@@ -96,8 +97,8 @@ namespace KafkaClient
                 var hasMoreRetry = retryTime < _maxRetry;
 
                 _brokerRouter.Log.WarnFormat("ProtocolGateway error sending request, retrying (attempt number {0}): {1}", retryTime, errorDetails);
-                if (needToRefreshTopicMetadata && hasMoreRetry) {
-                    await _brokerRouter.RefreshTopicMetadataAsync(topic, CancellationToken.None).ConfigureAwait(false);
+                if ((metadataKnownInvalid || metadataPotentiallyInvalid) && hasMoreRetry) {
+                    await _brokerRouter.RefreshTopicMetadataAsync(topic, metadataKnownInvalid, CancellationToken.None).ConfigureAwait(false);
                 } else {
                     _brokerRouter.Log.ErrorFormat("ProtocolGateway sending request failed");
 

@@ -127,7 +127,7 @@ namespace KafkaClient
         /// <exception cref="CachedMetadataException">Thrown if the topic metadata does not exist in the cache.</exception>
         public ImmutableList<MetadataTopic> GetTopicMetadata(IEnumerable<string> topicNames)
         {
-            var topicSearchResult = TryGetCachedTopics(topicNames, _options.CacheExpiration);
+            var topicSearchResult = TryGetCachedTopics(topicNames);
             if (topicSearchResult.Missing.Count > 0) throw new CachedMetadataException($"No metadata defined for topics: {string.Join(",", topicSearchResult.Missing)}");
 
             return ImmutableList<MetadataTopic>.Empty.AddRange(topicSearchResult.Topics);
@@ -150,7 +150,7 @@ namespace KafkaClient
         /// </remarks>
         public async Task<MetadataTopic> GetTopicMetadataAsync(string topicName, CancellationToken cancellationToken)
         {
-            return TryGetCachedTopic(topicName, _options.CacheExpiration) 
+            return TryGetCachedTopic(topicName) 
                 ?? await UpdateTopicMetadataFromServerIfMissingAsync(topicName, cancellationToken).ConfigureAwait(false);
         }
 
@@ -163,7 +163,7 @@ namespace KafkaClient
         /// </remarks>
         public async Task<ImmutableList<MetadataTopic>> GetTopicMetadataAsync(IEnumerable<string> topicNames, CancellationToken cancellationToken)
         {
-            var searchResult = TryGetCachedTopics(topicNames, _options.CacheExpiration);
+            var searchResult = TryGetCachedTopics(topicNames);
             return searchResult.Missing.IsEmpty 
                 ? searchResult.Topics 
                 : searchResult.Topics.AddRange(await UpdateTopicMetadataFromServerIfMissingAsync(searchResult.Missing, cancellationToken).ConfigureAwait(false));
@@ -172,12 +172,17 @@ namespace KafkaClient
         /// <summary>
         /// Force a call to the kafka servers to refresh metadata for the given topic.
         /// </summary>
+        /// <param name="topicName">The topic name to refresh metadata for.</param>
+        /// <param name="ignoreCacheExpiry">Whether to refresh all data, or only data which has expired.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
         /// <remarks>
         /// This method will ignore the cache and initiate a call to the kafka servers for the given topic, updating the cache with the resulting metadata.
         /// </remarks>
-        public Task RefreshTopicMetadataAsync(string topicName, CancellationToken cancellationToken)
+        public Task RefreshTopicMetadataAsync(string topicName, bool ignoreCacheExpiry, CancellationToken cancellationToken)
         {
-            return UpdateTopicMetadataFromServerAsync(topicName, cancellationToken);
+            return ignoreCacheExpiry 
+                ? UpdateTopicMetadataFromServerAsync(topicName, cancellationToken)
+                : UpdateTopicMetadataFromServerIfMissingAsync(topicName, cancellationToken);
         }
 
         /// <summary>
@@ -238,7 +243,7 @@ namespace KafkaClient
             }
         }
 
-        private CachedTopicsResult TryGetCachedTopics(IEnumerable<string> topicNames, TimeSpan expiration)
+        private CachedTopicsResult TryGetCachedTopics(IEnumerable<string> topicNames, TimeSpan? expiration = null)
         {
             var missing = new List<string>();
             var topics = new List<MetadataTopic>();
@@ -263,7 +268,7 @@ namespace KafkaClient
             throw new CachedMetadataException($"No metadata defined for topic: {topicName}") { Topic = topicName };
         }
 
-        private MetadataTopic TryGetCachedTopic(string topicName, TimeSpan? expiration)
+        private MetadataTopic TryGetCachedTopic(string topicName, TimeSpan? expiration = null)
         {
             Tuple<MetadataTopic, DateTime> cachedTopic;
             if (_topicCache.TryGetValue(topicName, out cachedTopic)) {
