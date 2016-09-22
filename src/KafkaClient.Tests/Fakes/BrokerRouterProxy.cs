@@ -28,7 +28,7 @@ namespace KafkaClient.Tests.Fakes
 
         public Func<Task<MetadataResponse>> MetadataResponse = CreateMetadataResponseWithMultipleBrokers;
 
-        public IPartitionSelector PartitionSelector = new DefaultPartitionSelector();
+        public IPartitionSelector PartitionSelector = new PartitionSelector();
 
         public BrokerRouterProxy(MoqMockingKernel kernel)
         {

@@ -120,7 +120,7 @@
     <Compile Include="IBrokerRouter.cs" />
     <Compile Include="Extensions.cs" />
     <Compile Include="ConsumerOptions.cs" />
-    <Compile Include="DefaultPartitionSelector.cs" />
+    <Compile Include="PartitionSelector.cs" />
     <Compile Include="Common\IKafkaLog.cs" />
     <Compile Include="IPartitionSelector.cs" />
     <Compile Include="BrokerRouter.cs" />

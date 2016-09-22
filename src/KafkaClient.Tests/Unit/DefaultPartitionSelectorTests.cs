@@ -33,7 +33,7 @@ namespace KafkaClient.Tests.Unit
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         public void RoundRobinShouldRollOver()
         {
-            var selector = new DefaultPartitionSelector();
+            var selector = new PartitionSelector();
 
             var first = selector.Select(_topicA, null);
             var second = selector.Select(_topicA, null);
@@ -47,7 +47,7 @@ namespace KafkaClient.Tests.Unit
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         public void RoundRobinShouldHandleMultiThreadedRollOver()
         {
-            var selector = new DefaultPartitionSelector();
+            var selector = new PartitionSelector();
             var bag = new ConcurrentBag<MetadataPartition>();
 
             Parallel.For(0, 100, x => bag.Add(selector.Select(_topicA, null)));
@@ -59,7 +59,7 @@ namespace KafkaClient.Tests.Unit
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         public void RoundRobinShouldTrackEachTopicSeparately()
         {
-            var selector = new DefaultPartitionSelector();
+            var selector = new PartitionSelector();
 
             var a1 = selector.Select(_topicA, null);
             var b1 = selector.Select(_topicB, null);
@@ -77,7 +77,7 @@ namespace KafkaClient.Tests.Unit
         public void RoundRobinShouldEvenlyDistributeAcrossManyPartitions()
         {
             const int TotalPartitions = 100;
-            var selector = new DefaultPartitionSelector();
+            var selector = new PartitionSelector();
             var partitions = new List<MetadataPartition>();
             for (int i = 0; i < TotalPartitions; i++)
             {
@@ -96,7 +96,7 @@ namespace KafkaClient.Tests.Unit
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         public void KeyHashShouldSelectEachPartitionType()
         {
-            var selector = new DefaultPartitionSelector();
+            var selector = new PartitionSelector();
 
             var first = selector.Select(_topicA, CreateKeyForPartition(0));
             var second = selector.Select(_topicA, CreateKeyForPartition(1));
@@ -119,7 +119,7 @@ namespace KafkaClient.Tests.Unit
         [ExpectedException(typeof(CachedMetadataException))]
         public void KeyHashShouldThrowExceptionWhenChoosesAPartitionIdThatDoesNotExist()
         {
-            var selector = new DefaultPartitionSelector();
+            var selector = new PartitionSelector();
             var topic = new MetadataTopic("badPartition", partitions: new [] {
                                               new MetadataPartition(0, 0),
                                               new MetadataPartition(999, 1) 
@@ -132,7 +132,7 @@ namespace KafkaClient.Tests.Unit
         [ExpectedException(typeof(CachedMetadataException))]
         public void SelectorShouldThrowExceptionWhenPartitionsAreEmpty()
         {
-            var selector = new DefaultPartitionSelector();
+            var selector = new PartitionSelector();
             var topic = new MetadataTopic("emptyPartition");
             selector.Select(topic, CreateKeyForPartition(1));
         }

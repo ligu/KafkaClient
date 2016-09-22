@@ -3,7 +3,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Tests.Fakes;
 using KafkaClient.Tests.Helpers;
-using Moq;
 using Ninject.MockingKernel.Moq;
 using NUnit.Framework;
 

@@ -25,7 +25,7 @@ namespace KafkaClient.Tests.Fakes
 
         public Func<MetadataResponse> MetadataResponse = () => DefaultMetadataResponse();
 
-        public IPartitionSelector PartitionSelector = new DefaultPartitionSelector();
+        public IPartitionSelector PartitionSelector = new PartitionSelector();
 
         public FakeBrokerRouter()
         {

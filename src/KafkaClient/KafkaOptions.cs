@@ -11,7 +11,7 @@ namespace KafkaClient
         public KafkaOptions(params Uri[] kafkaServerUri)
         {
             KafkaServerUri = kafkaServerUri.ToList();
-            PartitionSelector = new DefaultPartitionSelector();
+            PartitionSelector = new PartitionSelector();
             Log = new TraceLog();
             KafkaConnectionFactory = new KafkaConnectionFactory();
             ResponseTimeoutMs = TimeSpan.FromMilliseconds(DefaultResponseTimeout);
