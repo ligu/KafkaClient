@@ -23,9 +23,9 @@ namespace KafkaClient.Tests.Integration
         public void Setup()
         {
             var options = new KafkaOptions(IntegrationConfig.IntegrationUri);
-            var endpoint = new KafkaConnectionFactory().Resolve(options.KafkaServerUris.First(), options.Log);
+            var endpoint = new KafkaConnectionFactory().Resolve(options.ServerUris.First(), options.Log);
 
-            _conn = new KafkaConnection(new KafkaTcpSocket(new TraceLog(), endpoint, 5), options.RequestTimeout, options.Log);
+            _conn = new KafkaConnection(new KafkaTcpSocket(new TraceLog(), endpoint, 5), options.ConnectionOptions.RequestTimeout, options.Log);
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]

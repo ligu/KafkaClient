@@ -15,12 +15,12 @@ namespace KafkaClient.Tests.Integration
     [Category("Integration")]
     public class GzipProducerConsumerTests
     {
-        private readonly KafkaOptions _options = new KafkaOptions(IntegrationConfig.IntegrationUri) { Log = IntegrationConfig.NoDebugLog };
+        private readonly KafkaOptions _options = new KafkaOptions(IntegrationConfig.IntegrationUri, log: IntegrationConfig.NoDebugLog);
 
         private KafkaConnection GetKafkaConnection()
         {
-            var endpoint = new KafkaConnectionFactory().Resolve(_options.KafkaServerUris.First(), _options.Log);
-            return new KafkaConnection(new KafkaTcpSocket(new TraceLog(), endpoint, 5), _options.RequestTimeout, _options.Log);
+            var endpoint = new KafkaConnectionFactory().Resolve(_options.ServerUris.First(), _options.Log);
+            return new KafkaConnection(new KafkaTcpSocket(new TraceLog(), endpoint, 5), _options.ConnectionOptions.RequestTimeout, _options.Log);
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]

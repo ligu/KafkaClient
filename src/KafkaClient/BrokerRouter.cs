@@ -37,7 +37,7 @@ namespace KafkaClient
 
         /// <exception cref="KafkaConnectionException">None of the provided Kafka servers are resolvable.</exception>
         public BrokerRouter(KafkaOptions options)
-            : this(options.KafkaServerUris, options.KafkaConnectionFactory, options, options.PartitionSelector, new MetadataCacheOptions(options.RefreshMetadataTimeout, cacheExpiration: options.CacheExpiration), options.Log)
+            : this(options.ServerUris, options.ConnectionFactory, options.ConnectionOptions, options.PartitionSelector, options.CacheOptions, options.Log)
         {
         }
 

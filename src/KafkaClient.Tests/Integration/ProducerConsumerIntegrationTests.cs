@@ -45,7 +45,7 @@ namespace KafkaClient.Tests.Integration
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         public async Task ProducerAckLevel()
         {
-            using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri) { Log = IntegrationConfig.NoDebugLog }))
+            using (var router = new BrokerRouter(IntegrationConfig.IntegrationUri, log: IntegrationConfig.NoDebugLog ))
             using (var producer = new Producer(router))
             {
                 var responseAckLevel0 = await producer.SendMessageAsync(new Message("Ack Level 0"), IntegrationConfig.IntegrationTopic, acks: 0, partition: 0);
@@ -58,7 +58,7 @@ namespace KafkaClient.Tests.Integration
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         public async Task ProducerAckLevel1ResponseOffsetShouldBeEqualToLastOffset()
         {
-            using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri) { Log = IntegrationConfig.NoDebugLog }))
+            using (var router = new BrokerRouter(IntegrationConfig.IntegrationUri, log: IntegrationConfig.NoDebugLog ))
             using (var producer = new Producer(router))
             {
                 var responseAckLevel1 = await producer.SendMessageAsync(new Message("Ack Level 1"), IntegrationConfig.IntegrationTopic, acks: 1, partition: 0);
@@ -71,7 +71,7 @@ namespace KafkaClient.Tests.Integration
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         public async Task ProducerLastResposeOffsetAckLevel1ShouldBeEqualsToLastOffset()
         {
-            using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri) { Log = IntegrationConfig.NoDebugLog }))
+            using (var router = new BrokerRouter(IntegrationConfig.IntegrationUri, log: IntegrationConfig.NoDebugLog ))
             using (var producer = new Producer(router))
             {
                 var responseAckLevel1 = await producer.SendMessageAsync(IntegrationConfig.IntegrationTopic, 0, new Message("Ack Level 1"), new Message("Ack Level 1"));
@@ -88,13 +88,13 @@ namespace KafkaClient.Tests.Integration
             long offsetResponse;
             Guid messge = Guid.NewGuid();
 
-            using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri) { Log = IntegrationConfig.NoDebugLog }))
+            using (var router = new BrokerRouter(IntegrationConfig.IntegrationUri, log: IntegrationConfig.NoDebugLog ))
             using (var producer = new Producer(router))
             {
                 var responseAckLevel1 = await producer.SendMessageAsync(new Message(messge.ToString()), IntegrationConfig.IntegrationTopic, acks: 1, partition: 0);
                 offsetResponse = responseAckLevel1.Offset;
             }
-            using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri) { Log = IntegrationConfig.NoDebugLog }))
+            using (var router = new BrokerRouter(IntegrationConfig.IntegrationUri, log: IntegrationConfig.NoDebugLog ))
             using (var consumer = new Consumer(new ConsumerOptions(IntegrationConfig.IntegrationTopic, router) { MaxWaitTimeForMinimumBytes = TimeSpan.Zero }, new OffsetPosition[] { new OffsetPosition(0, offsetResponse) }))
             {
                 var result = consumer.Consume().Take(1).ToList().FirstOrDefault();
@@ -108,7 +108,7 @@ namespace KafkaClient.Tests.Integration
             var expected = new List<string> { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19" };
             var testId = Guid.NewGuid().ToString();
 
-            using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri) { Log = IntegrationConfig.NoDebugLog }))
+            using (var router = new BrokerRouter(IntegrationConfig.IntegrationUri, log: IntegrationConfig.NoDebugLog ))
             using (var producer = new Producer(router))
             {
                 var offsets = producer.GetTopicOffsetAsync(IntegrationConfig.IntegrationTopic).Result;
@@ -201,7 +201,7 @@ namespace KafkaClient.Tests.Integration
             stopwatch.Start();
 
             IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("create BrokerRouter ,time Milliseconds:{0}", stopwatch.ElapsedMilliseconds));
-            var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri) { Log = IntegrationConfig.NoDebugLog });
+            var router = new BrokerRouter(IntegrationConfig.IntegrationUri, log: IntegrationConfig.NoDebugLog);
             stopwatch.Restart();
             var producer = new Producer(router) { BatchDelayTime = TimeSpan.FromMilliseconds(10), BatchSize = numberOfMessage / 10 };
             IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("create producer ,time Milliseconds:{0}", stopwatch.ElapsedMilliseconds));
@@ -345,7 +345,7 @@ namespace KafkaClient.Tests.Integration
             Mock<IPartitionSelector> partitionSelector = new Mock<IPartitionSelector>();
             partitionSelector.Setup(x => x.Select(It.IsAny<MetadataTopic>(), It.IsAny<byte[]>())).Returns((MetadataTopic y, byte[] y1) => { return y.Partitions.Find(p => p.PartitionId == 1); });
 
-            var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri) { PartitionSelector = partitionSelector.Object });
+            var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri, partitionSelector: partitionSelector.Object));
             var producer = new Producer(router);
 
             var offsets = await producer.GetTopicOffsetAsync(IntegrationConfig.IntegrationTopic);
@@ -404,7 +404,7 @@ namespace KafkaClient.Tests.Integration
         public async void ConsumerShouldMoveToNextAvailableOffsetWhenQueryingForNextMessage()
         {
             const int expectedCount = 1000;
-            var options = new KafkaOptions(IntegrationConfig.IntegrationUri) { Log = new TraceLog() };
+            var options = new KafkaOptions(IntegrationConfig.IntegrationUri);
 
             using (var producerRouter = new BrokerRouter(options))
             using (var producer = new Producer(producerRouter))

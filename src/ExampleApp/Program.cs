@@ -15,10 +15,7 @@ namespace ExampleApp
             const string topicName = "TestHarness";
 
             //create an options file that sets up driver preferences
-            var options = new KafkaOptions(new [] { new Uri("http://CSDKAFKA01:9092"), new Uri("http://CSDKAFKA02:9092") })
-            {
-                Log = new TraceLog()
-            };
+            var options = new KafkaOptions(new [] { new Uri("http://CSDKAFKA01:9092"), new Uri("http://CSDKAFKA02:9092") });
 
             //start an out of process thread that runs a consumer that will write all received messages to the console
             Task.Run(() =>

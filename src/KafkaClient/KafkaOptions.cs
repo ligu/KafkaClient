@@ -6,46 +6,63 @@ using KafkaClient.Connection;
 
 namespace KafkaClient
 {
-    public class KafkaOptions : KafkaConnectionOptions
+    public class KafkaOptions
     {
-        public KafkaOptions(IEnumerable<Uri> kafkaServerUris = null, TimeSpan? connectingTimeout = null, int? maxRetries = null, TimeSpan? requestTimeout = null, bool trackTelemetry = false)
-            : base (connectingTimeout, maxRetries, requestTimeout, trackTelemetry)
+        public KafkaOptions(
+            IEnumerable<Uri> kafkaServerUris = null, 
+            IKafkaConnectionOptions connectionOptions = null, 
+            IMetadataCacheOptions cacheOptions = null,
+            IKafkaConnectionFactory connectionFactory = null,
+            IPartitionSelector partitionSelector = null,
+            IKafkaLog log = null)
         {
-            KafkaServerUris = ImmutableList<Uri>.Empty.AddRangeNotNull(kafkaServerUris);
-            PartitionSelector = new PartitionSelector();
-            Log = new TraceLog();
-            KafkaConnectionFactory = new KafkaConnectionFactory();
+            ServerUris = ImmutableList<Uri>.Empty.AddRangeNotNull(kafkaServerUris);
+            CacheOptions = cacheOptions;
+            ConnectionOptions = connectionOptions;
+            ConnectionFactory = connectionFactory ?? new KafkaConnectionFactory();
+            PartitionSelector = partitionSelector ?? new PartitionSelector();
+            Log = log ?? new TraceLog();
         }
 
-        public KafkaOptions(Uri kafkaServerUri = null, TimeSpan? connectingTimeout = null, int? maxRetries = null, TimeSpan? requestTimeout = null, bool trackTelemetry = false)
-            : this (ImmutableList<Uri>.Empty.AddNotNull(kafkaServerUri), connectingTimeout, maxRetries, requestTimeout, trackTelemetry)
+        public KafkaOptions(
+            Uri kafkaServerUri = null, 
+            IKafkaConnectionOptions connectionOptions = null, 
+            IMetadataCacheOptions cacheOptions = null,
+            IKafkaConnectionFactory connectionFactory = null,
+            IPartitionSelector partitionSelector = null,
+            IKafkaLog log = null)
+            : this (ImmutableList<Uri>.Empty.AddNotNull(kafkaServerUri), connectionOptions, cacheOptions, connectionFactory, partitionSelector, log)
         {
         }
 
         /// <summary>
-        /// Refresh metadata Request will try to refresh only the topics that were expired in the cache.
+        /// Initial list of Uris to kafka servers, used to query for metadata from Kafka. More than one is recommended!
         /// </summary>
-        public TimeSpan CacheExpiration { get; set; }
-        public TimeSpan RefreshMetadataTimeout { get; set; }
+        public ImmutableList<Uri> ServerUris { get; }
 
         /// <summary>
-        /// List of Uri connections to kafka servers.  The are used to query for metadata from Kafka.  More than one is recommended.
+        /// Connection backoff and retry settings.
         /// </summary>
-        public ImmutableList<Uri> KafkaServerUris { get; set; }
+        public IKafkaConnectionOptions ConnectionOptions { get; }
+
+        /// <summary>
+        /// Cache expiry and retry settings.
+        /// </summary>
+        public IMetadataCacheOptions CacheOptions { get; }
 
         /// <summary>
         /// Provides a factory for creating new kafka connections.
         /// </summary>
-        public IKafkaConnectionFactory KafkaConnectionFactory { get; set; }
+        public IKafkaConnectionFactory ConnectionFactory { get; }
 
         /// <summary>
         /// Selector function for routing messages to partitions. Default is key/hash and round robin.
         /// </summary>
-        public IPartitionSelector PartitionSelector { get; set; }
+        public IPartitionSelector PartitionSelector { get; }
 
         /// <summary>
         /// Log object to record operational messages.
         /// </summary>
-        public IKafkaLog Log { get; set; }
+        public IKafkaLog Log { get; }
     }
 }
