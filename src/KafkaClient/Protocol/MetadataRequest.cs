@@ -4,7 +4,7 @@ using KafkaClient.Common;
 
 namespace KafkaClient.Protocol
 {
-    public class MetadataRequest : KafkaRequest, IKafkaRequest<MetadataResponse>
+    public class MetadataRequest : Request, IRequest<MetadataResponse>
     {
         public MetadataRequest(string topic)
             : this (new []{topic})

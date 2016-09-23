@@ -5,7 +5,7 @@ using KafkaClient.Common;
 
 namespace KafkaClient.Protocol
 {
-    public class MetadataResponse : IKafkaResponse
+    public class MetadataResponse : IResponse
     {
         public MetadataResponse(IEnumerable<Broker> brokers = null, IEnumerable<MetadataTopic> topics = null)
         {

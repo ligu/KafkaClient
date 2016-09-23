@@ -13,9 +13,9 @@ namespace KafkaClient.Tests.Helpers
 
         // Some of the tests measured performance.my log is too slow so i change the log level to
         // only critical message
-        public static IKafkaLog NoDebugLog = new TraceLog(LogLevel.Info);
+        public static ILog NoDebugLog = new TraceLog(LogLevel.Info);
 
-        public static IKafkaLog AllLog = new TraceLog();
+        public static ILog AllLog = new TraceLog();
 
         public static string Highlight(string message)
         {

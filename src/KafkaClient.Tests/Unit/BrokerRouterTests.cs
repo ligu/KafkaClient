@@ -20,8 +20,8 @@ namespace KafkaClient.Tests.Unit
     {
         private const string TestTopic = BrokerRouterProxy.TestTopic;
         private MoqMockingKernel _kernel;
-        private Mock<IKafkaConnection> _mockKafkaConnection1;
-        private Mock<IKafkaConnectionFactory> _mockKafkaConnectionFactory;
+        private Mock<IConnection> _mockKafkaConnection1;
+        private Mock<IConnectionFactory> _mockKafkaConnectionFactory;
         private Mock<IPartitionSelector> _mockPartitionSelector;
 
         [SetUp]
@@ -29,13 +29,13 @@ namespace KafkaClient.Tests.Unit
         {
             _kernel = new MoqMockingKernel();
 
-            //setup mock IKafkaConnection
+            //setup mock IConnection
             _mockPartitionSelector = _kernel.GetMock<IPartitionSelector>();
-            _mockKafkaConnection1 = _kernel.GetMock<IKafkaConnection>();
-            _mockKafkaConnectionFactory = _kernel.GetMock<IKafkaConnectionFactory>();
-            _mockKafkaConnectionFactory.Setup(x => x.Create(It.Is<KafkaEndpoint>(e => e.Endpoint.Port == 1), It.IsAny<IKafkaConnectionConfiguration>(), It.IsAny<IKafkaLog>())).Returns(() => _mockKafkaConnection1.Object);
-            _mockKafkaConnectionFactory.Setup(x => x.Resolve(It.IsAny<Uri>(), It.IsAny<IKafkaLog>()))
-                .Returns<Uri, IKafkaLog>((uri, log) => new KafkaEndpoint(uri, new IPEndPoint(IPAddress.Parse("127.0.0.1"), uri.Port)));
+            _mockKafkaConnection1 = _kernel.GetMock<IConnection>();
+            _mockKafkaConnectionFactory = _kernel.GetMock<IConnectionFactory>();
+            _mockKafkaConnectionFactory.Setup(x => x.Create(It.Is<Endpoint>(e => e.IP.Port == 1), It.IsAny<IConnectionConfiguration>(), It.IsAny<ILog>())).Returns(() => _mockKafkaConnection1.Object);
+            _mockKafkaConnectionFactory.Setup(x => x.Resolve(It.IsAny<Uri>(), It.IsAny<ILog>()))
+                .Returns<Uri, ILog>((uri, log) => new Endpoint(uri, new IPEndPoint(IPAddress.Parse("127.0.0.1"), uri.Port)));
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
@@ -47,7 +47,7 @@ namespace KafkaClient.Tests.Unit
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
-        [ExpectedException(typeof(KafkaConnectionException))]
+        [ExpectedException(typeof(ConnectionException))]
         public void BrokerRouterConstructorThrowsException()
         {
             var result = new BrokerRouter(new Uri("http://noaddress:1"));
@@ -64,11 +64,11 @@ namespace KafkaClient.Tests.Unit
         {
             var router = new BrokerRouter(new Uri("http://localhost:1"), _mockKafkaConnectionFactory.Object);
 
-            _mockKafkaConnection1.Setup(x => x.SendAsync(It.IsAny<IKafkaRequest<MetadataResponse>>(), It.IsAny<CancellationToken>(), It.IsAny<IRequestContext>()))
+            _mockKafkaConnection1.Setup(x => x.SendAsync(It.IsAny<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>(), It.IsAny<IRequestContext>()))
                       .Returns(() => Task.Run(async () => await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers()));
             await router.GetTopicMetadataAsync(TestTopic, CancellationToken.None);
             var topics = router.GetTopicMetadata(TestTopic);
-            _mockKafkaConnectionFactory.Verify(x => x.Create(It.Is<KafkaEndpoint>(e => e.Endpoint.Port == 2), It.IsAny<IKafkaConnectionConfiguration>(), It.IsAny<IKafkaLog>()), Times.Once());
+            _mockKafkaConnectionFactory.Verify(x => x.Create(It.Is<Endpoint>(e => e.IP.Port == 2), It.IsAny<IConnectionConfiguration>(), It.IsAny<ILog>()), Times.Once());
         }
 
         #region MetadataRequest Tests...
@@ -87,7 +87,7 @@ namespace KafkaClient.Tests.Unit
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
-        [ExpectedException(typeof(KafkaRequestException))]
+        [ExpectedException(typeof(RequestException))]
         public async Task BrokerRouteShouldThrowIfCycleCouldNotConnectToAnyServer()
         {
             var routerProxy = new BrokerRouterProxy(_kernel);

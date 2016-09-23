@@ -126,7 +126,7 @@ namespace KafkaClient
             return messagesToReturn;
         }
 
-        private Task<T> MakeRequestAsync<T>(IKafkaRequest<T> request, CancellationToken cancellationToken) where T : class, IKafkaResponse
+        private Task<T> MakeRequestAsync<T>(IRequest<T> request, CancellationToken cancellationToken) where T : class, IResponse
         {
             return _brokerRouter.SendAsync(request, _topic, _partitionId, cancellationToken, new RequestContext(clientId: _clientId));
         }

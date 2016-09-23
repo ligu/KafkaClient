@@ -9,56 +9,57 @@ using KafkaClient.Common;
 namespace KafkaClient.Connection
 {
     [Serializable]
-    public class KafkaEndpoint : IEquatable<KafkaEndpoint>
+    public class Endpoint : IEquatable<Endpoint>
     {
-        public KafkaEndpoint(Uri serverUri, IPEndPoint endpoint)
+        public Endpoint(Uri serverUri, IPEndPoint ip)
         {
             ServerUri = serverUri;
-            Endpoint = endpoint;
+            IP = ip;
         }
 
         [SuppressMessage("ReSharper", "UnusedParameter.Local")]
-        public KafkaEndpoint(SerializationInfo info, StreamingContext context)
+        public Endpoint(SerializationInfo info, StreamingContext context)
         {
             ServerUri = info.GetValue<Uri>("ServerUri");
-            Endpoint = info.GetValue<IPEndPoint>("Endpoint");
+            IP = info.GetValue<IPEndPoint>("IP");
         }
 
         public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             info.AddValue("ServerUri", ServerUri);
-            info.AddValue("Endpoint", Endpoint);
+            info.AddValue("IP", IP);
         }
 
         public Uri ServerUri { get; }
-        public IPEndPoint Endpoint { get; }
+        [SuppressMessage("ReSharper", "InconsistentNaming")]
+        public IPEndPoint IP { get; }
 
         #region Equality
 
         public override bool Equals(object obj)
         {
-            return Equals(obj as KafkaEndpoint);
+            return Equals(obj as Endpoint);
         }
 
-        public bool Equals(KafkaEndpoint other)
+        public bool Equals(Endpoint other)
         {
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
-            return Equals(Endpoint, other.Endpoint);
+            return Equals(IP, other.IP);
         }
 
         public override int GetHashCode()
         {
             // calculated like this to ensure ports on same address sort in descending order
-            return Endpoint?.Address.GetHashCode() + Endpoint?.Port ?? 0;
+            return IP?.Address.GetHashCode() + IP?.Port ?? 0;
         }
 
-        public static bool operator ==(KafkaEndpoint left, KafkaEndpoint right)
+        public static bool operator ==(Endpoint left, Endpoint right)
         {
             return Equals(left, right);
         }
 
-        public static bool operator !=(KafkaEndpoint left, KafkaEndpoint right)
+        public static bool operator !=(Endpoint left, Endpoint right)
         {
             return !Equals(left, right);
         }
@@ -67,13 +68,13 @@ namespace KafkaClient.Connection
 
         public override string ToString() => ServerUri.ToString();
 
-        public static KafkaEndpoint Resolve(Uri serverUri, IKafkaLog log)
+        public static Endpoint Resolve(Uri serverUri, ILog log)
         {
             var ipEndpoint = new IPEndPoint(GetFirstAddress(serverUri.Host, log), serverUri.Port);
-            return new KafkaEndpoint(serverUri, ipEndpoint);
+            return new Endpoint(serverUri, ipEndpoint);
         }
 
-        private static IPAddress GetFirstAddress(string hostname, IKafkaLog log)
+        private static IPAddress GetFirstAddress(string hostname, ILog log)
         {
             try {
                 var addresses = Dns.GetHostAddresses(hostname);
@@ -90,7 +91,7 @@ namespace KafkaClient.Connection
                 log?.InfoFormat(ex);
             }
 
-            throw new KafkaConnectionException($"Could not resolve the following hostname: {hostname}");
+            throw new ConnectionException($"Could not resolve the following hostname: {hostname}");
         }
     }
 }

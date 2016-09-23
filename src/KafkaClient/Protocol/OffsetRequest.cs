@@ -7,7 +7,7 @@ namespace KafkaClient.Protocol
     /// <summary>
     /// A funky Protocol for requesting the starting offset of each segment for the requested partition
     /// </summary>
-    public class OffsetRequest : KafkaRequest, IKafkaRequest<OffsetResponse>
+    public class OffsetRequest : Request, IRequest<OffsetResponse>
     {
         public OffsetRequest(params Offset[] offsets)
             : this((IEnumerable<Offset>)offsets)

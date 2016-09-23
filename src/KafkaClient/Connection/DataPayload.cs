@@ -2,9 +2,9 @@ using KafkaClient.Protocol;
 
 namespace KafkaClient.Connection
 {
-    public class KafkaDataPayload
+    public class DataPayload
     {
-        public KafkaDataPayload(byte[] buffer, int correlationId = 0, ApiKeyRequestType apiKey = ApiKeyRequestType.Produce, int messageCount = 0)
+        public DataPayload(byte[] buffer, int correlationId = 0, ApiKeyRequestType apiKey = ApiKeyRequestType.Produce, int messageCount = 0)
         {
             Buffer = buffer;
             CorrelationId = correlationId;

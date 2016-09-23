@@ -9,31 +9,31 @@ namespace KafkaClient.Protocol
     /// An exception caused by a Kafka Request
     /// </summary>
     [Serializable]
-    public class KafkaRequestException : KafkaException
+    public class RequestException : KafkaException
     {
-        public KafkaRequestException(ApiKeyRequestType apiKey, ErrorResponseCode errorCode, string message = null)
+        public RequestException(ApiKeyRequestType apiKey, ErrorResponseCode errorCode, string message = null)
             : base(message ?? $"Kafka returned error response for {apiKey}: {errorCode}")
         {
             ApiKey = apiKey;
             ErrorCode = errorCode;
         }
 
-        public KafkaRequestException(string message)
+        public RequestException(string message)
             : base(message)
         {
         }
 
-        public KafkaRequestException(string message, Exception innerException)
+        public RequestException(string message, Exception innerException)
             : base(message, innerException)
         {
         }
 
-        public KafkaRequestException(SerializationInfo info, StreamingContext context)
+        public RequestException(SerializationInfo info, StreamingContext context)
             : base(info, context)
         {
             ApiKey = (ApiKeyRequestType)info.GetInt16(nameof(ApiKey));
             ErrorCode = (ErrorResponseCode)info.GetInt16(nameof(ErrorCode));
-            Endpoint = info.GetValue<KafkaEndpoint>(nameof(Endpoint));
+            Endpoint = info.GetValue<Endpoint>(nameof(Endpoint));
         }
 
         public override void GetObjectData(SerializationInfo info, StreamingContext context)
@@ -46,6 +46,6 @@ namespace KafkaClient.Protocol
 
         public ApiKeyRequestType ApiKey { get; }
         public ErrorResponseCode ErrorCode { get; }
-        public KafkaEndpoint Endpoint { get; set; }
+        public Endpoint Endpoint { get; set; }
     }
 }

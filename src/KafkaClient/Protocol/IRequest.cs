@@ -3,13 +3,13 @@ using System.Diagnostics.CodeAnalysis;
 namespace KafkaClient.Protocol
 {
     [SuppressMessage("ReSharper", "UnusedTypeParameter")]
-    public interface IKafkaRequest<T> : IKafkaRequest
-        where T : IKafkaResponse
+    public interface IRequest<T> : IRequest
+        where T : IResponse
     {
         
     }
 
-    public interface IKafkaRequest
+    public interface IRequest
     {
         /// <summary>
         /// Indicates this request should wait for a response from the broker

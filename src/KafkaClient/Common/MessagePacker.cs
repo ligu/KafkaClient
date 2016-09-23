@@ -4,54 +4,54 @@ using System.IO;
 
 namespace KafkaClient.Common
 {
-    public class KafkaMessagePacker : IDisposable
+    public class MessagePacker : IDisposable
     {
         private const int IntegerByteSize = 4;
         private readonly BigEndianBinaryWriter _stream;
 
-        public KafkaMessagePacker()
+        public MessagePacker()
         {
             _stream = new BigEndianBinaryWriter(new MemoryStream());
             Pack(IntegerByteSize); //pre-allocate space for buffer length
         }
 
-        public KafkaMessagePacker Pack(byte value)
+        public MessagePacker Pack(byte value)
         {
             _stream.Write(value);
             return this;
         }
 
-        public KafkaMessagePacker Pack(int ints)
+        public MessagePacker Pack(int ints)
         {
             _stream.Write(ints);
             return this;
         }
 
-        public KafkaMessagePacker Pack(short ints)
+        public MessagePacker Pack(short ints)
         {
             _stream.Write(ints);
             return this;
         }
 
-        public KafkaMessagePacker Pack(long ints)
+        public MessagePacker Pack(long ints)
         {
             _stream.Write(ints);
             return this;
         }
 
-        public KafkaMessagePacker Pack(byte[] buffer, StringPrefixEncoding encoding = StringPrefixEncoding.Int32)
+        public MessagePacker Pack(byte[] buffer, StringPrefixEncoding encoding = StringPrefixEncoding.Int32)
         {
             _stream.Write(buffer, encoding);
             return this;
         }
 
-        public KafkaMessagePacker Pack(string data, StringPrefixEncoding encoding = StringPrefixEncoding.Int32)
+        public MessagePacker Pack(string data, StringPrefixEncoding encoding = StringPrefixEncoding.Int32)
         {
             _stream.Write(data, encoding);
             return this;
         }
 
-        public KafkaMessagePacker Pack(IEnumerable<string> data, StringPrefixEncoding encoding = StringPrefixEncoding.Int32)
+        public MessagePacker Pack(IEnumerable<string> data, StringPrefixEncoding encoding = StringPrefixEncoding.Int32)
         {
             foreach (var item in data)
             {

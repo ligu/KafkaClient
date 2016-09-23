@@ -81,7 +81,7 @@ namespace KafkaClient
                 });
         }
 
-        public static void QueueNetworkWrite(KafkaEndpoint endpoint, KafkaDataPayload payload)
+        public static void QueueNetworkWrite(Endpoint endpoint, DataPayload payload)
         {
             if (payload.TrackPayload == false) return;
             if (payload.Buffer.Length > 64) return;
@@ -91,7 +91,7 @@ namespace KafkaClient
             Interlocked.Increment(ref Gauges.QueuedWriteOperation);
         }
 
-        public static void CompleteNetworkWrite(KafkaDataPayload payload, long milliseconds, bool failed)
+        public static void CompleteNetworkWrite(DataPayload payload, long milliseconds, bool failed)
         {
             if (payload.TrackPayload == false) return;
             if (payload.Buffer.Length > 64) return;
@@ -282,12 +282,12 @@ namespace KafkaClient
         public DateTime CompletedOnUtc { get; private set; }
         public bool IsCompleted { get; private set; }
         public bool IsFailed { get; private set; }
-        public KafkaEndpoint Endpoint { get; }
-        public KafkaDataPayload Payload { get; }
+        public Endpoint Endpoint { get; }
+        public DataPayload Payload { get; }
         public TimeSpan TotalDuration => (IsCompleted ? CompletedOnUtc : DateTime.UtcNow) - CreatedOnUtc;
         public TimeSpan WriteDuration { get; private set; }
 
-        public NetworkWriteStatistic(KafkaEndpoint endpoint, KafkaDataPayload payload)
+        public NetworkWriteStatistic(Endpoint endpoint, DataPayload payload)
         {
             CreatedOnUtc = DateTime.UtcNow;
             Endpoint = endpoint;
@@ -310,7 +310,7 @@ namespace KafkaClient
 
     public class NetworkWriteSummary
     {
-        public KafkaEndpoint Endpoint;
+        public Endpoint Endpoint;
 
         public NetworkTcpSummary TcpSummary = new NetworkTcpSummary();
         public NetworkQueueSummary QueueSummary = new NetworkQueueSummary();

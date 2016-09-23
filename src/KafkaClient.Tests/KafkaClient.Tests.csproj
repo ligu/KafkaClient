@@ -68,7 +68,7 @@
   <ItemGroup>
     <Compile Include="Fakes\FakeBrokerRouter.cs" />
     <Compile Include="Fakes\BrokerRouterProxy.cs" />
-    <Compile Include="Fakes\FakeKafkaConnection.cs" />
+    <Compile Include="Fakes\FakeConnection.cs" />
     <Compile Include="Fakes\FakeTcpServer.cs" />
     <Compile Include="Helpers\IntegrationConfig.cs" />
     <Compile Include="Helpers\MessageHelper.cs" />

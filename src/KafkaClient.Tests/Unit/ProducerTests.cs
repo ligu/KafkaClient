@@ -42,7 +42,7 @@ namespace KafkaClient.Tests.Unit
         public void ShouldSendAsyncToAllConnectionsEvenWhenExceptionOccursOnOne()
         {
             var routerProxy = new FakeBrokerRouter();
-            routerProxy.BrokerConn1.ProduceResponseFunction = () => { throw new KafkaRequestException("some exception"); };
+            routerProxy.BrokerConn1.ProduceResponseFunction = () => { throw new RequestException("some exception"); };
             var router = routerProxy.Create();
 
             using (var producer = new Producer(router))
@@ -50,7 +50,7 @@ namespace KafkaClient.Tests.Unit
                 var messages = new List<Message> { new Message("1"), new Message("2") };
 
                 var sendTask = producer.SendMessageAsync("UnitTest", messages).ConfigureAwait(false);
-                Assert.Throws<KafkaRequestException>(async () => await sendTask);
+                Assert.Throws<RequestException>(async () => await sendTask);
 
                 Assert.That(routerProxy.BrokerConn0.ProduceRequestCallCount, Is.EqualTo(1));
                 Assert.That(routerProxy.BrokerConn1.ProduceRequestCallCount, Is.EqualTo(1));
@@ -91,7 +91,7 @@ namespace KafkaClient.Tests.Unit
             }
         }
 
-        private readonly IKafkaLog _log = new TraceLog();
+        private readonly ILog _log = new TraceLog();
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         public async Task SendAsyncShouldBlockWhenMaximumAsyncQueueReached()

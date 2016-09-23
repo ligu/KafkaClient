@@ -2,7 +2,7 @@
 
 namespace KafkaClient.Common
 {
-    public interface IKafkaLog
+    public interface ILog
     {
         /// <summary>
         /// Record debug information using the String.Format syntax.

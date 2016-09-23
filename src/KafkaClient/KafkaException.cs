@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.Serialization;
 
-namespace KafkaClient.Protocol
+namespace KafkaClient
 {
     /// <summary>
     /// Base class for all exceptions related to kafka, to make it easier to handle them en mass

@@ -5,7 +5,7 @@ using KafkaClient.Common;
 
 namespace KafkaClient.Protocol
 {
-    public class OffsetFetchResponse : IKafkaResponse
+    public class OffsetFetchResponse : IResponse
     {
         public OffsetFetchResponse(IEnumerable<OffsetFetchTopic> topics = null)
         {

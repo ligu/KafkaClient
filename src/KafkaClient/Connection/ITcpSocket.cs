@@ -4,12 +4,12 @@ using System.Threading.Tasks;
 
 namespace KafkaClient.Connection
 {
-    public interface IKafkaTcpSocket : IDisposable
+    public interface ITcpSocket : IDisposable
     {
         /// <summary>
         /// The IP endpoint to the server.
         /// </summary>
-        KafkaEndpoint Endpoint { get; }
+        Endpoint Endpoint { get; }
 
         /// <summary>
         /// Read a certain byte array size return only when all bytes received.
@@ -25,6 +25,6 @@ namespace KafkaClient.Connection
         /// <param name="payload">The buffer data to send.</param>
         /// <param name="cancellationToken">A cancellation token which will cancel the request.</param>
         /// <returns>Returns Task handle to the write operation ith size of written bytes..</returns>
-        Task<KafkaDataPayload> WriteAsync(KafkaDataPayload payload, CancellationToken cancellationToken);
+        Task<DataPayload> WriteAsync(DataPayload payload, CancellationToken cancellationToken);
     }
 }

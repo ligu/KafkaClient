@@ -27,11 +27,11 @@ namespace KafkaClient
     {
         private const int BackoffMilliseconds = 100;
 
-        private readonly IKafkaLog _log;
+        private readonly ILog _log;
 
         private bool _interrupted;
 
-        public KafkaMetadataProvider(IKafkaLog log)
+        public KafkaMetadataProvider(ILog log)
         {
             _log = log;
         }
@@ -43,7 +43,7 @@ namespace KafkaClient
         /// <param name="topics">The collection of topics to get metadata for.</param>
         /// <param name="cancellationToken">Token for cancelling async action.</param>
         /// <returns>MetadataResponse validated to be complete.</returns>
-        public Task<MetadataResponse> GetAsync(IEnumerable<IKafkaConnection> connections, IEnumerable<string> topics, CancellationToken cancellationToken)
+        public Task<MetadataResponse> GetAsync(IEnumerable<IConnection> connections, IEnumerable<string> topics, CancellationToken cancellationToken)
         {
             var request = new MetadataRequest(topics);
             if (request.Topics.Count <= 0) return null;
@@ -56,20 +56,20 @@ namespace KafkaClient
         /// <param name="connections">The server connections to query.  Will cycle through the collection, starting at zero until a response is received.</param>
         /// <param name="cancellationToken">Token for cancelling async action.</param>
         /// <returns>MetadataResponse validated to be complete.</returns>
-        public Task<MetadataResponse> GetAsync(IEnumerable<IKafkaConnection> connections, CancellationToken cancellationToken)
+        public Task<MetadataResponse> GetAsync(IEnumerable<IConnection> connections, CancellationToken cancellationToken)
         {
             var request = new MetadataRequest();
             return GetAsync(connections, request, cancellationToken);
         }
 
-        private async Task<MetadataResponse> GetAsync(IEnumerable<IKafkaConnection> connections, MetadataRequest request, CancellationToken cancellationToken)
+        private async Task<MetadataResponse> GetAsync(IEnumerable<IConnection> connections, MetadataRequest request, CancellationToken cancellationToken)
         {
             const int maxRetryAttempt = 2;
             bool performRetry;
             var retryAttempt = 0;
             MetadataResponse metadataResponse;
 
-            var connectionList = ImmutableList<IKafkaConnection>.Empty.AddNotNullRange(connections);
+            var connectionList = ImmutableList<IConnection>.Empty.AddNotNullRange(connections);
             do {
                 performRetry = false;
                 metadataResponse = await GetMetadataResponseAsync(connectionList, request, cancellationToken);
@@ -83,9 +83,9 @@ namespace KafkaClient
                             break;
 
                         case ValidationResult.Error:
-                            if (validation.ErrorCode == ErrorResponseCode.NoError) throw new KafkaConnectionException(validation.Message);
+                            if (validation.ErrorCode == ErrorResponseCode.NoError) throw new ConnectionException(validation.Message);
 
-                            throw new KafkaRequestException(request.ApiKey, validation.ErrorCode, validation.Message);
+                            throw new RequestException(request.ApiKey, validation.ErrorCode, validation.Message);
                     }
                 }
 
@@ -105,7 +105,7 @@ namespace KafkaClient
             }
         }
 
-        private async Task<MetadataResponse> GetMetadataResponseAsync(IEnumerable<IKafkaConnection> connections, MetadataRequest request, CancellationToken cancellationToken)
+        private async Task<MetadataResponse> GetMetadataResponseAsync(IEnumerable<IConnection> connections, MetadataRequest request, CancellationToken cancellationToken)
         {
             var servers = "";
             foreach (var conn in connections) {
@@ -117,7 +117,7 @@ namespace KafkaClient
                 }
             }
 
-            throw new KafkaRequestException(request.ApiKey, ErrorResponseCode.NoError, $"Unable to query for metadata from any of the provided Kafka servers: {servers}");
+            throw new RequestException(request.ApiKey, ErrorResponseCode.NoError, $"Unable to query for metadata from any of the provided Kafka servers: {servers}");
         }
 
         private IEnumerable<MetadataValidationResult> ValidateResponse(MetadataResponse metadata)

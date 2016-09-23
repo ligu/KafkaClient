@@ -5,7 +5,7 @@ using KafkaClient.Common;
 
 namespace KafkaClient.Protocol
 {
-    public class ProduceRequest : KafkaRequest, IKafkaRequest<ProduceResponse>
+    public class ProduceRequest : Request, IRequest<ProduceResponse>
     {
         public ProduceRequest(Payload payload, TimeSpan? timeout = null, short acks = 1)
             : this(new [] { payload }, timeout, acks)

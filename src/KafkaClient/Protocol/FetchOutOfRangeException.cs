@@ -7,7 +7,7 @@ namespace KafkaClient.Protocol
     /// An exception caused by a Kafka Request for fetching (FetchRequest, FetchOffset, etc)
     /// </summary>
     [Serializable]
-    public class FetchOutOfRangeException : KafkaRequestException
+    public class FetchOutOfRangeException : RequestException
     {
         public FetchOutOfRangeException(Fetch fetch, ApiKeyRequestType apiKey, ErrorResponseCode errorCode, string message = null)
             : base(apiKey, errorCode, message)

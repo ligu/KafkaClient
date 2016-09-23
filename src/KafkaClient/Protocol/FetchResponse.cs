@@ -6,7 +6,7 @@ using KafkaClient.Common;
 
 namespace KafkaClient.Protocol
 {
-    public class FetchResponse : IKafkaResponse
+    public class FetchResponse : IResponse
     {
         public FetchResponse(IEnumerable<FetchTopicResponse> topics = null, TimeSpan? throttleTime = null)
         {

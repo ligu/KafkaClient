@@ -9,28 +9,28 @@ namespace KafkaClient.Connection
     /// An exception cause by a failure in the connection to Kafka
     /// </summary>
     [Serializable]
-    public class KafkaConnectionException : KafkaException
+    public class ConnectionException : KafkaException
     {
-        public KafkaConnectionException(KafkaEndpoint endpoint)
+        public ConnectionException(Endpoint endpoint)
             : base($"Lost connection to server: {endpoint}")
         {
             Endpoint = endpoint;
         }
 
-        public KafkaConnectionException(string message)
+        public ConnectionException(string message)
             : base(message)
         {
         }
 
-        public KafkaConnectionException(string message, Exception innerException)
+        public ConnectionException(string message, Exception innerException)
             : base(message, innerException)
         {
         }
 
-        public KafkaConnectionException(SerializationInfo info, StreamingContext context)
+        public ConnectionException(SerializationInfo info, StreamingContext context)
             : base(info, context)
         {
-            Endpoint = info.GetValue<KafkaEndpoint>(nameof(Endpoint));
+            Endpoint = info.GetValue<Endpoint>(nameof(Endpoint));
         }
 
         public override void GetObjectData(SerializationInfo info, StreamingContext context)
@@ -39,6 +39,6 @@ namespace KafkaClient.Connection
             info.AddValue(nameof(Endpoint), Endpoint);
         }
 
-        public KafkaEndpoint Endpoint { get; set; }
+        public Endpoint Endpoint { get; set; }
     }
 }

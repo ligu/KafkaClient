@@ -515,8 +515,8 @@ namespace KafkaClient.Tests.Unit
         ///  correlation_id => INT32      -- A user-supplied integer value that will be passed back with the response.
         ///  client_id => NULLABLE_STRING -- A user specified identifier for the client making the request.
         /// </summary>
-        public static void AssertRequestHeader<T>(this BigEndianBinaryReader reader, IRequestContext context, IKafkaRequest<T> request)
-            where T : IKafkaResponse
+        public static void AssertRequestHeader<T>(this BigEndianBinaryReader reader, IRequestContext context, IRequest<T> request)
+            where T : IResponse
         {
             reader.AssertRequestHeader(request.ApiKey, context);
         }

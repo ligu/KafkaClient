@@ -11,7 +11,7 @@ namespace KafkaClient.Protocol
     [SuppressMessage("ReSharper", "UnusedParameter.Local")]
     public static class KafkaEncoder
     {
-        public static T Decode<T>(IRequestContext context, byte[] payload) where T : class, IKafkaResponse
+        public static T Decode<T>(IRequestContext context, byte[] payload) where T : class, IResponse
         {
             if (typeof(T) == typeof(FetchResponse)) return (T)FetchResponse(context, payload);
             if (typeof(T) == typeof(MetadataResponse)) return (T)MetadataResponse(context, payload);
@@ -24,12 +24,12 @@ namespace KafkaClient.Protocol
             return default(T);
         }
 
-        public static KafkaDataPayload Encode<T>(IRequestContext context, T request) where T : class, IKafkaRequest
+        public static DataPayload Encode<T>(IRequestContext context, T request) where T : class, IRequest
         {
             switch (request.ApiKey) {
                 case ApiKeyRequestType.Produce: {
-                    var produceRequest = (ProduceRequest)(IKafkaRequest)request;
-                    return new KafkaDataPayload(
+                    var produceRequest = (ProduceRequest)(IRequest)request;
+                    return new DataPayload(
                         EncodeRequest(context, produceRequest), 
                         context.CorrelationId, 
                         request.ApiKey, 
@@ -37,13 +37,13 @@ namespace KafkaClient.Protocol
                 }
 
                 default:
-                    return new KafkaDataPayload(EncodeRequestBytes(context, request), context.CorrelationId, request.ApiKey);
+                    return new DataPayload(EncodeRequestBytes(context, request), context.CorrelationId, request.ApiKey);
             }
         }
 
         #region Encode
 
-        public static byte[] EncodeRequestBytes(IRequestContext context, IKafkaRequest request)
+        public static byte[] EncodeRequestBytes(IRequestContext context, IRequest request)
         {
             switch (request.ApiKey) {
                 case ApiKeyRequestType.Fetch:
@@ -169,7 +169,7 @@ namespace KafkaClient.Protocol
         /// <returns>Encoded byte[] representing the collection of messages.</returns>
         public static byte[] EncodeMessageSet(IEnumerable<Message> messages)
         {
-            using (var stream = new KafkaMessagePacker()) {
+            using (var stream = new MessagePacker()) {
                 foreach (var message in messages) {
                     stream.Pack(InitialMessageOffset)
                         .Pack(EncodeMessage(message));
@@ -190,7 +190,7 @@ namespace KafkaClient.Protocol
         /// </remarks>
         public static byte[] EncodeMessage(Message message)
         {
-            using (var stream = new KafkaMessagePacker()) {
+            using (var stream = new MessagePacker()) {
                 stream.Pack(message.MessageVersion)
                       .Pack(message.Attribute);
                 if (message.MessageVersion >= 1) {
@@ -439,9 +439,9 @@ namespace KafkaClient.Protocol
         ///  correlation_id => INT32      -- A user-supplied integer value that will be passed back with the response.
         ///  client_id => NULLABLE_STRING -- A user specified identifier for the client making the request.
         /// </remarks>
-        private static KafkaMessagePacker EncodeHeader(IRequestContext context, IKafkaRequest request)
+        private static MessagePacker EncodeHeader(IRequestContext context, IRequest request)
         {
-            return new KafkaMessagePacker()
+            return new MessagePacker()
                 .Pack((short)request.ApiKey)
                  .Pack(context.ApiVersion)
                  .Pack(context.CorrelationId)
@@ -471,7 +471,7 @@ namespace KafkaClient.Protocol
         /// 
         /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-Messagesets
         /// </summary>
-        private static IKafkaResponse ProduceResponse(IRequestContext context, byte[] data)
+        private static IResponse ProduceResponse(IRequestContext context, byte[] data)
         {
             using (var stream = new BigEndianBinaryReader(data, 4)) {
                 TimeSpan? throttleTime = null;
@@ -521,7 +521,7 @@ namespace KafkaClient.Protocol
         /// 
         /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-FetchResponse
         /// </summary>
-        private static IKafkaResponse FetchResponse(IRequestContext context, byte[] payload)
+        private static IResponse FetchResponse(IRequestContext context, byte[] payload)
         {
             using (var stream = new BigEndianBinaryReader(payload, 4)) {
                 TimeSpan? throttleTime = null;
@@ -641,7 +641,7 @@ namespace KafkaClient.Protocol
         /// 
         /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetAPI(AKAListOffset)
         /// </summary>
-        private static IKafkaResponse OffsetResponse(IRequestContext context, byte[] payload)
+        private static IResponse OffsetResponse(IRequestContext context, byte[] payload)
         {
             using (var stream = new BigEndianBinaryReader(payload, 4)) {
                 var topics = new List<OffsetTopic>();
@@ -687,7 +687,7 @@ namespace KafkaClient.Protocol
         ///
         /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-MetadataAPI
         /// </summary>
-        private static IKafkaResponse MetadataResponse(IRequestContext context, byte[] payload)
+        private static IResponse MetadataResponse(IRequestContext context, byte[] payload)
         {
             using (var stream = new BigEndianBinaryReader(payload, 4)) {
                 var brokers = new List<Broker>();
@@ -737,7 +737,7 @@ namespace KafkaClient.Protocol
         ///
         /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
         /// </summary>
-        private static IKafkaResponse OffsetCommitResponse(IRequestContext context, byte[] payload)
+        private static IResponse OffsetCommitResponse(IRequestContext context, byte[] payload)
         {
             using (var stream = new BigEndianBinaryReader(payload, 4)) {
                 var topics = new List<TopicResponse>();
@@ -768,7 +768,7 @@ namespace KafkaClient.Protocol
         ///
         /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
         /// </summary>
-        private static IKafkaResponse OffsetFetchResponse(IRequestContext context, byte[] payload)
+        private static IResponse OffsetFetchResponse(IRequestContext context, byte[] payload)
         {
             using (var stream = new BigEndianBinaryReader(payload, 4)) {
                 var topics = new List<OffsetFetchTopic>();
@@ -800,7 +800,7 @@ namespace KafkaClient.Protocol
         ///
         /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
         /// </summary>
-        private static IKafkaResponse GroupCoordinatorResponse(IRequestContext context, byte[] payload)
+        private static IResponse GroupCoordinatorResponse(IRequestContext context, byte[] payload)
         {
             using (var stream = new BigEndianBinaryReader(payload, 4)) {
                 var errorCode = (ErrorResponseCode)stream.ReadInt16();
@@ -821,7 +821,7 @@ namespace KafkaClient.Protocol
         ///
         /// From http://kafka.apache.org/protocol.html#protocol_messages
         /// </summary>
-        private static IKafkaResponse ApiVersionsResponse(IRequestContext context, byte[] payload)
+        private static IResponse ApiVersionsResponse(IRequestContext context, byte[] payload)
         {
             using (var stream = new BigEndianBinaryReader(payload, 4)) {
                 var errorCode = (ErrorResponseCode)stream.ReadInt16();

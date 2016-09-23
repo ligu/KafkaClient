@@ -2,7 +2,7 @@
 
 namespace KafkaClient.Protocol
 {
-    public interface IKafkaResponse
+    public interface IResponse
     {
         /// <summary>
         /// Any errors from the server

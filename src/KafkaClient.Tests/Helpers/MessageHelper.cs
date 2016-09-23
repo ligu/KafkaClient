@@ -12,7 +12,7 @@ namespace KafkaClient.Tests.Helpers
         {
             var message = KafkaEncoder.EncodeMessage(new Message(payload, attributes, version: magicByte, key: key));
 
-            return new KafkaMessagePacker()
+            return new MessagePacker()
                 .Pack(offset)
                 .Pack(message)
                 .PayloadNoLength();
@@ -20,7 +20,7 @@ namespace KafkaClient.Tests.Helpers
 
         public static byte[] CreateMetadataResponse(int correlationId, string topic)
         {
-            return new KafkaMessagePacker()
+            return new MessagePacker()
                .Pack(correlationId)
                .Pack(2) //broker count
                .Pack(1).Pack("http://localhost", StringPrefixEncoding.Int16).Pack(8990)

@@ -17,15 +17,15 @@ namespace KafkaClient.Tests.Integration
     [Category("Integration")]
     public class KafkaConnectionIntegrationTests
     {
-        private KafkaConnection _conn;
+        private Connection.Connection _conn;
 
         [SetUp]
         public void Setup()
         {
-            var options = new KafkaOptions(IntegrationConfig.IntegrationUri, new KafkaConnectionConfiguration(maxRetries: 5));
-            var endpoint = new KafkaConnectionFactory().Resolve(options.ServerUris.First(), options.Log);
+            var options = new KafkaOptions(IntegrationConfig.IntegrationUri, new ConnectionConfiguration(maxRetries: 5));
+            var endpoint = new ConnectionFactory().Resolve(options.ServerUris.First(), options.Log);
 
-            _conn = new KafkaConnection(new KafkaTcpSocket(endpoint, options.ConnectionConfiguration), options.ConnectionConfiguration, options.Log);
+            _conn = new Connection.Connection(new TcpSocket(endpoint, options.ConnectionConfiguration), options.ConnectionConfiguration, options.Log);
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]

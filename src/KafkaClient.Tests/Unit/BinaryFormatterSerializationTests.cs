@@ -55,7 +55,7 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public void ShouldSerializeOffsetKafkaEndpointInnerObjectAreNull()
         {
-            var expected = new KafkaRequestException("a");
+            var expected = new RequestException("a");
             var actual = SerializeDeserialize(expected);
 
             Assert.AreEqual(expected.Endpoint, actual.Endpoint);
@@ -64,20 +64,20 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public void ShouldSerializeOffsetKafkaEndpoint()
         {
-            var expected = new KafkaRequestException("a") {
-                Endpoint = new KafkaEndpoint(new Uri("http://S1.com"), 
+            var expected = new RequestException("a") {
+                Endpoint = new Endpoint(new Uri("http://S1.com"), 
                 new IPEndPoint(IPAddress.Parse("127.0.0.1"), 8888))
             };
             var actual = SerializeDeserialize(expected);
 
             Assert.AreEqual(expected.Endpoint.ServerUri, actual.Endpoint.ServerUri);
-            Assert.AreEqual(expected.Endpoint.Endpoint, actual.Endpoint.Endpoint);
+            Assert.AreEqual(expected.Endpoint.IP, actual.Endpoint.IP);
         }
 
         [Test]
         public void ShouldSerializeOffsetKafkaEndpointNull()
         {
-            var expected = new KafkaRequestException("a", null);
+            var expected = new RequestException("a", null);
             var actual = SerializeDeserialize(expected);
 
             Assert.AreEqual(expected.Endpoint, actual.Endpoint);
@@ -86,7 +86,7 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public void ShouldSerializeKafkaApplicationException()
         {
-            var expected = new KafkaRequestException(ApiKeyRequestType.Fetch, ErrorResponseCode.OffsetOutOfRange, "3");
+            var expected = new RequestException(ApiKeyRequestType.Fetch, ErrorResponseCode.OffsetOutOfRange, "3");
             var actual = SerializeDeserialize(expected);
 
             Assert.AreEqual(expected.ErrorCode, actual.ErrorCode);

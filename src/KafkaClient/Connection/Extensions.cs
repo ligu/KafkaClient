@@ -2,7 +2,7 @@
 {
     public static class Extensions
     {
-        public static IKafkaConnection Create(this KafkaOptions options, KafkaEndpoint endpoint)
+        public static IConnection Create(this KafkaOptions options, Endpoint endpoint)
         {
             return options.ConnectionFactory.Create(endpoint, options.ConnectionConfiguration, options.Log);
         }

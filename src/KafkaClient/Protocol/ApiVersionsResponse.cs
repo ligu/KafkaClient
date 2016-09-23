@@ -4,7 +4,7 @@ using KafkaClient.Common;
 
 namespace KafkaClient.Protocol
 {
-    public class ApiVersionsResponse : IKafkaResponse
+    public class ApiVersionsResponse : IResponse
     {
         public ApiVersionsResponse(ErrorResponseCode errorCode = ErrorResponseCode.NoError, IEnumerable<ApiVersionSupport> supportedVersions = null)
         {

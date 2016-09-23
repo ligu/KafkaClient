@@ -7,16 +7,16 @@ using KafkaClient.Protocol;
 
 namespace KafkaClient.Tests.Fakes
 {
-    public class FakeKafkaConnection : IKafkaConnection
+    public class FakeConnection : IConnection
     {
         public Func<Task<ProduceResponse>> ProduceResponseFunction;
         public Func<Task<MetadataResponse>> MetadataResponseFunction;
         public Func<Task<OffsetResponse>> OffsetResponseFunction;
         public Func<Task<FetchResponse>> FetchResponseFunction;
 
-        public FakeKafkaConnection(Uri address)
+        public FakeConnection(Uri address)
         {
-            Endpoint = new KafkaConnectionFactory().Resolve(address, new TraceLog());
+            Endpoint = new ConnectionFactory().Resolve(address, new TraceLog());
         }
 
         public long MetadataRequestCallCount; // { get; set; }
@@ -24,17 +24,17 @@ namespace KafkaClient.Tests.Fakes
         public long OffsetRequestCallCount; //{ get; set; }
         public long FetchRequestCallCount; // { get; set; }
 
-        public KafkaEndpoint Endpoint { get; }
+        public Endpoint Endpoint { get; }
 
         public bool IsReaderAlive => true;
 
-        public Task SendAsync(KafkaDataPayload payload, CancellationToken token)
+        public Task SendAsync(DataPayload payload, CancellationToken token)
         {
             throw new NotImplementedException();
         }
 
         /// <exception cref="Exception">A delegate callback throws an exception.</exception>
-        public async Task<T> SendAsync<T>(IKafkaRequest<T> request, CancellationToken token, IRequestContext context = null) where T : class, IKafkaResponse
+        public async Task<T> SendAsync<T>(IRequest<T> request, CancellationToken token, IRequestContext context = null) where T : class, IResponse
         {
             T result;
 

@@ -57,15 +57,15 @@ namespace KafkaClient
         /// <exception cref="CachedMetadataException">Thrown if the cached metadata for the given topic is invalid or missing.</exception>
         /// <exception cref="FetchOutOfRangeException">Thrown if the fetch request is not valid.</exception>
         /// <exception cref="TimeoutException">Thrown if there request times out</exception>
-        /// <exception cref="KafkaConnectionException">Thrown in case of network error contacting broker (after retries), or if none of the default brokers can be contacted.</exception>
-        /// <exception cref="KafkaRequestException">Thrown in case of an unexpected error in the request</exception>
+        /// <exception cref="ConnectionException">Thrown in case of network error contacting broker (after retries), or if none of the default brokers can be contacted.</exception>
+        /// <exception cref="RequestException">Thrown in case of an unexpected error in the request</exception>
         /// <exception cref="FormatException">Thrown in case the topic name is invalid</exception>
-        public static async Task<T> SendAsync<T>(this IBrokerRouter brokerRouter, IKafkaRequest<T> request, string topicName, int partition, CancellationToken cancellationToken, IRequestContext context = null) where T : class, IKafkaResponse
+        public static async Task<T> SendAsync<T>(this IBrokerRouter brokerRouter, IRequest<T> request, string topicName, int partition, CancellationToken cancellationToken, IRequestContext context = null) where T : class, IResponse
         {
             if (topicName.Contains(" ")) throw new FormatException($"topic name ({topicName}) is invalid");
 
             ExceptionDispatchInfo exceptionInfo = null;
-            KafkaEndpoint endpoint = null;
+            Endpoint endpoint = null;
             T response = null;
             bool? metadataInvalid = false;
             var attempt = 1;
@@ -91,7 +91,7 @@ namespace KafkaClient
                     brokerRouter.Log.WarnFormat("Error response in Router SendAsync (attempt {0}): {1}", 
                         attempt + 1, errors.Aggregate($"{route} - ", (buffer, e) => $"{buffer} {e}"));
                 } catch (Exception ex) {
-                    if (!(ex is TimeoutException || ex is KafkaConnectionException || ex is FetchOutOfRangeException || ex is CachedMetadataException)) throw;
+                    if (!(ex is TimeoutException || ex is ConnectionException || ex is FetchOutOfRangeException || ex is CachedMetadataException)) throw;
 
                     exceptionInfo = ExceptionDispatchInfo.Capture(ex);
                     metadataInvalid = null; // ie. the state of the metadata is unknown

@@ -18,13 +18,13 @@ namespace KafkaClient.Tests.Fakes
         private readonly MoqMockingKernel _kernel;
         private int _offset0;
         private int _offset1;
-        private readonly FakeKafkaConnection _fakeConn0;
-        private readonly FakeKafkaConnection _fakeConn1;
-        private readonly Mock<IKafkaConnectionFactory> _mockKafkaConnectionFactory;
+        private readonly FakeConnection _fakeConn0;
+        private readonly FakeConnection _fakeConn1;
+        private readonly Mock<IConnectionFactory> _mockKafkaConnectionFactory;
         public TimeSpan _cacheExpiration = TimeSpan.FromMilliseconds(1);
-        public FakeKafkaConnection BrokerConn0 { get { return _fakeConn0; } }
-        public FakeKafkaConnection BrokerConn1 { get { return _fakeConn1; } }
-        public Mock<IKafkaConnectionFactory> KafkaConnectionMockKafkaConnectionFactory { get { return _mockKafkaConnectionFactory; } }
+        public FakeConnection BrokerConn0 { get { return _fakeConn0; } }
+        public FakeConnection BrokerConn1 { get { return _fakeConn1; } }
+        public Mock<IConnectionFactory> KafkaConnectionMockKafkaConnectionFactory { get { return _mockKafkaConnectionFactory; } }
 
         public Func<Task<MetadataResponse>> MetadataResponse = CreateMetadataResponseWithMultipleBrokers;
 
@@ -34,26 +34,26 @@ namespace KafkaClient.Tests.Fakes
         {
             _kernel = kernel;
 
-            //setup mock IKafkaConnection
-            _fakeConn0 = new FakeKafkaConnection(new Uri("http://localhost:1"));
+            //setup mock IConnection
+            _fakeConn0 = new FakeConnection(new Uri("http://localhost:1"));
 #pragma warning disable 1998
             _fakeConn0.ProduceResponseFunction = async () => new ProduceResponse(new ProduceTopic(TestTopic, 0, ErrorResponseCode.NoError, _offset0++));
             _fakeConn0.MetadataResponseFunction = () => MetadataResponse();
             _fakeConn0.OffsetResponseFunction = async () => new OffsetResponse(new OffsetTopic(TestTopic, 0, ErrorResponseCode.NoError, new []{ 0L, 99L }));
             _fakeConn0.FetchResponseFunction = async () => { Thread.Sleep(500); return null; };
 
-            _fakeConn1 = new FakeKafkaConnection(new Uri("http://localhost:2"));
+            _fakeConn1 = new FakeConnection(new Uri("http://localhost:2"));
             _fakeConn1.ProduceResponseFunction = async () => new ProduceResponse(new ProduceTopic(TestTopic, 1, ErrorResponseCode.NoError, _offset1++));
             _fakeConn1.MetadataResponseFunction = () => MetadataResponse();
             _fakeConn1.OffsetResponseFunction = async () => new OffsetResponse(new OffsetTopic(TestTopic, 1, ErrorResponseCode.NoError, new []{ 0L, 100L }));
             _fakeConn1.FetchResponseFunction = async () => { Thread.Sleep(500); return null; };
 #pragma warning restore 1998
 
-            _mockKafkaConnectionFactory = _kernel.GetMock<IKafkaConnectionFactory>();
-            _mockKafkaConnectionFactory.Setup(x => x.Create(It.Is<KafkaEndpoint>(e => e.Endpoint.Port == 1), It.IsAny<IKafkaConnectionConfiguration>(), It.IsAny<IKafkaLog>())).Returns(() => _fakeConn0);
-            _mockKafkaConnectionFactory.Setup(x => x.Create(It.Is<KafkaEndpoint>(e => e.Endpoint.Port == 2), It.IsAny<IKafkaConnectionConfiguration>(), It.IsAny<IKafkaLog>())).Returns(() => _fakeConn1);
-            _mockKafkaConnectionFactory.Setup(x => x.Resolve(It.IsAny<Uri>(), It.IsAny<IKafkaLog>()))
-                .Returns<Uri, IKafkaLog>((uri, log) => new KafkaEndpoint(uri, new IPEndPoint(IPAddress.Parse("127.0.0.1"), uri.Port)));
+            _mockKafkaConnectionFactory = _kernel.GetMock<IConnectionFactory>();
+            _mockKafkaConnectionFactory.Setup(x => x.Create(It.Is<Endpoint>(e => e.IP.Port == 1), It.IsAny<IConnectionConfiguration>(), It.IsAny<ILog>())).Returns(() => _fakeConn0);
+            _mockKafkaConnectionFactory.Setup(x => x.Create(It.Is<Endpoint>(e => e.IP.Port == 2), It.IsAny<IConnectionConfiguration>(), It.IsAny<ILog>())).Returns(() => _fakeConn1);
+            _mockKafkaConnectionFactory.Setup(x => x.Resolve(It.IsAny<Uri>(), It.IsAny<ILog>()))
+                .Returns<Uri, ILog>((uri, log) => new Endpoint(uri, new IPEndPoint(IPAddress.Parse("127.0.0.1"), uri.Port)));
         }
 
         public IBrokerRouter Create()

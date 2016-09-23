@@ -2,11 +2,11 @@
 
 namespace KafkaClient.Connection
 {
-    public class KafkaConnectionComparer : IEqualityComparer<IKafkaConnection>
+    public class ConnectionComparer : IEqualityComparer<IConnection>
     {
-        public static readonly KafkaConnectionComparer Singleton = new KafkaConnectionComparer();
+        public static readonly ConnectionComparer Singleton = new ConnectionComparer();
 
-        public bool Equals(IKafkaConnection x, IKafkaConnection y)
+        public bool Equals(IConnection x, IConnection y)
         {
             if (ReferenceEquals(null, x)) return ReferenceEquals(null, y);
             if (ReferenceEquals(null, y)) return false;
@@ -15,7 +15,7 @@ namespace KafkaClient.Connection
             return x.Endpoint == y.Endpoint;
         }
 
-        public int GetHashCode(IKafkaConnection obj)
+        public int GetHashCode(IConnection obj)
         {
             return obj?.Endpoint.GetHashCode() ?? 0;
         }

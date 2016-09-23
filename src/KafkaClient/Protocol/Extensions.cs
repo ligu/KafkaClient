@@ -7,23 +7,23 @@ namespace KafkaClient.Protocol
 {
     public static class Extensions
     {
-        public static Exception ExtractExceptions<TRequest, TResponse>(this TRequest request, TResponse response, KafkaEndpoint endpoint = null) 
-            where TRequest : IKafkaRequest
-            where TResponse : IKafkaResponse
+        public static Exception ExtractExceptions<TRequest, TResponse>(this TRequest request, TResponse response, Endpoint endpoint = null) 
+            where TRequest : IRequest
+            where TResponse : IResponse
         {
             var exceptions = new List<Exception>();
             foreach (var errorCode in response.Errors.Where(e => e != ErrorResponseCode.NoError)) {
                 exceptions.Add(ExtractException(request, errorCode, endpoint));
             }
-            if (exceptions.Count == 0) return new KafkaRequestException(request.ApiKey, ErrorResponseCode.NoError) { Endpoint = endpoint };
+            if (exceptions.Count == 0) return new RequestException(request.ApiKey, ErrorResponseCode.NoError) { Endpoint = endpoint };
             if (exceptions.Count == 1) return exceptions[0];
             return new AggregateException(exceptions);
         }
 
-        public static Exception ExtractException(this IKafkaRequest request, ErrorResponseCode errorCode, KafkaEndpoint endpoint) 
+        public static Exception ExtractException(this IRequest request, ErrorResponseCode errorCode, Endpoint endpoint) 
         {
             var exception = ExtractFetchException(request as FetchRequest, errorCode) ??
-                            new KafkaRequestException(request.ApiKey, errorCode);
+                            new RequestException(request.ApiKey, errorCode);
             exception.Endpoint = endpoint;
             return exception;
         }

@@ -17,7 +17,7 @@ namespace KafkaClient.Tests.Fakes
 
         public event Action OnClientDisconnected;
 
-        private readonly IKafkaLog _log;
+        private readonly ILog _log;
 
         private TcpClient _client;
         private readonly SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(0);
@@ -31,7 +31,7 @@ namespace KafkaClient.Tests.Fakes
         public int DisconnectionEventCount = 0;
         public Task HasClientConnected => _clientConnectedTrigger.Task;
 
-        public FakeTcpServer(IKafkaLog log, int port)
+        public FakeTcpServer(ILog log, int port)
         {
             _log = log;
             _listener = new TcpListener(IPAddress.Any, port);

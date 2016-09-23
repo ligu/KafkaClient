@@ -10,27 +10,27 @@ namespace KafkaClient
     {
         public KafkaOptions(
             IEnumerable<Uri> kafkaServerUris = null, 
-            IKafkaConnectionConfiguration connectionConfiguration = null, 
+            IConnectionConfiguration connectionConfiguration = null, 
             ICacheConfiguration cacheConfiguration = null,
-            IKafkaConnectionFactory connectionFactory = null,
+            IConnectionFactory connectionFactory = null,
             IPartitionSelector partitionSelector = null,
-            IKafkaLog log = null)
+            ILog log = null)
         {
             ServerUris = ImmutableList<Uri>.Empty.AddNotNullRange(kafkaServerUris);
             CacheConfiguration = cacheConfiguration ?? new CacheConfiguration();
-            ConnectionConfiguration = connectionConfiguration ?? new KafkaConnectionConfiguration();
-            ConnectionFactory = connectionFactory ?? new KafkaConnectionFactory();
+            ConnectionConfiguration = connectionConfiguration ?? new ConnectionConfiguration();
+            ConnectionFactory = connectionFactory ?? new ConnectionFactory();
             PartitionSelector = partitionSelector ?? new PartitionSelector();
             Log = log ?? TraceLog.Log;
         }
 
         public KafkaOptions(
             Uri kafkaServerUri = null, 
-            IKafkaConnectionConfiguration connectionConfiguration = null, 
+            IConnectionConfiguration connectionConfiguration = null, 
             ICacheConfiguration cacheConfiguration = null,
-            IKafkaConnectionFactory connectionFactory = null,
+            IConnectionFactory connectionFactory = null,
             IPartitionSelector partitionSelector = null,
-            IKafkaLog log = null)
+            ILog log = null)
             : this (ImmutableList<Uri>.Empty.AddNotNull(kafkaServerUri), connectionConfiguration, cacheConfiguration, connectionFactory, partitionSelector, log)
         {
         }
@@ -43,7 +43,7 @@ namespace KafkaClient
         /// <summary>
         /// Connection backoff and retry settings.
         /// </summary>
-        public IKafkaConnectionConfiguration ConnectionConfiguration { get; }
+        public IConnectionConfiguration ConnectionConfiguration { get; }
 
         /// <summary>
         /// Cache expiry and retry settings.
@@ -53,7 +53,7 @@ namespace KafkaClient
         /// <summary>
         /// Provides a factory for creating new kafka connections.
         /// </summary>
-        public IKafkaConnectionFactory ConnectionFactory { get; }
+        public IConnectionFactory ConnectionFactory { get; }
 
         /// <summary>
         /// Selector function for routing messages to partitions. Default is key/hash and round robin.
@@ -63,6 +63,6 @@ namespace KafkaClient
         /// <summary>
         /// Log object to record operational messages.
         /// </summary>
-        public IKafkaLog Log { get; }
+        public ILog Log { get; }
     }
 }

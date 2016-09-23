@@ -182,7 +182,7 @@ namespace KafkaClient
                             //no message received from server wait a while before we try another long poll
                             await Task.Delay(_options.BackoffInterval, _disposeToken.Token);
                         }
-                        catch (KafkaConnectionException ex)
+                        catch (ConnectionException ex)
                         {
                             needToRefreshMetadata = true;
                             _options.Log.ErrorFormat(ex.Message);
@@ -226,7 +226,7 @@ namespace KafkaClient
             }, cancellationToken);
         }
 
-        private void HandleResponseErrors(FetchRequest request, FetchTopicResponse response, IKafkaConnection connection)
+        private void HandleResponseErrors(FetchRequest request, FetchTopicResponse response, IConnection connection)
         {
             switch (response.ErrorCode)
             {

@@ -9,7 +9,7 @@ namespace KafkaClient.Protocol
     /// Class that represents the api call to commit a specific set of offsets for a given topic.  The offset is saved under the
     /// arbitrary ConsumerGroup name provided by the call.
     /// </summary>
-    public class OffsetCommitRequest : KafkaRequest, IKafkaRequest<OffsetCommitResponse>
+    public class OffsetCommitRequest : Request, IRequest<OffsetCommitResponse>
     {
         public OffsetCommitRequest(string consumerGroup, IEnumerable<OffsetCommit> offsetCommits, string memberId = null, int generationId = 0, TimeSpan? offsetRetention = null) 
             : base(ApiKeyRequestType.OffsetCommit)

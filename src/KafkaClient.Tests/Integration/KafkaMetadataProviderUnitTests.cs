@@ -16,11 +16,11 @@ namespace KafkaClient.Tests.Integration
     {
         private readonly KafkaOptions _options = new KafkaOptions(IntegrationConfig.IntegrationUri);
 
-        private KafkaConnection GetKafkaConnection()
+        private Connection.Connection GetKafkaConnection()
         {
-            var endpoint = new KafkaConnectionFactory().Resolve(_options.ServerUris.First(), _options.Log);
-            var config = new KafkaConnectionConfiguration(maxRetries: 5, requestTimeout: _options.ConnectionConfiguration.RequestTimeout);
-            return new KafkaConnection(new KafkaTcpSocket(endpoint, config), config, _options.Log);
+            var endpoint = new ConnectionFactory().Resolve(_options.ServerUris.First(), _options.Log);
+            var config = new ConnectionConfiguration(maxRetries: 5, requestTimeout: _options.ConnectionConfiguration.RequestTimeout);
+            return new Connection.Connection(new TcpSocket(endpoint, config), config, _options.Log);
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]

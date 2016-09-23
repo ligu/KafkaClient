@@ -6,7 +6,7 @@ using KafkaClient.Common;
 
 namespace KafkaClient.Protocol
 {
-    public class ProduceResponse : IKafkaResponse
+    public class ProduceResponse : IResponse
     {
         public ProduceResponse(ProduceTopic topic, TimeSpan? throttleTime = null)
             : this (new []{ topic }, throttleTime)

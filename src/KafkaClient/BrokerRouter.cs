@@ -24,47 +24,47 @@ namespace KafkaClient
     public class BrokerRouter : IBrokerRouter
     {
         private readonly KafkaMetadataProvider _kafkaMetadataProvider;
-        private readonly IKafkaConnectionFactory _connectionFactory;
-        private readonly IKafkaConnectionConfiguration _connectionConfiguration;
+        private readonly IConnectionFactory _connectionFactory;
+        private readonly IConnectionConfiguration _connectionConfiguration;
         private readonly ICacheConfiguration _cacheConfiguration;
         private readonly IPartitionSelector _partitionSelector;
 
-        private ImmutableDictionary<KafkaEndpoint, IKafkaConnection> _allConnections = ImmutableDictionary<KafkaEndpoint, IKafkaConnection>.Empty;
-        private ImmutableDictionary<int, IKafkaConnection> _brokerConnections = ImmutableDictionary<int, IKafkaConnection>.Empty;
+        private ImmutableDictionary<Endpoint, IConnection> _allConnections = ImmutableDictionary<Endpoint, IConnection>.Empty;
+        private ImmutableDictionary<int, IConnection> _brokerConnections = ImmutableDictionary<int, IConnection>.Empty;
         private ImmutableDictionary<string, Tuple<MetadataTopic, DateTime>> _topicCache = ImmutableDictionary<string, Tuple<MetadataTopic, DateTime>>.Empty;
 
         private readonly AsyncLock _lock = new AsyncLock();
 
-        /// <exception cref="KafkaConnectionException">None of the provided Kafka servers are resolvable.</exception>
+        /// <exception cref="ConnectionException">None of the provided Kafka servers are resolvable.</exception>
         public BrokerRouter(KafkaOptions options)
             : this(options.ServerUris, options.ConnectionFactory, options.ConnectionConfiguration, options.PartitionSelector, options.CacheConfiguration, options.Log)
         {
         }
 
-        /// <exception cref="KafkaConnectionException">None of the provided Kafka servers are resolvable.</exception>
-        public BrokerRouter(Uri serverUri, IKafkaConnectionFactory connectionFactory = null, IKafkaConnectionConfiguration connectionConfiguration = null, IPartitionSelector partitionSelector = null, ICacheConfiguration cacheConfiguration = null, IKafkaLog log = null)
+        /// <exception cref="ConnectionException">None of the provided Kafka servers are resolvable.</exception>
+        public BrokerRouter(Uri serverUri, IConnectionFactory connectionFactory = null, IConnectionConfiguration connectionConfiguration = null, IPartitionSelector partitionSelector = null, ICacheConfiguration cacheConfiguration = null, ILog log = null)
             : this (new []{ serverUri }, connectionFactory, connectionConfiguration, partitionSelector, cacheConfiguration, log)
         {
         }
 
-        /// <exception cref="KafkaConnectionException">None of the provided Kafka servers are resolvable.</exception>
-        public BrokerRouter(IEnumerable<Uri> serverUris, IKafkaConnectionFactory connectionFactory = null, IKafkaConnectionConfiguration connectionConfiguration = null, IPartitionSelector partitionSelector = null, ICacheConfiguration cacheConfiguration = null, IKafkaLog log = null)
+        /// <exception cref="ConnectionException">None of the provided Kafka servers are resolvable.</exception>
+        public BrokerRouter(IEnumerable<Uri> serverUris, IConnectionFactory connectionFactory = null, IConnectionConfiguration connectionConfiguration = null, IPartitionSelector partitionSelector = null, ICacheConfiguration cacheConfiguration = null, ILog log = null)
         {
             Log = log ?? TraceLog.Log;
-            _connectionConfiguration = connectionConfiguration ?? new KafkaConnectionConfiguration();
-            _connectionFactory = connectionFactory ?? new KafkaConnectionFactory();
+            _connectionConfiguration = connectionConfiguration ?? new ConnectionConfiguration();
+            _connectionFactory = connectionFactory ?? new ConnectionFactory();
 
             foreach (var uri in serverUris) {
                 try {
                     var endpoint = _connectionFactory.Resolve(uri, Log);
                     var connection = _connectionFactory.Create(endpoint, _connectionConfiguration, Log);
                     _allConnections = _allConnections.SetItem(endpoint, connection);
-                } catch (KafkaConnectionException ex) {
+                } catch (ConnectionException ex) {
                     Log.WarnFormat(ex, "Ignoring uri that could not be resolved: {0}", uri);
                 }
             }
 
-            if (_allConnections.IsEmpty) throw new KafkaConnectionException("None of the provided Kafka servers are resolvable.");
+            if (_allConnections.IsEmpty) throw new ConnectionException("None of the provided Kafka servers are resolvable.");
 
             _cacheConfiguration = cacheConfiguration ?? new CacheConfiguration();
             _partitionSelector = partitionSelector ?? new PartitionSelector();
@@ -318,7 +318,7 @@ namespace KafkaClient
 
         private BrokerRoute TryGetCachedRoute(string topicName, MetadataPartition partition)
         {
-            IKafkaConnection conn;
+            IConnection conn;
             return _brokerConnections.TryGetValue(partition.LeaderId, out conn)
                 ? new BrokerRoute(topicName, partition.PartitionId, conn) 
                 : null;
@@ -362,12 +362,12 @@ namespace KafkaClient
         {
             var allConnections = _allConnections;
             var brokerConnections = _brokerConnections;
-            var connectionsToDispose = ImmutableList<IKafkaConnection>.Empty;
+            var connectionsToDispose = ImmutableList<IConnection>.Empty;
             try {
                 foreach (var broker in metadata.Brokers) {
                     var endpoint = _connectionFactory.Resolve(broker.Address, Log);
 
-                    IKafkaConnection connection;
+                    IConnection connection;
                     if (brokerConnections.TryGetValue(broker.BrokerId, out connection)) {
                         if (connection.Endpoint.Equals(endpoint)) {
                             // existing connection, nothing to change
@@ -395,7 +395,7 @@ namespace KafkaClient
             }
         }
 
-        private void DisposeConnections(IEnumerable<IKafkaConnection> connections)
+        private void DisposeConnections(IEnumerable<IConnection> connections)
         {
             foreach (var connection in connections) {
                 using (connection) {
@@ -411,7 +411,7 @@ namespace KafkaClient
             DisposeConnections(_allConnections.Values);
         }
 
-        public IKafkaLog Log { get; }
+        public ILog Log { get; }
 
         private class CachedTopicsResult
         {

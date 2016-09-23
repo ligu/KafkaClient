@@ -14,12 +14,12 @@ namespace KafkaClient.Tests.Unit
     [TestFixture]
     public class KafkaMetadataProviderTests
     {
-        private IKafkaLog _log;
+        private ILog _log;
 
         [SetUp]
         public void Setup()
         {
-            _log = Substitute.For<IKafkaLog>();
+            _log = Substitute.For<ILog>();
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
@@ -28,9 +28,9 @@ namespace KafkaClient.Tests.Unit
         [TestCase(ErrorResponseCode.ConsumerCoordinatorNotAvailable)]
         public async Task ShouldRetryWhenReceiveAnRetryErrorCode(ErrorResponseCode errorCode)
         {
-            var conn = Substitute.For<IKafkaConnection>();
+            var conn = Substitute.For<IConnection>();
 
-            conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>(), It.IsAny<CancellationToken>())
+            conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>())
                 .Returns(x => CreateMetadataResponse(errorCode), x => CreateMetadataResponse(errorCode));
 
             using (var provider = new KafkaMetadataProvider(_log))
@@ -40,18 +40,18 @@ namespace KafkaClient.Tests.Unit
 
             Received.InOrder(() =>
             {
-                conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
+                conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
                 _log.WarnFormat("Backing off metadata request retry.  Waiting for {0}ms.", 100);
-                conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
+                conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
             });
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         public async Task ShouldRetryWhenReceiveBrokerIdNegativeOne()
         {
-            var conn = Substitute.For<IKafkaConnection>();
+            var conn = Substitute.For<IConnection>();
 
-            conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>(), It.IsAny<CancellationToken>(), Arg.Any<IRequestContext>())
+            conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>(), Arg.Any<IRequestContext>())
                 .Returns(x => CreateMetadataResponse(-1, "123", 1), x => CreateMetadataResponse(ErrorResponseCode.NoError));
 
             using (var provider = new KafkaMetadataProvider(_log))
@@ -61,18 +61,18 @@ namespace KafkaClient.Tests.Unit
 
             Received.InOrder(() =>
             {
-                conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
+                conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
                 _log.WarnFormat("Backing off metadata request retry.  Waiting for {0}ms.", 100);
-                conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
+                conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
             });
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         public void ShouldReturnWhenNoErrorReceived()
         {
-            var conn = Substitute.For<IKafkaConnection>();
+            var conn = Substitute.For<IConnection>();
 
-            conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>(), It.IsAny<CancellationToken>())
+            conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>())
                 .Returns(x => CreateMetadataResponse(ErrorResponseCode.NoError));
 
             using (var provider = new KafkaMetadataProvider(_log))
@@ -80,15 +80,15 @@ namespace KafkaClient.Tests.Unit
                 var response = provider.GetAsync(new[] { conn }, new[] { "Test" }, CancellationToken.None);
             }
 
-            conn.Received(1).SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
+            conn.Received(1).SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         public void ShouldReturnWhenNoErrorReceivedAndTopicsNotSpecified()
         {
-            var conn = Substitute.For<IKafkaConnection>();
+            var conn = Substitute.For<IConnection>();
 
-            conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>(), It.IsAny<CancellationToken>())
+            conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>())
                 .Returns(x => CreateMetadataResponse(ErrorResponseCode.NoError));
 
             using (var provider = new KafkaMetadataProvider(_log))
@@ -96,19 +96,19 @@ namespace KafkaClient.Tests.Unit
                 var response = provider.GetAsync(new[] { conn }, CancellationToken.None);
             }
 
-            conn.Received(1).SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
+            conn.Received(1).SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         [TestCase(ErrorResponseCode.Unknown)]
         [TestCase(ErrorResponseCode.RequestTimedOut)]
         [TestCase(ErrorResponseCode.InvalidMessage)]
-        [ExpectedException(typeof(KafkaRequestException))]
+        [ExpectedException(typeof(RequestException))]
         public async Task ShouldThrowExceptionWhenNotARetriableErrorCode(ErrorResponseCode errorCode)
         {
-            var conn = Substitute.For<IKafkaConnection>();
+            var conn = Substitute.For<IConnection>();
 
-            conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>(), It.IsAny<CancellationToken>()).Returns(x => CreateMetadataResponse(errorCode));
+            conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>()).Returns(x => CreateMetadataResponse(errorCode));
 
             using (var provider = new KafkaMetadataProvider(_log))
             {
@@ -119,12 +119,12 @@ namespace KafkaClient.Tests.Unit
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         [TestCase(null)]
         [TestCase("")]
-        [ExpectedException(typeof(KafkaConnectionException))]
+        [ExpectedException(typeof(ConnectionException))]
         public async Task ShouldThrowExceptionWhenHostIsMissing(string host)
         {
-            var conn = Substitute.For<IKafkaConnection>();
+            var conn = Substitute.For<IConnection>();
 
-            conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>(), It.IsAny<CancellationToken>()).Returns(x => CreateMetadataResponse(1, host, 1));
+            conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>()).Returns(x => CreateMetadataResponse(1, host, 1));
 
             using (var provider = new KafkaMetadataProvider(_log))
             {
@@ -135,12 +135,12 @@ namespace KafkaClient.Tests.Unit
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         [TestCase(0)]
         [TestCase(-1)]
-        [ExpectedException(typeof(KafkaConnectionException))]
+        [ExpectedException(typeof(ConnectionException))]
         public async Task ShouldThrowExceptionWhenPortIsMissing(int port)
         {
-            var conn = Substitute.For<IKafkaConnection>();
+            var conn = Substitute.For<IConnection>();
 
-            conn.SendAsync(Arg.Any<IKafkaRequest<MetadataResponse>>(), It.IsAny<CancellationToken>()).Returns(x => CreateMetadataResponse(1, "123", port));
+            conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>()).Returns(x => CreateMetadataResponse(1, "123", port));
 
             using (var provider = new KafkaMetadataProvider(_log))
             {

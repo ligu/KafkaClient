@@ -2,7 +2,7 @@
 
 namespace KafkaClient.Protocol
 {
-    public class GroupCoordinatorResponse : Broker, IKafkaResponse
+    public class GroupCoordinatorResponse : Broker, IResponse
     {
         public GroupCoordinatorResponse(ErrorResponseCode errorCode, int coordinatorId, string host, int port)
             : base(coordinatorId, host, port)

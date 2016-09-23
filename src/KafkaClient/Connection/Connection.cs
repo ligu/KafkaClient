@@ -10,7 +10,7 @@ using KafkaClient.Protocol;
 namespace KafkaClient.Connection
 {
     /// <summary>
-    /// KafkaConnection represents the lowest level TCP stream connection to a Kafka broker.
+    /// Connection represents the lowest level TCP stream connection to a Kafka broker.
     /// The Send and Receive are separated into two disconnected paths and must be combined outside
     /// this class by the correlation ID contained within the returned message.
     ///
@@ -18,14 +18,14 @@ namespace KafkaClient.Connection
     /// The Read response is handled by a single thread polling the stream for data and firing an OnResponseReceived
     /// event when a response is received.
     /// </summary>
-    public class KafkaConnection : IKafkaConnection
+    public class Connection : IConnection
     {
         public bool IsInErrorState { get; private set; }
 
         private readonly ConcurrentDictionary<int, AsyncRequestItem> _requestsByCorrelation = new ConcurrentDictionary<int, AsyncRequestItem>();
-        private readonly IKafkaLog _log;
-        private readonly IKafkaTcpSocket _socket;
-        private readonly IKafkaConnectionConfiguration _configuration;
+        private readonly ILog _log;
+        private readonly ITcpSocket _socket;
+        private readonly IConnectionConfiguration _configuration;
 
         private readonly CancellationTokenSource _disposeToken = new CancellationTokenSource();
         private int _disposeCount;
@@ -35,16 +35,16 @@ namespace KafkaClient.Connection
         private int _correlationIdSeed;
 
         /// <summary>
-        /// Initializes a new instance of the KafkaConnection class.
+        /// Initializes a new instance of the Connection class.
         /// </summary>
         /// <param name="socket">The kafka socket initialized to the kafka server.</param>
         /// <param name="configuration">The configuration, including connection and request timeouts.</param>
         /// <param name="log">Logging interface used to record any log messages created by the connection.</param>
-        public KafkaConnection(IKafkaTcpSocket socket, IKafkaConnectionConfiguration configuration = null, IKafkaLog log = null)
+        public Connection(ITcpSocket socket, IConnectionConfiguration configuration = null, ILog log = null)
         {
             _socket = socket;
             _log = log ?? TraceLog.Log;
-            _configuration = configuration ?? new KafkaConnectionConfiguration();
+            _configuration = configuration ?? new ConnectionConfiguration();
 
             StartReader();
         }
@@ -57,7 +57,7 @@ namespace KafkaClient.Connection
         /// <summary>
         /// Provides the unique ip/port endpoint for this connection
         /// </summary>
-        public KafkaEndpoint Endpoint => _socket.Endpoint;
+        public Endpoint Endpoint => _socket.Endpoint;
 
         /// <summary>
         /// Send raw byte[] payload to the kafka server with a task indicating upload is complete.
@@ -65,7 +65,7 @@ namespace KafkaClient.Connection
         /// <param name="payload">kafka protocol formatted byte[] payload</param>
         /// <param name="token">Cancellation token used to cancel the transfer.</param>
         /// <returns>Task which signals the completion of the upload of data to the server.</returns>
-        public Task SendAsync(KafkaDataPayload payload, CancellationToken token)
+        public Task SendAsync(DataPayload payload, CancellationToken token)
         {
             return _socket.WriteAsync(payload, token);
         }
@@ -74,11 +74,11 @@ namespace KafkaClient.Connection
         /// Send kafka payload to server and receive a task event when response is received.
         /// </summary>
         /// <typeparam name="T">A Kafka response object return by decode function.</typeparam>
-        /// <param name="request">The IKafkaRequest to send to the kafka servers.</param>
+        /// <param name="request">The IRequest to send to the kafka servers.</param>
         /// <param name="context">The context for the request.</param>
         /// <param name="token">Cancellation token used to cancel the transfer.</param>
         /// <returns></returns>
-        public async Task<T> SendAsync<T>(IKafkaRequest<T> request, CancellationToken token, IRequestContext context = null) where T : class, IKafkaResponse
+        public async Task<T> SendAsync<T>(IRequest<T> request, CancellationToken token, IRequestContext context = null) where T : class, IResponse
         {
             context = context.WithCorrelation(NextCorrelationId());
 
@@ -113,10 +113,10 @@ namespace KafkaClient.Connection
 
         public override bool Equals(object obj)
         {
-            return Equals(obj as KafkaConnection);
+            return Equals(obj as Connection);
         }
 
-        protected bool Equals(KafkaConnection other)
+        protected bool Equals(Connection other)
         {
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;

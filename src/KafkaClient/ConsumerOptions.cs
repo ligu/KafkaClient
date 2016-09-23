@@ -24,7 +24,7 @@ namespace KafkaClient
         /// <summary>
         /// Log object to record operational messages.
         /// </summary>
-        public IKafkaLog Log { get; set; }
+        public ILog Log { get; set; }
 
         /// <summary>
         /// The broker router used to provide connection to each partition server.

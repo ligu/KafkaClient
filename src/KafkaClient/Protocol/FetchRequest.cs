@@ -5,7 +5,7 @@ using KafkaClient.Common;
 
 namespace KafkaClient.Protocol
 {
-    public class FetchRequest : KafkaRequest, IKafkaRequest<FetchResponse>
+    public class FetchRequest : Request, IRequest<FetchResponse>
     {
         public FetchRequest(Fetch fetch, TimeSpan? maxWaitTime = null, int minBytes = DefaultMinBlockingByteBufferSize) 
             : this (new []{ fetch }, maxWaitTime, minBytes)

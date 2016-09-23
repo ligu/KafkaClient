@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Net;
 using System.Threading;
@@ -19,19 +19,19 @@ namespace KafkaClient.Tests.Unit
     public class RouterBrokerSendAsyncTests
     {
         private MoqMockingKernel _kernel;
-        private Mock<IKafkaConnection> _mockKafkaConnection1;
-        private Mock<IKafkaConnectionFactory> _mockKafkaConnectionFactory;
+        private Mock<IConnection> _mockKafkaConnection1;
+        private Mock<IConnectionFactory> _mockKafkaConnectionFactory;
         private int _partitionId = 0;
 
         [SetUp]
         public void Setup()
         {
             _kernel = new MoqMockingKernel();
-            _mockKafkaConnection1 = _kernel.GetMock<IKafkaConnection>();
-            _mockKafkaConnectionFactory = _kernel.GetMock<IKafkaConnectionFactory>();
-            _mockKafkaConnectionFactory.Setup(x => x.Create(It.Is<KafkaEndpoint>(e => e.Endpoint.Port == 1), It.IsAny<IKafkaConnectionConfiguration>(), It.IsAny<IKafkaLog>())).Returns(() => _mockKafkaConnection1.Object);
-            _mockKafkaConnectionFactory.Setup(x => x.Resolve(It.IsAny<Uri>(), It.IsAny<IKafkaLog>()))
-                .Returns<Uri, IKafkaLog>((uri, log) => new KafkaEndpoint(uri, new IPEndPoint(IPAddress.Parse("127.0.0.1"), uri.Port)));
+            _mockKafkaConnection1 = _kernel.GetMock<IConnection>();
+            _mockKafkaConnectionFactory = _kernel.GetMock<IConnectionFactory>();
+            _mockKafkaConnectionFactory.Setup(x => x.Create(It.Is<Endpoint>(e => e.IP.Port == 1), It.IsAny<IConnectionConfiguration>(), It.IsAny<ILog>())).Returns(() => _mockKafkaConnection1.Object);
+            _mockKafkaConnectionFactory.Setup(x => x.Resolve(It.IsAny<Uri>(), It.IsAny<ILog>()))
+                .Returns<Uri, ILog>((uri, log) => new Endpoint(uri, new IPEndPoint(IPAddress.Parse("127.0.0.1"), uri.Port)));
         }
 
         [TestCase(ErrorResponseCode.NotLeaderForPartition)]
@@ -66,7 +66,7 @@ namespace KafkaClient.Tests.Unit
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
-        [TestCase(typeof(KafkaConnectionException))]
+        [TestCase(typeof(ConnectionException))]
         [TestCase(typeof(FetchOutOfRangeException))]
         [TestCase(typeof(CachedMetadataException))]
         public async Task ShouldTryToRefreshMataDataIfOnExceptions(Type exceptionType)
@@ -85,7 +85,7 @@ namespace KafkaClient.Tests.Unit
         }
 
         [TestCase(typeof(Exception))]
-        [TestCase(typeof(KafkaRequestException))]
+        [TestCase(typeof(RequestException))]
         public async Task SendProtocolRequestShouldThrowException(Type exceptionType)
         {
             var routerProxy = new BrokerRouterProxy(_kernel);
@@ -106,7 +106,7 @@ namespace KafkaClient.Tests.Unit
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
-        [ExpectedException(typeof(KafkaRequestException))]
+        [ExpectedException(typeof(RequestException))]
         [TestCase(ErrorResponseCode.InvalidMessage)]
         [TestCase(ErrorResponseCode.InvalidMessageSize)]
         [TestCase(ErrorResponseCode.MessageSizeTooLarge)]
@@ -221,7 +221,7 @@ namespace KafkaClient.Tests.Unit
 
                     await x.Task;
                     log.DebugFormat("SocketException ");
-                    throw new KafkaConnectionException("");
+                    throw new ConnectionException("");
                 }
                 log.DebugFormat("Completed ");
 
@@ -249,7 +249,7 @@ namespace KafkaClient.Tests.Unit
         public async Task ShouldRecoverFromConnectionExceptionByUpdateMetadataOnceFullScenario() //Do not debug this test !!
         {
             await ShouldRecoverByUpdateMetadataOnceFullScenario(
-                FailedInFirstMessageException(typeof(KafkaConnectionException), TimeSpan.Zero));
+                FailedInFirstMessageException(typeof(ConnectionException), TimeSpan.Zero));
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
@@ -326,9 +326,9 @@ namespace KafkaClient.Tests.Unit
                     await Task.Delay(delay);
                     await Task.Delay(1);
                     firstTime = false;
-                    if (exceptionType == typeof(KafkaConnectionException))
+                    if (exceptionType == typeof(ConnectionException))
                     {
-                        throw new KafkaConnectionException("");
+                        throw new ConnectionException("");
                     }
                     object[] args = new object[1];
                     args[0] = "error Test";

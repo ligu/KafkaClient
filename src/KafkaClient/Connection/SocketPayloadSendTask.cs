@@ -2,11 +2,11 @@ using System.Threading;
 
 namespace KafkaClient.Connection
 {
-    internal class SocketPayloadSendTask : SocketPayloadTask<KafkaDataPayload>
+    internal class SocketPayloadSendTask : SocketPayloadTask<DataPayload>
     {
-        public KafkaDataPayload Payload { get; }
+        public DataPayload Payload { get; }
 
-        public SocketPayloadSendTask(KafkaDataPayload payload, CancellationToken cancellationToken)
+        public SocketPayloadSendTask(DataPayload payload, CancellationToken cancellationToken)
             : base(cancellationToken)
         {
             Payload = payload;

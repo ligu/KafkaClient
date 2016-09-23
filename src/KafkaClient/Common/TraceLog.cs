@@ -8,7 +8,7 @@ namespace KafkaClient.Common
     /// The reason Trace is being used as the default it to remove extenal references from
     /// the base kafka-net package.  A proper logging framework like log4net is recommended.
     /// </summary>
-    public class TraceLog : IKafkaLog
+    public class TraceLog : ILog
     {
         public static TraceLog Log { get; } = new TraceLog();
 

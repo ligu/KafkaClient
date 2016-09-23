@@ -1,8 +1,8 @@
 namespace KafkaClient.Protocol
 {
-    public abstract class KafkaRequest : IKafkaRequest
+    public abstract class Request : IRequest
     {
-        protected KafkaRequest(ApiKeyRequestType apiKey, bool expectResponse = true)
+        protected Request(ApiKeyRequestType apiKey, bool expectResponse = true)
         {
             ApiKey = apiKey;
             ExpectResponse = expectResponse;

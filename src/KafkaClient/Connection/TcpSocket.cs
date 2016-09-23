@@ -13,14 +13,14 @@ namespace KafkaClient.Connection
     /// The TcpSocket provides an abstraction from the main driver from having to handle connection to and reconnections with a server.
     /// The interface is intentionally limited to only read/write.  All connection and reconnect details are handled internally.
     /// </summary>
-    public class KafkaTcpSocket : IKafkaTcpSocket
+    public class TcpSocket : ITcpSocket
     {
         public event Action OnServerDisconnected;
         public event Action<int> OnReconnectionAttempt;
         public event Action<int> OnReceivingFromSocket;
         public event Action<int> OnReceivedFromSocket;
-        public event Action<KafkaDataPayload> OnSendingToSocket;
-        public event Action<KafkaDataPayload> OnSentToSocket;
+        public event Action<DataPayload> OnSendingToSocket;
+        public event Action<DataPayload> OnSentToSocket;
 
         private const int DefaultReconnectionTimeout = 100;
         private const int DefaultReconnectionTimeoutMultiplier = 2;
@@ -30,8 +30,8 @@ namespace KafkaClient.Connection
         private readonly Task _disposeTask;
         private int _disposeCount;
 
-        private readonly IKafkaLog _log;
-        private readonly IKafkaConnectionConfiguration _configuration;
+        private readonly ILog _log;
+        private readonly IConnectionConfiguration _configuration;
 
         private readonly AsyncCollection<SocketPayloadSendTask> _sendTaskQueue;
         private readonly AsyncCollection<SocketPayloadReceiveTask> _readTaskQueue;
@@ -47,11 +47,11 @@ namespace KafkaClient.Connection
         /// <param name="configuration">Configuration for timeouts and retries.</param>
         /// <param name="log">Logging facility for verbose messaging of actions.</param>
         /// <param name="endpoint">The IP endpoint to connect to.</param>
-        public KafkaTcpSocket(KafkaEndpoint endpoint, IKafkaConnectionConfiguration configuration = null, IKafkaLog log = null)
+        public TcpSocket(Endpoint endpoint, IConnectionConfiguration configuration = null, ILog log = null)
         {
             Endpoint = endpoint;
             _log = log ?? TraceLog.Log;
-            _configuration = configuration ?? new KafkaConnectionConfiguration();
+            _configuration = configuration ?? new ConnectionConfiguration();
             _sendTaskQueue = new AsyncCollection<SocketPayloadSendTask>();
             _readTaskQueue = new AsyncCollection<SocketPayloadReceiveTask>();
 
@@ -68,9 +68,9 @@ namespace KafkaClient.Connection
         #region Interface Implementation...
 
         /// <summary>
-        /// The IP Endpoint to the server.
+        /// The Endpoint to the server.
         /// </summary>
-        public KafkaEndpoint Endpoint { get; }
+        public Endpoint Endpoint { get; }
 
         /// <summary>
         /// Read a certain byte array size return only when all bytes received.
@@ -91,7 +91,7 @@ namespace KafkaClient.Connection
         /// <param name="payload">The buffer data to send.</param>
         /// <param name="cancellationToken">A cancellation token which will cancel the request.</param>
         /// <returns>Returns Task handle to the write operation with size of written bytes..</returns>
-        public Task<KafkaDataPayload> WriteAsync(KafkaDataPayload payload, CancellationToken cancellationToken)
+        public Task<DataPayload> WriteAsync(DataPayload payload, CancellationToken cancellationToken)
         {
             var sendTask = new SocketPayloadSendTask(payload, cancellationToken);
             _sendTaskQueue.Add(sendTask);
@@ -118,7 +118,7 @@ namespace KafkaClient.Connection
                     await Task.WhenAny(_disposeTask, netStreamTask).ConfigureAwait(false);
 
                     if (_disposeToken.IsCancellationRequested) {
-                        SetExceptionToAllPendingTasks(new ObjectDisposedException($"Object is disposing (KafkaTcpSocket for endpoint: {Endpoint})"));
+                        SetExceptionToAllPendingTasks(new ObjectDisposedException($"Object is disposing (TcpSocket for endpoint: {Endpoint})"));
                         OnServerDisconnected?.Invoke();
                         return;
                     }
@@ -135,7 +135,7 @@ namespace KafkaClient.Connection
         private void SetExceptionToAllPendingTasks(Exception ex)
         {
             if (_sendTaskQueue.Count > 0) {
-                _log.ErrorFormat(ex, "KafkaTcpSocket received an exception, cancelling all pending tasks");
+                _log.ErrorFormat(ex, "TcpSocket received an exception, cancelling all pending tasks");
             }
 
             var wrappedException = WrappedException(ex);
@@ -202,7 +202,7 @@ namespace KafkaClient.Connection
                                     _client = null;
                                     if (_disposeToken.IsCancellationRequested) { return; }
 
-                                    throw new KafkaConnectionException(Endpoint);
+                                    throw new ConnectionException(Endpoint);
                                 }
                             }
 
@@ -212,12 +212,12 @@ namespace KafkaClient.Connection
                         receiveTask.Tcp.TrySetResult(result.ToArray());
                     } catch (Exception ex) {
                         if (_disposeToken.IsCancellationRequested) {
-                            var exception = new ObjectDisposedException($"Object is disposing (KafkaTcpSocket for endpoint: {Endpoint})");
+                            var exception = new ObjectDisposedException($"Object is disposing (TcpSocket for endpoint: {Endpoint})");
                             receiveTask.Tcp.TrySetException(exception);
                             throw exception;
                         }
 
-                        if (ex is KafkaConnectionException) {
+                        if (ex is ConnectionException) {
                             receiveTask.Tcp.TrySetException(ex);
                             if (_disposeToken.IsCancellationRequested) return;
                             throw;
@@ -225,7 +225,7 @@ namespace KafkaClient.Connection
 
                         // if an exception made us lose a connection throw disconnected exception
                         if (_client == null || _client.Connected == false) {
-                            var exception = new KafkaConnectionException(Endpoint);
+                            var exception = new ConnectionException(Endpoint);
                             receiveTask.Tcp.TrySetException(exception);
                             throw exception;
                         }
@@ -264,9 +264,9 @@ namespace KafkaClient.Connection
         private Exception WrappedException(Exception ex)
         {
             if (_disposeToken.IsCancellationRequested) {
-                return new ObjectDisposedException($"Object is disposing (KafkaTcpSocket for endpoint: {Endpoint})");
+                return new ObjectDisposedException($"Object is disposing (TcpSocket for endpoint: {Endpoint})");
             }
-            return new KafkaConnectionException($"Lost connection to server: {Endpoint}", ex) { Endpoint = Endpoint };
+            return new ConnectionException($"Lost connection to server: {Endpoint}", ex) { Endpoint = Endpoint };
         }
 
         private async Task<NetworkStream> GetStreamAsync()
@@ -297,13 +297,13 @@ namespace KafkaClient.Connection
                     OnReconnectionAttempt?.Invoke(attempts);
                     _client = new TcpClient();
 
-                    var connectTask = _client.ConnectAsync(Endpoint.Endpoint.Address, Endpoint.Endpoint.Port);
+                    var connectTask = _client.ConnectAsync(Endpoint.IP.Address, Endpoint.IP.Port);
                     await Task.WhenAny(connectTask, _disposeTask).ConfigureAwait(false);
 
-                    if (_disposeToken.IsCancellationRequested) throw new ObjectDisposedException($"Object is disposing (KafkaTcpSocket for endpoint {Endpoint})");
+                    if (_disposeToken.IsCancellationRequested) throw new ObjectDisposedException($"Object is disposing (TcpSocket for endpoint {Endpoint})");
 
                     await connectTask;
-                    if (!_client.Connected) throw new KafkaConnectionException(Endpoint);
+                    if (!_client.Connected) throw new ConnectionException(Endpoint);
 
                     _log.DebugFormat("Connection established to {0}", Endpoint);
                     return _client;

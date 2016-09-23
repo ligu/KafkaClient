@@ -112,6 +112,6 @@ namespace KafkaClient
         /// </remarks>
         Task RefreshTopicMetadataAsync(CancellationToken cancellationToken);
 
-        IKafkaLog Log { get; }
+        ILog Log { get; }
     }
 }
