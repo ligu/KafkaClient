@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
+using KafkaClient.Common;
 using KafkaClient.Connection;
 using KafkaClient.Protocol;
 
@@ -23,23 +25,22 @@ namespace KafkaClient
         /// Note that because offsets are pulled in descending order, asking for the earliest offset will always return you a single element.
         /// </param>
         /// <param name="cancellationToken"></param>
-        public static async Task<List<OffsetTopic>> GetTopicOffsetAsync(this IBrokerRouter brokerRouter, string topicName, int maxOffsets, long offsetTime, CancellationToken cancellationToken)
+        public static async Task<ImmutableList<OffsetTopic>> GetTopicOffsetAsync(this IBrokerRouter brokerRouter, string topicName, int maxOffsets, long offsetTime, CancellationToken cancellationToken)
         {
             var topicMetadata = await brokerRouter.GetTopicMetadataAsync(topicName, cancellationToken).ConfigureAwait(false);
 
             // send the offset request to each partition leader
             var sendRequests = topicMetadata.Partitions
                 .GroupBy(x => x.PartitionId)
-                .Select(p =>
-                    {
-                        var route = brokerRouter.GetBrokerRoute(topicName, p.Key);
-                        var request = new OffsetRequest(new Offset(topicName, p.Key, offsetTime, maxOffsets));
-
-                        return route.Connection.SendAsync(request, cancellationToken);
-                    }).ToArray();
+                .Select(p => {
+                    var partitionId = p.Key;
+                    var route = brokerRouter.GetBrokerRoute(topicName, partitionId);
+                    var request = new OffsetRequest(new Offset(topicName, partitionId, offsetTime, maxOffsets));
+                    return route.Connection.SendAsync(request, cancellationToken);
+                }).ToArray();
 
             await Task.WhenAll(sendRequests).ConfigureAwait(false);
-            return sendRequests.SelectMany(x => x.Result.Topics).ToList();
+            return ImmutableList<OffsetTopic>.Empty.AddNotNullRange(sendRequests.SelectMany(x => x.Result.Topics));
         }
 
         /// <summary>
@@ -48,7 +49,7 @@ namespace KafkaClient
         /// <param name="brokerRouter">The router which provides the route and metadata.</param>
         /// <param name="topicName">Name of the topic to get offset information from.</param>
         /// <param name="cancellationToken"></param>
-        public static Task<List<OffsetTopic>> GetTopicOffsetAsync(this IBrokerRouter brokerRouter, string topicName, CancellationToken cancellationToken)
+        public static Task<ImmutableList<OffsetTopic>> GetTopicOffsetAsync(this IBrokerRouter brokerRouter, string topicName, CancellationToken cancellationToken)
         {
             return brokerRouter.GetTopicOffsetAsync(topicName, Offset.DefaultMaxOffsets, Offset.DefaultTime, cancellationToken);
         }

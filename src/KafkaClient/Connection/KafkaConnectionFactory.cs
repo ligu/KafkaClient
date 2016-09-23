@@ -5,10 +5,9 @@ namespace KafkaClient.Connection
 {
     public class KafkaConnectionFactory : IKafkaConnectionFactory
     {
-        public IKafkaConnection Create(KafkaEndpoint endpoint, IKafkaConnectionConfiguration configuration, IKafkaLog log)
+        public IKafkaConnection Create(KafkaEndpoint endpoint, IKafkaConnectionConfiguration configuration, IKafkaLog log = null)
         {
-            var socket = new KafkaTcpSocket(log, endpoint, configuration.MaxRetries, configuration.ConnectingTimeout, configuration.TrackTelemetry);
-            return new KafkaConnection(socket, configuration.RequestTimeout, log);
+            return new KafkaConnection(new KafkaTcpSocket(endpoint, configuration, log), configuration, log);
         }
 
         public KafkaEndpoint Resolve(Uri kafkaAddress, IKafkaLog log)

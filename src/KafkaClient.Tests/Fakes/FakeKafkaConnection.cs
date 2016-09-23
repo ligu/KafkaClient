@@ -26,7 +26,7 @@ namespace KafkaClient.Tests.Fakes
 
         public KafkaEndpoint Endpoint { get; }
 
-        public bool ReadPolling => true;
+        public bool IsReaderAlive => true;
 
         public Task SendAsync(KafkaDataPayload payload, CancellationToken token)
         {

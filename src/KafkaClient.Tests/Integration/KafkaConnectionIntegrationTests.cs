@@ -22,10 +22,10 @@ namespace KafkaClient.Tests.Integration
         [SetUp]
         public void Setup()
         {
-            var options = new KafkaOptions(IntegrationConfig.IntegrationUri);
+            var options = new KafkaOptions(IntegrationConfig.IntegrationUri, new KafkaConnectionConfiguration(maxRetries: 5));
             var endpoint = new KafkaConnectionFactory().Resolve(options.ServerUris.First(), options.Log);
 
-            _conn = new KafkaConnection(new KafkaTcpSocket(new TraceLog(), endpoint, 5), options.ConnectionConfiguration.RequestTimeout, options.Log);
+            _conn = new KafkaConnection(new KafkaTcpSocket(endpoint, options.ConnectionConfiguration), options.ConnectionConfiguration, options.Log);
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]

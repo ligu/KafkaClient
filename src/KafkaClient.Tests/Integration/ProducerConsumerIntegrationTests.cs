@@ -148,7 +148,7 @@ namespace KafkaClient.Tests.Integration
             var producer = new Producer(router, causesRaceConditionOldVersion) { BatchDelayTime = TimeSpan.Zero };//this is slow on purpose
             //this is not slow  var producer = new Producer(router);
             IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("create producer"));
-            List<OffsetTopic> offsets = await producer.BrokerRouter.GetTopicOffsetAsync(IntegrationConfig.IntegrationTopic, CancellationToken.None);
+            var offsets = await producer.BrokerRouter.GetTopicOffsetAsync(IntegrationConfig.IntegrationTopic, CancellationToken.None);
             IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("request Offset"));
             List<Task> sendList = new List<Task>(numberOfMessage);
             for (int i = 0; i < numberOfMessage; i++)
@@ -207,7 +207,7 @@ namespace KafkaClient.Tests.Integration
             var producer = new Producer(router) { BatchDelayTime = TimeSpan.FromMilliseconds(10), BatchSize = numberOfMessage / 10 };
             IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("create producer ,time Milliseconds:{0}", stopwatch.ElapsedMilliseconds));
             stopwatch.Restart();
-            List<OffsetTopic> offsets = await producer.BrokerRouter.GetTopicOffsetAsync(IntegrationConfig.IntegrationTopic, CancellationToken.None);
+            var offsets = await producer.BrokerRouter.GetTopicOffsetAsync(IntegrationConfig.IntegrationTopic, CancellationToken.None);
             IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("request Offset,time Milliseconds:{0}", stopwatch.ElapsedMilliseconds));
             stopwatch.Restart();
             List<Task> sendList = new List<Task>(numberOfMessage);

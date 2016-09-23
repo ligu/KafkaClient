@@ -13,7 +13,7 @@ namespace KafkaClient
 
         public TimeSpan RefreshTimeout { get; }
         public int MaxRetries { get; }
-        public TimeSpan? CacheExpiration { get; }
+        public TimeSpan CacheExpiration { get; }
 
         public const int DefaultRefreshTimeoutSeconds = 200;
         public const int DefaultMaxRetries = 3;

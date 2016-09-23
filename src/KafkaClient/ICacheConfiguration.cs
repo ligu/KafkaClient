@@ -14,6 +14,6 @@ namespace KafkaClient
         /// <summary>
         /// The minimum time to cache metadata (unless explicitly forced to refresh).
         /// </summary>
-        TimeSpan? CacheExpiration { get; }
+        TimeSpan CacheExpiration { get; }
     }
 }

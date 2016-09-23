@@ -12,7 +12,7 @@ namespace KafkaClient.Connection
         /// <param name="configuration">The configuration for the connection (including things like connection and request timeouts).</param>
         /// <param name="log">Logging interface used to record any log messages created by the connection.</param>
         /// <returns>IKafkaConnection initialized to connecto to the given endpoint.</returns>
-        IKafkaConnection Create(KafkaEndpoint endpoint, IKafkaConnectionConfiguration configuration, IKafkaLog log);
+        IKafkaConnection Create(KafkaEndpoint endpoint, IKafkaConnectionConfiguration configuration, IKafkaLog log = null);
 
         /// <summary>
         /// Resolves a generic Uri into a uniquely identifiable KafkaEndpoint.

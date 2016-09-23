@@ -16,7 +16,6 @@ namespace KafkaClient
     /// TODO: replace _fetchResponseQueue to AsyncCollection!! it is not recommended to  use async and blocking code together look on https://github.com/StephenCleary/AsyncEx/blob/77b9711c2c5fd4ca28b220ce4c93d209eeca2b4a/Source/Nito.AsyncEx.Concurrent%20(NET4%2C%20Win8)/AsyncCollection.cs
     /// I don't use this consumer so i stop develop it i am using manual consumer instend
     /// </summary>
-
     public class Consumer : IKafkaClient
     {
         private readonly ConsumerOptions _options;

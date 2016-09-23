@@ -21,7 +21,7 @@ namespace KafkaClient
             ConnectionConfiguration = connectionConfiguration ?? new KafkaConnectionConfiguration();
             ConnectionFactory = connectionFactory ?? new KafkaConnectionFactory();
             PartitionSelector = partitionSelector ?? new PartitionSelector();
-            Log = log ?? new TraceLog();
+            Log = log ?? TraceLog.Log;
         }
 
         public KafkaOptions(

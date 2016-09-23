@@ -21,11 +21,13 @@ namespace KafkaClient.Tests.Unit
         private readonly KafkaEndpoint _kafkaEndpoint;
         private MoqMockingKernel _kernel;
         private int _maxRetry = 5;
+        private readonly KafkaConnectionConfiguration _config;
 
         public KafkaConnectionTests()
         {
             _log = new TraceLog();
             _kafkaEndpoint = new KafkaConnectionFactory().Resolve(new Uri("http://localhost:8999"), _log);
+            _config = new KafkaConnectionConfiguration(maxRetries: _maxRetry);
         }
 
         [SetUp]
@@ -39,11 +41,11 @@ namespace KafkaClient.Tests.Unit
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         public async Task ShouldStartReadPollingOnConstruction()
         {
-            using (var socket = new KafkaTcpSocket(_log, _kafkaEndpoint, _maxRetry))
+            using (var socket = new KafkaTcpSocket(_kafkaEndpoint, _config, _log))
             using (var conn = new KafkaConnection(socket, log: _log))
             {
-                await TaskTest.WaitFor(() => conn.ReadPolling);
-                Assert.That(conn.ReadPolling, Is.True);
+                await TaskTest.WaitFor(() => conn.IsReaderAlive);
+                Assert.That(conn.IsReaderAlive, Is.True);
             }
         }
 
@@ -51,7 +53,7 @@ namespace KafkaClient.Tests.Unit
         public void ShouldReportServerUriOnConstruction()
         {
             var expectedUrl = _kafkaEndpoint;
-            using (var socket = new KafkaTcpSocket(_log, expectedUrl, _maxRetry))
+            using (var socket = new KafkaTcpSocket(expectedUrl, _config, _log))
             using (var conn = new KafkaConnection(socket, log: _log))
             {
                 Assert.That(conn.Endpoint, Is.EqualTo(expectedUrl));
@@ -66,7 +68,7 @@ namespace KafkaClient.Tests.Unit
         public async Task ShouldDisposeWithoutExceptionThrown()
         {
             using (var server = new FakeTcpServer(_log, 8999))
-            using (var socket = new KafkaTcpSocket(_log, _kafkaEndpoint, _maxRetry))
+            using (var socket = new KafkaTcpSocket(_kafkaEndpoint, _config, _log))
             {
                 var conn = new KafkaConnection(socket, log: _log);
                 await TaskTest.WaitFor(() => server.ConnectionEventcount > 0);
@@ -77,7 +79,7 @@ namespace KafkaClient.Tests.Unit
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         public void ShouldDisposeWithoutExceptionEvenWhileCallingSendAsync()
         {
-            using (var socket = new KafkaTcpSocket(_log, _kafkaEndpoint, _maxRetry))
+            using (var socket = new KafkaTcpSocket(_kafkaEndpoint, _config, _log))
             using (var conn = new KafkaConnection(socket, log: _log))
             {
                 var task = conn.SendAsync(new MetadataRequest(), CancellationToken.None);
@@ -97,7 +99,7 @@ namespace KafkaClient.Tests.Unit
             var mockLog =new Mock<IKafkaLog>();
             var log= new TraceLog(LogLevel.Error);
             using (var server = new FakeTcpServer(log, 8999))
-            using (var socket = new KafkaTcpSocket(log, _kafkaEndpoint, _maxRetry))
+            using (var socket = new KafkaTcpSocket(_kafkaEndpoint, _config, log))
             using (var conn = new KafkaConnection(socket, log: mockLog.Object))
             {
                 var disconnected = 0;
@@ -109,15 +111,15 @@ namespace KafkaClient.Tests.Unit
                     await TaskTest.WaitFor(() => server.ConnectionEventcount == connectionAttempt);
                     Assert.That(server.ConnectionEventcount, Is.EqualTo(connectionAttempt));
                     server.SendDataAsync(CreateCorrelationMessage(1)).Wait(TimeSpan.FromSeconds(5));
-                    await TaskTest.WaitFor(() => !conn.IsOnErrorState());
+                    await TaskTest.WaitFor(() => !conn.IsInErrorState);
 
-                    Assert.IsFalse(conn.IsOnErrorState());
+                    Assert.IsFalse(conn.IsInErrorState);
                     mockLog.Verify(x => x.InfoFormat("Polling read thread has recovered: {0}", It.IsAny<object[]>()), Times.Exactly(connectionAttempt-1));
 
                     server.DropConnection();
-                    await TaskTest.WaitFor(() => conn.IsOnErrorState());
+                    await TaskTest.WaitFor(() => conn.IsInErrorState);
                     Assert.AreEqual(disconnected,connectionAttempt);
-                    Assert.IsTrue(conn.IsOnErrorState());
+                    Assert.IsTrue(conn.IsInErrorState);
 
                     mockLog.Verify(x => x.ErrorFormat("Exception occured in polling read thread {0}: {1}", It.IsAny<object[]>()), Times.Exactly(connectionAttempt ));
                 }
@@ -133,7 +135,7 @@ namespace KafkaClient.Tests.Unit
             var mockLog = _kernel.GetMock<IKafkaLog>();
 
             using (var server = new FakeTcpServer(_log, 8999))
-            using (var socket = new KafkaTcpSocket(mockLog.Object, _kafkaEndpoint, _maxRetry))
+            using (var socket = new KafkaTcpSocket(_kafkaEndpoint, _config, mockLog.Object))
             using (var conn = new KafkaConnection(socket, log: mockLog.Object))
             {
                 var receivedData = false;
@@ -162,8 +164,8 @@ namespace KafkaClient.Tests.Unit
         public async Task SendAsyncShouldTimeoutWhenSendAsyncTakesTooLong()
         {
             using (var server = new FakeTcpServer(_log, 8999))
-            using (var socket = new KafkaTcpSocket(_log, _kafkaEndpoint, _maxRetry))
-            using (var conn = new KafkaConnection(socket, TimeSpan.FromMilliseconds(1), log: _log))
+            using (var socket = new KafkaTcpSocket(_kafkaEndpoint, _config, _log))
+            using (var conn = new KafkaConnection(socket, new KafkaConnectionConfiguration(requestTimeout: TimeSpan.FromMilliseconds(1)), log: _log))
             {
                 await TaskTest.WaitFor(() => server.ConnectionEventcount > 0);
                 Assert.That(server.ConnectionEventcount, Is.EqualTo(1));
@@ -180,8 +182,8 @@ namespace KafkaClient.Tests.Unit
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         public async Task SendAsyncShouldNotAllowResponseToTimeoutWhileAwaitingKafkaToEstableConnection()
         {
-            using (var socket = new KafkaTcpSocket(_log, _kafkaEndpoint, _maxRetry))
-            using (var conn = new KafkaConnection(socket, TimeSpan.FromMilliseconds(1000000), log: _log))
+            using (var socket = new KafkaTcpSocket(_kafkaEndpoint, _config, _log))
+            using (var conn = new KafkaConnection(socket, new KafkaConnectionConfiguration(requestTimeout: TimeSpan.FromMilliseconds(1000000)), log: _log))
             {
                 Console.WriteLine("SendAsync blocked by reconnection attempts...");
                 var taskResult = conn.SendAsync(new MetadataRequest(), CancellationToken.None);
@@ -212,8 +214,8 @@ namespace KafkaClient.Tests.Unit
         public async Task SendAsyncShouldTimeoutMultipleMessagesAtATime()
         {
             using (var server = new FakeTcpServer(_log, 8999))
-            using (var socket = new KafkaTcpSocket(_log, _kafkaEndpoint, _maxRetry))
-            using (var conn = new KafkaConnection(socket, TimeSpan.FromMilliseconds(100), log: _log))
+            using (var socket = new KafkaTcpSocket(_kafkaEndpoint, _config, _log))
+            using (var conn = new KafkaConnection(socket, new KafkaConnectionConfiguration(TimeSpan.FromMilliseconds(100)), log: _log))
             {
                 server.HasClientConnected.Wait(TimeSpan.FromSeconds(3));
                 Assert.That(server.ConnectionEventcount, Is.EqualTo(1));

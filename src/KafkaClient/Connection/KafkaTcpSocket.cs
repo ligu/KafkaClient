@@ -24,41 +24,36 @@ namespace KafkaClient.Connection
 
         private const int DefaultReconnectionTimeout = 100;
         private const int DefaultReconnectionTimeoutMultiplier = 2;
-        private const int MaxReconnectionTimeoutMinutes = 5;
 
         private readonly CancellationTokenSource _disposeToken = new CancellationTokenSource();
         private readonly CancellationTokenRegistration _disposeRegistration;
-        private readonly IKafkaLog _log;
-        private readonly TimeSpan _connectingTimeout;
         private readonly Task _disposeTask;
+        private int _disposeCount;
+
+        private readonly IKafkaLog _log;
+        private readonly IKafkaConnectionConfiguration _configuration;
+
         private readonly AsyncCollection<SocketPayloadSendTask> _sendTaskQueue;
         private readonly AsyncCollection<SocketPayloadReceiveTask> _readTaskQueue;
-        private readonly bool _trackTelemetry;
         // ReSharper disable NotAccessedField.Local
         private readonly Task _socketTask;
         // ReSharper restore NotAccessedField.Local
         private readonly AsyncLock _clientLock = new AsyncLock();
         private TcpClient _client;
-        private int _disposeCount;
-        private readonly int _maxRetry;
 
         /// <summary>
         /// Construct socket and open connection to a specified server.
         /// </summary>
+        /// <param name="configuration">Configuration for timeouts and retries.</param>
         /// <param name="log">Logging facility for verbose messaging of actions.</param>
         /// <param name="endpoint">The IP endpoint to connect to.</param>
-        /// <param name="maxRetry">The maximum number of retries.</param>
-        /// <param name="connectingTimeout">The maximum time to wait when backing off on reconnection attempts.</param>
-        /// <param name="trackTelemetry">Whether to track telemetry.</param>
-        public KafkaTcpSocket(IKafkaLog log, KafkaEndpoint endpoint, int maxRetry, TimeSpan? connectingTimeout = null, bool trackTelemetry = false)
+        public KafkaTcpSocket(KafkaEndpoint endpoint, IKafkaConnectionConfiguration configuration = null, IKafkaLog log = null)
         {
-            _log = log;
             Endpoint = endpoint;
-            _connectingTimeout = connectingTimeout ?? TimeSpan.FromMinutes(MaxReconnectionTimeoutMinutes);
-            _maxRetry = maxRetry;
+            _log = log ?? TraceLog.Log;
+            _configuration = configuration ?? new KafkaConnectionConfiguration();
             _sendTaskQueue = new AsyncCollection<SocketPayloadSendTask>();
             _readTaskQueue = new AsyncCollection<SocketPayloadReceiveTask>();
-            _trackTelemetry = trackTelemetry;
 
             // dedicate a long running task to the read/write operations
             _socketTask = Task.Run(DedicatedSocketTask);
@@ -100,7 +95,7 @@ namespace KafkaClient.Connection
         {
             var sendTask = new SocketPayloadSendTask(payload, cancellationToken);
             _sendTaskQueue.Add(sendTask);
-            if (_trackTelemetry) {
+            if (_configuration.TrackTelemetry) {
                 StatisticsTracker.QueueNetworkWrite(Endpoint, payload);
             }
             return sendTask.Tcp.Task;
@@ -186,7 +181,7 @@ namespace KafkaClient.Connection
         private async Task ProcessReceiveTaskAsync(Stream stream, SocketPayloadReceiveTask receiveTask)
         {
             using (receiveTask) {
-                using (_trackTelemetry ? StatisticsTracker.Gauge(StatisticGauge.ActiveReadOperation) : Disposable.None) {
+                using (_configuration.TrackTelemetry ? StatisticsTracker.Gauge(StatisticGauge.ActiveReadOperation) : Disposable.None) {
                     try {
                         var readSize = receiveTask.ReadSize;
                         var result = new List<byte>();
@@ -249,7 +244,7 @@ namespace KafkaClient.Connection
             if (sendTask == null) return;
 
             using (sendTask) {
-                using (_trackTelemetry ? StatisticsTracker.TrackNetworkWrite(sendTask) : Disposable.None) {
+                using (_configuration.TrackTelemetry ? StatisticsTracker.TrackNetworkWrite(sendTask) : Disposable.None) {
                     try {
                         _log.DebugFormat("Sending data to {0} with CorrelationId {1}", Endpoint, sendTask.Payload.CorrelationId);
                         OnSendingToSocket?.Invoke(sendTask.Payload);
@@ -296,7 +291,7 @@ namespace KafkaClient.Connection
             _log.DebugFormat("No connection to {0}: Attempting to connect...", Endpoint);
 
             _client = null;
-            while (_disposeToken.IsCancellationRequested == false && _maxRetry > attempts) {
+            while (_disposeToken.IsCancellationRequested == false && _configuration.MaxRetries > attempts) {
                 attempts++;
                 try {
                     OnReconnectionAttempt?.Invoke(attempts);
@@ -313,13 +308,13 @@ namespace KafkaClient.Connection
                     _log.DebugFormat("Connection established to {0}", Endpoint);
                     return _client;
                 } catch (Exception ex) {
-                    if (_maxRetry < attempts) {
+                    if (_configuration.MaxRetries < attempts) {
                         _log.WarnFormat(ex, "Failed connection to {0} on retry {1}", Endpoint, attempts);
                         throw;
                     }
 
                     reconnectionDelay = reconnectionDelay * DefaultReconnectionTimeoutMultiplier;
-                    reconnectionDelay = Math.Min(reconnectionDelay, (int)_connectingTimeout.TotalMilliseconds);
+                    reconnectionDelay = Math.Min(reconnectionDelay, (int)_configuration.ConnectingTimeout.TotalMilliseconds);
                     _log.WarnFormat(ex, "Failed connection to {0}: Will retry in {1}", Endpoint, reconnectionDelay);
                 }
 

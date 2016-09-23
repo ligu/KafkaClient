@@ -15,7 +15,7 @@ namespace KafkaClient.Connection
         /// <summary>
         /// Value indicating the read polling thread is still active.
         /// </summary>
-        bool ReadPolling { get; }
+        bool IsReaderAlive { get; }
 
         /// <summary>
         /// Send raw payload data up to the connected endpoint.

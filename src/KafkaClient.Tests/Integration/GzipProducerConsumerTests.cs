@@ -20,7 +20,8 @@ namespace KafkaClient.Tests.Integration
         private KafkaConnection GetKafkaConnection()
         {
             var endpoint = new KafkaConnectionFactory().Resolve(_options.ServerUris.First(), _options.Log);
-            return new KafkaConnection(new KafkaTcpSocket(new TraceLog(), endpoint, 5), _options.ConnectionConfiguration.RequestTimeout, _options.Log);
+            var configuration = new KafkaConnectionConfiguration(maxRetries: 5, requestTimeout: _options.ConnectionConfiguration.RequestTimeout);
+            return new KafkaConnection(new KafkaTcpSocket(endpoint, configuration), configuration, _options.Log);
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
@@ -63,8 +64,10 @@ namespace KafkaClient.Tests.Integration
 
             var offsets = producer.BrokerRouter.GetTopicOffsetAsync(IntegrationConfig.IntegrationCompressionTopic, CancellationToken.None).Result;
 
-            var consumer = new Consumer(new ConsumerOptions(IntegrationConfig.IntegrationCompressionTopic, router) { PartitionWhitelist = new List<int>() { 0 } },
-                offsets.Select(x => new OffsetPosition(x.PartitionId, x.Offsets.Max())).ToArray());
+            var offsetPositions = offsets.Where(x => !x.Offsets.IsEmpty).Select(x => new OffsetPosition(x.PartitionId, x.Offsets.Max()));
+            var consumer = new Consumer(new ConsumerOptions(IntegrationConfig.IntegrationCompressionTopic, router) {
+                                            PartitionWhitelist = new List<int> {0}
+                                        }, offsetPositions.ToArray());
             int numberOfmessage = 3;
             for (int i = 0; i < numberOfmessage; i++)
             {

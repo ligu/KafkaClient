@@ -10,6 +10,8 @@ namespace KafkaClient.Common
     /// </summary>
     public class TraceLog : IKafkaLog
     {
+        public static TraceLog Log { get; } = new TraceLog();
+
         private readonly LogLevel _minLevel;
 
         public TraceLog(LogLevel minLevel)

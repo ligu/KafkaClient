@@ -108,7 +108,7 @@ namespace KafkaClient.Protocol
                 foreach (var groupedPayload in groupedPayloads) {
                     var payloads = groupedPayload.ToList();
                     message.Pack(groupedPayload.Key.TopicName, StringPrefixEncoding.Int16)
-                            .Pack(payloads.Count)
+                            .Pack(payloads.Count) // shouldn't this be 1?
                             .Pack(groupedPayload.Key.PartitionId);
 
                     switch (groupedPayload.Key.Codec)

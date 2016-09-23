@@ -50,7 +50,7 @@ namespace KafkaClient
         /// <exception cref="KafkaConnectionException">None of the provided Kafka servers are resolvable.</exception>
         public BrokerRouter(IEnumerable<Uri> serverUris, IKafkaConnectionFactory connectionFactory = null, IKafkaConnectionConfiguration connectionConfiguration = null, IPartitionSelector partitionSelector = null, ICacheConfiguration cacheConfiguration = null, IKafkaLog log = null)
         {
-            Log = log ?? new TraceLog();
+            Log = log ?? TraceLog.Log;
             _connectionConfiguration = connectionConfiguration ?? new KafkaConnectionConfiguration();
             _connectionFactory = connectionFactory ?? new KafkaConnectionFactory();
 
