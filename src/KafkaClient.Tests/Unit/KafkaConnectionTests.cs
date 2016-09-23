@@ -20,14 +20,13 @@ namespace KafkaClient.Tests.Unit
         private readonly TraceLog _log;
         private readonly Endpoint _endpoint;
         private MoqMockingKernel _kernel;
-        private int _maxRetry = 5;
         private readonly ConnectionConfiguration _config;
 
         public KafkaConnectionTests()
         {
             _log = new TraceLog();
             _endpoint = new ConnectionFactory().Resolve(new Uri("http://localhost:8999"), _log);
-            _config = new ConnectionConfiguration(maxRetries: _maxRetry);
+            _config = new ConnectionConfiguration();
         }
 
         [SetUp]
@@ -183,7 +182,7 @@ namespace KafkaClient.Tests.Unit
         public async Task SendAsyncShouldNotAllowResponseToTimeoutWhileAwaitingKafkaToEstableConnection()
         {
             using (var socket = new TcpSocket(_endpoint, _config, _log))
-            using (var conn = new Connection.Connection(socket, new ConnectionConfiguration(requestTimeout: TimeSpan.FromMilliseconds(1000000)), log: _log))
+            using (var conn = new Connection.Connection(socket, new ConnectionConfiguration(requestTimeout: TimeSpan.FromSeconds(1000)), log: _log))
             {
                 Console.WriteLine("SendAsync blocked by reconnection attempts...");
                 var taskResult = conn.SendAsync(new MetadataRequest(), CancellationToken.None);
@@ -215,7 +214,7 @@ namespace KafkaClient.Tests.Unit
         {
             using (var server = new FakeTcpServer(_log, 8999))
             using (var socket = new TcpSocket(_endpoint, _config, _log))
-            using (var conn = new Connection.Connection(socket, new ConnectionConfiguration(TimeSpan.FromMilliseconds(100)), log: _log))
+            using (var conn = new Connection.Connection(socket, new ConnectionConfiguration(requestTimeout: TimeSpan.FromMilliseconds(100)), log: _log))
             {
                 server.HasClientConnected.Wait(TimeSpan.FromSeconds(3));
                 Assert.That(server.ConnectionEventcount, Is.EqualTo(1));

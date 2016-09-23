@@ -7,7 +7,7 @@ namespace KafkaClient.Tests.Helpers
     public static class TaskTest
     {
         /// <exception cref="Exception">A delegate callback throws an exception.</exception>
-        public async static Task<bool> WaitFor(Func<bool> predicate, int milliSeconds = 3000)
+        public static async Task<bool> WaitFor(Func<bool> predicate, int milliSeconds = 3000)
         {
             var sw = Stopwatch.StartNew();
             while (predicate() == false)

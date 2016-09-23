@@ -20,7 +20,7 @@ namespace KafkaClient.Tests.Integration
         private Connection.Connection GetKafkaConnection()
         {
             var endpoint = new ConnectionFactory().Resolve(_options.ServerUris.First(), _options.Log);
-            var configuration = new ConnectionConfiguration(maxRetries: 5, requestTimeout: _options.ConnectionConfiguration.RequestTimeout);
+            var configuration = _options.ConnectionConfiguration;
             return new Connection.Connection(new TcpSocket(endpoint, configuration), configuration, _options.Log);
         }
 

@@ -24,14 +24,13 @@ namespace KafkaClient.Tests.Unit
         private readonly Endpoint _fakeServerUrl;
         private readonly Endpoint _badServerUrl;
         private readonly ILog _log = new TraceLog(LogLevel.Info);
-        private int _maxRetry = 5;
         private readonly ConnectionConfiguration _config;
 
         public KafkaTcpSocketTests()
         {
             _fakeServerUrl = new ConnectionFactory().Resolve(new Uri("http://localhost:8999"), _log);
             _badServerUrl = new ConnectionFactory().Resolve(new Uri("http://localhost:1"), _log);
-            _config = new ConnectionConfiguration(maxRetries: _maxRetry);
+            _config = new ConnectionConfiguration();
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
@@ -369,7 +368,7 @@ namespace KafkaClient.Tests.Unit
             socket.OnReconnectionAttempt += (x) => Interlocked.Increment(ref reconnectionAttempt);
             var resultTask = socket.ReadAsync(4, CancellationToken.None);
             await resultTask;
-            Assert.Equals(reconnectionAttempt, _maxRetry);
+            Assert.Equals(reconnectionAttempt, ConnectionConfiguration.DefaultMaxRetries);
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]

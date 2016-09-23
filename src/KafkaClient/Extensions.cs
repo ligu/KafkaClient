@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Runtime.ExceptionServices;
@@ -60,26 +59,23 @@ namespace KafkaClient
         /// <exception cref="ConnectionException">Thrown in case of network error contacting broker (after retries), or if none of the default brokers can be contacted.</exception>
         /// <exception cref="RequestException">Thrown in case of an unexpected error in the request</exception>
         /// <exception cref="FormatException">Thrown in case the topic name is invalid</exception>
-        public static async Task<T> SendAsync<T>(this IBrokerRouter brokerRouter, IRequest<T> request, string topicName, int partition, CancellationToken cancellationToken, IRequestContext context = null) where T : class, IResponse
+        public static async Task<T> SendAsync<T>(this IBrokerRouter brokerRouter, IRequest<T> request, string topicName, int partition, CancellationToken cancellationToken, IRequestContext context = null, IRetry retry = null) where T : class, IResponse
         {
             if (topicName.Contains(" ")) throw new FormatException($"topic name ({topicName}) is invalid");
 
-            ExceptionDispatchInfo exceptionInfo = null;
-            Endpoint endpoint = null;
-            T response = null;
             bool? metadataInvalid = false;
-            var attempt = 1;
-            do {
-                if (metadataInvalid.GetValueOrDefault(true)) {
-                    // unknown metadata status should not force the issue
-                    await brokerRouter.RefreshTopicMetadataAsync(topicName, metadataInvalid.GetValueOrDefault(), cancellationToken).ConfigureAwait(false);
-                }
+            return await (retry ?? new Retry(TimeSpan.MaxValue, 3)).AttemptAsync(
+                async (attempt, timer) => {
+                    if (metadataInvalid.GetValueOrDefault(true)) {
+                        // unknown metadata status should not force the issue
+                        await brokerRouter.RefreshTopicMetadataAsync(topicName, metadataInvalid.GetValueOrDefault(), cancellationToken).ConfigureAwait(false);
+                        metadataInvalid = false;
+                    }
 
-                try {
                     brokerRouter.Log.DebugFormat("Router SendAsync request {0} (attempt {1})", request.ApiKey, attempt + 1);
                     var route = await brokerRouter.GetBrokerRouteAsync(topicName, partition, cancellationToken);
-                    endpoint = route.Connection.Endpoint;
-                    response = await route.Connection.SendAsync(request, cancellationToken, context).ConfigureAwait(false);
+                    var endpoint = route.Connection.Endpoint;
+                    var response = await route.Connection.SendAsync(request, cancellationToken, context).ConfigureAwait(false);
 
                     // this can happen if you send ProduceRequest with ack level=0
                     if (response == null) return null;
@@ -87,24 +83,56 @@ namespace KafkaClient
                     var errors = response.Errors.Where(e => e != ErrorResponseCode.NoError).ToList();
                     if (errors.Count == 0) return response;
 
-                    metadataInvalid = errors.All(CanRecoverByRefreshMetadata);
+                    metadataInvalid = errors.All(IsRecoverableByMetadaRefresh);
                     brokerRouter.Log.WarnFormat("Error response in Router SendAsync (attempt {0}): {1}", 
                         attempt + 1, errors.Aggregate($"{route} - ", (buffer, e) => $"{buffer} {e}"));
-                } catch (Exception ex) {
-                    if (!(ex is TimeoutException || ex is ConnectionException || ex is FetchOutOfRangeException || ex is CachedMetadataException)) throw;
 
-                    exceptionInfo = ExceptionDispatchInfo.Capture(ex);
-                    metadataInvalid = null; // ie. the state of the metadata is unknown
-                    brokerRouter.Log.WarnFormat(ex, "Error response in Router SendAsync (attempt {0})", attempt + 1);
-                }
-            } while (attempt++ < 3 && metadataInvalid.GetValueOrDefault(true));
+                    if (!metadataInvalid.Value) throw request.ExtractExceptions(response, endpoint);
+                    throw new SendException<T>(request, response, endpoint);
+                },
+                (ex, attempt, retryDelay) => {
+                    var metadataPotentiallyInvalid = IsPotentiallyRecoverableByMetadataRefresh(ex);
+                    var sendException = ex as SendException<T>;
 
-            brokerRouter.Log.ErrorFormat("Router SendAsync Failed");
-            exceptionInfo?.Throw();
-            throw request.ExtractExceptions(response, endpoint);
+                    if (!retryDelay.HasValue && sendException != null) {
+                        throw sendException.Request.ExtractExceptions(sendException.Response, sendException.Endpoint);
+                    }
+                    if (!retryDelay.HasValue || (sendException == null && !metadataPotentiallyInvalid)) {
+                        var exceptionInfo = ExceptionDispatchInfo.Capture(ex);
+                        exceptionInfo.Throw();
+                    }
+
+                    if (metadataPotentiallyInvalid) {
+                        metadataInvalid = null; // ie. the state of the metadata is unknown
+                    }
+                },
+                cancellationToken);
         }
 
-        private static bool CanRecoverByRefreshMetadata(ErrorResponseCode error)
+        private class SendException<TResponse> : Exception
+            where TResponse : class, IResponse
+        {
+            public SendException(IRequest<TResponse> request, TResponse response, Endpoint endpoint)
+            {
+                Request = request;
+                Response = response;
+                Endpoint = endpoint;
+            }
+
+            public IRequest<TResponse> Request { get; }
+            public TResponse Response { get; }
+            public Endpoint Endpoint { get; }
+        }
+
+        private static bool IsPotentiallyRecoverableByMetadataRefresh(Exception exception)
+        {
+            return exception is FetchOutOfRangeException
+                || exception is TimeoutException
+                || exception is ConnectionException
+                || exception is CachedMetadataException;
+        }
+
+        private static bool IsRecoverableByMetadaRefresh(ErrorResponseCode error)
         {
             return  error == ErrorResponseCode.BrokerNotAvailable ||
                     error == ErrorResponseCode.ConsumerCoordinatorNotAvailable ||

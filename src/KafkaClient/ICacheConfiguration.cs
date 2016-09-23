@@ -1,15 +1,14 @@
 ﻿using System;
+using KafkaClient.Common;
 
 namespace KafkaClient
 {
     public interface ICacheConfiguration
     {
         /// <summary>
-        /// The maximum time to wait when refreshing metadata.
+        /// Retry configuration for refreshing the cache.
         /// </summary>
-        TimeSpan RefreshTimeout { get; }
-
-        int MaxRetries { get; }
+        IRetry RefreshRetry { get; }
 
         /// <summary>
         /// The minimum time to cache metadata (unless explicitly forced to refresh).

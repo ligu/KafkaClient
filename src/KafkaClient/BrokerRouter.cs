@@ -25,8 +25,6 @@ namespace KafkaClient
     {
         private readonly KafkaMetadataProvider _kafkaMetadataProvider;
         private readonly IConnectionFactory _connectionFactory;
-        private readonly IConnectionConfiguration _connectionConfiguration;
-        private readonly ICacheConfiguration _cacheConfiguration;
         private readonly IPartitionSelector _partitionSelector;
 
         private ImmutableDictionary<Endpoint, IConnection> _allConnections = ImmutableDictionary<Endpoint, IConnection>.Empty;
@@ -51,13 +49,13 @@ namespace KafkaClient
         public BrokerRouter(IEnumerable<Uri> serverUris, IConnectionFactory connectionFactory = null, IConnectionConfiguration connectionConfiguration = null, IPartitionSelector partitionSelector = null, ICacheConfiguration cacheConfiguration = null, ILog log = null)
         {
             Log = log ?? TraceLog.Log;
-            _connectionConfiguration = connectionConfiguration ?? new ConnectionConfiguration();
+            Configuration = connectionConfiguration ?? new ConnectionConfiguration();
             _connectionFactory = connectionFactory ?? new ConnectionFactory();
 
             foreach (var uri in serverUris) {
                 try {
                     var endpoint = _connectionFactory.Resolve(uri, Log);
-                    var connection = _connectionFactory.Create(endpoint, _connectionConfiguration, Log);
+                    var connection = _connectionFactory.Create(endpoint, Configuration, Log);
                     _allConnections = _allConnections.SetItem(endpoint, connection);
                 } catch (ConnectionException ex) {
                     Log.WarnFormat(ex, "Ignoring uri that could not be resolved: {0}", uri);
@@ -66,10 +64,13 @@ namespace KafkaClient
 
             if (_allConnections.IsEmpty) throw new ConnectionException("None of the provided Kafka servers are resolvable.");
 
-            _cacheConfiguration = cacheConfiguration ?? new CacheConfiguration();
+            CacheConfiguration = cacheConfiguration ?? new CacheConfiguration();
             _partitionSelector = partitionSelector ?? new PartitionSelector();
             _kafkaMetadataProvider = new KafkaMetadataProvider(Log);
         }
+
+        public IConnectionConfiguration Configuration { get; }
+        public ICacheConfiguration CacheConfiguration { get; }
 
         /// <summary>
         /// Select a broker for a specific topic and partitionId.
@@ -231,7 +232,7 @@ namespace KafkaClient
         private async Task<ImmutableList<MetadataTopic>> UpdateTopicMetadataFromServerIfMissingAsync(IEnumerable<string> topicNames, CancellationToken cancellationToken)
         {
             using (await _lock.LockAsync(cancellationToken).ConfigureAwait(false)) {
-                var searchResult = TryGetCachedTopics(topicNames, _cacheConfiguration.CacheExpiration);
+                var searchResult = TryGetCachedTopics(topicNames, CacheConfiguration.CacheExpiration);
                 if (searchResult.Missing.Count == 0) return searchResult.Topics;
 
                 Log.DebugFormat("BrokerRouter refreshing metadata for topics {0}", string.Join(",", searchResult.Missing));
@@ -261,11 +262,15 @@ namespace KafkaClient
 
         private async Task<MetadataResponse> GetTopicMetadataFromServerAsync(IEnumerable<string> topicNames, CancellationToken cancellationToken)
         {
-            using (var cancellation = new TimedCancellation(cancellationToken, _cacheConfiguration.RefreshTimeout)) {
-                var requestTask = topicNames != null
-                        ? _kafkaMetadataProvider.GetAsync(_allConnections.Values, topicNames, cancellation.Token)
-                        : _kafkaMetadataProvider.GetAsync(_allConnections.Values, cancellation.Token);
-                return await requestTask.ConfigureAwait(false);
+            using (var cancellation = new TimedCancellation(cancellationToken, CacheConfiguration.RefreshRetry.Timeout)) {
+                var token = cancellation.Token;
+                return await CacheConfiguration.RefreshRetry.AttemptAsync(
+                    async (attempt, timer) => {
+                        var requestTask = topicNames != null
+                                ? _kafkaMetadataProvider.GetAsync(_allConnections.Values, topicNames, token)
+                                : _kafkaMetadataProvider.GetAsync(_allConnections.Values, token);
+                        return await requestTask.ConfigureAwait(false);
+                    }, cancellationToken);
             }
         }
 
@@ -376,13 +381,13 @@ namespace KafkaClient
                             
                             // A connection changed for a broker, so close the old connection and create a new one
                             connectionsToDispose = connectionsToDispose.Add(connection);
-                            connection = _connectionFactory.Create(endpoint, _connectionConfiguration, Log);
+                            connection = _connectionFactory.Create(endpoint, Configuration, Log);
                             // important that we create it here rather than set to null or we'll get it again from allConnections
                         }
                     }
 
                     if (connection == null && !allConnections.TryGetValue(endpoint, out connection)) {
-                        connection = _connectionFactory.Create(endpoint, _connectionConfiguration, Log);
+                        connection = _connectionFactory.Create(endpoint, Configuration, Log);
                     }
 
                     allConnections = allConnections.SetItem(endpoint, connection);

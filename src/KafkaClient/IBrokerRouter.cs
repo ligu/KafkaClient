@@ -4,6 +4,7 @@ using System.Collections.Immutable;
 using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Common;
+using KafkaClient.Connection;
 using KafkaClient.Protocol;
 
 namespace KafkaClient
@@ -113,5 +114,7 @@ namespace KafkaClient
         Task RefreshTopicMetadataAsync(CancellationToken cancellationToken);
 
         ILog Log { get; }
+
+        IConnectionConfiguration Configuration { get; }
     }
 }

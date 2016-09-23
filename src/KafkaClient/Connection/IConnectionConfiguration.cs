@@ -1,4 +1,5 @@
 ﻿using System;
+using KafkaClient.Common;
 
 namespace KafkaClient.Connection
 {
@@ -7,17 +8,12 @@ namespace KafkaClient.Connection
         bool TrackTelemetry { get; }
 
         /// <summary>
-        /// The maximum time to wait when backing off on reconnection attempts.
+        /// Retry details for the connection itself.
         /// </summary>
-        TimeSpan ConnectingTimeout { get; }
+        IRetry ConnectionRetry { get; }
 
         /// <summary>
-        /// The maximum number of retries for (re)establishing a connection.
-        /// </summary>
-        int MaxRetries { get; }
-
-        /// <summary>
-        /// The maximum time to wait for a response from kafka.
+        /// The maximum time to wait for requests.
         /// </summary>
         TimeSpan RequestTimeout { get; }
     }

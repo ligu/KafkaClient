@@ -22,9 +22,6 @@ namespace KafkaClient.Connection
         public event Action<DataPayload> OnSendingToSocket;
         public event Action<DataPayload> OnSentToSocket;
 
-        private const int DefaultReconnectionTimeout = 100;
-        private const int DefaultReconnectionTimeoutMultiplier = 2;
-
         private readonly CancellationTokenSource _disposeToken = new CancellationTokenSource();
         private readonly CancellationTokenRegistration _disposeRegistration;
         private readonly Task _disposeTask;
@@ -284,44 +281,34 @@ namespace KafkaClient.Connection
         /// (Re-)establish the Kafka server connection.
         /// Assumes that the caller has already obtained the <c>_clientLock</c>
         /// </summary>
-        private async Task<TcpClient> ReEstablishConnectionAsync()
+        private Task<TcpClient> ReEstablishConnectionAsync()
         {
-            var attempts = 1;
-            var reconnectionDelay = DefaultReconnectionTimeout;
             _log.DebugFormat("No connection to {0}: Attempting to connect...", Endpoint);
 
-            _client = null;
-            while (_disposeToken.IsCancellationRequested == false && _configuration.MaxRetries > attempts) {
-                attempts++;
-                try {
-                    OnReconnectionAttempt?.Invoke(attempts);
+            return _configuration.ConnectionRetry.AttemptAsync(
+                async (attempt, timer) => {
+                    OnReconnectionAttempt?.Invoke(attempt);
                     _client = new TcpClient();
 
                     var connectTask = _client.ConnectAsync(Endpoint.IP.Address, Endpoint.IP.Port);
                     await Task.WhenAny(connectTask, _disposeTask).ConfigureAwait(false);
-
                     if (_disposeToken.IsCancellationRequested) throw new ObjectDisposedException($"Object is disposing (TcpSocket for endpoint {Endpoint})");
 
-                    await connectTask;
-                    if (!_client.Connected) throw new ConnectionException(Endpoint);
-
-                    _log.DebugFormat("Connection established to {0}", Endpoint);
-                    return _client;
-                } catch (Exception ex) {
-                    if (_configuration.MaxRetries < attempts) {
-                        _log.WarnFormat(ex, "Failed connection to {0} on retry {1}", Endpoint, attempts);
-                        throw;
+                    await connectTask.ConfigureAwait(false);
+                    if (_client.Connected) {
+                        _log.DebugFormat("Connection established to {0}", Endpoint);
+                        return _client;
                     }
-
-                    reconnectionDelay = reconnectionDelay * DefaultReconnectionTimeoutMultiplier;
-                    reconnectionDelay = Math.Min(reconnectionDelay, (int)_configuration.ConnectingTimeout.TotalMilliseconds);
-                    _log.WarnFormat(ex, "Failed connection to {0}: Will retry in {1}", Endpoint, reconnectionDelay);
-                }
-
-                await Task.Delay(TimeSpan.FromMilliseconds(reconnectionDelay), _disposeToken.Token).ConfigureAwait(false);
-            }
-
-            return _client;
+                    throw new ConnectionException(Endpoint);
+                },
+                (ex, attempt, retry) => {
+                    if (retry.HasValue) {
+                        _log.WarnFormat(ex, "Failed connection to {0}: Will retry in {1}", Endpoint, retry.Value);
+                    } else {
+                        _log.WarnFormat(ex, "Failed connection to {0} on attempt {1}", Endpoint, attempt);
+                    }
+                },
+                _disposeToken.Token);
         }
 
         public void Dispose()

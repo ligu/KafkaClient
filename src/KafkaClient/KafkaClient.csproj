@@ -61,11 +61,16 @@
     <Compile Include="Common\StringPrefixEncoding.cs" />
     <Compile Include="Common\TaskExtensions.cs" />
     <Compile Include="Common\TimedCancellation.cs" />
+    <Compile Include="Common\BackoffRetry.cs" />
+    <Compile Include="Common\DelayedRetry.cs" />
     <Compile Include="Connection\Extensions.cs" />
     <Compile Include="Connection\IConnectionConfiguration.cs" />
     <Compile Include="Connection\ConnectionComparer.cs" />
     <Compile Include="Connection\ConnectionConfiguration.cs" />
     <Compile Include="Connection\DataPayload.cs" />
+    <Compile Include="Common\IRetry.cs" />
+    <Compile Include="Common\NoRetry.cs" />
+    <Compile Include="Common\Retry.cs" />
     <Compile Include="Connection\SocketPayloadReceiveTask.cs" />
     <Compile Include="Connection\SocketPayloadSendTask.cs" />
     <Compile Include="Connection\SocketPayloadTask.cs" />

@@ -7,9 +7,7 @@ namespace KafkaClient.Protocol
 {
     public static class Extensions
     {
-        public static Exception ExtractExceptions<TRequest, TResponse>(this TRequest request, TResponse response, Endpoint endpoint = null) 
-            where TRequest : IRequest
-            where TResponse : IResponse
+        public static Exception ExtractExceptions<TResponse>(this IRequest<TResponse> request, TResponse response, Endpoint endpoint = null) where TResponse : IResponse
         {
             var exceptions = new List<Exception>();
             foreach (var errorCode in response.Errors.Where(e => e != ErrorResponseCode.NoError)) {

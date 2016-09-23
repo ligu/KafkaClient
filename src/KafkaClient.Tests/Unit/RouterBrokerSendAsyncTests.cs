@@ -119,7 +119,7 @@ namespace KafkaClient.Tests.Unit
         [TestCase(ErrorResponseCode.Unknown)]
         [TestCase(ErrorResponseCode.StaleControllerEpoch)]
         [TestCase(ErrorResponseCode.ReplicaNotAvailable)]
-        public async Task SendProtocolRequestShouldNoTryToRefreshMataDataIfCanNotRecoverByRefreshMetadata(
+        public async Task SendProtocolRequestShouldNotTryToRefreshMataDataIfCanNotRecoverByRefreshMetadata(
             ErrorResponseCode code)
         {
             var routerProxy = new BrokerRouterProxy(_kernel);
