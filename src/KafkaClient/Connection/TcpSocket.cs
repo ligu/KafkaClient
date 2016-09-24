@@ -1,7 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,13 +14,6 @@ namespace KafkaClient.Connection
     /// </summary>
     public class TcpSocket : ITcpSocket
     {
-        public event Action OnServerDisconnected;
-        public event Action<int> OnReconnectionAttempt;
-        public event Action<int> OnReceivingFromSocket;
-        public event Action<int> OnReceivedFromSocket;
-        public event Action<DataPayload> OnSendingToSocket;
-        public event Action<DataPayload> OnSentToSocket;
-
         private readonly CancellationTokenSource _disposeToken = new CancellationTokenSource();
         private readonly CancellationTokenRegistration _disposeRegistration;
         private readonly Task _disposeTask;
@@ -64,17 +56,10 @@ namespace KafkaClient.Connection
 
         #region Interface Implementation...
 
-        /// <summary>
-        /// The Endpoint to the server.
-        /// </summary>
+        /// <inheritdoc />
         public Endpoint Endpoint { get; }
 
-        /// <summary>
-        /// Read a certain byte array size return only when all bytes received.
-        /// </summary>
-        /// <param name="readSize">The size in bytes to receive from server.</param>
-        /// <param name="cancellationToken">A cancellation token which will cancel the request.</param>
-        /// <returns>Returns a byte[] array with the size of readSize.</returns>
+        /// <inheritdoc />
         public Task<byte[]> ReadAsync(int readSize, CancellationToken cancellationToken)
         {
             var readTask = new SocketPayloadReceiveTask(readSize, cancellationToken);
@@ -82,19 +67,12 @@ namespace KafkaClient.Connection
             return readTask.Tcp.Task;
         }
 
-        /// <summary>
-        /// Write the buffer data to the server.
-        /// </summary>
-        /// <param name="payload">The buffer data to send.</param>
-        /// <param name="cancellationToken">A cancellation token which will cancel the request.</param>
-        /// <returns>Returns Task handle to the write operation with size of written bytes..</returns>
+        /// <inheritdoc />
         public Task<DataPayload> WriteAsync(DataPayload payload, CancellationToken cancellationToken)
         {
             var sendTask = new SocketPayloadSendTask(payload, cancellationToken);
             _sendTaskQueue.Add(sendTask);
-            if (_configuration.TrackTelemetry) {
-                StatisticsTracker.QueueNetworkWrite(Endpoint, payload);
-            }
+            _configuration.OnWriteEnqueued?.Invoke(Endpoint, payload);
             return sendTask.Tcp.Task;
         }
 
@@ -115,8 +93,9 @@ namespace KafkaClient.Connection
                     await Task.WhenAny(_disposeTask, netStreamTask).ConfigureAwait(false);
 
                     if (_disposeToken.IsCancellationRequested) {
-                        SetExceptionToAllPendingTasks(new ObjectDisposedException($"Object is disposing (TcpSocket for endpoint: {Endpoint})"));
-                        OnServerDisconnected?.Invoke();
+                        var disposedException = new ObjectDisposedException($"Object is disposing (TcpSocket for endpoint: {Endpoint})");
+                        SetExceptionToAllPendingTasks(disposedException);
+                        _configuration.OnDisconnected?.Invoke(Endpoint, disposedException);
                         return;
                     }
 
@@ -124,7 +103,7 @@ namespace KafkaClient.Connection
                     await ProcessNetworkstreamTasks(netStream).ConfigureAwait(false);
                 } catch (Exception ex) {
                     SetExceptionToAllPendingTasks(ex);
-                    OnServerDisconnected?.Invoke();
+                    _configuration.OnDisconnected?.Invoke(Endpoint, ex);
                 }
             }
         }
@@ -178,60 +157,64 @@ namespace KafkaClient.Connection
         private async Task ProcessReceiveTaskAsync(Stream stream, SocketPayloadReceiveTask receiveTask)
         {
             using (receiveTask) {
-                using (_configuration.TrackTelemetry ? StatisticsTracker.Gauge(StatisticGauge.ActiveReadOperation) : Disposable.None) {
-                    try {
-                        var readSize = receiveTask.ReadSize;
-                        var result = new List<byte>();
-                        var bytesReceived = 0;
+                var timer = new Stopwatch();
+                try {
+                    _configuration.OnReading?.Invoke(Endpoint, receiveTask.ReadSize);
+                    var buffer = new byte[receiveTask.ReadSize];
+                    timer.Start();
+                    for (var totalBytesReceived = 0; totalBytesReceived < receiveTask.ReadSize;) {
+                        var readSize = receiveTask.ReadSize - totalBytesReceived;
 
-                        while (bytesReceived < readSize) {
-                            readSize = readSize - bytesReceived;
-                            var buffer = new byte[readSize];
+                        _log.DebugFormat("Receiving data from {0}, desired size {1}", Endpoint, readSize);
+                        _configuration.OnReadingChunk?.Invoke(Endpoint, receiveTask.ReadSize, totalBytesReceived, timer.Elapsed);
+                        var bytesReceived = await stream.ReadAsync(buffer, totalBytesReceived, readSize, receiveTask.CancellationToken).ConfigureAwait(false);
+                        _configuration.OnReadChunk?.Invoke(Endpoint, receiveTask.ReadSize, receiveTask.ReadSize - totalBytesReceived, bytesReceived, timer.Elapsed);
+                        _log.DebugFormat("Received data from {0}, actual size {1}", Endpoint, bytesReceived);
+                        totalBytesReceived += bytesReceived;
 
-                            _log.DebugFormat("Receiving data from {0}, desired size {1}", Endpoint, readSize);
-                            OnReceivingFromSocket?.Invoke(readSize);
-                            bytesReceived = await stream.ReadAsync(buffer, 0, readSize, receiveTask.CancellationToken).ConfigureAwait(false);
-                            OnReceivedFromSocket?.Invoke(bytesReceived);
-                            _log.DebugFormat("Received data from {0}, actual size {1}", Endpoint, bytesReceived);
-
-                            if (bytesReceived <= 0) {
-                                using (_client) {
-                                    _client = null;
-                                    if (_disposeToken.IsCancellationRequested) { return; }
-
-                                    throw new ConnectionException(Endpoint);
+                        if (bytesReceived <= 0) {
+                            using (_client) {
+                                _client = null;
+                                if (_disposeToken.IsCancellationRequested) {
+                                    _configuration.OnReadFailed?.Invoke(Endpoint, receiveTask.ReadSize, timer.Elapsed, new TaskCanceledException());
+                                    return;
                                 }
+
+                                throw new ConnectionException(Endpoint);
                             }
-
-                            result.AddRange(buffer.Take(bytesReceived));
                         }
+                    }
+                    timer.Stop();
+                    _configuration.OnRead?.Invoke(Endpoint, buffer, timer.Elapsed);
 
-                        receiveTask.Tcp.TrySetResult(result.ToArray());
-                    } catch (Exception ex) {
-                        if (_disposeToken.IsCancellationRequested) {
-                            var exception = new ObjectDisposedException($"Object is disposing (TcpSocket for endpoint: {Endpoint})");
-                            receiveTask.Tcp.TrySetException(exception);
-                            throw exception;
-                        }
+                    receiveTask.Tcp.TrySetResult(buffer);
+                } catch (Exception ex) {
+                    timer.Stop();
+                    _configuration.OnReadFailed?.Invoke(Endpoint, receiveTask.ReadSize, timer.Elapsed, ex);
 
-                        if (ex is ConnectionException) {
-                            receiveTask.Tcp.TrySetException(ex);
-                            if (_disposeToken.IsCancellationRequested) return;
-                            throw;
-                        }
+                    if (_disposeToken.IsCancellationRequested) {
+                        var exception = new ObjectDisposedException($"Object is disposing (TcpSocket for endpoint: {Endpoint})");
+                        receiveTask.Tcp.TrySetException(exception);
+                        throw exception;
+                    }
 
-                        // if an exception made us lose a connection throw disconnected exception
-                        if (_client == null || _client.Connected == false) {
-                            var exception = new ConnectionException(Endpoint);
-                            receiveTask.Tcp.TrySetException(exception);
-                            throw exception;
-                        }
-
+                    if (ex is ConnectionException) {
                         receiveTask.Tcp.TrySetException(ex);
                         if (_disposeToken.IsCancellationRequested) return;
-
                         throw;
                     }
+
+                    // if an exception made us lose a connection throw disconnected exception
+                    if (_client == null || _client.Connected == false) {
+                        var exception = new ConnectionException(Endpoint);
+                        receiveTask.Tcp.TrySetException(exception);
+                        throw exception;
+                    }
+
+                    receiveTask.Tcp.TrySetException(ex);
+                    if (_disposeToken.IsCancellationRequested) return;
+
+                    throw;
                 }
             }
         }
@@ -241,19 +224,21 @@ namespace KafkaClient.Connection
             if (sendTask == null) return;
 
             using (sendTask) {
-                using (_configuration.TrackTelemetry ? StatisticsTracker.TrackNetworkWrite(sendTask) : Disposable.None) {
-                    try {
-                        _log.DebugFormat("Sending data to {0} with CorrelationId {1}", Endpoint, sendTask.Payload.CorrelationId);
-                        OnSendingToSocket?.Invoke(sendTask.Payload);
-                        await stream.WriteAsync(sendTask.Payload.Buffer, 0, sendTask.Payload.Buffer.Length, _disposeToken.Token).ConfigureAwait(false);
-                        OnSentToSocket?.Invoke(sendTask.Payload);
-                        _log.DebugFormat("Sent data to {0} with CorrelationId {1}", Endpoint, sendTask.Payload.CorrelationId);
-                        sendTask.Tcp.TrySetResult(sendTask.Payload);
-                    } catch (Exception ex) {
-                        var wrappedException = WrappedException(ex);
-                        sendTask.Tcp.TrySetException(wrappedException);
-                        throw;
-                    }
+                var timer = new Stopwatch();
+                try {
+                    _log.DebugFormat("Sending data to {0} with CorrelationId {1}", Endpoint, sendTask.Payload.CorrelationId);
+                    _configuration.OnWriting?.Invoke(Endpoint, sendTask.Payload);
+                    timer.Start();
+                    await stream.WriteAsync(sendTask.Payload.Buffer, 0, sendTask.Payload.Buffer.Length, _disposeToken.Token).ConfigureAwait(false);
+                    timer.Stop();
+                    _configuration.OnWritten?.Invoke(Endpoint, sendTask.Payload, timer.Elapsed);
+                    _log.DebugFormat("Sent data to {0} with CorrelationId {1}", Endpoint, sendTask.Payload.CorrelationId);
+                    sendTask.Tcp.TrySetResult(sendTask.Payload);
+                } catch (Exception ex) {
+                    var wrappedException = WrappedException(ex);
+                    _configuration.OnWriteFailed?.Invoke(Endpoint, sendTask.Payload, timer.Elapsed, wrappedException);
+                    sendTask.Tcp.TrySetException(wrappedException);
+                    throw;
                 }
             }
         }
@@ -287,7 +272,7 @@ namespace KafkaClient.Connection
 
             return _configuration.ConnectionRetry.AttemptAsync(
                 async (attempt, timer) => {
-                    OnReconnectionAttempt?.Invoke(attempt);
+                    _configuration.OnConnecting?.Invoke(Endpoint, attempt, timer.Elapsed);
                     _client = new TcpClient();
 
                     var connectTask = _client.ConnectAsync(Endpoint.IP.Address, Endpoint.IP.Port);
@@ -297,6 +282,7 @@ namespace KafkaClient.Connection
                     await connectTask.ConfigureAwait(false);
                     if (_client.Connected) {
                         _log.DebugFormat("Connection established to {0}", Endpoint);
+                        _configuration.OnConnected?.Invoke(Endpoint, attempt, timer.Elapsed);
                         return _client;
                     }
                     throw new ConnectionException(Endpoint);

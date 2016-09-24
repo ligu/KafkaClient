@@ -72,16 +72,7 @@ namespace KafkaClient
         public IConnectionConfiguration Configuration { get; }
         public ICacheConfiguration CacheConfiguration { get; }
 
-        /// <summary>
-        /// Select a broker for a specific topic and partitionId.
-        /// </summary>
-        /// <param name="topicName">The topic name to select a broker for.</param>
-        /// <param name="partitionId">The exact partition to select a broker for.</param>
-        /// <returns>A broker route for the given partition of the given topic.</returns>
-        /// <remarks>
-        /// This function does not use any selector criteria.  If the given partitionId does not exist an exception will be thrown.
-        /// </remarks>
-        /// <exception cref="CachedMetadataException">Thrown if the given topic or partitionId does not exist for the given topic.</exception>
+        /// <inheritdoc />
         public BrokerRoute GetBrokerRoute(string topicName, int partitionId)
         {
             return GetBrokerRoute(topicName, partitionId, GetCachedTopic(topicName));
@@ -99,59 +90,26 @@ namespace KafkaClient
             return GetCachedRoute(topicName, partition);
         }
 
-        /// <summary>
-        /// Select a broker for a given topic using the IPartitionSelector function.
-        /// </summary>
-        /// <param name="topicName">The topic to retreive a broker route for.</param>
-        /// <param name="key">The key used by the IPartitionSelector to collate to a consistent partition. Null value means key will be ignored in selection process.</param>
-        /// <returns>A broker route for the given topic.</returns>
-        /// <exception cref="CachedMetadataException">Thrown if the topic metadata does not exist in the cache.</exception>
+        /// <inheritdoc />
         public BrokerRoute GetBrokerRoute(string topicName, byte[] key = null)
         {
             var topic = GetCachedTopic(topicName);
             return GetCachedRoute(topicName, _partitionSelector.Select(topic, key));
         }
 
-        /// <summary>
-        /// Get a broker for a specific topic and partitionId.
-        /// </summary>
-        /// <param name="topicName">The topic name to select a broker for.</param>
-        /// <param name="partitionId">The exact partition to select a broker for.</param>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns>A broker route for the given partition of the given topic.</returns>
-        /// <remarks>
-        /// This function does not use any selector criteria. This method will check the cache first, and if the topic and partition
-        /// is missing it will initiate a call to the kafka servers, updating the cache with the resulting metadata.
-        /// </remarks>
-        /// <exception cref="CachedMetadataException">Thrown if the given topic or partitionId does not exist for the given topic even after a refresh.</exception>
+        /// <inheritdoc />
         public async Task<BrokerRoute> GetBrokerRouteAsync(string topicName, int partitionId, CancellationToken cancellationToken)
         {
             return GetBrokerRoute(topicName, partitionId, await GetTopicMetadataAsync(topicName, cancellationToken));
         }
 
-        /// <summary>
-        /// Returns Topic metadata for the given topic.
-        /// </summary>
-        /// <returns>List of Topics currently in the cache.</returns>
-        /// <remarks>
-        /// The topic metadata returned is from what is currently in the cache. To ensure data is not too stale, 
-        /// use <see cref="GetTopicMetadataAsync(string, CancellationToken)"/>.
-        /// </remarks>
-        /// <exception cref="CachedMetadataException">Thrown if the topic metadata does not exist in the cache.</exception>
+        /// <inheritdoc />
         public MetadataTopic GetTopicMetadata(string topicName)
         {
             return GetCachedTopic(topicName);
         }
 
-        /// <summary>
-        /// Returns Topic metadata for each topic requested.
-        /// </summary>
-        /// <returns>List of Topics currently in the cache.</returns>
-        /// <remarks>
-        /// The topic metadata returned is from what is currently in the cache. To ensure data is not too stale, 
-        /// use <see cref="GetTopicMetadataAsync(IEnumerable&lt;string&gt;, CancellationToken)"/>.
-        /// </remarks>
-        /// <exception cref="CachedMetadataException">Thrown if the topic metadata does not exist in the cache.</exception>
+        /// <inheritdoc />
         public ImmutableList<MetadataTopic> GetTopicMetadata(IEnumerable<string> topicNames)
         {
             var topicSearchResult = TryGetCachedTopics(topicNames);
@@ -160,34 +118,20 @@ namespace KafkaClient
             return ImmutableList<MetadataTopic>.Empty.AddRange(topicSearchResult.Topics);
         }
 
-        /// <summary>
-        /// Returns all cached topic metadata.
-        /// </summary>
+        /// <inheritdoc />
         public ImmutableList<MetadataTopic> GetTopicMetadata()
         {
             return ImmutableList<MetadataTopic>.Empty.AddRange(_topicCache.Values.Select(t => t.Item1));
         }
 
-        /// <summary>
-        /// Returns Topic metadata for the topic requested.
-        /// </summary>
-        /// <remarks>
-        /// This method will check the cache first, and if the topic is missing it will initiate a call to the kafka 
-        /// servers, updating the cache with the resulting metadata.
-        /// </remarks>
+        /// <inheritdoc />
         public async Task<MetadataTopic> GetTopicMetadataAsync(string topicName, CancellationToken cancellationToken)
         {
             return TryGetCachedTopic(topicName) 
                 ?? await UpdateTopicMetadataFromServerIfMissingAsync(topicName, cancellationToken).ConfigureAwait(false);
         }
 
-        /// <summary>
-        /// Returns Topic metadata for each topic requested.
-        /// </summary>
-        /// <remarks>
-        /// This method will check the cache first, and for any missing topic metadata it will initiate a call to the kafka 
-        /// servers, updating the cache with the resulting metadata.
-        /// </remarks>
+        /// <inheritdoc />
         public async Task<ImmutableList<MetadataTopic>> GetTopicMetadataAsync(IEnumerable<string> topicNames, CancellationToken cancellationToken)
         {
             var searchResult = TryGetCachedTopics(topicNames);
@@ -196,15 +140,7 @@ namespace KafkaClient
                 : searchResult.Topics.AddRange(await UpdateTopicMetadataFromServerIfMissingAsync(searchResult.Missing, cancellationToken).ConfigureAwait(false));
         }
 
-        /// <summary>
-        /// Force a call to the kafka servers to refresh metadata for the given topic.
-        /// </summary>
-        /// <param name="topicName">The topic name to refresh metadata for.</param>
-        /// <param name="ignoreCacheExpiry">Whether to refresh all data, or only data which has expired.</param>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        /// <remarks>
-        /// This method will ignore the cache and initiate a call to the kafka servers for the given topic, updating the cache with the resulting metadata.
-        /// </remarks>
+        /// <inheritdoc />
         public Task RefreshTopicMetadataAsync(string topicName, bool ignoreCacheExpiry, CancellationToken cancellationToken)
         {
             return ignoreCacheExpiry 
@@ -212,12 +148,7 @@ namespace KafkaClient
                 : UpdateTopicMetadataFromServerIfMissingAsync(topicName, cancellationToken);
         }
 
-        /// <summary>
-        /// Force a call to the kafka servers to refresh metadata for all topics.
-        /// </summary>
-        /// <remarks>
-        /// This method will ignore the cache and initiate a call to the kafka servers for all topics, updating the cache with the resulting metadata.
-        /// </remarks>
+        /// <inheritdoc />
         public Task RefreshTopicMetadataAsync(CancellationToken cancellationToken)
         {
             return UpdateTopicMetadataFromServerAsync(null, cancellationToken);

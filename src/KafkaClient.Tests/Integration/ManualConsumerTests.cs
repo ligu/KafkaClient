@@ -29,7 +29,7 @@ namespace KafkaClient.Tests.Integration
             _topic = IntegrationConfig.IntegrationTopic;
             _defaultConsumerGroup = IntegrationConfig.IntegrationConsumer;
             _options = new KafkaOptions(IntegrationConfig.IntegrationUri);
-            _config = new ConnectionConfiguration(ConnectionConfiguration.DefaultConnectionRetry(TimeSpan.FromMinutes(1)));
+            _config = new ConnectionConfiguration(TimeSpan.FromMinutes(1));
         }
 
         [Test]

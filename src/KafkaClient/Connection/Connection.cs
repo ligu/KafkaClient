@@ -54,17 +54,10 @@ namespace KafkaClient.Connection
         /// </summary>
         public bool IsReaderAlive => _activeReaderCount >= 1;
 
-        /// <summary>
-        /// Provides the unique ip/port endpoint for this connection
-        /// </summary>
+        /// <inheritdoc />
         public Endpoint Endpoint => _socket.Endpoint;
 
-        /// <summary>
-        /// Send raw byte[] payload to the kafka server with a task indicating upload is complete.
-        /// </summary>
-        /// <param name="payload">kafka protocol formatted byte[] payload</param>
-        /// <param name="token">Cancellation token used to cancel the transfer.</param>
-        /// <returns>Task which signals the completion of the upload of data to the server.</returns>
+        /// <inheritdoc />
         public Task SendAsync(DataPayload payload, CancellationToken token)
         {
             return _socket.WriteAsync(payload, token);

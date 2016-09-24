@@ -8,7 +8,7 @@ namespace KafkaClient.Connection
     public interface IConnection : IDisposable
     {
         /// <summary>
-        /// The unique endpoint location of this connection.
+        /// The unique ip/port endpoint of this connection.
         /// </summary>
         Endpoint Endpoint { get; }
 
@@ -18,11 +18,11 @@ namespace KafkaClient.Connection
         bool IsReaderAlive { get; }
 
         /// <summary>
-        /// Send raw payload data up to the connected endpoint.
+        /// Send raw byte[] payload to the kafka server with a task indicating upload is complete.
         /// </summary>
-        /// <param name="payload">The raw data to send to the connected endpoint.</param>
-        /// <param name="token">The token for cancelling the send request.</param>
-        /// <returns>Task representing the future success or failure of query.</returns>
+        /// <param name="payload">kafka protocol formatted byte[] payload</param>
+        /// <param name="token">Cancellation token used to cancel the transfer.</param>
+        /// <returns>Task which signals the completion of the upload of data to the server.</returns>
         Task SendAsync(DataPayload payload, CancellationToken token);
 
         /// <summary>

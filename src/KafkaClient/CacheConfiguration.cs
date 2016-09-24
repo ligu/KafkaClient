@@ -11,13 +11,21 @@ namespace KafkaClient
             CacheExpiration = cacheExpiration ?? TimeSpan.FromMilliseconds(DefaultCacheExpirationMilliseconds);
         }
 
+        /// <inheritdoc />
         public IRetry RefreshRetry { get; }
+
+        /// <inheritdoc />
         public TimeSpan CacheExpiration { get; }
 
+        /// <summary>
+        /// The default timeout for requests made to refresh the cache
+        /// </summary>
         public const int DefaultRefreshTimeoutSeconds = 200;
-        public const int DefaultMaxRetries = 3;
-        public const int DefaultCacheExpirationMilliseconds = 10;
 
+        /// <summary>
+        /// The default expiration length for cached topic/partition information
+        /// </summary>
+        public const int DefaultCacheExpirationMilliseconds = 10;
 
         public static IRetry DefaultRefreshRetry(TimeSpan? timeout = null)
         {
