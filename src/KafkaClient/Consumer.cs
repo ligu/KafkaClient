@@ -50,7 +50,7 @@ namespace KafkaClient
         /// <returns>Blocking enumberable of messages from Kafka.</returns>
         public IEnumerable<Message> Consume(CancellationToken? cancellationToken = null)
         {
-            _options.Log.DebugFormat("Consumer: Beginning consumption of topic: {0}", _options.Topic);
+            _options.Log.DebugFormat("Consumer: Beginning consumption of topic/{0}", _options.Topic);
             EnsurePartitionPollingThreads();
             return _fetchResponseQueue.GetConsumingEnumerable(cancellationToken ?? CancellationToken.None);
         }
@@ -84,7 +84,7 @@ namespace KafkaClient
             {
                 if (Interlocked.Increment(ref _ensureOneThread) == 1)
                 {
-                    _options.Log.DebugFormat("Consumer: Refreshing partitions for topic: {0}", _options.Topic);
+                    _options.Log.DebugFormat("Consumer: Refreshing partitions for topic/{0}", _options.Topic);
                     _topic = _options.Router.GetTopicMetadataAsync(_options.Topic, CancellationToken.None).Result;
 
                     //create one thread per partition, if they are in the white list.
@@ -102,7 +102,7 @@ namespace KafkaClient
             }
             catch (Exception ex)
             {
-                _options.Log.ErrorFormat("Exception occured trying to setup consumer for topic:{0}.  Exception={1}", _options.Topic, ex);
+                _options.Log.ErrorFormat(ex, "Trying to setup consumer for topic/{0}", _options.Topic);
             }
             finally
             {
@@ -119,7 +119,7 @@ namespace KafkaClient
                 {
                     var bufferSizeHighWatermark = FetchRequest.DefaultBufferSize;
 
-                    _options.Log.DebugFormat("Consumer: Creating polling task for topic: {0} on parition: {1}", topic, partitionId);
+                    _options.Log.DebugFormat("Consumer: Creating polling task for topic/{0}/parition/{1}", topic, partitionId);
                     while (_disposeToken.IsCancellationRequested == false)
                     {
                         try
@@ -191,7 +191,7 @@ namespace KafkaClient
                         {
                             bufferSizeHighWatermark = (int)(ex.RequiredBufferSize * _options.FetchBufferMultiplier) +
                                                       ex.MessageHeaderSize;
-                            _options.Log.InfoFormat("Buffer underrun.  Increasing buffer size to: {0}",
+                            _options.Log.InfoFormat("Buffer underrun: Increasing buffer size to {0}",
                                 bufferSizeHighWatermark);
                         }
                         catch (FetchOutOfRangeException ex) when (ex.ErrorCode == ErrorResponseCode.OffsetOutOfRange)
@@ -213,13 +213,13 @@ namespace KafkaClient
                         }
                         catch (Exception ex)
                         {
-                            _options.Log.ErrorFormat("Exception occured while polling topic:{0} partition:{1}. Polling will continue. Exception={2}", topic, partitionId, ex);
+                            _options.Log.ErrorFormat(ex, "Failed polling topic/{0}/partition/{1}: Polling will continue", topic, partitionId);
                         }
                     }
                 }
                 finally
                 {
-                    _options.Log.DebugFormat("Consumer: Disabling polling task for topic: {0} on parition: {1}", topic, partitionId);
+                    _options.Log.DebugFormat("Consumer disabling polling task for topic/{0}/parition/{1}", topic, partitionId);
                     Task tempTask;
                     _partitionPollingIndex.TryRemove(partitionId, out tempTask);
                 }
@@ -238,7 +238,7 @@ namespace KafkaClient
                 case ErrorResponseCode.LeaderNotAvailable:
                 case ErrorResponseCode.NotLeaderForPartition:
                     throw new CachedMetadataException(
-                        $"FetchResponse indicated we may have mismatched metadata. ErrorCode:{response.ErrorCode}",
+                        $"FetchResponse indicated we may have mismatched metadata ({response.ErrorCode})",
                         request.ExtractException(response.ErrorCode, connection?.Endpoint));
 
                 default:
@@ -264,8 +264,8 @@ namespace KafkaClient
                        }
                        catch (Exception ex)
                        {
-                           _options.Log.ErrorFormat("Failed to fix the offset out of range exception on topic:{0} partition:{1}.  Polling will continue.  Exception={2}",
-                               fetch.TopicName, fetch.PartitionId, ex);
+                           _options.Log.ErrorFormat(ex, "Failed to fix the offset out of range exception on topic/{0}/partition/{1}: Polling will continue",
+                               fetch.TopicName, fetch.PartitionId);
                        }
                    });
         }

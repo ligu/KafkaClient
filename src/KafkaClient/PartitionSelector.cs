@@ -28,7 +28,7 @@ namespace KafkaClient
                 if (partition != null) return partition;
             }
 
-            throw new CachedMetadataException($"Hash function return partition id: {partitionId}, but the available partitions are {string.Join(",", partitions.Select(x => x.PartitionId))}") {
+            throw new CachedMetadataException($"Hash function return partition/{partitionId}, but the available partitions are {string.Join(",", partitions.Select(x => x.PartitionId))}") {
                 Topic = topic.TopicName,
                 Partition = (int)partitionId
             };

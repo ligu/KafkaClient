@@ -134,16 +134,16 @@ namespace KafkaClient.Connection
 
                     while (_disposeToken.IsCancellationRequested == false) {
                         try {
-                            _log.DebugFormat("Awaiting message from: {0}", _socket.Endpoint);
+                            _log.DebugFormat("Awaiting message from {0}", _socket.Endpoint);
                             var messageSizeResult = await _socket.ReadAsync(4, _disposeToken.Token).ConfigureAwait(false);
                             var messageSize = messageSizeResult.ToInt32();
 
-                            _log.DebugFormat("Received message of size: {0} From: {1}", messageSize, _socket.Endpoint);
+                            _log.DebugFormat("Received message of size {0} from {1}", messageSize, _socket.Endpoint);
                             var message = await _socket.ReadAsync(messageSize, _disposeToken.Token).ConfigureAwait(false);
 
                             CorrelatePayloadToRequest(message);
                             if (IsInErrorState) {
-                                _log.InfoFormat("Polling read thread has recovered: {0}", _socket.Endpoint);
+                                _log.InfoFormat("Polling read thread has recovered on {0}", _socket.Endpoint);
                             }
 
                             IsInErrorState = false;
@@ -160,7 +160,7 @@ namespace KafkaClient.Connection
 
                                 //TODO create an event on kafkaTcpSocket and resume only when the connection is online
                                 if (!IsInErrorState) {
-                                    _log.ErrorFormat("Exception occured in polling read thread {0}: {1}", _socket.Endpoint, ex);
+                                    _log.ErrorFormat(ex, "Polling read thread {0}", _socket.Endpoint);
                                     IsInErrorState = true;
                                 }
                             }
@@ -168,7 +168,7 @@ namespace KafkaClient.Connection
                     }
                 } finally {
                     Interlocked.Decrement(ref _activeReaderCount);
-                    _log.DebugFormat("Closed down connection to: {0}", _socket.Endpoint);
+                    _log.DebugFormat("Closed down connection to {0}", _socket.Endpoint);
                 }
             });
         }
@@ -178,10 +178,10 @@ namespace KafkaClient.Connection
             var correlationId = payload.Take(4).ToArray().ToInt32();
             AsyncRequestItem asyncRequest;
             if (_requestsByCorrelation.TryRemove(correlationId, out asyncRequest)) {
-                _log.DebugFormat("Matched Response from {0} with CorrelationId={1}", Endpoint, correlationId);
+                _log.DebugFormat("Matched Response from {0} with CorrelationId {1}", Endpoint, correlationId);
                 asyncRequest.ReceiveTask.SetResult(payload);
             } else {
-                _log.WarnFormat("Unexpected Response from {0} with CorrelationId={1} (not in request queue).", Endpoint, correlationId);
+                _log.WarnFormat("Unexpected Response from {0} with CorrelationId {1} (not in request queue).", Endpoint, correlationId);
             }
         }
 

@@ -85,7 +85,7 @@ namespace KafkaClient
 
                     metadataInvalid = errors.All(IsRecoverableByMetadaRefresh);
                     brokerRouter.Log.WarnFormat("Error response in Router SendAsync (attempt {0}): {1}", 
-                        attempt + 1, errors.Aggregate($"{route} - ", (buffer, e) => $"{buffer} {e}"));
+                        attempt + 1, errors.Aggregate($"{route} -", (buffer, e) => $"{buffer} {e}"));
 
                     if (!metadataInvalid.Value) throw request.ExtractExceptions(response, endpoint);
                     throw new SendException<T>(request, response, endpoint);

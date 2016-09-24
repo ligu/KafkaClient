@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Runtime.Serialization;
 using KafkaClient.Common;
-using KafkaClient.Protocol;
 
 namespace KafkaClient.Connection
 {
@@ -12,7 +11,7 @@ namespace KafkaClient.Connection
     public class ConnectionException : KafkaException
     {
         public ConnectionException(Endpoint endpoint)
-            : base($"Lost connection to server: {endpoint}")
+            : base($"Lost connection to {endpoint}")
         {
             Endpoint = endpoint;
         }

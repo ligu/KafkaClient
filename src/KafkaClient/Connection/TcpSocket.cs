@@ -93,7 +93,7 @@ namespace KafkaClient.Connection
                     await Task.WhenAny(_disposeTask, netStreamTask).ConfigureAwait(false);
 
                     if (_disposeToken.IsCancellationRequested) {
-                        var disposedException = new ObjectDisposedException($"Object is disposing (TcpSocket for endpoint: {Endpoint})");
+                        var disposedException = new ObjectDisposedException($"Object is disposing (TcpSocket for {Endpoint})");
                         SetExceptionToAllPendingTasks(disposedException);
                         _configuration.OnDisconnected?.Invoke(Endpoint, disposedException);
                         return;
@@ -193,7 +193,7 @@ namespace KafkaClient.Connection
                     _configuration.OnReadFailed?.Invoke(Endpoint, receiveTask.ReadSize, timer.Elapsed, ex);
 
                     if (_disposeToken.IsCancellationRequested) {
-                        var exception = new ObjectDisposedException($"Object is disposing (TcpSocket for endpoint: {Endpoint})");
+                        var exception = new ObjectDisposedException($"Object is disposing (TcpSocket for {Endpoint})");
                         receiveTask.Tcp.TrySetException(exception);
                         throw exception;
                     }
@@ -246,9 +246,9 @@ namespace KafkaClient.Connection
         private Exception WrappedException(Exception ex)
         {
             if (_disposeToken.IsCancellationRequested) {
-                return new ObjectDisposedException($"Object is disposing (TcpSocket for endpoint: {Endpoint})");
+                return new ObjectDisposedException($"Object is disposing (TcpSocket for {Endpoint})");
             }
-            return new ConnectionException($"Lost connection to server: {Endpoint}", ex) { Endpoint = Endpoint };
+            return new ConnectionException($"Lost connection to {Endpoint}", ex) { Endpoint = Endpoint };
         }
 
         private async Task<NetworkStream> GetStreamAsync()

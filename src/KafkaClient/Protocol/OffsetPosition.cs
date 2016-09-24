@@ -48,7 +48,7 @@ namespace KafkaClient.Protocol
 
         #endregion
 
-        public override string ToString() => $"PartitionId:{PartitionId}, Offset:{Offset}";
+        public override string ToString() => $"Partition/{PartitionId}, Offset {Offset}";
 
     }
 }

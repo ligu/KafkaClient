@@ -113,11 +113,11 @@ namespace KafkaClient
                     servers += " " + conn.Endpoint;
                     return await conn.SendAsync(request, cancellationToken).ConfigureAwait(false);
                 } catch (Exception ex) {
-                    _log.WarnFormat(ex, "Failed to contact Kafka server {0}. Trying next server", conn.Endpoint);
+                    _log.WarnFormat(ex, "Failed to contact {0}. Trying next server", conn.Endpoint);
                 }
             }
 
-            throw new RequestException(request.ApiKey, ErrorResponseCode.NoError, $"Unable to query for metadata from any of the provided Kafka servers: {servers}");
+            throw new RequestException(request.ApiKey, ErrorResponseCode.NoError, $"Unable to query for metadata from any of the provided Kafka servers {servers}");
         }
 
         private IEnumerable<MetadataValidationResult> ValidateResponse(MetadataResponse metadata)
@@ -157,10 +157,9 @@ namespace KafkaClient
 
         private MetadataValidationResult ValidateTopic(MetadataTopic topic)
         {
+            var errorCode = topic.ErrorCode;
             try
             {
-                var errorCode = topic.ErrorCode;
-
                 if (errorCode == ErrorResponseCode.NoError) return new MetadataValidationResult();
 
                 switch (errorCode)
@@ -171,14 +170,14 @@ namespace KafkaClient
                         return new MetadataValidationResult {
                             Status = ValidationResult.Retry,
                             ErrorCode = errorCode,
-                            Message = $"Topic:{topic.TopicName} returned error code of {errorCode}. Retrying."
+                            Message = $"topic/{topic.TopicName} returned error code of {errorCode}: Retrying"
                         };
                 }
 
                 return new MetadataValidationResult {
                     Status = ValidationResult.Error,
                     ErrorCode = errorCode,
-                    Message = $"Topic:{topic.TopicName} returned an error of {errorCode}"
+                    Message = $"topic/{topic.TopicName} returned an error of {errorCode}"
                 };
             }
             catch
@@ -187,7 +186,7 @@ namespace KafkaClient
                 {
                     Status = ValidationResult.Error,
                     ErrorCode = ErrorResponseCode.Unknown,
-                    Message = $"Unknown error code returned in metadata response.  ErrorCode: {topic.ErrorCode}"
+                    Message = $"topic/{topic.TopicName} returned unknown error of {errorCode} in metadata response"
                 };
             }
         }

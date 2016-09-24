@@ -51,6 +51,6 @@ namespace KafkaClient.Protocol
 
         #endregion
 
-        public override string ToString() => $"{base.ToString()} ErrorCode: {ErrorCode}";
+        public override string ToString() => $"{base.ToString()} ErrorCode {ErrorCode}";
     }
 }

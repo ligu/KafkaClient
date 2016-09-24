@@ -227,7 +227,7 @@ namespace KafkaClient
             var topic = TryGetCachedTopic(topicName, expiration);
             if (topic != null) return topic;
 
-            throw new CachedMetadataException($"No metadata defined for topic: {topicName}") { Topic = topicName };
+            throw new CachedMetadataException($"No metadata defined for topic/{topicName}") { Topic = topicName };
         }
 
         private MetadataTopic TryGetCachedTopic(string topicName, TimeSpan? expiration = null)
@@ -246,7 +246,7 @@ namespace KafkaClient
             var route = TryGetCachedRoute(topicName, partition);
             if (route != null) return route;
 
-            throw new CachedMetadataException($"Lead broker cannot be found for partition: {partition.PartitionId}, leader: {partition.LeaderId}") {
+            throw new CachedMetadataException($"Lead broker cannot be found for partition/{partition.PartitionId}, leader {partition.LeaderId}") {
                 Topic = topicName,
                 Partition = partition.PartitionId
             };
