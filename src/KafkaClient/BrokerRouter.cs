@@ -23,7 +23,6 @@ namespace KafkaClient
     /// </summary>
     public class BrokerRouter : IBrokerRouter
     {
-        private readonly KafkaMetadataProvider _kafkaMetadataProvider;
         private readonly IConnectionFactory _connectionFactory;
         private readonly IPartitionSelector _partitionSelector;
 
@@ -66,7 +65,6 @@ namespace KafkaClient
 
             CacheConfiguration = cacheConfiguration ?? new CacheConfiguration();
             _partitionSelector = partitionSelector ?? new PartitionSelector();
-            _kafkaMetadataProvider = new KafkaMetadataProvider(Log);
         }
 
         public IConnectionConfiguration Configuration { get; }
@@ -162,6 +160,8 @@ namespace KafkaClient
 
         private async Task<ImmutableList<MetadataTopic>> UpdateTopicMetadataFromServerIfMissingAsync(IEnumerable<string> topicNames, CancellationToken cancellationToken)
         {
+            // TODO: more sophisticated locking should be particular to topicName(s) in that multiple 
+            // requests can be made in parallel for different topicName(s).
             using (await _lock.LockAsync(cancellationToken).ConfigureAwait(false)) {
                 var searchResult = TryGetCachedTopics(topicNames, CacheConfiguration.CacheExpiration);
                 if (searchResult.Missing.Count == 0) return searchResult.Topics;
@@ -179,6 +179,8 @@ namespace KafkaClient
 
         private async Task UpdateTopicMetadataFromServerAsync(string topicName, CancellationToken cancellationToken)
         {
+            // TODO: more sophisticated locking should be particular to topicName(s) in that multiple 
+            // requests can be made in parallel for different topicName(s).
             using (await _lock.LockAsync(cancellationToken).ConfigureAwait(false)) {
                 if (topicName != null) {
                     Log.DebugFormat("BrokerRouter refreshing metadata for topic {0}", topicName);
@@ -196,12 +198,7 @@ namespace KafkaClient
             using (var cancellation = new TimedCancellation(cancellationToken, CacheConfiguration.RefreshRetry.Timeout)) {
                 var token = cancellation.Token;
                 return await CacheConfiguration.RefreshRetry.AttemptAsync(
-                    async (attempt, timer) => {
-                        var requestTask = topicNames != null
-                                ? _kafkaMetadataProvider.GetAsync(_allConnections.Values, topicNames, token)
-                                : _kafkaMetadataProvider.GetAsync(_allConnections.Values, token);
-                        return await requestTask.ConfigureAwait(false);
-                    }, cancellationToken);
+                    (attempt, timer) => new MetadataRequest(topicNames).GetAsync(_allConnections.Values, Log, token), cancellationToken);
             }
         }
 

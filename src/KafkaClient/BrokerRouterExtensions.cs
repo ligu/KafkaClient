@@ -10,7 +10,7 @@ using KafkaClient.Protocol;
 
 namespace KafkaClient
 {
-    public static class Extensions
+    public static class BrokerRouterExtensions
     {
         /// <summary>
         /// Get offsets for each partition from a given topic.

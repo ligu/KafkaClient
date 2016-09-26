@@ -9,60 +9,17 @@ using KafkaClient.Protocol;
 
 namespace KafkaClient
 {
-    /// <summary>
-    /// This provider blocks while it attempts to get the Metadata configuration of the Kafka servers.  If any retry errors occurs it will
-    /// continue to block the downstream call and then repeatedly query kafka until the retry errors subside.  This repeat call happens in
-    /// a backoff manner, which each subsequent call waiting longer before a requery.
-    ///
-    /// Error Codes:
-    /// LeaderNotAvailable = 5
-    /// NotLeaderForPartition = 6
-    /// ConsumerCoordinatorNotAvailable = 15
-    /// BrokerId = -1
-    ///
-    /// Documentation:
-    /// https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-MetadataResponse
-    /// </summary>
-    public class KafkaMetadataProvider : IDisposable
+    public static class MetadataRequestExtensions
     {
-        private const int BackoffMilliseconds = 100;
-
-        private readonly ILog _log;
-
-        private bool _interrupted;
-
-        public KafkaMetadataProvider(ILog log)
-        {
-            _log = log;
-        }
-
         /// <summary>
         /// Given a collection of server connections, query for the topic metadata.
         /// </summary>
+        /// <param name="request">The request to make</param>
         /// <param name="connections">The server connections to query.  Will cycle through the collection, starting at zero until a response is received.</param>
-        /// <param name="topics">The collection of topics to get metadata for.</param>
+        /// <param name="log">The log</param>
         /// <param name="cancellationToken">Token for cancelling async action.</param>
         /// <returns>MetadataResponse validated to be complete.</returns>
-        public Task<MetadataResponse> GetAsync(IEnumerable<IConnection> connections, IEnumerable<string> topics, CancellationToken cancellationToken)
-        {
-            var request = new MetadataRequest(topics);
-            if (request.Topics.Count <= 0) return null;
-            return GetAsync(connections, request, cancellationToken);
-        }
-
-        /// <summary>
-        /// Given a collection of server connections, query for all topics metadata.
-        /// </summary>
-        /// <param name="connections">The server connections to query.  Will cycle through the collection, starting at zero until a response is received.</param>
-        /// <param name="cancellationToken">Token for cancelling async action.</param>
-        /// <returns>MetadataResponse validated to be complete.</returns>
-        public Task<MetadataResponse> GetAsync(IEnumerable<IConnection> connections, CancellationToken cancellationToken)
-        {
-            var request = new MetadataRequest();
-            return GetAsync(connections, request, cancellationToken);
-        }
-
-        private async Task<MetadataResponse> GetAsync(IEnumerable<IConnection> connections, MetadataRequest request, CancellationToken cancellationToken)
+        public static async Task<MetadataResponse> GetAsync(this MetadataRequest request, IEnumerable<IConnection> connections, ILog log, CancellationToken cancellationToken)
         {
             const int maxRetryAttempt = 2;
             bool performRetry;
@@ -72,14 +29,14 @@ namespace KafkaClient
             var connectionList = ImmutableList<IConnection>.Empty.AddNotNullRange(connections);
             do {
                 performRetry = false;
-                metadataResponse = await GetMetadataResponseAsync(connectionList, request, cancellationToken);
+                metadataResponse = await GetMetadataResponseAsync(connectionList, request, log, cancellationToken);
                 if (metadataResponse == null) return null;
 
                 foreach (var validation in ValidateResponse(metadataResponse)) {
                     switch (validation.Status) {
                         case ValidationResult.Retry:
                             performRetry = true;
-                            _log.WarnFormat(validation.Message);
+                            log.WarnFormat(validation.Message);
                             break;
 
                         case ValidationResult.Error:
@@ -89,23 +46,25 @@ namespace KafkaClient
                     }
                 }
 
-                await BackoffOnRetryAsync(++retryAttempt, performRetry, cancellationToken).ConfigureAwait(false);
-            } while (retryAttempt < maxRetryAttempt && _interrupted == false && performRetry);
+                await BackoffOnRetryAsync(++retryAttempt, performRetry, log, cancellationToken).ConfigureAwait(false);
+            } while (retryAttempt < maxRetryAttempt && !cancellationToken.IsCancellationRequested && performRetry);
 
             return metadataResponse;
         }
 
-        private async Task BackoffOnRetryAsync(int retryAttempt, bool performRetry, CancellationToken cancellationToken)
+        private const int BackoffMilliseconds = 100;
+
+        private static async Task BackoffOnRetryAsync(int retryAttempt, bool performRetry, ILog log, CancellationToken cancellationToken)
         {
             if (performRetry && retryAttempt > 0)
             {
                 var backoff = retryAttempt * retryAttempt * BackoffMilliseconds;
-                _log.WarnFormat("Backing off metadata request retry.  Waiting for {0}ms.", backoff);
+                log.WarnFormat("Backing off metadata request retry.  Waiting for {0}ms.", backoff);
                 await Task.Delay(TimeSpan.FromMilliseconds(backoff), cancellationToken).ConfigureAwait(false);
             }
         }
 
-        private async Task<MetadataResponse> GetMetadataResponseAsync(IEnumerable<IConnection> connections, MetadataRequest request, CancellationToken cancellationToken)
+        private static async Task<MetadataResponse> GetMetadataResponseAsync(IEnumerable<IConnection> connections, MetadataRequest request, ILog log, CancellationToken cancellationToken)
         {
             var servers = "";
             foreach (var conn in connections) {
@@ -113,14 +72,14 @@ namespace KafkaClient
                     servers += " " + conn.Endpoint;
                     return await conn.SendAsync(request, cancellationToken).ConfigureAwait(false);
                 } catch (Exception ex) {
-                    _log.WarnFormat(ex, "Failed to contact {0}. Trying next server", conn.Endpoint);
+                    log.WarnFormat(ex, "Failed to contact {0}. Trying next server", conn.Endpoint);
                 }
             }
 
             throw new RequestException(request.ApiKey, ErrorResponseCode.NoError, $"Unable to query for metadata from any of the provided Kafka servers {servers}");
         }
 
-        private IEnumerable<MetadataValidationResult> ValidateResponse(MetadataResponse metadata)
+        private static IEnumerable<MetadataValidationResult> ValidateResponse(MetadataResponse metadata)
         {
             foreach (var broker in metadata.Brokers) {
                 yield return ValidateBroker(broker);
@@ -130,7 +89,7 @@ namespace KafkaClient
             }
         }
 
-        private MetadataValidationResult ValidateBroker(Broker broker)
+        private static MetadataValidationResult ValidateBroker(Broker broker)
         {
             if (broker.BrokerId == -1) {
                 return new MetadataValidationResult { Status = ValidationResult.Retry, ErrorCode = ErrorResponseCode.Unknown };
@@ -155,7 +114,7 @@ namespace KafkaClient
             return new MetadataValidationResult();
         }
 
-        private MetadataValidationResult ValidateTopic(MetadataTopic topic)
+        private static MetadataValidationResult ValidateTopic(MetadataTopic topic)
         {
             var errorCode = topic.ErrorCode;
             try
@@ -191,30 +150,25 @@ namespace KafkaClient
             }
         }
 
-        public void Dispose()
+        private enum ValidationResult
         {
-            _interrupted = true;
+            Valid,
+            Error,
+            Retry
         }
-    }
 
-    public enum ValidationResult
-    {
-        Valid,
-        Error,
-        Retry
-    }
-
-    public class MetadataValidationResult
-    {
-        public ValidationResult Status { get; set; }
-        public string Message { get; set; }
-        public ErrorResponseCode ErrorCode { get; set; }
-
-        public MetadataValidationResult()
+        private class MetadataValidationResult
         {
-            ErrorCode = ErrorResponseCode.NoError;
-            Status = ValidationResult.Valid;
-            Message = "";
+            public ValidationResult Status { get; set; }
+            public string Message { get; set; }
+            public ErrorResponseCode ErrorCode { get; set; }
+
+            public MetadataValidationResult()
+            {
+                ErrorCode = ErrorResponseCode.NoError;
+                Status = ValidationResult.Valid;
+                Message = "";
+            }
         }
     }
 }

@@ -2,7 +2,6 @@
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using KafkaClient.Common;
 using KafkaClient.Connection;
 using KafkaClient.Protocol;
 using KafkaClient.Tests.Helpers;
@@ -12,7 +11,7 @@ namespace KafkaClient.Tests.Integration
 {
     [TestFixture]
     [Category("Integration")]
-    public class KafkaMetadataProviderUnitTests
+    public class KafkaMetadataGetAsyncUnitTests
     {
         private readonly KafkaOptions _options = new KafkaOptions(IntegrationConfig.IntegrationUri);
 
@@ -25,12 +24,10 @@ namespace KafkaClient.Tests.Integration
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         [Ignore("Disable auto topic create in our server")]
-
         public async Task NewlyCreatedTopicShouldRetryUntilBrokerIsAssigned()
         {
             var expectedTopic = Guid.NewGuid().ToString();
-            var repo = new KafkaMetadataProvider(_options.Log);
-            var response = repo.GetAsync(new[] { GetKafkaConnection() }, new[] { expectedTopic }, CancellationToken.None);
+            var response = new MetadataRequest(expectedTopic).GetAsync(new[] { GetKafkaConnection() }, _options.Log, CancellationToken.None);
             var topic = (await response).Topics.FirstOrDefault();
 
             Assert.That(topic, Is.Not.Null);

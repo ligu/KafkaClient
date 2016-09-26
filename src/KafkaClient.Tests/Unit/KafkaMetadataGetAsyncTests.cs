@@ -12,7 +12,7 @@ namespace KafkaClient.Tests.Unit
 {
     [Category("Unit")]
     [TestFixture]
-    public class KafkaMetadataProviderTests
+    public class KafkaMetadataGetAsyncTests
     {
         private ILog _log;
 
@@ -33,10 +33,7 @@ namespace KafkaClient.Tests.Unit
             conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>())
                 .Returns(x => CreateMetadataResponse(errorCode), x => CreateMetadataResponse(errorCode));
 
-            using (var provider = new KafkaMetadataProvider(_log))
-            {
-                var response = await provider.GetAsync(new[] { conn }, new[] { "Test" }, CancellationToken.None);
-            }
+            var response = await new MetadataRequest("Test").GetAsync(new[] { conn }, _log, CancellationToken.None);
 
             Received.InOrder(() =>
             {
@@ -54,10 +51,7 @@ namespace KafkaClient.Tests.Unit
             conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>(), Arg.Any<IRequestContext>())
                 .Returns(x => CreateMetadataResponse(-1, "123", 1), x => CreateMetadataResponse(ErrorResponseCode.NoError));
 
-            using (var provider = new KafkaMetadataProvider(_log))
-            {
-                var response = await provider.GetAsync(new[] { conn }, new[] { "Test" }, CancellationToken.None);
-            }
+            var response = await new MetadataRequest("Test").GetAsync(new[] { conn }, _log, CancellationToken.None);
 
             Received.InOrder(() =>
             {
@@ -75,12 +69,11 @@ namespace KafkaClient.Tests.Unit
             conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>())
                 .Returns(x => CreateMetadataResponse(ErrorResponseCode.NoError));
 
-            using (var provider = new KafkaMetadataProvider(_log))
-            {
-                var response = provider.GetAsync(new[] { conn }, new[] { "Test" }, CancellationToken.None);
-            }
+            var source = new CancellationTokenSource();
+            var response = new MetadataRequest("Test").GetAsync(new[] { conn }, _log, source.Token);
+            source.Cancel();
 
-            conn.Received(1).SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
+            conn.Received(1).SendAsync(Arg.Any<IRequest<MetadataResponse>>(), Arg.Any<CancellationToken>());
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
@@ -91,12 +84,11 @@ namespace KafkaClient.Tests.Unit
             conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>())
                 .Returns(x => CreateMetadataResponse(ErrorResponseCode.NoError));
 
-            using (var provider = new KafkaMetadataProvider(_log))
-            {
-                var response = provider.GetAsync(new[] { conn }, CancellationToken.None);
-            }
+            var source = new CancellationTokenSource();
+            var response = new MetadataRequest().GetAsync(new[] { conn }, _log, source.Token);
+            source.Cancel();
 
-            conn.Received(1).SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
+            conn.Received(1).SendAsync(Arg.Any<IRequest<MetadataResponse>>(), Arg.Any<CancellationToken>());
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
@@ -110,10 +102,7 @@ namespace KafkaClient.Tests.Unit
 
             conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>()).Returns(x => CreateMetadataResponse(errorCode));
 
-            using (var provider = new KafkaMetadataProvider(_log))
-            {
-                var response = await provider.GetAsync(new[] { conn }, new[] { "Test" }, CancellationToken.None);
-            }
+            var response = await new MetadataRequest("Test").GetAsync(new[] { conn }, _log, CancellationToken.None);
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
@@ -126,10 +115,7 @@ namespace KafkaClient.Tests.Unit
 
             conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>()).Returns(x => CreateMetadataResponse(1, host, 1));
 
-            using (var provider = new KafkaMetadataProvider(_log))
-            {
-                var response = await provider.GetAsync(new[] { conn }, new[] { "Test" }, CancellationToken.None);
-            }
+            var response = await new MetadataRequest("Test").GetAsync(new[] { conn }, _log, CancellationToken.None);
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
@@ -142,10 +128,7 @@ namespace KafkaClient.Tests.Unit
 
             conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>()).Returns(x => CreateMetadataResponse(1, "123", port));
 
-            using (var provider = new KafkaMetadataProvider(_log))
-            {
-                var response = await provider.GetAsync(new[] { conn }, new[] { "Test" }, CancellationToken.None);
-            }
+            var response = await new MetadataRequest("Test").GetAsync(new[] { conn }, _log, CancellationToken.None);
         }
 
 #pragma warning disable 1998

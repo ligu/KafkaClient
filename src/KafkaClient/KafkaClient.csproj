@@ -78,6 +78,7 @@
     <Compile Include="IManualConsumer.cs" />
     <Compile Include="ManualConsumer.cs" />
     <Compile Include="CacheConfiguration.cs" />
+    <Compile Include="MetadataRequestExtensions.cs" />
     <Compile Include="StatisticsTrackerOptions.cs" />
     <Compile Include="Protocol\ApiKeyRequestType.cs" />
     <Compile Include="Protocol\BufferUnderRunException.cs" />
@@ -127,14 +128,13 @@
     <Compile Include="Consumer.cs" />
     <Compile Include="Connection\IConnection.cs" />
     <Compile Include="IBrokerRouter.cs" />
-    <Compile Include="Extensions.cs" />
+    <Compile Include="BrokerRouterExtensions.cs" />
     <Compile Include="ConsumerOptions.cs" />
     <Compile Include="PartitionSelector.cs" />
     <Compile Include="Common\ILog.cs" />
     <Compile Include="IPartitionSelector.cs" />
     <Compile Include="BrokerRouter.cs" />
     <Compile Include="Connection\Endpoint.cs" />
-    <Compile Include="KafkaMetadataProvider.cs" />
     <Compile Include="Common\Crc32Provider.cs" />
     <Compile Include="Connection\IConnectionFactory.cs" />
     <Compile Include="Producer.cs" />
