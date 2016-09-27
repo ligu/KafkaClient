@@ -64,7 +64,7 @@ namespace KafkaClient.Connection
         {
             var readTask = new SocketPayloadReceiveTask(readSize, cancellationToken);
             _readTaskQueue.Add(readTask);
-            return readTask.Tcp.Task;
+            return readTask.Tcs.Task;
         }
 
         /// <inheritdoc />
@@ -73,7 +73,7 @@ namespace KafkaClient.Connection
             var sendTask = new SocketPayloadSendTask(payload, cancellationToken);
             _sendTaskQueue.Add(sendTask);
             _configuration.OnWriteEnqueued?.Invoke(Endpoint, payload);
-            return sendTask.Tcp.Task;
+            return sendTask.Tcs.Task;
         }
 
         #endregion Interface Implementation...
@@ -115,8 +115,8 @@ namespace KafkaClient.Connection
             }
 
             var wrappedException = WrappedException(ex);
-            _sendTaskQueue.DrainAndApply(t => t.Tcp.TrySetException(wrappedException));
-            _readTaskQueue.DrainAndApply(t => t.Tcp.TrySetException(wrappedException));
+            _sendTaskQueue.DrainAndApply(t => t.Tcs.TrySetException(wrappedException));
+            _readTaskQueue.DrainAndApply(t => t.Tcs.TrySetException(wrappedException));
         }
 
         private async Task ProcessNetworkstreamTasks(NetworkStream netStream)
@@ -187,19 +187,19 @@ namespace KafkaClient.Connection
                     timer.Stop();
                     _configuration.OnRead?.Invoke(Endpoint, buffer, timer.Elapsed);
 
-                    receiveTask.Tcp.TrySetResult(buffer);
+                    receiveTask.Tcs.TrySetResult(buffer);
                 } catch (Exception ex) {
                     timer.Stop();
                     _configuration.OnReadFailed?.Invoke(Endpoint, receiveTask.ReadSize, timer.Elapsed, ex);
 
                     if (_disposeToken.IsCancellationRequested) {
                         var exception = new ObjectDisposedException($"Object is disposing (TcpSocket for {Endpoint})");
-                        receiveTask.Tcp.TrySetException(exception);
+                        receiveTask.Tcs.TrySetException(exception);
                         throw exception;
                     }
 
                     if (ex is ConnectionException) {
-                        receiveTask.Tcp.TrySetException(ex);
+                        receiveTask.Tcs.TrySetException(ex);
                         if (_disposeToken.IsCancellationRequested) return;
                         throw;
                     }
@@ -207,11 +207,11 @@ namespace KafkaClient.Connection
                     // if an exception made us lose a connection throw disconnected exception
                     if (_client == null || _client.Connected == false) {
                         var exception = new ConnectionException(Endpoint);
-                        receiveTask.Tcp.TrySetException(exception);
+                        receiveTask.Tcs.TrySetException(exception);
                         throw exception;
                     }
 
-                    receiveTask.Tcp.TrySetException(ex);
+                    receiveTask.Tcs.TrySetException(ex);
                     if (_disposeToken.IsCancellationRequested) return;
 
                     throw;
@@ -233,11 +233,11 @@ namespace KafkaClient.Connection
                     timer.Stop();
                     _configuration.OnWritten?.Invoke(Endpoint, sendTask.Payload, timer.Elapsed);
                     _log.DebugFormat("Sent data to {0} with CorrelationId {1}", Endpoint, sendTask.Payload.CorrelationId);
-                    sendTask.Tcp.TrySetResult(sendTask.Payload);
+                    sendTask.Tcs.TrySetResult(sendTask.Payload);
                 } catch (Exception ex) {
                     var wrappedException = WrappedException(ex);
                     _configuration.OnWriteFailed?.Invoke(Endpoint, sendTask.Payload, timer.Elapsed, wrappedException);
-                    sendTask.Tcp.TrySetException(wrappedException);
+                    sendTask.Tcs.TrySetException(wrappedException);
                     throw;
                 }
             }

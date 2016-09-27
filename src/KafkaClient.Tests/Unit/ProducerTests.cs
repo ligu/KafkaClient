@@ -71,7 +71,7 @@ namespace KafkaClient.Tests.Unit
             };
 
             var router = routerProxy.Create();
-            using (var producer = new Producer(router, maximumAsyncRequests: 1) { BatchSize = 1 })
+            using (var producer = new Producer(router, new ProducerConfiguration(requestParallelization: 1, batchSize: 1)))
             {
                 var messages = new[] { new Message("1") };
 
@@ -104,7 +104,7 @@ namespace KafkaClient.Tests.Unit
             routerProxy.BrokerConn0.ProduceResponseFunction = async () => { await semaphore.WaitAsync(); return new ProduceResponse(); };
 
             var router = routerProxy.Create();
-            using (var producer = new Producer(router, maximumAsyncRequests: 1) { BatchSize = 1 })
+            using (var producer = new Producer(router, new ProducerConfiguration(requestParallelization: 1, batchSize: 1)))
             {
                 var messages = new[] { new Message("1") };
 
@@ -163,7 +163,7 @@ namespace KafkaClient.Tests.Unit
         public async void ProducesShouldBatchAndOnlySendOneProduceRequest()
         {
             var routerProxy = new FakeBrokerRouter();
-            var producer = new Producer(routerProxy.Create()) { BatchSize = 2 };
+            var producer = new Producer(routerProxy.Create(), new ProducerConfiguration(batchSize: 2));
             using (producer)
             {
                 var calls = new[]
@@ -183,7 +183,7 @@ namespace KafkaClient.Tests.Unit
         public async void ProducesShouldSendOneProduceRequestForEachBatchSize()
         {
             var routerProxy = new FakeBrokerRouter();
-            var producer = new Producer(routerProxy.Create()) { BatchSize = 2 };
+            var producer = new Producer(routerProxy.Create(), new ProducerConfiguration(batchSize: 2));
             using (producer)
             {
                 var calls = new[]
@@ -208,13 +208,13 @@ namespace KafkaClient.Tests.Unit
         public async void ProducesShouldSendExpectedProduceRequestForEachAckLevelAndTimeoutCombination(short ack1, short ack2, int time1, int time2, int expected)
         {
             var routerProxy = new FakeBrokerRouter();
-            var producer = new Producer(routerProxy.Create()) { BatchSize = 100 };
+            var producer = new Producer(routerProxy.Create(), new ProducerConfiguration(batchSize: 100));
             using (producer)
             {
                 var calls = new[]
                 {
-                    producer.SendMessageAsync(FakeBrokerRouter.TestTopic, new[] {new Message("1"), new Message("2")}, acks:ack1, timeout: TimeSpan.FromMilliseconds(time1)),
-                    producer.SendMessageAsync(FakeBrokerRouter.TestTopic, new[] {new Message("1"), new Message("2")}, acks:ack2, timeout: TimeSpan.FromMilliseconds(time2))
+                    producer.SendMessageAsync(FakeBrokerRouter.TestTopic, new[] {new Message("1"), new Message("2")}, acks:ack1, ackTimeout: TimeSpan.FromMilliseconds(time1)),
+                    producer.SendMessageAsync(FakeBrokerRouter.TestTopic, new[] {new Message("1"), new Message("2")}, acks:ack2, ackTimeout: TimeSpan.FromMilliseconds(time2))
                 };
 
                 await Task.WhenAll(calls);
@@ -231,7 +231,7 @@ namespace KafkaClient.Tests.Unit
         public async void ProducesShouldSendExpectedProduceRequestForEachCodecCombination(MessageCodec codec1, MessageCodec codec2, int expected)
         {
             var routerProxy = new FakeBrokerRouter();
-            var producer = new Producer(routerProxy.Create()) { BatchSize = 100 };
+            var producer = new Producer(routerProxy.Create(), new ProducerConfiguration(batchSize: 100));
             using (producer)
             {
                 var calls = new[]
@@ -251,7 +251,7 @@ namespace KafkaClient.Tests.Unit
         public async void ProducerShouldAllowFullBatchSizeOfMessagesToQueue()
         {
             var routerProxy = new FakeBrokerRouter();
-            var producer = new Producer(routerProxy.Create()) { BatchSize = 1002, BatchDelayTime = TimeSpan.FromSeconds(10000) };
+            var producer = new Producer(routerProxy.Create(), new ProducerConfiguration(batchSize: 1002, batchMaxDelay: TimeSpan.FromSeconds(10000)));
 
             using (producer)
             {
@@ -282,10 +282,7 @@ namespace KafkaClient.Tests.Unit
                 await Task.Delay(200);
                 return new ProduceResponse();
             };
-            using (var producer = new Producer(routerProxy.Create()) {
-                BatchSize = 10,
-                BatchDelayTime = TimeSpan.FromMilliseconds(500)
-            })
+            using (var producer = new Producer(routerProxy.Create(), new ProducerConfiguration(batchSize: 10, batchMaxDelay: TimeSpan.FromMilliseconds(500))))
             {
                 var senderTask = Task.Factory.StartNew(async () => {
                     for (int i = 0; i < 3; i++) {
@@ -320,7 +317,7 @@ namespace KafkaClient.Tests.Unit
             routerProxy.BrokerConn1.ProduceResponseFunction = async () => { semaphore.Wait(); return new ProduceResponse(); };
 #pragma warning restore 1998
 
-            var producer = new Producer(routerProxy.Create(), maximumAsyncRequests: 1) { BatchSize = 1, BatchDelayTime = TimeSpan.FromMilliseconds(500) };
+            var producer = new Producer(routerProxy.Create(), new ProducerConfiguration(1, 1, TimeSpan.FromMilliseconds(500)));
             using (producer)
             {
                 var sendTasks = Enumerable.Range(0, 5)

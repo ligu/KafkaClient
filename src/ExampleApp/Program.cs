@@ -27,12 +27,7 @@ namespace ExampleApp
             });
 
             //create a producer to send messages with
-            var producer = new Producer(new BrokerRouter(options)) 
-            { 
-                BatchSize = 100,
-                BatchDelayTime = TimeSpan.FromMilliseconds(2000)
-            };
-
+            var producer = new Producer(new BrokerRouter(options), new ProducerConfiguration(batchSize: 100, batchMaxDelay: TimeSpan.FromSeconds(2)));
 
             //take in console read messages
             Console.WriteLine("Type a message and press enter...");

@@ -74,11 +74,13 @@
     <Compile Include="Common\Retry.cs" />
     <Compile Include="Connection\SocketPayloadReceiveTask.cs" />
     <Compile Include="Connection\SocketPayloadSendTask.cs" />
-    <Compile Include="Connection\SocketPayloadTask.cs" />
+    <Compile Include="Common\CancellableTask.cs" />
     <Compile Include="ICacheConfiguration.cs" />
     <Compile Include="IManualConsumer.cs" />
+    <Compile Include="IProducerConfiguration.cs" />
     <Compile Include="ManualConsumer.cs" />
     <Compile Include="CacheConfiguration.cs" />
+    <Compile Include="ProducerConfiguration.cs" />
     <Compile Include="StatisticsTrackerOptions.cs" />
     <Compile Include="Protocol\ApiKeyRequestType.cs" />
     <Compile Include="Protocol\BufferUnderRunException.cs" />

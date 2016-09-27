@@ -7,8 +7,8 @@ namespace KafkaClient
     {
         public CacheConfiguration(IRetry refreshRetry = null, TimeSpan? cacheExpiration = null)
         {
-            RefreshRetry = refreshRetry ?? DefaultRefreshRetry();
-            CacheExpiration = cacheExpiration ?? TimeSpan.FromMilliseconds(DefaultCacheExpirationMilliseconds);
+            RefreshRetry = refreshRetry ?? Defaults.RefreshRetry();
+            CacheExpiration = cacheExpiration ?? TimeSpan.FromMilliseconds(Defaults.CacheExpirationMilliseconds);
         }
 
         /// <inheritdoc />
@@ -17,31 +17,35 @@ namespace KafkaClient
         /// <inheritdoc />
         public TimeSpan CacheExpiration { get; }
 
-        /// <summary>
-        /// The default timeout for requests made to refresh the cache
-        /// </summary>
-        public const int DefaultRefreshTimeoutSeconds = 200;
-
-        /// <summary>
-        /// The default maximum number of attempts made when refreshing the cache
-        /// </summary>
-        public const int DefaultMaxRefreshAttempts = 2;
-
-        /// <summary>
-        /// The default RefreshRetry backoff delay
-        /// </summary>
-        public const int DefaultRefreshDelayMilliseconds = 100;
-
-        /// <summary>
-        /// The default expiration length for cached topic/partition information
-        /// </summary>
-        public const int DefaultCacheExpirationMilliseconds = 10;
-
-        public static IRetry DefaultRefreshRetry(TimeSpan? timeout = null)
+        public static class Defaults
         {
-            return new BackoffRetry(timeout ?? TimeSpan.FromSeconds(DefaultRefreshTimeoutSeconds), 
-                TimeSpan.FromMilliseconds(DefaultRefreshDelayMilliseconds),
-                DefaultMaxRefreshAttempts);
+            /// <summary>
+            /// The default timeout for requests made to refresh the cache
+            /// </summary>
+            public const int RefreshTimeoutSeconds = 200;
+
+            /// <summary>
+            /// The default maximum number of attempts made when refreshing the cache
+            /// </summary>
+            public const int MaxRefreshAttempts = 2;
+
+            /// <summary>
+            /// The default RefreshRetry backoff delay
+            /// </summary>
+            public const int RefreshDelayMilliseconds = 100;
+
+            /// <summary>
+            /// The default expiration length for <see cref="CacheConfiguration.CacheExpiration"/>
+            /// </summary>
+            public const int CacheExpirationMilliseconds = 10;
+
+            public static IRetry RefreshRetry(TimeSpan? timeout = null)
+            {
+                return new BackoffRetry(
+                    timeout ?? TimeSpan.FromSeconds(RefreshTimeoutSeconds), 
+                    TimeSpan.FromMilliseconds(RefreshDelayMilliseconds), 
+                    MaxRefreshAttempts);
+            }
         }
     }
 }

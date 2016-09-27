@@ -24,7 +24,7 @@ namespace KafkaClient.Tests.Integration
         public async Task SendAsyncShouldHandleHighVolumeOfMessages(int amount, int maxAsync)
         {
             using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri)))
-            using (var producer = new Producer(router, maxAsync) { BatchSize = amount / 2 })
+            using (var producer = new Producer(router, new ProducerConfiguration(maxAsync, amount / 2)))
             {
                 var tasks = new Task<ProduceTopic[]>[amount];
 
@@ -145,7 +145,7 @@ namespace KafkaClient.Tests.Integration
             IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("create BrokerRouter"));
             var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri));
             int causesRaceConditionOldVersion = 2;
-            var producer = new Producer(router, causesRaceConditionOldVersion) { BatchDelayTime = TimeSpan.Zero };//this is slow on purpose
+            var producer = new Producer(router, new ProducerConfiguration(causesRaceConditionOldVersion, batchMaxDelay: TimeSpan.Zero)); // this is slow on purpose
             //this is not slow  var producer = new Producer(router);
             IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("create producer"));
             var offsets = await producer.BrokerRouter.GetTopicOffsetAsync(IntegrationConfig.IntegrationTopic, CancellationToken.None);
@@ -204,7 +204,7 @@ namespace KafkaClient.Tests.Integration
             IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("create BrokerRouter ,time Milliseconds:{0}", stopwatch.ElapsedMilliseconds));
             var router = new BrokerRouter(IntegrationConfig.IntegrationUri, log: IntegrationConfig.NoDebugLog);
             stopwatch.Restart();
-            var producer = new Producer(router) { BatchDelayTime = TimeSpan.FromMilliseconds(10), BatchSize = numberOfMessage / 10 };
+            var producer = new Producer(router, new ProducerConfiguration(batchSize: numberOfMessage / 10, batchMaxDelay: TimeSpan.FromMilliseconds(10)));
             IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("create producer ,time Milliseconds:{0}", stopwatch.ElapsedMilliseconds));
             stopwatch.Restart();
             var offsets = await producer.BrokerRouter.GetTopicOffsetAsync(IntegrationConfig.IntegrationTopic, CancellationToken.None);

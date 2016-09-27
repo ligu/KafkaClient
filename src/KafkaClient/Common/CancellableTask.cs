@@ -2,19 +2,19 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace KafkaClient.Connection
+namespace KafkaClient.Common
 {
-    internal class SocketPayloadTask<T> : IDisposable
+    internal class CancellableTask<T> : IDisposable
     {
-        public SocketPayloadTask(CancellationToken cancellationToken)
+        public CancellableTask(CancellationToken cancellationToken)
         {
-            Tcp = new TaskCompletionSource<T>();
+            Tcs = new TaskCompletionSource<T>();
             CancellationToken = cancellationToken;
-            _cancellationTokenRegistration = cancellationToken.Register(() => Tcp.TrySetCanceled());
+            _cancellationTokenRegistration = cancellationToken.Register(() => Tcs.TrySetCanceled());
         }
 
         public CancellationToken CancellationToken { get; }
-        public TaskCompletionSource<T> Tcp { get; }
+        public TaskCompletionSource<T> Tcs { get; }
 
         private CancellationTokenRegistration _cancellationTokenRegistration;
 

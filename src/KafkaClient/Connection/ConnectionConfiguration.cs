@@ -13,7 +13,7 @@ namespace KafkaClient.Connection
         /// </summary>
         /// <param name="connectionTimeout">The total timeout to use for the connection attempts.</param>
         public ConnectionConfiguration(TimeSpan connectionTimeout)
-            : this(DefaultConnectionRetry(connectionTimeout))
+            : this(Defaults.ConnectionRetry(connectionTimeout))
         {
         }
 
@@ -51,8 +51,8 @@ namespace KafkaClient.Connection
             ReadError onReadFailed = null
             )
         {
-            ConnectionRetry = connectionRetry ?? DefaultConnectionRetry();
-            RequestTimeout = requestTimeout ?? TimeSpan.FromSeconds(DefaultRequestTimeoutSeconds);
+            ConnectionRetry = connectionRetry ?? Defaults.ConnectionRetry();
+            RequestTimeout = requestTimeout ?? TimeSpan.FromSeconds(Defaults.RequestTimeoutSeconds);
             OnDisconnected = onDisconnected;
             OnConnecting = onConnecting;
             OnConnected = onConnected;
@@ -109,32 +109,35 @@ namespace KafkaClient.Connection
         /// <inheritdoc />
         public ReadError OnReadFailed { get; }
 
-        /// <summary>
-        /// The default RequestRetry timeout
-        /// </summary>
-        public const int DefaultRequestTimeoutSeconds = 60;
-
-        /// <summary>
-        /// The default ConnectionRetry timeout
-        /// </summary>
-        public const int DefaultConnectingTimeoutMinutes = 5;
-
-        /// <summary>
-        /// The default max retries for ConnectionRetry and RequestRetry
-        /// </summary>
-        public const int DefaultMaxConnectionAttempts = 5;
-
-        /// <summary>
-        /// The default ConnectionRetry backoff delay
-        /// </summary>
-        public const int DefaultConnectingDelayMilliseconds = 100;
-
-        public static IRetry DefaultConnectionRetry(TimeSpan? timeout = null)
+        public static class Defaults
         {
-            return new BackoffRetry(
-                timeout ?? TimeSpan.FromMinutes(DefaultConnectingTimeoutMinutes),
-                TimeSpan.FromMilliseconds(DefaultConnectingDelayMilliseconds),
-                DefaultMaxConnectionAttempts);
+            /// <summary>
+            /// The default <see cref="ConnectionConfiguration.RequestTimeout"/> seconds
+            /// </summary>
+            public const int RequestTimeoutSeconds = 60;
+
+            /// <summary>
+            /// The default <see cref="ConnectionConfiguration.ConnectionRetry"/> timeout
+            /// </summary>
+            public const int ConnectingTimeoutMinutes = 5;
+
+            /// <summary>
+            /// The default max retries for <see cref="ConnectionConfiguration.ConnectionRetry"/>
+            /// </summary>
+            public const int MaxConnectionAttempts = 5;
+
+            /// <summary>
+            /// The default <see cref="ConnectionConfiguration.ConnectionRetry"/> backoff delay
+            /// </summary>
+            public const int ConnectingDelayMilliseconds = 100;
+
+            public static IRetry ConnectionRetry(TimeSpan? timeout = null)
+            {
+                return new BackoffRetry(
+                    timeout ?? TimeSpan.FromMinutes(ConnectingTimeoutMinutes),
+                    TimeSpan.FromMilliseconds(ConnectingDelayMilliseconds), 
+                    MaxConnectionAttempts);
+            }
         }
     }
 }

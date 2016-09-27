@@ -77,7 +77,7 @@ namespace KafkaClient
             return new Disposable(
                 () => {
                     Interlocked.Decrement(ref Gauges.ActiveWriteOperation);
-                    CompleteNetworkWrite(sendTask.Payload, sw.ElapsedMilliseconds, sendTask.Tcp.Task.Exception != null);
+                    CompleteNetworkWrite(sendTask.Payload, sw.ElapsedMilliseconds, sendTask.Tcs.Task.Exception != null);
                 });
         }
 

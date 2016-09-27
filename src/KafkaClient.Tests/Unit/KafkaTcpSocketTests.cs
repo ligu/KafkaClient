@@ -363,7 +363,7 @@ namespace KafkaClient.Tests.Unit
             var socket = new TcpSocket(new Endpoint(new Uri("http://not.com"), null), config, _log);
             var resultTask = socket.ReadAsync(4, CancellationToken.None);
             await resultTask;
-            Assert.Equals(reconnectionAttempt, ConnectionConfiguration.DefaultMaxConnectionAttempts);
+            Assert.Equals(reconnectionAttempt, ConnectionConfiguration.Defaults.MaxConnectionAttempts);
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
