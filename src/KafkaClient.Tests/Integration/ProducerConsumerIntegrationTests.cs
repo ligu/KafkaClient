@@ -26,11 +26,10 @@ namespace KafkaClient.Tests.Integration
             using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri)))
             using (var producer = new Producer(router, new ProducerConfiguration(maxAsync, amount / 2)))
             {
-                var tasks = new Task<ProduceTopic[]>[amount];
+                var tasks = new Task<ProduceTopic>[amount];
 
                 for (var i = 0; i < amount; i++) {
-                    tasks[i] = producer.SendMessageAsync(IntegrationConfig.IntegrationTopic,
-                        new[] { new Message(Guid.NewGuid().ToString()) });
+                    tasks[i] = producer.SendMessageAsync(new Message(Guid.NewGuid().ToString()), IntegrationConfig.IntegrationTopic, CancellationToken.None);
                 }
                 var results = await Task.WhenAll(tasks.ToArray());
 
@@ -38,7 +37,7 @@ namespace KafkaClient.Tests.Integration
                 //So this assertion will never pass
                 //Assert.That(results.Count, Is.EqualTo(amount));
 
-                Assert.That(results.Any(x => x.Any(y => y.ErrorCode != 0)), Is.False,
+                Assert.That(results.Any(x => x.ErrorCode != ErrorResponseCode.NoError), Is.False,
                     "Should not have received any results as failures.");
             }
         }
@@ -49,9 +48,9 @@ namespace KafkaClient.Tests.Integration
             using (var router = new BrokerRouter(IntegrationConfig.IntegrationUri, log: IntegrationConfig.NoDebugLog ))
             using (var producer = new Producer(router))
             {
-                var responseAckLevel0 = await producer.SendMessageAsync(IntegrationConfig.IntegrationTopic, partition: 0, acks: 0, message: new Message("Ack Level 0"));
+                var responseAckLevel0 = await producer.SendMessageAsync(new Message("Ack Level 0"), IntegrationConfig.IntegrationTopic, 0, new SendMessageConfiguration(acks: 0), CancellationToken.None);
                 Assert.AreEqual(responseAckLevel0.Offset, -1);
-                var responseAckLevel1 = await producer.SendMessageAsync(IntegrationConfig.IntegrationTopic, partition: 0, acks: 1, message: new Message("Ack Level 1"));
+                var responseAckLevel1 = await producer.SendMessageAsync(new Message("Ack Level 1"), IntegrationConfig.IntegrationTopic, 0, new SendMessageConfiguration(acks: 1), CancellationToken.None);
                 Assert.That(responseAckLevel1.Offset, Is.GreaterThan(-1));
             }
         }
@@ -62,7 +61,7 @@ namespace KafkaClient.Tests.Integration
             using (var router = new BrokerRouter(IntegrationConfig.IntegrationUri, log: IntegrationConfig.NoDebugLog ))
             using (var producer = new Producer(router))
             {
-                var responseAckLevel1 = await producer.SendMessageAsync(IntegrationConfig.IntegrationTopic, partition: 0, acks: 1, message: new Message("Ack Level 1"));
+                var responseAckLevel1 = await producer.SendMessageAsync(new Message("Ack Level 1"), IntegrationConfig.IntegrationTopic, 0, new SendMessageConfiguration(acks: 1), CancellationToken.None);
                 var offsetResponse = await producer.BrokerRouter.GetTopicOffsetAsync(IntegrationConfig.IntegrationTopic, CancellationToken.None);
                 var maxOffset = offsetResponse.Find(x => x.PartitionId == 0);
                 Assert.AreEqual(responseAckLevel1.Offset, maxOffset.Offsets.Max() - 1);
@@ -75,7 +74,7 @@ namespace KafkaClient.Tests.Integration
             using (var router = new BrokerRouter(IntegrationConfig.IntegrationUri, log: IntegrationConfig.NoDebugLog ))
             using (var producer = new Producer(router))
             {
-                var responseAckLevel1 = await producer.SendMessageAsync(IntegrationConfig.IntegrationTopic, 0, new Message("Ack Level 1"), new Message("Ack Level 1"));
+                var responseAckLevel1 = await producer.SendMessagesAsync(new [] { new Message("Ack Level 1"), new Message("Ack Level 1") }, IntegrationConfig.IntegrationTopic, 0, new SendMessageConfiguration(acks: 1), CancellationToken.None);
                 var offsetResponse = await producer.BrokerRouter.GetTopicOffsetAsync(IntegrationConfig.IntegrationTopic, CancellationToken.None);
                 var maxOffset = offsetResponse.Find(x => x.PartitionId == 0);
 
@@ -92,7 +91,7 @@ namespace KafkaClient.Tests.Integration
             using (var router = new BrokerRouter(IntegrationConfig.IntegrationUri, log: IntegrationConfig.NoDebugLog ))
             using (var producer = new Producer(router))
             {
-                var responseAckLevel1 = await producer.SendMessageAsync(IntegrationConfig.IntegrationTopic, partition: 0, acks: 1, message: new Message(messge.ToString()));
+                var responseAckLevel1 = await producer.SendMessageAsync(new Message(messge.ToString()), IntegrationConfig.IntegrationTopic, 0, new SendMessageConfiguration(acks: 1), CancellationToken.None);
                 offsetResponse = responseAckLevel1.Offset;
             }
             using (var router = new BrokerRouter(IntegrationConfig.IntegrationUri, log: IntegrationConfig.NoDebugLog ))
@@ -119,7 +118,7 @@ namespace KafkaClient.Tests.Integration
                 {
                     for (int i = 0; i < 20; i++)
                     {
-                        producer.SendMessageAsync(IntegrationConfig.IntegrationTopic, new[] { new Message(i.ToString(), testId) }).Wait();
+                        producer.SendMessageAsync(new Message(i.ToString(), testId), IntegrationConfig.IntegrationTopic, CancellationToken.None).Wait();
                     }
 
                     var results = consumer.Consume().Take(20).ToList();
@@ -153,7 +152,7 @@ namespace KafkaClient.Tests.Integration
             List<Task> sendList = new List<Task>(numberOfMessage);
             for (int i = 0; i < numberOfMessage; i++)
             {
-                var sendTask = producer.SendMessageAsync(new[] { new Message(i.ToString()) }, IntegrationConfig.IntegrationTopic, partition, 1, null, MessageCodec.CodecNone);
+                var sendTask = producer.SendMessageAsync(new Message(i.ToString()), IntegrationConfig.IntegrationTopic, partition, new SendMessageConfiguration(1, null, MessageCodec.CodecNone), CancellationToken.None);
                 sendList.Add(sendTask);
             }
 
@@ -213,7 +212,7 @@ namespace KafkaClient.Tests.Integration
             List<Task> sendList = new List<Task>(numberOfMessage);
             for (int i = 0; i < numberOfMessage; i++)
             {
-                var sendTask = producer.SendMessageAsync(new[] { new Message(i.ToString()) }, IntegrationConfig.IntegrationTopic, partition, 1, null, MessageCodec.CodecNone);
+                var sendTask = producer.SendMessageAsync(new Message(i.ToString()), IntegrationConfig.IntegrationTopic, partition, new SendMessageConfiguration(acks: 1, codec: MessageCodec.CodecNone), CancellationToken.None);
                 sendList.Add(sendTask);
             }
             TimeSpan maxTimeToRun = TimeSpan.FromMilliseconds(timeoutInMs);
@@ -282,7 +281,7 @@ namespace KafkaClient.Tests.Integration
                 {
                     for (int i = 0; i < 20; i++)
                     {
-                        producer.SendMessageAsync(IntegrationConfig.IntegrationTopic, new[] { new Message(i.ToString(), testId) }).Wait();
+                        producer.SendMessageAsync(new Message(i.ToString(), testId), IntegrationConfig.IntegrationTopic, CancellationToken.None).Wait();
                     }
 
                     var sentMessages = consumer.Consume().Take(20).ToList();
@@ -322,7 +321,7 @@ namespace KafkaClient.Tests.Integration
                 {
                     for (int i = 0; i < 20; i++)
                     {
-                        producer.SendMessageAsync(IntegrationConfig.IntegrationTopic, new[] { new Message(i.ToString(), "1") }).Wait();
+                        producer.SendMessageAsync(new Message(i.ToString(), "1"), IntegrationConfig.IntegrationTopic, CancellationToken.None).Wait();
                     }
 
                     var results = consumer.Consume().Take(20).ToList();
@@ -355,7 +354,7 @@ namespace KafkaClient.Tests.Integration
             //message should send to PartitionId and not use the key to Select Broker Route !!
             for (int i = 0; i < 20; i++)
             {
-                await producer.SendMessageAsync(new[] { new Message(i.ToString(), "key") }, IntegrationConfig.IntegrationTopic, partitionId, 1, null, MessageCodec.CodecNone);
+                await producer.SendMessageAsync(new Message(i.ToString(), "key"), IntegrationConfig.IntegrationTopic, partitionId, new SendMessageConfiguration(acks: 1, codec: MessageCodec.CodecNone), CancellationToken.None);
             }
 
             //consume form partitionId to verify that date is send to currect partion !!.
@@ -388,7 +387,7 @@ namespace KafkaClient.Tests.Integration
                 {
                     for (int i = 0; i < 20; i++)
                     {
-                        producer.SendMessageAsync(IntegrationConfig.IntegrationTopic, new[] { new Message(i.ToString(), testId) }).Wait();
+                        producer.SendMessageAsync(new Message(i.ToString(), testId), IntegrationConfig.IntegrationTopic, CancellationToken.None).Wait();
                     }
 
                     for (int i = 0; i < 20; i++)
@@ -418,7 +417,7 @@ namespace KafkaClient.Tests.Integration
                      offsets.Select(x => new OffsetPosition(x.PartitionId, x.Offsets.Max())).ToArray()))
                 {
                     Console.WriteLine("Sending {0} test messages", expectedCount);
-                    var response = await producer.SendMessageAsync(Enumerable.Range(0, expectedCount).Select(x => new Message(x.ToString())), IntegrationConfig.IntegrationTopic);
+                    var response = await producer.SendMessagesAsync(Enumerable.Range(0, expectedCount).Select(x => new Message(x.ToString())), IntegrationConfig.IntegrationTopic, CancellationToken.None);
 
                     Assert.That(response.Any(x => x.ErrorCode != (int)ErrorResponseCode.NoError), Is.False, "Error occured sending test messages to server.");
 

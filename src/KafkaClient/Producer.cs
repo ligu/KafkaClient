@@ -11,7 +11,7 @@ namespace KafkaClient
     /// <summary>
     /// Provides a simplified high level API for producing messages on a topic.
     /// </summary>
-    public class Producer : IKafkaClient
+    public class Producer : IProducer
     {
         private readonly CancellationTokenSource _stopToken = new CancellationTokenSource();
         private readonly AsyncCollection<ProduceTopicTask> _asyncCollection;
@@ -35,9 +35,7 @@ namespace KafkaClient
         /// </summary>
         public int ActiveSenders => Configuration.RequestParallelization - _semaphoreMaximumAsync.CurrentCount;
 
-        /// <summary>
-        /// The broker router this producer uses to route messages.
-        /// </summary>
+        /// <inheritdoc />
         public IBrokerRouter BrokerRouter { get; }
 
         public IProducerConfiguration Configuration { get; }
@@ -48,15 +46,15 @@ namespace KafkaClient
         /// <param name="brokerRouter">The router used to direct produced messages to the correct partition.</param>
         /// <param name="configuration">The configuration parameters.</param>
         /// <remarks>
-        /// The maximumAsyncRequests parameter provides a mechanism for minimizing the amount of async requests in flight at any one time
-        /// by blocking the caller requesting the async call.  This affectively puts an upper limit on the amount of times a caller can
-        /// call SendMessageAsync before the caller is blocked.
+        /// The <see cref="IProducerConfiguration.RequestParallelization"/> parameter provides a mechanism for minimizing the amount of 
+        /// async requests in flight at any one time by blocking the caller requesting the async call. This effectively puts an upper 
+        /// limit on the amount of times a caller can call SendMessagesAsync before the caller is blocked.
         ///
-        /// The MaximumMessageBuffer parameter provides a way to limit the max amount of memory the driver uses should the send pipeline get
-        /// overwhelmed and the buffer starts to fill up.  This is an inaccurate limiting memory use as the amount of memory actually used is
-        /// dependant on the general message size being buffered.
+        /// The <see cref="IProducerConfiguration.BatchSize"/> parameter provides a way to limit the max amount of memory the driver uses 
+        /// should the send pipeline get overwhelmed and the buffer starts to fill up.  This is an inaccurate limiting memory use as the 
+        /// amount of memory actually used is dependant on the general message size being buffered.
         ///
-        /// A message will start its timeout countdown as soon as it is added to the producer async queue.  If there are a large number of
+        /// A message will start its timeout countdown as soon as it is added to the producer async queue. If there are a large number of
         /// messages sitting in the async queue then a message may spend its entire timeout cycle waiting in this queue and never getting
         /// attempted to send to Kafka before a timeout exception is thrown.
         /// </remarks>
@@ -66,59 +64,17 @@ namespace KafkaClient
             Configuration = configuration ?? new ProducerConfiguration();
             _asyncCollection = new AsyncCollection<ProduceTopicTask>();
             _semaphoreMaximumAsync = new SemaphoreSlim(Configuration.RequestParallelization, Configuration.RequestParallelization);
-
-            _batchSendTask = Task.Run(async () => {
-                await BatchSendAsync();
-            }, _stopToken.Token);
+            _batchSendTask = Task.Run(BatchSendAsync, _stopToken.Token);
         }
 
-        /// <summary>
-        /// Send an enumerable of message objects to a given topic.
-        /// </summary>
-        /// <param name="messages">The enumerable of messages that will be sent to the given topic.</param>
-        /// <param name="topicName">The name of the kafka topic to send the messages to.</param>
-        /// <param name="partition">The partition to send messages to</param>
-        /// <param name="acks">The required level of acknowlegment from the kafka server.  0=none, 1=writen to leader, 2+=writen to replicas, -1=writen to all replicas.</param>
-        /// <param name="ackTimeout">Interal kafka timeout to wait for the requested level of ack to occur before returning. Defaults to 1000ms.</param>
-        /// <param name="codec">The codec to apply to the message collection.  Defaults to none.</param>
-        /// <returns>List of ProduceTopic response from each partition sent to or empty list if acks = 0.</returns>
-        public async Task<ProduceTopic[]> SendMessageAsync(IEnumerable<Message> messages, string topicName, int? partition = null, short? acks = null, TimeSpan? ackTimeout = null, MessageCodec? codec = null)
+        /// <inheritdoc />
+        public async Task<ProduceTopic[]> SendMessagesAsync(IEnumerable<Message> messages, string topicName, int? partition, ISendMessageConfiguration configuration, CancellationToken cancellationToken)
         {
-            using (var mergedCancellation = new MergedCancellation(_stopToken.Token)) {
-                var messageAcks = acks.GetValueOrDefault(Configuration.Acks);
-                var messageCodec = codec.GetValueOrDefault(Configuration.Codec);
-                var messageAckTimeout = ackTimeout.GetValueOrDefault(Configuration.ServerAckTimeout);
-
-                var batch = messages.Select(message => new ProduceTopicTask(topicName, partition, message, messageCodec, messageAcks, messageAckTimeout, mergedCancellation.Token)).ToArray();
-                _asyncCollection.AddRange(batch);
-                return await Task.WhenAll(batch.Select(x => x.Tcs.Task)).ConfigureAwait(false);
-            }
-        }
-
-        /// <summary>
-        /// Send a message to a given topic.
-        /// </summary>
-        /// <param name="message">The message that will be sent to the given topic.</param>
-        /// <param name="topicName">The name of the kafka topic to send the messages to.</param>
-        /// <param name="partition">The partition to send messages to</param>
-        /// <param name="acks">The required level of acknowlegment from the kafka server.  0=none, 1=writen to leader, 2+=writen to replicas, -1=writen to all replicas.</param>
-        /// <param name="ackTimeout">Interal kafka timeout to wait for the requested level of ack to occur before returning. Defaults to 1000ms.</param>
-        /// <param name="codec">The codec to apply to the message collection.  Defaults to none.</param>
-        /// <returns>The ProduceTopic response from the partition sent to, or null if acks = 0.</returns>
-        public async Task<ProduceTopic> SendMessageAsync(Message message, string topicName, int? partition = null, short? acks = null, TimeSpan? ackTimeout = null, MessageCodec? codec = null)
-        {
-            var result = await SendMessageAsync(new[] { message }, topicName, partition, acks, ackTimeout, codec).ConfigureAwait(false);
-            return result.SingleOrDefault();
-        }
-
-        public Task<ProduceTopic[]> SendMessageAsync(string topicName, int partition, params Message[] messages)
-        {
-            return SendMessageAsync(messages, topicName, partition: partition);
-        }
-
-        public Task<ProduceTopic[]> SendMessageAsync(string topicName, params Message[] messages)
-        {
-            return SendMessageAsync(messages, topicName);
+            var batch = messages.Select(message => new ProduceTopicTask(topicName, partition, message, configuration ?? Configuration.SendDefaults, cancellationToken)).ToArray();
+            _asyncCollection.AddRange(batch); 
+            // TODO: cancellation should also remove from the collection if they aren't yet in progress
+            // Finally, they should skip the semaphore wait in this case (or at least short circuit it)
+            return await Task.WhenAll(batch.Select(x => x.Tcs.Task)).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -297,6 +253,11 @@ namespace KafkaClient
                 Codec = codec;
                 Acks = acks;
                 AckTimeout = ackTimeout;
+            }
+
+            public ProduceTopicTask(string topicName, int? partition, Message message, ISendMessageConfiguration configuration, CancellationToken cancellationToken)
+                : this(topicName, partition, message, configuration.Codec, configuration.Acks, configuration.AckTimeout, cancellationToken)
+            {
             }
 
             // where

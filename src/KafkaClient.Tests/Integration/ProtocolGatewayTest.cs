@@ -21,7 +21,7 @@ namespace KafkaClient.Tests.Integration
 
             var producer = new Producer(router);
             string messageValue = Guid.NewGuid().ToString();
-            var response = await producer.SendMessageAsync(new Message(messageValue), IntegrationConfig.IntegrationTopic, partitionId);
+            var response = await producer.SendMessageAsync(new Message(messageValue), IntegrationConfig.IntegrationTopic, partitionId, CancellationToken.None);
             var offset = response.Offset;
 
             var fetch = new Fetch(IntegrationConfig.IntegrationTopic, partitionId, offset, 32000);

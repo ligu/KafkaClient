@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Connection;
 using KafkaClient.Protocol;
@@ -18,7 +19,7 @@ namespace KafkaClient.Tests.Integration
             using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri)))
             using (var producer = new Producer(router))
             {
-                var sendTask = producer.SendMessageAsync(new[] { new Message(Guid.NewGuid().ToString()) }, IntegrationConfig.IntegrationTopic, acks: 0);
+                var sendTask = producer.SendMessageAsync(new Message(Guid.NewGuid().ToString()), IntegrationConfig.IntegrationTopic, null, new SendMessageConfiguration(acks: 0), CancellationToken.None);
 
                 sendTask.Wait(TimeSpan.FromMinutes(2));
 
@@ -32,7 +33,7 @@ namespace KafkaClient.Tests.Integration
             using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri)))
             using (var producer = new Producer(router))
             {
-                var result = await producer.SendMessageAsync(IntegrationConfig.IntegrationTopic, new[] { new Message(Guid.NewGuid().ToString()) });
+                var result = await producer.SendMessagesAsync(new[] { new Message(Guid.NewGuid().ToString()) }, IntegrationConfig.IntegrationTopic, CancellationToken.None);
 
                 Assert.That(result.Length, Is.EqualTo(1));
             }
@@ -45,7 +46,7 @@ namespace KafkaClient.Tests.Integration
             using (var producer = new Producer(router))
             {
                 var messages = new[] { new Message("1"), new Message("2"), new Message("3") };
-                var result = await producer.SendMessageAsync(IntegrationConfig.IntegrationTopic, messages);
+                var result = await producer.SendMessagesAsync(messages, IntegrationConfig.IntegrationTopic, CancellationToken.None);
 
                 Assert.That(result.Length, Is.EqualTo(messages.Distinct().Count()));
 
@@ -60,14 +61,14 @@ namespace KafkaClient.Tests.Integration
             using (var producer = new Producer(router))
             {
                 var tasks = new[] {
-                    producer.SendMessageAsync(IntegrationConfig.IntegrationTopic, new Message("1")),
-                    producer.SendMessageAsync(IntegrationConfig.IntegrationTopic, new Message("2")),
-                    producer.SendMessageAsync(IntegrationConfig.IntegrationTopic, new Message("3")),
+                    producer.SendMessageAsync(new Message("1"), IntegrationConfig.IntegrationTopic, CancellationToken.None),
+                    producer.SendMessageAsync(new Message("2"), IntegrationConfig.IntegrationTopic, CancellationToken.None),
+                    producer.SendMessageAsync(new Message("3"), IntegrationConfig.IntegrationTopic, CancellationToken.None),
                 };
 
                 await Task.WhenAll(tasks);
 
-                var result = tasks.SelectMany(x => x.Result).Distinct().ToList();
+                var result = tasks.Select(x => x.Result).Distinct().ToList();
                 Assert.That(result.Count, Is.EqualTo(tasks.Length));
             }
         }

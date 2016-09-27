@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient;
 using KafkaClient.Common;
@@ -43,7 +44,7 @@ namespace ExampleApp
                 }
                 else
                 {
-                    producer.SendMessageAsync(topicName, new Message(message));
+                    producer.SendMessageAsync(new Message(message), topicName, CancellationToken.None);
                 }
             }
 
@@ -56,7 +57,7 @@ namespace ExampleApp
         private static async void SendRandomBatch(Producer producer, string topicName, int count)
         {
             //send multiple messages
-            var sendTask = producer.SendMessageAsync(Enumerable.Range(0, count).Select(x => new Message(x.ToString())), topicName);
+            var sendTask = producer.SendMessagesAsync(Enumerable.Range(0, count).Select(x => new Message(x.ToString())), topicName, CancellationToken.None);
             
             Console.WriteLine("Posted #{0} messages.  Buffered:{1} ActiveSenders:{2}", count, producer.BufferedCount, producer.ActiveSenders);
 

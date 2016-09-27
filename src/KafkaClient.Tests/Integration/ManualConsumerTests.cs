@@ -48,7 +48,7 @@ namespace KafkaClient.Tests.Integration
             // Creating 5 messages
             List<Message> messages = CreateTestMessages(5, 1);
 
-            await producer.SendMessageAsync(messages, topic, partition: _partitionId, ackTimeout: TimeSpan.FromSeconds(3));
+            await producer.SendMessagesAsync(messages, topic, _partitionId, new SendMessageConfiguration(ackTimeout: TimeSpan.FromSeconds(3)), CancellationToken.None);
 
             // Now let's consume
             var result = (await consumer.FetchMessagesAsync(5, offset, CancellationToken.None)).ToList();
@@ -70,7 +70,7 @@ namespace KafkaClient.Tests.Integration
             // Creating 5 messages
             List<Message> messages = CreateTestMessages(10, 1);
 
-            await producer.SendMessageAsync(messages, _topic, partition: _partitionId, ackTimeout: TimeSpan.FromSeconds(3));
+            await producer.SendMessagesAsync(messages, _topic, _partitionId, new SendMessageConfiguration(ackTimeout: TimeSpan.FromSeconds(3)), CancellationToken.None);
 
             // Now let's consume
             var result = (await consumer.FetchMessagesAsync(5, offset, CancellationToken.None)).ToList();
@@ -97,7 +97,7 @@ namespace KafkaClient.Tests.Integration
             // Creating 5 messages
             List<Message> messages = CreateTestMessages(10, 4096);
 
-            await producer.SendMessageAsync(messages, _topic, partition: _partitionId, ackTimeout: TimeSpan.FromSeconds(3));
+            await producer.SendMessagesAsync(messages, _topic, _partitionId, new SendMessageConfiguration(ackTimeout: TimeSpan.FromSeconds(3)), CancellationToken.None);
 
             // Now let's consume
             var result = (await consumer.FetchMessagesAsync(7, offset, CancellationToken.None)).ToList();
@@ -124,7 +124,7 @@ namespace KafkaClient.Tests.Integration
             // Creating 5 messages
             List<Message> messages = CreateTestMessages(10, 4096);
 
-            await producer.SendMessageAsync(messages, _topic, partition: _partitionId, ackTimeout: TimeSpan.FromSeconds(3));
+            await producer.SendMessagesAsync(messages, _topic, _partitionId, new SendMessageConfiguration(ackTimeout: TimeSpan.FromSeconds(3)), CancellationToken.None);
 
             // Now let's consume
             var result = (await consumer.FetchMessagesAsync(5, offset, CancellationToken.None)).ToList();
@@ -235,7 +235,7 @@ namespace KafkaClient.Tests.Integration
             // Creating 5 messages
             List<Message> messages = CreateTestMessages(10, 4096);
 
-            await producer.SendMessageAsync(messages, _topic, partition: _partitionId, ackTimeout: TimeSpan.FromSeconds(3));
+            await producer.SendMessagesAsync(messages, _topic, _partitionId, new SendMessageConfiguration(ackTimeout: TimeSpan.FromSeconds(3)), CancellationToken.None);
 
             // Now let's consume
             var result = (await consumer.FetchMessagesAsync(5, offset, CancellationToken.None)).ToList();

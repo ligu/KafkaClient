@@ -54,6 +54,7 @@
     <Compile Include="Common\AsyncCollection.cs" />
     <Compile Include="Common\Disposable.cs" />
     <Compile Include="Common\IScheduledTimer.cs" />
+    <Compile Include="Common\MergedCancellation.cs" />
     <Compile Include="Common\MessagePacker.cs" />
     <Compile Include="Common\LilliputianExtensions.cs" />
     <Compile Include="Common\LogLevel.cs" />
@@ -77,10 +78,14 @@
     <Compile Include="Common\CancellableTask.cs" />
     <Compile Include="ICacheConfiguration.cs" />
     <Compile Include="IManualConsumer.cs" />
+    <Compile Include="IProducer.cs" />
     <Compile Include="IProducerConfiguration.cs" />
+    <Compile Include="ISendMessageConfiguration.cs" />
     <Compile Include="ManualConsumer.cs" />
     <Compile Include="CacheConfiguration.cs" />
     <Compile Include="ProducerConfiguration.cs" />
+    <Compile Include="ProducerExtensions.cs" />
+    <Compile Include="SendMessageConfiguration.cs" />
     <Compile Include="StatisticsTrackerOptions.cs" />
     <Compile Include="Protocol\ApiKeyRequestType.cs" />
     <Compile Include="Protocol\BufferUnderRunException.cs" />

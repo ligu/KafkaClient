@@ -74,7 +74,7 @@ namespace KafkaClient.Tests.Integration
                 {
                     try
                     {
-                        producer.SendMessageAsync(new[] { new Message((++id).ToString()) }, topic, partition: 0).Wait();
+                        producer.SendMessageAsync(new Message((++id).ToString()), topic, 0, CancellationToken.None).Wait();
                         Thread.Sleep(1000);
                     }
                     catch (Exception ex)

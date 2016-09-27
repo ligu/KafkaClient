@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Common;
@@ -71,8 +72,9 @@ namespace KafkaClient.Tests.Integration
             int numberOfmessage = 3;
             for (int i = 0; i < numberOfmessage; i++)
             {
-                producer.SendMessageAsync(new[] { new Message(i.ToString()) }, IntegrationConfig.IntegrationCompressionTopic,
-              partition: 0, codec: MessageCodec.CodecGzip);
+#pragma warning disable 4014
+                producer.SendMessageAsync(new Message(i.ToString()), IntegrationConfig.IntegrationCompressionTopic, 0, new SendMessageConfiguration(codec: MessageCodec.CodecGzip), CancellationToken.None);
+#pragma warning restore 4014
             }
 
             var results = consumer.Consume(new CancellationTokenSource(TimeSpan.FromMinutes(1)).Token).Take(numberOfmessage).ToList();
