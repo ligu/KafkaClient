@@ -30,7 +30,7 @@ namespace KafkaClient.Tests.Unit
                     new Message("1"), new Message("2")
                 };
 
-                var response = producer.SendMessageAsync("UnitTest", messages).Result;
+                var response = producer.SendMessageAsync(messages, "UnitTest").Result;
 
                 Assert.That(response.Length, Is.EqualTo(2));
                 Assert.That(routerProxy.BrokerConn0.ProduceRequestCallCount, Is.EqualTo(1));
@@ -49,7 +49,7 @@ namespace KafkaClient.Tests.Unit
             {
                 var messages = new List<Message> { new Message("1"), new Message("2") };
 
-                var sendTask = producer.SendMessageAsync("UnitTest", messages).ConfigureAwait(false);
+                var sendTask = producer.SendMessageAsync(messages, "UnitTest").ConfigureAwait(false);
                 Assert.Throws<RequestException>(async () => await sendTask);
 
                 Assert.That(routerProxy.BrokerConn0.ProduceRequestCallCount, Is.EqualTo(1));
@@ -75,18 +75,18 @@ namespace KafkaClient.Tests.Unit
             {
                 var messages = new[] { new Message("1") };
 
-                Assert.That(producer.AsyncCount, Is.EqualTo(0));
+                Assert.That(producer.ActiveSenders, Is.EqualTo(0));
 
                 var sendTask = producer.SendMessageAsync(BrokerRouterProxy.TestTopic, messages);
 
-                await TaskTest.WaitFor(() => producer.AsyncCount > 0);
-                Assert.That(producer.AsyncCount, Is.EqualTo(1), "One async operation should be sending.");
+                await TaskTest.WaitFor(() => producer.ActiveSenders > 0);
+                Assert.That(producer.ActiveSenders, Is.EqualTo(1), "One async operation should be sending.");
 
                 semaphore.Release();
                 sendTask.Wait(TimeSpan.FromMilliseconds(500));
                 await Task.Delay(2);
                 Assert.That(sendTask.IsCompleted, Is.True, "Send task should be marked as completed.");
-                Assert.That(producer.AsyncCount, Is.EqualTo(0), "Async should now show zero count.");
+                Assert.That(producer.ActiveSenders, Is.EqualTo(0), "Async should now show zero count.");
                 // } log.DebugFormat(i.ToString());
             }
         }
@@ -120,7 +120,7 @@ namespace KafkaClient.Tests.Unit
                     await t;
                 });
 
-                await TaskTest.WaitFor(() => producer.AsyncCount > 0);
+                await TaskTest.WaitFor(() => producer.ActiveSenders > 0);
                 await TaskTest.WaitFor(() => count > 0);
 
                 Assert.That(count, Is.EqualTo(1), "Only one SendMessageAsync should continue.");
@@ -151,7 +151,7 @@ namespace KafkaClient.Tests.Unit
                 //should we return a ProduceResponse with an error and no error for the other messages?
                 //at this point though the client does not know which message is routed to which server.
                 //the whole batch of messages would need to be returned.
-                var test = producer.SendMessageAsync("UnitTest", messages).Result;
+                var test = producer.SendMessageAsync(messages, "UnitTest").Result;
             }
         }
 
@@ -213,8 +213,8 @@ namespace KafkaClient.Tests.Unit
             {
                 var calls = new[]
                 {
-                    producer.SendMessageAsync(FakeBrokerRouter.TestTopic, new[] {new Message("1"), new Message("2")}, acks:ack1, ackTimeout: TimeSpan.FromMilliseconds(time1)),
-                    producer.SendMessageAsync(FakeBrokerRouter.TestTopic, new[] {new Message("1"), new Message("2")}, acks:ack2, ackTimeout: TimeSpan.FromMilliseconds(time2))
+                    producer.SendMessageAsync(new[] {new Message("1"), new Message("2")}, FakeBrokerRouter.TestTopic, acks: ack1, ackTimeout: TimeSpan.FromMilliseconds(time1)),
+                    producer.SendMessageAsync(new[] {new Message("1"), new Message("2")}, FakeBrokerRouter.TestTopic, acks: ack2, ackTimeout: TimeSpan.FromMilliseconds(time2))
                 };
 
                 await Task.WhenAll(calls);
@@ -236,8 +236,8 @@ namespace KafkaClient.Tests.Unit
             {
                 var calls = new[]
                 {
-                    producer.SendMessageAsync(FakeBrokerRouter.TestTopic, new[] {new Message("1"), new Message("2")}, codec: codec1),
-                    producer.SendMessageAsync(FakeBrokerRouter.TestTopic, new[] {new Message("1"), new Message("2")}, codec: codec2)
+                    producer.SendMessageAsync(new[] {new Message("1"), new Message("2")}, FakeBrokerRouter.TestTopic, codec: codec1),
+                    producer.SendMessageAsync(new[] {new Message("1"), new Message("2")}, FakeBrokerRouter.TestTopic, codec: codec2)
                 };
 
                 await Task.WhenAll(calls);
@@ -267,7 +267,7 @@ namespace KafkaClient.Tests.Unit
                 await senderTask;
 
                 Assert.That(senderTask.IsCompleted);
-                Assert.That(producer.BufferCount, Is.EqualTo(1000));
+                Assert.That(producer.BufferedCount, Is.EqualTo(1000));
             }
         }
 
@@ -287,19 +287,19 @@ namespace KafkaClient.Tests.Unit
                 var senderTask = Task.Factory.StartNew(async () => {
                     for (int i = 0; i < 3; i++) {
                         await producer.SendMessageAsync(FakeBrokerRouter.TestTopic, new Message(i.ToString()));
-                        Console.WriteLine("Await: {0}", producer.BufferCount);
+                        Console.WriteLine("Await: {0}", producer.BufferedCount);
                         Interlocked.Increment(ref count);
                     }
                 });
 
                 await TaskTest.WaitFor(() => count > 0);
-                Assert.That(producer.BufferCount, Is.EqualTo(1));
+                Assert.That(producer.BufferedCount, Is.EqualTo(1));
 
                 Console.WriteLine("Waiting for the rest...");
                 senderTask.Wait(TimeSpan.FromSeconds(5));
 
                 Assert.That(senderTask.IsCompleted);
-                Assert.That(producer.BufferCount, Is.EqualTo(1), "One message should be left in the buffer.");
+                Assert.That(producer.BufferedCount, Is.EqualTo(1), "One message should be left in the buffer.");
 
                 Console.WriteLine("Unwinding...");
             }
@@ -324,9 +324,9 @@ namespace KafkaClient.Tests.Unit
                     .Select(x => producer.SendMessageAsync(FakeBrokerRouter.TestTopic, new Message(x.ToString())))
                     .ToList();
 
-                var wait = TaskTest.WaitFor(() => producer.AsyncCount > 0);
+                var wait = TaskTest.WaitFor(() => producer.ActiveSenders > 0);
                 Assert.That(sendTasks.Any(x => x.IsCompleted) == false, "All the async tasks should be blocking or in transit.");
-                Assert.That(producer.BufferCount, Is.EqualTo(5), "We sent 5 unfinished messages, they should be counted towards the buffer.");
+                Assert.That(producer.BufferedCount, Is.EqualTo(5), "We sent 5 unfinished messages, they should be counted towards the buffer.");
 
                 semaphore.Release(2);
             }
@@ -366,11 +366,11 @@ namespace KafkaClient.Tests.Unit
         // using (var producer = new Producer(fakeRouter.Create()) { BatchDelayTime =
         // TimeSpan.FromMilliseconds(500) }) { var sendTask =
         // producer.SendMessageAsync(FakeBrokerRouter.TestTopic, new[] { new Message() });
-        // Assert.That(producer.BufferCount, Is.EqualTo(1));
+        // Assert.That(producer.BufferedCount, Is.EqualTo(1));
 
         // producer.Stop(true, TimeSpan.FromSeconds(5));
 
-        // sendTask; Assert.That(producer.BufferCount, Is.EqualTo(0));
+        // sendTask; Assert.That(producer.BufferedCount, Is.EqualTo(0));
         // Assert.That(sendTask.IsCompleted, Is.True);
 
         //        Console.WriteLine("Unwinding test...");

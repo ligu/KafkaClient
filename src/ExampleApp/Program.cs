@@ -56,13 +56,13 @@ namespace ExampleApp
         private static async void SendRandomBatch(Producer producer, string topicName, int count)
         {
             //send multiple messages
-            var sendTask = producer.SendMessageAsync(topicName, Enumerable.Range(0, count).Select(x => new Message(x.ToString())));
+            var sendTask = producer.SendMessageAsync(Enumerable.Range(0, count).Select(x => new Message(x.ToString())), topicName);
             
-            Console.WriteLine("Posted #{0} messages.  Buffered:{1} AsyncCount:{2}", count, producer.BufferCount, producer.AsyncCount);
+            Console.WriteLine("Posted #{0} messages.  Buffered:{1} ActiveSenders:{2}", count, producer.BufferedCount, producer.ActiveSenders);
 
             var response = await sendTask;
 
-            Console.WriteLine("Completed send of batch: {0}. Buffered:{1} AsyncCount:{2}", count, producer.BufferCount, producer.AsyncCount);
+            Console.WriteLine("Completed send of batch: {0}. Buffered:{1} ActiveSenders:{2}", count, producer.BufferedCount, producer.ActiveSenders);
             foreach (var result in response.OrderBy(x => x.PartitionId))
             {
                 Console.WriteLine("Topic:{0} PartitionId:{1} Offset:{2}", result.TopicName, result.PartitionId, result.Offset);

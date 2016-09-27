@@ -13,7 +13,7 @@ namespace KafkaClient
         public MetadataPartition Select(MetadataTopic topic, byte[] key)
         {
             if (topic == null) throw new ArgumentNullException(nameof(topic));
-            if (topic.Partitions.Count <= 0) throw new CachedMetadataException($"Topic {topic.TopicName} has no partitions.") { Topic = topic.TopicName };
+            if (topic.Partitions.Count <= 0) throw new CachedMetadataException($"topic/{topic.TopicName} has no partitions.") { TopicName = topic.TopicName };
 
             long partitionId;
             var partitions = topic.Partitions;
@@ -29,7 +29,7 @@ namespace KafkaClient
             }
 
             throw new CachedMetadataException($"Hash function return partition/{partitionId}, but the available partitions are {string.Join(",", partitions.Select(x => x.PartitionId))}") {
-                Topic = topic.TopicName,
+                TopicName = topic.TopicName,
                 Partition = (int)partitionId
             };
         }

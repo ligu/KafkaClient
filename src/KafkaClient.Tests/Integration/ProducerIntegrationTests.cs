@@ -18,7 +18,7 @@ namespace KafkaClient.Tests.Integration
             using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri)))
             using (var producer = new Producer(router))
             {
-                var sendTask = producer.SendMessageAsync(IntegrationConfig.IntegrationTopic, new[] { new Message(Guid.NewGuid().ToString()) }, acks: 0);
+                var sendTask = producer.SendMessageAsync(new[] { new Message(Guid.NewGuid().ToString()) }, IntegrationConfig.IntegrationTopic, acks: 0);
 
                 sendTask.Wait(TimeSpan.FromMinutes(2));
 

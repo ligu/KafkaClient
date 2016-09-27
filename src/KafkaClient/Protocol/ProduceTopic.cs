@@ -2,6 +2,9 @@ using System;
 
 namespace KafkaClient.Protocol
 {
+    /// <summary>
+    /// Part of <see cref="ProduceResponse"/>
+    /// </summary>
     public class ProduceTopic : TopicResponse, IEquatable<ProduceTopic>
     {
         public ProduceTopic(string topic, int partitionId, ErrorResponseCode errorCode, long offset, DateTime? timestamp = null)

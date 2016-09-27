@@ -71,8 +71,8 @@ namespace KafkaClient.Tests.Integration
             int numberOfmessage = 3;
             for (int i = 0; i < numberOfmessage; i++)
             {
-                producer.SendMessageAsync(IntegrationConfig.IntegrationCompressionTopic, new[] { new Message(i.ToString()) }, codec: MessageCodec.CodecGzip,
-              partition: 0);
+                producer.SendMessageAsync(new[] { new Message(i.ToString()) }, IntegrationConfig.IntegrationCompressionTopic,
+              partition: 0, codec: MessageCodec.CodecGzip);
             }
 
             var results = consumer.Consume(new CancellationTokenSource(TimeSpan.FromMinutes(1)).Token).Take(numberOfmessage).ToList();

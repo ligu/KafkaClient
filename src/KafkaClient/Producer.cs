@@ -16,24 +16,24 @@ namespace KafkaClient
         private readonly CancellationTokenSource _stopToken = new CancellationTokenSource();
         private readonly AsyncCollection<ProduceTopicTask> _asyncCollection;
         private readonly SemaphoreSlim _semaphoreMaximumAsync;
-        private readonly Task _postTask;
+        private readonly Task _batchSendTask;
 
-        private int _inFlightMessageCount;
+        private int _inFlightCount;
 
         /// <summary>
         /// Get the number of messages sitting in the buffer waiting to be sent.
         /// </summary>
-        public int BufferCount => _asyncCollection.Count;
+        public int BufferedCount => _asyncCollection.Count;
 
         /// <summary>
         /// Get the number of messages staged for Async upload.
         /// </summary>
-        public int InFlightMessageCount => _inFlightMessageCount;
+        public int InFlightCount => _inFlightCount;
 
         /// <summary>
         /// Get the number of active async threads sending messages.
         /// </summary>
-        public int AsyncCount => Configuration.RequestParallelization - _semaphoreMaximumAsync.CurrentCount;
+        public int ActiveSenders => Configuration.RequestParallelization - _semaphoreMaximumAsync.CurrentCount;
 
         /// <summary>
         /// The broker router this producer uses to route messages.
@@ -67,49 +67,58 @@ namespace KafkaClient
             _asyncCollection = new AsyncCollection<ProduceTopicTask>();
             _semaphoreMaximumAsync = new SemaphoreSlim(Configuration.RequestParallelization, Configuration.RequestParallelization);
 
-            _postTask = Task.Run(async () => {
+            _batchSendTask = Task.Run(async () => {
                 await BatchSendAsync();
-                BrokerRouter.Log.InfoFormat("ending the sending thread");
-            });
+            }, _stopToken.Token);
         }
 
         /// <summary>
         /// Send an enumerable of message objects to a given topic.
         /// </summary>
-        /// <param name="topic">The name of the kafka topic to send the messages to.</param>
         /// <param name="messages">The enumerable of messages that will be sent to the given topic.</param>
+        /// <param name="topicName">The name of the kafka topic to send the messages to.</param>
+        /// <param name="partition">The partition to send messages to</param>
         /// <param name="acks">The required level of acknowlegment from the kafka server.  0=none, 1=writen to leader, 2+=writen to replicas, -1=writen to all replicas.</param>
         /// <param name="ackTimeout">Interal kafka timeout to wait for the requested level of ack to occur before returning. Defaults to 1000ms.</param>
         /// <param name="codec">The codec to apply to the message collection.  Defaults to none.</param>
+        /// <returns>List of ProduceTopic response from each partition sent to or empty list if acks = 0.</returns>
+        public async Task<ProduceTopic[]> SendMessageAsync(IEnumerable<Message> messages, string topicName, int? partition = null, short? acks = null, TimeSpan? ackTimeout = null, MessageCodec? codec = null)
+        {
+            using (var mergedCancellation = new MergedCancellation(_stopToken.Token)) {
+                var messageAcks = acks.GetValueOrDefault(Configuration.Acks);
+                var messageCodec = codec.GetValueOrDefault(Configuration.Codec);
+                var messageAckTimeout = ackTimeout.GetValueOrDefault(Configuration.ServerAckTimeout);
+
+                var batch = messages.Select(message => new ProduceTopicTask(topicName, partition, message, messageCodec, messageAcks, messageAckTimeout, mergedCancellation.Token)).ToArray();
+                _asyncCollection.AddRange(batch);
+                return await Task.WhenAll(batch.Select(x => x.Tcs.Task)).ConfigureAwait(false);
+            }
+        }
+
+        /// <summary>
+        /// Send a message to a given topic.
+        /// </summary>
+        /// <param name="message">The message that will be sent to the given topic.</param>
+        /// <param name="topicName">The name of the kafka topic to send the messages to.</param>
         /// <param name="partition">The partition to send messages to</param>
-        /// <returns>List of ProduceResponses from each partition sent to or empty list if acks = 0.</returns>
-        public Task<ProduceTopic[]> SendMessageAsync(string topic, IEnumerable<Message> messages, short? acks = null,
-            TimeSpan? ackTimeout = null, MessageCodec? codec = null, int? partition = null)
+        /// <param name="acks">The required level of acknowlegment from the kafka server.  0=none, 1=writen to leader, 2+=writen to replicas, -1=writen to all replicas.</param>
+        /// <param name="ackTimeout">Interal kafka timeout to wait for the requested level of ack to occur before returning. Defaults to 1000ms.</param>
+        /// <param name="codec">The codec to apply to the message collection.  Defaults to none.</param>
+        /// <returns>The ProduceTopic response from the partition sent to, or null if acks = 0.</returns>
+        public async Task<ProduceTopic> SendMessageAsync(Message message, string topicName, int? partition = null, short? acks = null, TimeSpan? ackTimeout = null, MessageCodec? codec = null)
         {
-            if (_stopToken.IsCancellationRequested) throw new ObjectDisposedException("Cannot send new documents as producer is disposing.");
-            var messageAcks = acks.GetValueOrDefault(Configuration.Acks);
-            var messageCodec = codec.GetValueOrDefault(Configuration.Codec);
-            var messageAckTimeout = ackTimeout.GetValueOrDefault(Configuration.ServerAckTimeout);
-
-            var batch = messages.Select(message => new ProduceTopicTask(topic, partition, message, messageCodec, messageAcks, messageAckTimeout, _stopToken.Token)).ToArray();
-            _asyncCollection.AddRange(batch);
-            return Task.WhenAll(batch.Select(x => x.Tcs.Task));
+            var result = await SendMessageAsync(new[] { message }, topicName, partition, acks, ackTimeout, codec).ConfigureAwait(false);
+            return result.SingleOrDefault();
         }
 
-        public async Task<ProduceTopic> SendMessageAsync(Message message, string topic, int partition, short? acks = null)
+        public Task<ProduceTopic[]> SendMessageAsync(string topicName, int partition, params Message[] messages)
         {
-            var result = await SendMessageAsync(topic, new[] { message }, partition: partition, acks: acks).ConfigureAwait(false);
-            return result.FirstOrDefault();
+            return SendMessageAsync(messages, topicName, partition: partition);
         }
 
-        public Task<ProduceTopic[]> SendMessageAsync(string topic, int partition, params Message[] messages)
+        public Task<ProduceTopic[]> SendMessageAsync(string topicName, params Message[] messages)
         {
-            return SendMessageAsync(topic, messages, partition: partition);
-        }
-
-        public Task<ProduceTopic[]> SendMessageAsync(string topic, params Message[] messages)
-        {
-            return SendMessageAsync(topic, messages, acks: 1);
+            return SendMessageAsync(messages, topicName);
         }
 
         /// <summary>
@@ -125,7 +134,7 @@ namespace KafkaClient
             if (waitForRequestsToComplete)
             {
                 //wait for the collection to drain
-                _postTask.Wait(maxWait ?? Configuration.StopTimeout);
+                _batchSendTask.Wait(maxWait ?? Configuration.StopTimeout);
             }
 
             _stopToken.Cancel();
@@ -133,37 +142,37 @@ namespace KafkaClient
 
         private async Task BatchSendAsync()
         {
-            while (IsNotDisposedOrHasMessagesToProcess())
-            {
-                List<ProduceTopicTask> batch = null;
+            BrokerRouter.Log.InfoFormat("Producer sending task starting");
+            try {
+                while (IsNotDisposedOrHasMessagesToProcess()) {
+                    List<ProduceTopicTask> batch = null;
 
-                try
-                {
                     try
                     {
-                        await _asyncCollection.OnHasDataAvailable(_stopToken.Token).ConfigureAwait(false);
+                        try {
+                            await _asyncCollection.OnHasDataAvailable(_stopToken.Token).ConfigureAwait(false);
+                            batch = await _asyncCollection.TakeAsync(Configuration.BatchSize, Configuration.BatchMaxDelay, _stopToken.Token).ConfigureAwait(false);
+                        } catch (OperationCanceledException) {
+                            //TODO log that the operation was canceled, this only happens during a dispose
+                        }
 
-                        batch = await _asyncCollection.TakeAsync(Configuration.BatchSize, Configuration.BatchMaxDelay, _stopToken.Token).ConfigureAwait(false);
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        //TODO log that the operation was canceled, this only happens during a dispose
-                    }
+                        if (_asyncCollection.IsCompleted && _asyncCollection.Count > 0) {
+                            batch = batch ?? new List<ProduceTopicTask>(_asyncCollection.Count);
 
-                    if (_asyncCollection.IsCompleted && _asyncCollection.Count > 0)
-                    {
-                        batch = batch ?? new List<ProduceTopicTask>(_asyncCollection.Count);
-
-                        //Drain any messages remaining in the queue and add them to the send batch
-                        batch.AddRange(_asyncCollection.Drain());
+                            //Drain any messages remaining in the queue and add them to the send batch
+                            batch.AddRange(_asyncCollection.Drain());
+                        }
+                        if (batch != null) {
+                            await ProduceAndSendBatchAsync(batch, _stopToken.Token).ConfigureAwait(false);
+                        }
+                    } catch (Exception ex) {
+                        batch?.ForEach(x => x.Tcs.TrySetException(ex));
                     }
-                    if (batch != null)
-                        await ProduceAndSendBatchAsync(batch, _stopToken.Token).ConfigureAwait(false);
                 }
-                catch (Exception ex) {
-                    batch?.ForEach(x => x.Tcs.TrySetException(ex));
-                }
+            } finally {
+                BrokerRouter.Log.InfoFormat("Producer sending task ending");
             }
+
         }
 
         private bool IsNotDisposedOrHasMessagesToProcess()
@@ -173,7 +182,7 @@ namespace KafkaClient
 
         private async Task ProduceAndSendBatchAsync(List<ProduceTopicTask> messages, CancellationToken cancellationToken)
         {
-            Interlocked.Add(ref _inFlightMessageCount, messages.Count);
+            Interlocked.Add(ref _inFlightCount, messages.Count);
 
             var topics = messages.GroupBy(batch => batch.TopicName).Select(batch => batch.Key).ToArray();
             await BrokerRouter.GetTopicMetadataAsync(topics, cancellationToken).ConfigureAwait(false);
@@ -222,7 +231,7 @@ namespace KafkaClient
                 }
 
                 await SetResult(sendTasks).ConfigureAwait(false);
-                Interlocked.Add(ref _inFlightMessageCount, messages.Count * -1);
+                Interlocked.Add(ref _inFlightCount, messages.Count * -1);
             }
         }
 

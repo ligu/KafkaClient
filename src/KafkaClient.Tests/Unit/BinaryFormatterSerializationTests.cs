@@ -15,10 +15,10 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public void ShouldSerializeCachedMetadataException()
         {
-            var expected = new CachedMetadataException("blblb") { Topic = "foobar"};
+            var expected = new CachedMetadataException("blblb") { TopicName = "foobar"};
             var actual = SerializeDeserialize(expected);
 
-            Assert.AreEqual(expected.Topic, actual.Topic);
+            Assert.AreEqual(expected.TopicName, actual.TopicName);
         }
 
         [Test]

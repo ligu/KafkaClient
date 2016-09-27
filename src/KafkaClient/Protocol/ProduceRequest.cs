@@ -26,7 +26,7 @@ namespace KafkaClient.Protocol
         public TimeSpan Timeout { get; }
 
         /// <summary>
-        /// Level of ack required by kafka.  0 immediate, 1 written to leader, 2+ replicas synced, -1 all replicas
+        /// Level of ack required by kafka: 0 immediate, 1 written to leader, 2+ replicas synced, -1 all replicas
         /// </summary>
         public short Acks { get; }
 

@@ -23,7 +23,7 @@ namespace KafkaClient
         public CachedMetadataException(SerializationInfo info, StreamingContext context)
             : base(info, context)
         {
-            Topic = info.GetString("Topic");
+            TopicName = info.GetString("TopicName");
             var value = info.GetInt32("Partition");
             if (value >= 0) {
                 Partition = value;
@@ -33,11 +33,11 @@ namespace KafkaClient
         public override void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             base.GetObjectData(info, context);
-            info.AddValue("Topic", Topic);
+            info.AddValue("TopicName", TopicName);
             info.AddValue("Partition", Partition.GetValueOrDefault(-1));
         }
 
-        public string Topic { get; set; }
+        public string TopicName { get; set; }
         public int? Partition { get; set; }
     }
 }
