@@ -287,13 +287,8 @@ namespace KafkaClient.Connection
                     }
                     throw new ConnectionException(Endpoint);
                 },
-                (ex, attempt, retry) => {
-                    if (retry.HasValue) {
-                        _log.WarnFormat(ex, "Failed connection to {0}: Will retry in {1}", Endpoint, retry.Value);
-                    } else {
-                        _log.WarnFormat(ex, "Failed connection to {0} on attempt {1}", Endpoint, attempt);
-                    }
-                },
+                (ex, attempt, retry) => _log.WarnFormat(ex, "Failed connection to {0}: Will retry in {1}", Endpoint, retry),
+                (ex, attempt) => _log.WarnFormat(ex, "Failed connection to {0} on attempt {1}", Endpoint, attempt),
                 _disposeToken.Token);
         }
 

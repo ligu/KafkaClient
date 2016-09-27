@@ -122,7 +122,7 @@ namespace KafkaClient.Connection
         /// <summary>
         /// The default max retries for ConnectionRetry and RequestRetry
         /// </summary>
-        public const int DefaultMaxRetries = 5;
+        public const int DefaultMaxConnectionAttempts = 5;
 
         /// <summary>
         /// The default ConnectionRetry backoff delay
@@ -134,7 +134,7 @@ namespace KafkaClient.Connection
             return new BackoffRetry(
                 timeout ?? TimeSpan.FromMinutes(DefaultConnectingTimeoutMinutes),
                 TimeSpan.FromMilliseconds(DefaultConnectingDelayMilliseconds),
-                DefaultMaxRetries);
+                DefaultMaxConnectionAttempts);
         }
     }
 }

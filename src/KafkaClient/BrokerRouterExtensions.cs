@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Runtime.ExceptionServices;
@@ -59,12 +60,15 @@ namespace KafkaClient
         /// <exception cref="ConnectionException">Thrown in case of network error contacting broker (after retries), or if none of the default brokers can be contacted.</exception>
         /// <exception cref="RequestException">Thrown in case of an unexpected error in the request</exception>
         /// <exception cref="FormatException">Thrown in case the topic name is invalid</exception>
-        public static async Task<T> SendAsync<T>(this IBrokerRouter brokerRouter, IRequest<T> request, string topicName, int partition, CancellationToken cancellationToken, IRequestContext context = null, IRetry retry = null) where T : class, IResponse
+        public static async Task<T> SendAsync<T>(this IBrokerRouter brokerRouter, IRequest<T> request, string topicName, int partition, CancellationToken cancellationToken, IRequestContext context = null, IRetry retryPolicy = null) where T : class, IResponse
         {
             if (topicName.Contains(" ")) throw new FormatException($"topic name ({topicName}) is invalid");
 
             bool? metadataInvalid = false;
-            return await (retry ?? new Retry(TimeSpan.MaxValue, 3)).AttemptAsync(
+            T response = null;
+            Endpoint endpoint = null;
+
+            return await (retryPolicy ?? new Retry(TimeSpan.MaxValue, 3)).AttemptAsync(
                 async (attempt, timer) => {
                     if (metadataInvalid.GetValueOrDefault(true)) {
                         // unknown metadata status should not force the issue
@@ -74,54 +78,33 @@ namespace KafkaClient
 
                     brokerRouter.Log.DebugFormat("Router SendAsync request {0} (attempt {1})", request.ApiKey, attempt + 1);
                     var route = await brokerRouter.GetBrokerRouteAsync(topicName, partition, cancellationToken);
-                    var endpoint = route.Connection.Endpoint;
-                    var response = await route.Connection.SendAsync(request, cancellationToken, context).ConfigureAwait(false);
+                    endpoint = route.Connection.Endpoint;
+                    response = await route.Connection.SendAsync(request, cancellationToken, context).ConfigureAwait(false);
 
                     // this can happen if you send ProduceRequest with ack level=0
-                    if (response == null) return null;
+                    if (response == null) return new RetryAttempt<T>(null);
 
                     var errors = response.Errors.Where(e => e != ErrorResponseCode.NoError).ToList();
-                    if (errors.Count == 0) return response;
+                    if (errors.Count == 0) return new RetryAttempt<T>(response);
 
                     metadataInvalid = errors.All(IsRecoverableByMetadaRefresh);
                     brokerRouter.Log.WarnFormat("Error response in Router SendAsync (attempt {0}): {1}", 
                         attempt + 1, errors.Aggregate($"{route} -", (buffer, e) => $"{buffer} {e}"));
 
                     if (!metadataInvalid.Value) throw request.ExtractExceptions(response, endpoint);
-                    throw new SendException<T>(request, response, endpoint);
+                    return RetryAttempt<T>.Failed;
                 },
-                (ex, attempt, retryDelay) => {
-                    var metadataPotentiallyInvalid = IsPotentiallyRecoverableByMetadataRefresh(ex);
-                    var sendException = ex as SendException<T>;
-
-                    if (!retryDelay.HasValue && sendException != null) {
-                        throw sendException.Request.ExtractExceptions(sendException.Response, sendException.Endpoint);
-                    }
-                    if (!retryDelay.HasValue || (sendException == null && !metadataPotentiallyInvalid)) {
-                        var exceptionInfo = ExceptionDispatchInfo.Capture(ex);
-                        exceptionInfo.Throw();
-                    }
-
-                    if (metadataPotentiallyInvalid) {
+                null, // do nothing on normal retry -- should log?
+                finalAttempt => { throw request.ExtractExceptions(response, endpoint); },
+                (ex, attempt, retry) => {
+                    if (IsPotentiallyRecoverableByMetadataRefresh(ex)) {
                         metadataInvalid = null; // ie. the state of the metadata is unknown
+                    } else {
+                        ex.Rethrow();
                     }
                 },
+                null, // do nothing on final exception -- will be rethrown
                 cancellationToken);
-        }
-
-        private class SendException<TResponse> : Exception
-            where TResponse : class, IResponse
-        {
-            public SendException(IRequest<TResponse> request, TResponse response, Endpoint endpoint)
-            {
-                Request = request;
-                Response = response;
-                Endpoint = endpoint;
-            }
-
-            public IRequest<TResponse> Request { get; }
-            public TResponse Response { get; }
-            public Endpoint Endpoint { get; }
         }
 
         private static bool IsPotentiallyRecoverableByMetadataRefresh(Exception exception)
@@ -138,6 +121,112 @@ namespace KafkaClient
                     error == ErrorResponseCode.ConsumerCoordinatorNotAvailable ||
                     error == ErrorResponseCode.LeaderNotAvailable ||
                     error == ErrorResponseCode.NotLeaderForPartition;
+        }
+
+        /// <summary>
+        /// Given a collection of server connections, query for the topic metadata.
+        /// </summary>
+        /// <param name="brokerRouter">The router which provides the route and metadata.</param>
+        /// <param name="topicNames">Topics to get metadata information for.</param>
+        /// <param name="cancellationToken"></param>
+        /// <remarks>
+        /// Used by <see cref="BrokerRouter"/> internally. Broken out for better testability, but not intended to be used separately.
+        /// </remarks>
+        /// <returns>MetadataResponse validated to be complete.</returns>
+        internal static async Task<MetadataResponse> GetMetadataAsync(this IBrokerRouter brokerRouter, IEnumerable<string> topicNames, CancellationToken cancellationToken)
+        {
+            var request = new MetadataRequest(topicNames);
+
+            return await brokerRouter.Configuration.RefreshRetry.AttemptAsync(
+                async (attempt, timer) => {
+                    var response = await brokerRouter.GetMetadataAsync(request, cancellationToken).ConfigureAwait(false);
+                    if (response == null) return new RetryAttempt<MetadataResponse>(null);
+
+                    var results = response.Brokers
+                        .Select(ValidateBroker)
+                        .Union(response.Topics.Select(ValidateTopic))
+                        .Where(r => !r.IsValid.GetValueOrDefault())
+                        .ToList();
+
+                    var exceptions = results.Select(r => r.ToException()).Where(e => e != null).ToList();
+                    if (exceptions.Count == 1) throw exceptions.Single();
+                    if (exceptions.Count > 1) throw new AggregateException(exceptions);
+
+                    if (results.Count == 0) return new RetryAttempt<MetadataResponse>(response);
+                    foreach (var result in results) {
+                        brokerRouter.Log.WarnFormat(result.Message);
+                    }
+
+                    return RetryAttempt<MetadataResponse>.Failed;
+                },
+                (attempt, retry) => brokerRouter.Log.WarnFormat("Failed metadata request on attempt {0}: Will retry in {1}", attempt, retry),
+                null, // return the failed response above
+                (ex, attempt, retry) => ex.Rethrow(),
+                (ex, attempt) => brokerRouter.Log.WarnFormat(ex, "Failed metadata request on attempt {0}", attempt),
+                cancellationToken);
+        }
+
+        private static async Task<MetadataResponse> GetMetadataAsync(this IBrokerRouter brokerRouter, MetadataRequest request, CancellationToken cancellationToken)
+        {
+            var servers = new List<string>();
+            foreach (var connection in brokerRouter.Connections) {
+                var server = connection.Endpoint?.ToString();
+                try {
+                    return await connection.SendAsync(request, cancellationToken).ConfigureAwait(false);
+                } catch (Exception ex) {
+                    servers.Add(server);
+                    brokerRouter.Log.WarnFormat(ex, "Failed to contact {0}: Trying next server", server);
+                }
+            }
+
+            throw new RequestException(request.ApiKey, ErrorResponseCode.NoError, $"Unable to make Metadata Request to any of {string.Join(" ", servers)}");
+        }
+
+        private class MetadataResult
+        {
+            public bool? IsValid { get; }
+            public string Message { get; }
+            private readonly ErrorResponseCode _errorCode;
+
+            public Exception ToException()
+            {
+                if (IsValid.GetValueOrDefault(true)) return null;
+
+                if (_errorCode == ErrorResponseCode.NoError) return new ConnectionException(Message);
+                return new RequestException(ApiKeyRequestType.Metadata, _errorCode, Message);
+            }
+
+            public MetadataResult(ErrorResponseCode errorCode = ErrorResponseCode.NoError, bool? isValid = null, string message = null)
+            {
+                Message = message ?? "";
+                _errorCode = errorCode;
+                IsValid = isValid;
+            }
+        }
+
+        private static MetadataResult ValidateBroker(Broker broker)
+        {
+            if (broker.BrokerId == -1)             return new MetadataResult(ErrorResponseCode.Unknown);
+            if (string.IsNullOrEmpty(broker.Host)) return new MetadataResult(ErrorResponseCode.NoError, false, "Broker missing host information.");
+            if (broker.Port <= 0)                  return new MetadataResult(ErrorResponseCode.NoError, false, "Broker missing port information.");
+            return new MetadataResult(isValid: true);
+        }
+
+        private static MetadataResult ValidateTopic(MetadataTopic topic)
+        {
+            var errorCode = topic.ErrorCode;
+            switch (errorCode) {
+                case ErrorResponseCode.NoError:
+                    return new MetadataResult(isValid: true);
+
+                case ErrorResponseCode.LeaderNotAvailable:
+                case ErrorResponseCode.OffsetsLoadInProgress:
+                case ErrorResponseCode.ConsumerCoordinatorNotAvailable:
+                    return new MetadataResult(errorCode, null, $"topic/{topic.TopicName} returned error code of {errorCode}: Retrying");
+
+                default:
+                    return new MetadataResult(errorCode, false, $"topic/{topic.TopicName} returned an error of {errorCode}");
+            }
         }
     }
 }

@@ -27,7 +27,8 @@ namespace KafkaClient.Tests.Integration
         public async Task NewlyCreatedTopicShouldRetryUntilBrokerIsAssigned()
         {
             var expectedTopic = Guid.NewGuid().ToString();
-            var response = new MetadataRequest(expectedTopic).GetAsync(new[] { GetKafkaConnection() }, _options.Log, CancellationToken.None);
+            var router = new BrokerRouter(_options);
+            var response = router.GetMetadataAsync(new []{ expectedTopic }, CancellationToken.None);
             var topic = (await response).Topics.FirstOrDefault();
 
             Assert.That(topic, Is.Not.Null);

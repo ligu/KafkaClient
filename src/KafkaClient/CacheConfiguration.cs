@@ -23,13 +23,25 @@ namespace KafkaClient
         public const int DefaultRefreshTimeoutSeconds = 200;
 
         /// <summary>
+        /// The default maximum number of attempts made when refreshing the cache
+        /// </summary>
+        public const int DefaultMaxRefreshAttempts = 3;
+
+        /// <summary>
+        /// The default RefreshRetry backoff delay
+        /// </summary>
+        public const int DefaultRefreshDelayMilliseconds = 100;
+
+        /// <summary>
         /// The default expiration length for cached topic/partition information
         /// </summary>
         public const int DefaultCacheExpirationMilliseconds = 10;
 
         public static IRetry DefaultRefreshRetry(TimeSpan? timeout = null)
         {
-            return new NoRetry(timeout ?? TimeSpan.FromSeconds(DefaultRefreshTimeoutSeconds));
+            return new BackoffRetry(timeout ?? TimeSpan.FromSeconds(DefaultRefreshTimeoutSeconds), 
+                TimeSpan.FromMilliseconds(DefaultRefreshDelayMilliseconds),
+                DefaultMaxRefreshAttempts);
         }
     }
 }

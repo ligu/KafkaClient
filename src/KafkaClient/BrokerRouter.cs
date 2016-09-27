@@ -48,13 +48,13 @@ namespace KafkaClient
         public BrokerRouter(IEnumerable<Uri> serverUris, IConnectionFactory connectionFactory = null, IConnectionConfiguration connectionConfiguration = null, IPartitionSelector partitionSelector = null, ICacheConfiguration cacheConfiguration = null, ILog log = null)
         {
             Log = log ?? TraceLog.Log;
-            Configuration = connectionConfiguration ?? new ConnectionConfiguration();
+            ConnectionConfiguration = connectionConfiguration ?? new ConnectionConfiguration();
             _connectionFactory = connectionFactory ?? new ConnectionFactory();
 
             foreach (var uri in serverUris) {
                 try {
                     var endpoint = _connectionFactory.Resolve(uri, Log);
-                    var connection = _connectionFactory.Create(endpoint, Configuration, Log);
+                    var connection = _connectionFactory.Create(endpoint, ConnectionConfiguration, Log);
                     _allConnections = _allConnections.SetItem(endpoint, connection);
                 } catch (ConnectionException ex) {
                     Log.WarnFormat(ex, "Ignoring uri that could not be resolved: {0}", uri);
@@ -63,12 +63,15 @@ namespace KafkaClient
 
             if (_allConnections.IsEmpty) throw new ConnectionException("None of the provided Kafka servers are resolvable.");
 
-            CacheConfiguration = cacheConfiguration ?? new CacheConfiguration();
+            Configuration = cacheConfiguration ?? new CacheConfiguration();
             _partitionSelector = partitionSelector ?? new PartitionSelector();
         }
 
-        public IConnectionConfiguration Configuration { get; }
-        public ICacheConfiguration CacheConfiguration { get; }
+        public IConnectionConfiguration ConnectionConfiguration { get; }
+        public ICacheConfiguration Configuration { get; }
+
+        /// <inheritdoc />
+        public IEnumerable<IConnection> Connections => _allConnections.Values;
 
         /// <inheritdoc />
         public BrokerRoute GetBrokerRoute(string topicName, int partitionId)
@@ -163,7 +166,7 @@ namespace KafkaClient
             // TODO: more sophisticated locking should be particular to topicName(s) in that multiple 
             // requests can be made in parallel for different topicName(s).
             using (await _lock.LockAsync(cancellationToken).ConfigureAwait(false)) {
-                var searchResult = TryGetCachedTopics(topicNames, CacheConfiguration.CacheExpiration);
+                var searchResult = TryGetCachedTopics(topicNames, Configuration.CacheExpiration);
                 if (searchResult.Missing.Count == 0) return searchResult.Topics;
 
                 Log.DebugFormat("BrokerRouter refreshing metadata for topics {0}", string.Join(",", searchResult.Missing));
@@ -195,10 +198,8 @@ namespace KafkaClient
 
         private async Task<MetadataResponse> GetTopicMetadataFromServerAsync(IEnumerable<string> topicNames, CancellationToken cancellationToken)
         {
-            using (var cancellation = new TimedCancellation(cancellationToken, CacheConfiguration.RefreshRetry.Timeout)) {
-                var token = cancellation.Token;
-                return await CacheConfiguration.RefreshRetry.AttemptAsync(
-                    (attempt, timer) => new MetadataRequest(topicNames).GetAsync(_allConnections.Values, Log, token), cancellationToken);
+            using (var cancellation = new TimedCancellation(cancellationToken, Configuration.RefreshRetry.Timeout)) {
+                return await this.GetMetadataAsync(topicNames, cancellation.Token);
             }
         }
 
@@ -309,13 +310,13 @@ namespace KafkaClient
                             
                             // A connection changed for a broker, so close the old connection and create a new one
                             connectionsToDispose = connectionsToDispose.Add(connection);
-                            connection = _connectionFactory.Create(endpoint, Configuration, Log);
+                            connection = _connectionFactory.Create(endpoint, ConnectionConfiguration, Log);
                             // important that we create it here rather than set to null or we'll get it again from allConnections
                         }
                     }
 
                     if (connection == null && !allConnections.TryGetValue(endpoint, out connection)) {
-                        connection = _connectionFactory.Create(endpoint, Configuration, Log);
+                        connection = _connectionFactory.Create(endpoint, ConnectionConfiguration, Log);
                     }
 
                     allConnections = allConnections.SetItem(endpoint, connection);

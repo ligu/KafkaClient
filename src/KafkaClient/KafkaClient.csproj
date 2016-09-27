@@ -57,6 +57,7 @@
     <Compile Include="Common\MessagePacker.cs" />
     <Compile Include="Common\LilliputianExtensions.cs" />
     <Compile Include="Common\LogLevel.cs" />
+    <Compile Include="Common\RetryAttempt.cs" />
     <Compile Include="Common\ScheduledTimerStatus.cs" />
     <Compile Include="Common\StringPrefixEncoding.cs" />
     <Compile Include="Common\TaskExtensions.cs" />
@@ -78,7 +79,6 @@
     <Compile Include="IManualConsumer.cs" />
     <Compile Include="ManualConsumer.cs" />
     <Compile Include="CacheConfiguration.cs" />
-    <Compile Include="MetadataRequestExtensions.cs" />
     <Compile Include="StatisticsTrackerOptions.cs" />
     <Compile Include="Protocol\ApiKeyRequestType.cs" />
     <Compile Include="Protocol\BufferUnderRunException.cs" />

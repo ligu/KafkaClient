@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Runtime.ExceptionServices;
 using System.Runtime.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
@@ -39,6 +40,12 @@ namespace KafkaClient.Common
             return new Exception("Unknown exception occured.");
         }
 
+        public static void Rethrow(this Exception ex)
+        {
+            var exceptionInfo = ExceptionDispatchInfo.Capture(ex);
+            exceptionInfo.Throw();
+        }
+
         public static IEnumerable<T> Repeat<T>(this int count, Func<T> producer)
         {
             for (var i = 0; i < count; i++) {
@@ -46,47 +53,67 @@ namespace KafkaClient.Common
             }
         }
 
-        public static Task<T> AttemptAsync<T>(this IRetry policy, Func<int, Stopwatch, Task<T>> action, CancellationToken cancellationToken)
-        {
-            return policy.AttemptAsync(action, null, cancellationToken);
-        }
-
-        public static async Task<T> AttemptAsync<T>(this IRetry policy, Func<int, Stopwatch, Task<T>> action, Action<Exception, int, TimeSpan?> onException, CancellationToken cancellationToken)
+        public static async Task<T> AttemptAsync<T>(this IRetry policy, Func<int, Stopwatch, Task<T>> action, Action<Exception, int, TimeSpan> onException, Action<Exception, int> onFinalException, CancellationToken cancellationToken)
         {
             var timer = new Stopwatch();
             timer.Start();
             for (var attempt = 0;; attempt++) {
+                cancellationToken.ThrowIfCancellationRequested();
                 try {
                     return await action(attempt, timer).ConfigureAwait(false);
                 } catch (Exception ex) {
-                    var retryDelay = policy.RetryDelay(attempt, timer.Elapsed);
-                    onException?.Invoke(ex, attempt, retryDelay);
-                    if (!retryDelay.HasValue) throw;
-
-                    await Task.Delay(retryDelay.Value, cancellationToken).ConfigureAwait(false);
+                    await policy.HandleErrorAndDelayAsync(onException, onFinalException, attempt, timer, ex, cancellationToken);
                 }
             }
         }
 
-        public static Task<T> AttemptAsync<T>(this IRetry policy, Func<int, Stopwatch, T> action, CancellationToken cancellationToken)
-        {
-            return policy.AttemptAsync(action, null, cancellationToken);
-        }
-
-        public static async Task<T> AttemptAsync<T>(this IRetry policy, Func<int, Stopwatch, T> action, Action<Exception, int, TimeSpan?> onException, CancellationToken cancellationToken)
+        public static async Task<T> AttemptAsync<T>(
+            this IRetry policy, 
+            Func<int, Stopwatch, Task<RetryAttempt<T>>> action, 
+            Action<int, TimeSpan> onRetry, 
+            Action<int> onFinal, 
+            Action<Exception, int, TimeSpan> onException, 
+            Action<Exception, int> onFinalException, 
+            CancellationToken cancellationToken)
         {
             var timer = new Stopwatch();
             timer.Start();
             for (var attempt = 0;; attempt++) {
+                cancellationToken.ThrowIfCancellationRequested();
                 try {
-                    return action(attempt, timer);
-                } catch (Exception ex) {
-                    var retryDelay = policy.RetryDelay(attempt, timer.Elapsed);
-                    onException?.Invoke(ex, attempt, retryDelay);
-                    if (!retryDelay.HasValue) throw;
+                    var response = await action(attempt, timer).ConfigureAwait(false);
+                    if (response.IsSuccessful) return response.Value;
 
-                    await Task.Delay(retryDelay.Value, cancellationToken).ConfigureAwait(false);
+                    var retryDelay = policy.RetryDelay(attempt, timer.Elapsed);
+                    if (retryDelay.HasValue) {
+                        onRetry?.Invoke(attempt, retryDelay.Value);
+                        await Task.Delay(retryDelay.Value, cancellationToken).ConfigureAwait(false);
+                    } else {
+                        onFinal?.Invoke(attempt);
+                        return response.Value;
+                    }
+                } catch (Exception ex) {
+                    await policy.HandleErrorAndDelayAsync(onException, onFinalException, attempt, timer, ex, cancellationToken);
                 }
+            }
+        }
+
+        private static async Task HandleErrorAndDelayAsync(
+            this IRetry policy, 
+            Action<Exception, int, TimeSpan> onException, 
+            Action<Exception, int> onFinalException, 
+            int attempt, 
+            Stopwatch timer, 
+            Exception ex, 
+            CancellationToken cancellationToken)
+        {
+            var retryDelay = policy.RetryDelay(attempt, timer.Elapsed);
+            if (retryDelay.HasValue) {
+                onException?.Invoke(ex, attempt, retryDelay.Value);
+                await Task.Delay(retryDelay.Value, cancellationToken).ConfigureAwait(false);
+            } else {
+                onFinalException?.Invoke(ex, attempt);
+                ex.Rethrow();
             }
         }
 

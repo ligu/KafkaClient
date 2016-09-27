@@ -113,8 +113,22 @@ namespace KafkaClient
         /// </remarks>
         Task RefreshTopicMetadataAsync(CancellationToken cancellationToken);
 
+        /// <summary>
+        /// Log for the router
+        /// </summary>
         ILog Log { get; }
 
-        IConnectionConfiguration Configuration { get; }
+        /// <summary>
+        /// The configuration for cache expiry and refresh
+        /// </summary>
+        ICacheConfiguration Configuration { get; }
+
+        /// <summary>
+        /// The list of currently configured connections.
+        /// </summary>
+        /// <remarks>
+        /// Not all results are necessarily live, although they would need to have been at some point.
+        /// </remarks>
+        IEnumerable<IConnection> Connections { get; }
     }
 }
