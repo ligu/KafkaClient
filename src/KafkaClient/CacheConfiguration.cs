@@ -25,7 +25,7 @@ namespace KafkaClient
         /// <summary>
         /// The default maximum number of attempts made when refreshing the cache
         /// </summary>
-        public const int DefaultMaxRefreshAttempts = 3;
+        public const int DefaultMaxRefreshAttempts = 2;
 
         /// <summary>
         /// The default RefreshRetry backoff delay

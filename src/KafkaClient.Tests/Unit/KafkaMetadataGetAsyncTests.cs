@@ -49,6 +49,8 @@ namespace KafkaClient.Tests.Unit
                 conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
                 _log.WarnFormat("Failed metadata request on attempt {0}: Will retry in {1}", Arg.Any<object[]>());
                 conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
+                _log.WarnFormat("Failed metadata request on attempt {0}: Will retry in {1}", Arg.Any<object[]>());
+                conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
             });
         }
 

@@ -18,6 +18,6 @@ namespace KafkaClient.Common
 
         protected virtual TimeSpan? GetDelay(int attempt, TimeSpan timeTaken) => TimeSpan.Zero;
 
-        public bool ShouldRetry(int attempt, TimeSpan timeTaken) => (!_maxAttempts.HasValue || attempt <= _maxAttempts) && timeTaken < Timeout;
+        public bool ShouldRetry(int attempt, TimeSpan timeTaken) => (!_maxAttempts.HasValue || attempt < _maxAttempts) && timeTaken < Timeout;
     }
 }
