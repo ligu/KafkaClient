@@ -47,8 +47,10 @@ namespace KafkaClient.Connection
             // dedicate a long running task to the read/write operations
             _socketTask = Task.Run(DedicatedSocketTask);
 
-            _disposeTask = Task.Delay(TimeSpan.MaxValue, _disposeToken.Token);
+            var tcs = new TaskCompletionSource<bool>();
+            _disposeTask = tcs.Task;
             _disposeRegistration = _disposeToken.Token.Register(() => {
+                tcs.SetCanceled();
                 _sendTaskQueue.CompleteAdding();
                 _readTaskQueue.CompleteAdding();
             });
@@ -270,6 +272,8 @@ namespace KafkaClient.Connection
         {
             _log.DebugFormat("No connection to {0}: Attempting to connect...", Endpoint);
 
+            const string finalMessage = "Failed connection to {0} on attempt {1}";
+            const string retryMessage = "Failed connection to {0}: Will retry in {1}";
             return _configuration.ConnectionRetry.AttemptAsync(
                 async (attempt, timer) => {
                     _configuration.OnConnecting?.Invoke(Endpoint, attempt, timer.Elapsed);
@@ -280,15 +284,19 @@ namespace KafkaClient.Connection
                     if (_disposeToken.IsCancellationRequested) throw new ObjectDisposedException($"Object is disposing (TcpSocket for endpoint {Endpoint})");
 
                     await connectTask.ConfigureAwait(false);
-                    if (_client.Connected) {
-                        _log.DebugFormat("Connection established to {0}", Endpoint);
-                        _configuration.OnConnected?.Invoke(Endpoint, attempt, timer.Elapsed);
-                        return _client;
-                    }
+                    if (!_client.Connected) return RetryAttempt<TcpClient>.Failed;
+
+                    _log.DebugFormat("Connection established to {0}", Endpoint);
+                    _configuration.OnConnected?.Invoke(Endpoint, attempt, timer.Elapsed);
+                    return new RetryAttempt<TcpClient>(_client);
+                },
+                (attempt, retry) => _log.WarnFormat(retryMessage, Endpoint, retry),
+                (attempt) => {
+                    _log.WarnFormat(finalMessage, Endpoint, attempt);
                     throw new ConnectionException(Endpoint);
                 },
-                (ex, attempt, retry) => _log.WarnFormat(ex, "Failed connection to {0}: Will retry in {1}", Endpoint, retry),
-                (ex, attempt) => _log.WarnFormat(ex, "Failed connection to {0} on attempt {1}", Endpoint, attempt),
+                (ex, attempt, retry) => _log.WarnFormat(ex, retryMessage, Endpoint, retry),
+                (ex, attempt) => _log.WarnFormat(ex, finalMessage, Endpoint, attempt),
                 _disposeToken.Token);
         }
 

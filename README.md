@@ -11,9 +11,9 @@ Copyright 2016, Nudge Software Inc under Apache License, V2.0. See LICENSE file.
 
 History
 -----------
-This library is a fork of [gigya]'s [KafkaNetClient](), itself a fork of [jroland]'s [kafka-net] library. There are significant API changes.
+This library is a fork of [gigya]'s [KafkaNetClient], itself a fork of [jroland]'s [kafka-net] library. There are significant API changes.
 
-The original project is a .NET implementation of the [Apache Kafka] protocol. The wire protocol portion is based on the [kafka-python] library writen by [David Arthur] and the general class layout attempts to follow a similar pattern as his project. To that end, this project builds up from the low level Connection object for handling async requests to/from the kafka server, all the way up to a higher level Producer/Consumer classes.
+The original .Net project is a port of the [Apache Kafka protocol]. The wire protocol portion is based on the [kafka-python] library writen by [David Arthur] and the general class layout attempts to follow a similar pattern as his project. To that end, this project builds up from the low level Connection object for handling async requests to/from the kafka server, all the way up to a higher level Producer/Consumer classes.
 
 Code Examples
 -----------
@@ -89,7 +89,7 @@ This library is still work in progress and has not yet been deployed to producti
 
 
 
-[Apache Kafka]:http://kafka.apache.org
+[Apache Kafka protocol]:https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol
 [kafka-python]:https://github.com/mumrah/kafka-python
 [David Arthur]:https://github.com/mumrah
 [kafka-net]:https://github.com/Jroland/kafka-net

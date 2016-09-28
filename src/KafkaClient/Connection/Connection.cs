@@ -212,11 +212,9 @@ namespace KafkaClient.Connection
             _requestsByCorrelation.TryRemove(asyncRequestItem.CorrelationId, out request);
 
             if (_disposeToken.IsCancellationRequested) {
-                asyncRequestItem.ReceiveTask.TrySetException(
-                    new ObjectDisposedException("The object is being disposed and the connection is closing."));
+                asyncRequestItem.ReceiveTask.TrySetException(new ObjectDisposedException("The object is being disposed and the connection is closing."));
             } else {
-                asyncRequestItem.ReceiveTask.TrySetException(
-                    new TimeoutException($"Timeout expired after {asyncRequestItem.Timeout.TotalMilliseconds} ms."));
+                asyncRequestItem.ReceiveTask.TrySetException(new TimeoutException($"Timeout expired after {asyncRequestItem.Timeout.TotalMilliseconds} ms."));
             }
         }
 

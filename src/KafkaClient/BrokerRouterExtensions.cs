@@ -100,7 +100,7 @@ namespace KafkaClient
                     if (IsPotentiallyRecoverableByMetadataRefresh(ex)) {
                         metadataInvalid = null; // ie. the state of the metadata is unknown
                     } else {
-                        ex.Rethrow();
+                        throw ex.PrepareForRethrow();
                     }
                 },
                 null, // do nothing on final exception -- will be rethrown
@@ -160,8 +160,10 @@ namespace KafkaClient
                     return RetryAttempt<MetadataResponse>.Failed;
                 },
                 (attempt, retry) => brokerRouter.Log.WarnFormat("Failed metadata request on attempt {0}: Will retry in {1}", attempt, retry),
-                null, // return the failed response above
-                (ex, attempt, retry) => ex.Rethrow(),
+                null, // return the failed response above, resulting in a null
+                (ex, attempt, retry) => {
+                    throw ex.PrepareForRethrow();
+                },
                 (ex, attempt) => brokerRouter.Log.WarnFormat(ex, "Failed metadata request on attempt {0}", attempt),
                 cancellationToken);
         }

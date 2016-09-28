@@ -196,11 +196,9 @@ namespace KafkaClient
             }
         }
 
-        private async Task<MetadataResponse> GetTopicMetadataFromServerAsync(IEnumerable<string> topicNames, CancellationToken cancellationToken)
+        private Task<MetadataResponse> GetTopicMetadataFromServerAsync(IEnumerable<string> topicNames, CancellationToken cancellationToken)
         {
-            using (var cancellation = new TimedCancellation(cancellationToken, Configuration.RefreshRetry.Timeout)) {
-                return await this.GetMetadataAsync(topicNames, cancellation.Token);
-            }
+            return this.GetMetadataAsync(topicNames, cancellationToken);
         }
 
         private CachedTopicsResult TryGetCachedTopics(IEnumerable<string> topicNames, TimeSpan? expiration = null)

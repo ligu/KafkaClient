@@ -31,16 +31,6 @@ namespace KafkaClient.Common
         }
 
         /// <summary>
-        /// Extracts a concrete exception out of a Continue with result.
-        /// </summary>
-        public static Exception ExtractException(this Task task)
-        {
-            if (task.IsFaulted == false) return null;
-            if (task.Exception != null) return task.Exception.Flatten();
-            return new Exception("Unknown exception occured.");
-        }
-
-        /// <summary>
         /// Attempts to prepare the exception for re-throwing by preserving the stack trace. The returned exception should be immediately thrown.
         /// </summary>
         /// <param name="exception">The exception. May not be <c>null</c>.</param>
@@ -58,20 +48,6 @@ namespace KafkaClient.Common
         {
             for (var i = 0; i < count; i++) {
                 yield return producer();
-            }
-        }
-
-        public static async Task<T> AttemptAsync<T>(this IRetry policy, Func<int, Stopwatch, Task<T>> action, Action<Exception, int, TimeSpan> onException, Action<Exception, int> onFinalException, CancellationToken cancellationToken)
-        {
-            var timer = new Stopwatch();
-            timer.Start();
-            for (var attempt = 0;; attempt++) {
-                cancellationToken.ThrowIfCancellationRequested();
-                try {
-                    return await action(attempt, timer).ConfigureAwait(false);
-                } catch (Exception ex) {
-                    await policy.HandleErrorAndDelayAsync(onException, onFinalException, attempt, timer, ex, cancellationToken);
-                }
             }
         }
 

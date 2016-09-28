@@ -66,6 +66,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Extensions.cs" />
     <Compile Include="Fakes\FakeBrokerRouter.cs" />
     <Compile Include="Fakes\BrokerRouterProxy.cs" />
     <Compile Include="Fakes\FakeConnection.cs" />
