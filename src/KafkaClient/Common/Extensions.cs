@@ -40,10 +40,18 @@ namespace KafkaClient.Common
             return new Exception("Unknown exception occured.");
         }
 
-        public static void Rethrow(this Exception ex)
+        /// <summary>
+        /// Attempts to prepare the exception for re-throwing by preserving the stack trace. The returned exception should be immediately thrown.
+        /// </summary>
+        /// <param name="exception">The exception. May not be <c>null</c>.</param>
+        /// <returns>The <see cref="Exception"/> that was passed into this method.</returns>
+        public static Exception PrepareForRethrow(this Exception exception)
         {
-            var exceptionInfo = ExceptionDispatchInfo.Capture(ex);
-            exceptionInfo.Throw();
+            ExceptionDispatchInfo.Capture(exception).Throw();
+
+            // The code cannot ever get here. We just return a value to work around a badly-designed API (ExceptionDispatchInfo.Throw):
+            //  https://connect.microsoft.com/VisualStudio/feedback/details/689516/exceptiondispatchinfo-api-modifications (http://www.webcitation.org/6XQ7RoJmO)
+            return exception;
         }
 
         public static IEnumerable<T> Repeat<T>(this int count, Func<T> producer)
@@ -113,7 +121,7 @@ namespace KafkaClient.Common
                 await Task.Delay(retryDelay.Value, cancellationToken).ConfigureAwait(false);
             } else {
                 onFinalException?.Invoke(ex, attempt);
-                ex.Rethrow();
+                throw ex.PrepareForRethrow();
             }
         }
 

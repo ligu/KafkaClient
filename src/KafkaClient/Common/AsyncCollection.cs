@@ -140,7 +140,7 @@ namespace KafkaClient.Common
                 {
                     if (_queue.IsEmpty && _dataAvailableEvent.IsOpen)
                     {
-                        _dataAvailableEvent.Close();
+                        _dataAvailableEvent.Reset();
                     }
                 }
             }
@@ -151,7 +151,7 @@ namespace KafkaClient.Common
                 {
                     if (_queue.IsEmpty == false && _dataAvailableEvent.IsOpen == false)
                     {
-                        _dataAvailableEvent.Open();
+                        _dataAvailableEvent.Set();
                     }
                 }
             }

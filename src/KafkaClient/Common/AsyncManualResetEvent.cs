@@ -10,7 +10,7 @@ namespace KafkaClient.Common
     /// </summary>
     public sealed class AsyncManualResetEvent
     {
-        private TaskCompletionSource<bool> _tcs;
+        private volatile TaskCompletionSource<bool> _tcs;
 
         public bool IsOpen => _tcs.Task.IsCompleted;
 
@@ -30,27 +30,23 @@ namespace KafkaClient.Common
         /// Async wait for the manual reset event to be triggered.
         /// </summary>
         /// <returns></returns>
-        public Task WaitAsync()
-        {
-            return _tcs.Task;
-        }
+        public Task WaitAsync() => _tcs.Task;
 
         /// <summary>
         /// Set the event and complete, releasing all WaitAsync requests.
         /// </summary>
-        public void Open()
-        {
-            _tcs.TrySetResult(true);
-        }
+        public void Set() => _tcs.TrySetResult(true);
 
         /// <summary>
         /// Reset the event making all WaitAsync requests block, does nothing if already reset.
         /// </summary>
-        public void Close()
+        public void Reset()
         {
             while (true) {
                 var tcs = _tcs;
+#pragma warning disable 420 // as per comment from Stephen Toub https://blogs.msdn.microsoft.com/pfxteam/2012/02/11/building-async-coordination-primitives-part-1-asyncmanualresetevent/#comment-24703
                 if (!tcs.Task.IsCompleted || Interlocked.CompareExchange(ref _tcs, new TaskCompletionSource<bool>(), tcs) == tcs)
+#pragma warning restore 420
                     return;
             }
         }

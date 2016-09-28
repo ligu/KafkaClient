@@ -64,7 +64,7 @@ namespace KafkaClient.Tests.Unit
         {
             var count = 0;
             var alock = new AsyncLock();
-            var locks = new List<Task<AsyncLock.Releaser>>();
+            var locks = new List<Task<IDisposable>>();
             for (int i = 0; i < 1000; i++)
             {
                 var task = alock.LockAsync();

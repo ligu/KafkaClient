@@ -14,47 +14,58 @@ namespace KafkaClient.Common
     public class AsyncLock : IDisposable
     {
         private readonly SemaphoreSlim _semaphore;
-        private readonly Task<Releaser> _releaser;
+        private readonly Task<IDisposable> _releaser;
 
         public AsyncLock()
         {
             _semaphore = new SemaphoreSlim(1, 1);
-            _releaser = Task.FromResult(new Releaser(this));
+            _releaser = Task.FromResult<IDisposable>(new Releaser(this));
         }
 
-        public Task<Releaser> LockAsync(CancellationToken canceller)
+        public Task<IDisposable> LockAsync(CancellationToken cancellationToken)
         {
-            var wait = _semaphore.WaitAsync(canceller);
+            var wait = _semaphore.WaitAsync(cancellationToken);
 
-            if (wait.IsCanceled) throw new OperationCanceledException("Unable to aquire lock within timeout alloted.");
-
-            return wait.IsCompleted ?
-                _releaser :
-                wait.ContinueWith((t, state) => {
-                    if (t.IsCanceled) throw new OperationCanceledException("Unable to aquire lock within timeout alloted.");
-                    return new Releaser((AsyncLock)state);
-                }, this, canceller, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+            const string canceledMessage = "Unable to aquire lock within timeout alloted.";
+            if (!wait.IsCompleted) {
+                return wait.ContinueWith(
+                    (continued, state) => {
+                        if (continued.IsCanceled) throw new OperationCanceledException(canceledMessage);
+                        return (IDisposable) new Releaser((AsyncLock) state);
+                    },
+                    this, cancellationToken, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+            }
+            if (wait.IsCanceled) throw new OperationCanceledException(canceledMessage);
+            return _releaser;
         }
 
-        public Task<Releaser> LockAsync()
+        public Task<IDisposable> LockAsync() => LockAsync(CancellationToken.None);
+
+        /// <summary>
+        /// Synchronously acquires the lock. Returns a disposable that releases the lock when disposed. This method may block the calling thread.
+        /// </summary>
+        /// <param name="cancellationToken">The cancellation token used to cancel the lock. If this is already set, then this method will attempt to take the lock immediately (succeeding if the lock is currently available).</param>
+        public IDisposable Lock(CancellationToken cancellationToken)
         {
-            return LockAsync(CancellationToken.None);
+            return LockAsync(cancellationToken).WaitAndUnwrapException();
         }
+
+        /// <summary>
+        /// Synchronously acquires the lock. Returns a disposable that releases the lock when disposed. This method may block the calling thread.
+        /// </summary>
+        public IDisposable Lock() => Lock(CancellationToken.None);
+
+        private int _disposeCount = 0;
 
         public void Dispose()
         {
-            Dispose(true);
+            if (Interlocked.Increment(ref _disposeCount) != 1) return;
+
+            using (_semaphore) { }
+            using (_releaser) { }
         }
 
-        protected void Dispose(bool disposing)
-        {
-            if (disposing) {
-                using (_semaphore) { }
-                using (_releaser) { }
-            }
-        }
-
-        public struct Releaser : IDisposable
+        private struct Releaser : IDisposable
         {
             private readonly AsyncLock _toRelease;
 

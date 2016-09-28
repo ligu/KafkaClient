@@ -47,7 +47,7 @@ namespace KafkaClient.Connection
             // dedicate a long running task to the read/write operations
             _socketTask = Task.Run(DedicatedSocketTask);
 
-            _disposeTask = _disposeToken.Token.CreateTask();
+            _disposeTask = Task.Delay(TimeSpan.MaxValue, _disposeToken.Token);
             _disposeRegistration = _disposeToken.Token.Register(() => {
                 _sendTaskQueue.CompleteAdding();
                 _readTaskQueue.CompleteAdding();
@@ -295,7 +295,7 @@ namespace KafkaClient.Connection
         public void Dispose()
         {
             if (Interlocked.Increment(ref _disposeCount) != 1) return;
-            _disposeToken?.Cancel();
+            _disposeToken.Cancel();
 
             using (_disposeToken) {
                 using (_disposeRegistration) {
