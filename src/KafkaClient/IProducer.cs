@@ -18,5 +18,10 @@ namespace KafkaClient
         /// <param name="cancellationToken">The token for cancellation</param>
         /// <returns>List of ProduceTopic response from each partition sent to or empty list if acks = 0.</returns>
         Task<ProduceTopic[]> SendMessagesAsync(IEnumerable<Message> messages, string topicName, int? partition, ISendMessageConfiguration configuration, CancellationToken cancellationToken);
+
+        /// <summary>
+        /// The configuration for various limits and for send defaults
+        /// </summary>
+        IProducerConfiguration Configuration { get; }
     }
 }

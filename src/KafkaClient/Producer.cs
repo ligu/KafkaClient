@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -70,29 +71,21 @@ namespace KafkaClient
         /// <inheritdoc />
         public async Task<ProduceTopic[]> SendMessagesAsync(IEnumerable<Message> messages, string topicName, int? partition, ISendMessageConfiguration configuration, CancellationToken cancellationToken)
         {
-            var batch = messages.Select(message => new ProduceTopicTask(topicName, partition, message, configuration ?? Configuration.SendDefaults, cancellationToken)).ToArray();
-            _asyncCollection.AddRange(batch); 
+            var produceTopicTasks = messages.Select(message => new ProduceTopicTask(topicName, partition, message, configuration ?? Configuration.SendDefaults, cancellationToken)).ToArray();
+            _asyncCollection.AddRange(produceTopicTasks); 
             // TODO: cancellation should also remove from the collection if they aren't yet in progress
             // Finally, they should skip the semaphore wait in this case (or at least short circuit it)
-            return await Task.WhenAll(batch.Select(x => x.Tcs.Task)).ConfigureAwait(false);
+            return await Task.WhenAll(produceTopicTasks.Select(x => x.Tcs.Task)).ConfigureAwait(false);
         }
 
         /// <summary>
-        /// Stops the producer from accepting new messages, and optionally waits for in-flight messages to be sent before returning.
+        /// Stops the producer from accepting new messages, waiting for in-flight messages to be sent before returning.
         /// </summary>
-        /// <param name="waitForRequestsToComplete">True to wait for in-flight requests to complete, false otherwise.</param>
-        /// <param name="maxWait">Maximum time to wait for in-flight requests to complete. Has no effect if <c>waitForRequestsToComplete</c> is false</param>
-        public void Stop(bool waitForRequestsToComplete = true, TimeSpan? maxWait = null)
+        public async Task StopAsync(CancellationToken cancellationToken)
         {
-            //block incoming data
+            // block incoming data
             _asyncCollection.CompleteAdding();
-
-            if (waitForRequestsToComplete)
-            {
-                //wait for the collection to drain
-                _batchSendTask.Wait(maxWait ?? Configuration.StopTimeout);
-            }
-
+            await Task.WhenAny(_batchSendTask, Task.Delay(Configuration.StopTimeout, cancellationToken)).ConfigureAwait(false);
             _stopToken.Cancel();
         }
 
@@ -149,11 +142,11 @@ namespace KafkaClient
                 var messageByRouter = ackLevelBatch.Select(batch => new
                 {
                     TopicMessage = batch,
-                    AckLevel = ackLevelBatch.Key.Acks,
+                    ackLevelBatch.Key.Acks,
                     Route = batch.Partition.HasValue ? BrokerRouter.GetBrokerRoute(batch.TopicName, batch.Partition.Value) : BrokerRouter.GetBrokerRoute(batch.TopicName, batch.Message.Key)
-                }).GroupBy(x => new { x.Route, Topic = x.TopicMessage.TopicName, x.TopicMessage.Codec, x.AckLevel });
+                }).GroupBy(x => new { x.Route, Topic = x.TopicMessage.TopicName, x.TopicMessage.Codec, x.Acks });
 
-                var sendTasks = new List<BrokerRouteSendBatch>();
+                var batches = new List<ProduceTopicTaskBatch>();
                 foreach (var group in messageByRouter)
                 {
                     var payload = new Payload(group.Key.Topic, group.Key.Route.PartitionId, group.Select(x => x.TopicMessage.Message), group.Key.Codec);
@@ -162,46 +155,41 @@ namespace KafkaClient
                     await _semaphoreMaximumAsync.WaitAsync(cancellationToken).ConfigureAwait(false);
 
                     var sendGroupTask = BrokerRouter.SendAsync(request, group.Key.Topic, group.Key.Route.PartitionId, cancellationToken);
-                    var brokerSendTask = new BrokerRouteSendBatch {
-                        Route = group.Key.Route,
-                        Task = sendGroupTask,
-                        MessagesSent = group.Select(x => x.TopicMessage).ToList(),
-                        AckLevel = group.Key.AckLevel
-                    };
+                    var batch = new ProduceTopicTaskBatch(group.Key.Route, group.Key.Acks, sendGroupTask, group.Select(_ => _.TopicMessage));
 
                     // ReSharper disable UnusedVariable
                     //ensure the async is released as soon as each task is completed //TODO: remove it from ack level 0 , don't like it
-                    var continuation = brokerSendTask.Task.ContinueWith(t => { _semaphoreMaximumAsync.Release(); }, cancellationToken);
+                    var continuation = batch.ReceiveTask.ContinueWith(t => { _semaphoreMaximumAsync.Release(); }, cancellationToken);
                     // ReSharper restore UnusedVariable
 
-                    sendTasks.Add(brokerSendTask);
+                    batches.Add(batch);
                 }
 
                 try
                 {
-                    await Task.WhenAll(sendTasks.Select(x => x.Task)).ConfigureAwait(false);
+                    await Task.WhenAll(batches.Select(x => x.ReceiveTask)).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
                     BrokerRouter.Log.ErrorFormat("Exception[{0}] stacktrace[{1}]", ex.Message, ex.StackTrace);
                 }
 
-                await SetResult(sendTasks).ConfigureAwait(false);
+                await SetResult(batches).ConfigureAwait(false);
                 Interlocked.Add(ref _inFlightCount, messages.Count * -1);
             }
         }
 
-        private async Task SetResult(List<BrokerRouteSendBatch> sendTasks)
+        private async Task SetResult(List<ProduceTopicTaskBatch> sendTasks)
         {
             foreach (var sendTask in sendTasks)
             {
                 try
                 {
                     // already done don't need to await but it none blocking syntax
-                    var batchResult = await sendTask.Task.ConfigureAwait(false);
+                    var batchResult = await sendTask.ReceiveTask.ConfigureAwait(false);
                     var numberOfMessage = sendTask.MessagesSent.Count;
                     for (int i = 0; i < numberOfMessage; i++) {
-                        if (sendTask.AckLevel == 0) {
+                        if (sendTask.Acks == 0) {
                             var response = new ProduceTopic(sendTask.Route.TopicName, sendTask.Route.PartitionId, ErrorResponseCode.NoError, -1);
                             sendTask.MessagesSent[i].Tcs.SetResult(response);
                         } else {
@@ -218,20 +206,19 @@ namespace KafkaClient
                 }
                 catch (Exception ex)
                 {
-                    BrokerRouter.Log.ErrorFormat("failed to send batch Topic[{0}] ackLevel[{1}] partition[{2}] EndPoint[{3}] Exception[{4}] stacktrace[{5}]", sendTask.Route.TopicName, sendTask.AckLevel, sendTask.Route.PartitionId, sendTask.Route.Connection.Endpoint, ex.Message, ex.StackTrace);
+                    BrokerRouter.Log.ErrorFormat("failed to send batch Topic[{0}] ackLevel[{1}] partition[{2}] EndPoint[{3}] Exception[{4}] stacktrace[{5}]", sendTask.Route.TopicName, sendTask.Acks, sendTask.Route.PartitionId, sendTask.Route.Connection.Endpoint, ex.Message, ex.StackTrace);
                     sendTask.MessagesSent.ForEach(x => x.Tcs.TrySetException(ex));
                 }
             }
         }
 
-        #region Dispose...
-
         public void Dispose()
         {
-            //Clients really should call Stop() first, but just in case they didn't...
-            Stop(false);
+            // block incoming data
+            _asyncCollection.CompleteAdding();
+            _stopToken.Cancel();
 
-            //dispose
+            // cleanup
             using (_stopToken) {
                 using (BrokerRouter)
                 {
@@ -239,25 +226,17 @@ namespace KafkaClient
             }
         }
 
-        #endregion Dispose...
-
-
         private class ProduceTopicTask : CancellableTask<ProduceTopic>
         {
-            public ProduceTopicTask(string topicName, int? partition, Message message, MessageCodec codec, short acks, TimeSpan ackTimeout, CancellationToken cancellationToken)
+            public ProduceTopicTask(string topicName, int? partition, Message message, ISendMessageConfiguration configuration, CancellationToken cancellationToken)
                 : base(cancellationToken)
             {
                 TopicName = topicName;
                 Partition = partition;
                 Message = message;
-                Codec = codec;
-                Acks = acks;
-                AckTimeout = ackTimeout;
-            }
-
-            public ProduceTopicTask(string topicName, int? partition, Message message, ISendMessageConfiguration configuration, CancellationToken cancellationToken)
-                : this(topicName, partition, message, configuration.Codec, configuration.Acks, configuration.AckTimeout, cancellationToken)
-            {
+                Codec = configuration.Codec;
+                Acks = configuration.Acks;
+                AckTimeout = configuration.AckTimeout;
             }
 
             // where
@@ -273,12 +252,20 @@ namespace KafkaClient
             public TimeSpan AckTimeout { get; }
         }
 
-        private class BrokerRouteSendBatch
+        private class ProduceTopicTaskBatch
         {
-            public short AckLevel { get; set; }
-            public BrokerRoute Route { get; set; }
-            public Task<ProduceResponse> Task { get; set; }
-            public List<ProduceTopicTask> MessagesSent { get; set; }
+            public ProduceTopicTaskBatch(BrokerRoute route, short acks, Task<ProduceResponse> receiveTask, IEnumerable<ProduceTopicTask> messagesSent)
+            {
+                Route = route;
+                Acks = acks;
+                ReceiveTask = receiveTask;
+                MessagesSent = ImmutableList<ProduceTopicTask>.Empty.AddNotNullRange(messagesSent);
+            }
+
+            public short Acks { get; }
+            public BrokerRoute Route { get; }
+            public Task<ProduceResponse> ReceiveTask { get; }
+            public ImmutableList<ProduceTopicTask> MessagesSent { get; }
         }
     }
 }

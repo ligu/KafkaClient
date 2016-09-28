@@ -348,12 +348,12 @@ namespace KafkaClient.Tests.Unit
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         [ExpectedException(typeof(ObjectDisposedException))]
-        public async void SendingMessageWhenStoppedShouldThrow()
+        public async Task SendingMessageWhenStoppedShouldThrow()
         {
             var router = Substitute.For<IBrokerRouter>();
             using (var producer = new Producer(router))
             {
-                producer.Stop(false);
+                await producer.StopAsync(CancellationToken.None);
                 await producer.SendMessageAsync(new Message("1"), "Test", CancellationToken.None);
             }
         }

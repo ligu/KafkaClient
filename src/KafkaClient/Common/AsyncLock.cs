@@ -22,8 +22,6 @@ namespace KafkaClient.Common
             _releaser = Task.FromResult(new Releaser(this));
         }
 
-        public bool IsLocked => _semaphore.CurrentCount == 0;
-
         public Task<Releaser> LockAsync(CancellationToken canceller)
         {
             var wait = _semaphore.WaitAsync(canceller);
