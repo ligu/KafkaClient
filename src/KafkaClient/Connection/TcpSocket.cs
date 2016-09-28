@@ -23,7 +23,7 @@ namespace KafkaClient.Connection
         private readonly IConnectionConfiguration _configuration;
 
         private readonly AsyncCollection<SocketPayloadSendTask> _sendTaskQueue;
-        private readonly AsyncCollection<SocketPayloadReceiveTask> _readTaskQueue;
+        private readonly AsyncCollection<SocketPayloadReceiveTask> _receiveTaskQueue;
         // ReSharper disable NotAccessedField.Local
         private readonly Task _socketTask;
         // ReSharper restore NotAccessedField.Local
@@ -42,18 +42,18 @@ namespace KafkaClient.Connection
             _log = log ?? TraceLog.Log;
             _configuration = configuration ?? new ConnectionConfiguration();
             _sendTaskQueue = new AsyncCollection<SocketPayloadSendTask>();
-            _readTaskQueue = new AsyncCollection<SocketPayloadReceiveTask>();
-
-            // dedicate a long running task to the read/write operations
-            _socketTask = Task.Run(DedicatedSocketTask);
+            _receiveTaskQueue = new AsyncCollection<SocketPayloadReceiveTask>();
 
             var tcs = new TaskCompletionSource<bool>();
             _disposeTask = tcs.Task;
             _disposeRegistration = _disposeToken.Token.Register(() => {
                 tcs.SetCanceled();
                 _sendTaskQueue.CompleteAdding();
-                _readTaskQueue.CompleteAdding();
+                _receiveTaskQueue.CompleteAdding();
             });
+
+            // dedicate a long running task to the read/write operations
+            _socketTask = Task.Run(DedicatedSocketTask);
         }
 
         #region Interface Implementation...
@@ -65,7 +65,7 @@ namespace KafkaClient.Connection
         public Task<byte[]> ReadAsync(int readSize, CancellationToken cancellationToken)
         {
             var readTask = new SocketPayloadReceiveTask(readSize, cancellationToken);
-            _readTaskQueue.Add(readTask);
+            _receiveTaskQueue.Add(readTask);
             return readTask.Tcs.Task;
         }
 
@@ -112,13 +112,11 @@ namespace KafkaClient.Connection
 
         private void SetExceptionToAllPendingTasks(Exception ex)
         {
-            if (_sendTaskQueue.Count > 0) {
+            var wrappedException = WrappedException(ex);
+            if (_sendTaskQueue.DrainAndApply(p => p.Tcs.TrySetException(wrappedException)) > 0) {
                 _log.ErrorFormat(ex, "TcpSocket received an exception, cancelling all pending tasks");
             }
-
-            var wrappedException = WrappedException(ex);
-            _sendTaskQueue.DrainAndApply(t => t.Tcs.TrySetException(wrappedException));
-            _readTaskQueue.DrainAndApply(t => t.Tcs.TrySetException(wrappedException));
+            _receiveTaskQueue.DrainAndApply(p => p.Tcs.TrySetException(wrappedException));
         }
 
         private async Task ProcessNetworkstreamTasks(NetworkStream netStream)
@@ -130,7 +128,7 @@ namespace KafkaClient.Connection
             //https://msdn.microsoft.com/en-us/library/z2xae4f4.aspx
 
             //Exception need to thrown immediately and not depend on the next task
-            var receiveTask = ProcessNetworkstreamTask(netStream, _readTaskQueue, ProcessReceiveTaskAsync);
+            var receiveTask = ProcessNetworkstreamTask(netStream, _receiveTaskQueue, ProcessReceiveTaskAsync);
             var sendTask = ProcessNetworkstreamTask(netStream, _sendTaskQueue, ProcessSentTasksAsync);
             await Task.WhenAny(receiveTask, sendTask).ConfigureAwait(false);
             if (_disposeToken.IsCancellationRequested) return;

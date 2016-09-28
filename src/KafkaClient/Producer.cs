@@ -109,7 +109,7 @@ namespace KafkaClient
                             batch = batch ?? new List<ProduceTopicTask>(_asyncCollection.Count);
 
                             //Drain any messages remaining in the queue and add them to the send batch
-                            batch.AddRange(_asyncCollection.Drain());
+                            batch.AddRange(_asyncCollection.Take());
                         }
                         if (batch != null) {
                             await ProduceAndSendBatchAsync(batch, _stopToken.Token).ConfigureAwait(false);

@@ -21,7 +21,7 @@ namespace KafkaClient.Common
         /// need to be considered after the operation is cancelled.
         /// See <see cref="http://blogs.msdn.com/b/pfxteam/archive/2012/10/05/how-do-i-cancel-non-cancelable-async-operations.aspx"/>
         /// </remarks>
-        public static async Task<T> WithCancellation<T>(this Task<T> task, CancellationToken cancellationToken)
+        public static async Task<T> ThrowIfCancellationRequested<T>(this Task<T> task, CancellationToken cancellationToken)
         {
             var tcs = new TaskCompletionSource<bool>();
             using (cancellationToken.Register(_ => ((TaskCompletionSource<bool>)_).TrySetResult(true), tcs)) {
@@ -40,7 +40,7 @@ namespace KafkaClient.Common
         /// need to be considered after the operation is cancelled.
         /// See <see cref="http://blogs.msdn.com/b/pfxteam/archive/2012/10/05/how-do-i-cancel-non-cancelable-async-operations.aspx"/>
         /// </remarks>
-        public static async Task WithCancellation(this Task task, CancellationToken cancellationToken)
+        public static async Task ThrowIfCancellationRequested(this Task task, CancellationToken cancellationToken)
         {
             var tcs = new TaskCompletionSource<bool>();
             using (cancellationToken.Register(_ => ((TaskCompletionSource<bool>)_).TrySetResult(true), tcs)) {
@@ -50,7 +50,7 @@ namespace KafkaClient.Common
             }
         }
 
-        public static async Task<bool> WithCancellationBool(this Task task, CancellationToken cancellationToken)
+        public static async Task<bool> WithCancellation(this Task task, CancellationToken cancellationToken)
         {
             var tcs = new TaskCompletionSource<bool>();
             using (cancellationToken.Register(_ => ((TaskCompletionSource<bool>)_).TrySetResult(true), tcs)) {

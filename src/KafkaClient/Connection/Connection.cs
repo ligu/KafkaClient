@@ -97,7 +97,7 @@ namespace KafkaClient.Connection
                     TriggerMessageTimeout(asyncRequest);
                 }
 
-                var response = await asyncRequest.ReceiveTask.Task.WithCancellation(token).ConfigureAwait(false);
+                var response = await asyncRequest.ReceiveTask.Task.ThrowIfCancellationRequested(token).ConfigureAwait(false);
                 return KafkaEncoder.Decode<T>(context, response);
             }
         }

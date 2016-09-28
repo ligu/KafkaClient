@@ -44,6 +44,27 @@ namespace KafkaClient.Common
             return exception;
         }
 
+        public static int DrainAndApply<T>(this AsyncCollection<T> collection, Action<T> apply)
+        {
+            var count = 0;
+            T item;
+            while (collection.TryTake(out item)) {
+                apply(item);
+                count++;
+            }
+            return count;
+        }
+
+        public static IEnumerable<T> Take<T>(this AsyncCollection<T> collection, int? max = null)
+        {
+            var taken = new List<T>();
+            T item;
+            while ((!max.HasValue || taken.Count < max.Value) && collection.TryTake(out item)) {
+                taken.Add(item);
+            }
+            return taken;
+        }
+
         public static IEnumerable<T> Repeat<T>(this int count, Func<T> producer)
         {
             for (var i = 0; i < count; i++) {

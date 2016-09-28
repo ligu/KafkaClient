@@ -24,12 +24,12 @@ namespace KafkaClient.Common
 
         public Task OnHasDataAvailable(CancellationToken token)
         {
-            return _dataAvailableEvent.WaitAsync().WithCancellation(token);
+            return _dataAvailableEvent.WaitAsync().ThrowIfCancellationRequested(token);
         }
 
         public Task<bool> OnHasDataAvailablebool(CancellationToken token)
         {
-            return _dataAvailableEvent.WaitAsync().WithCancellationBool(token);
+            return _dataAvailableEvent.WaitAsync().WithCancellation(token);
         }
 
         public void Add(T data)
@@ -95,39 +95,11 @@ namespace KafkaClient.Common
             }
         }
 
-        public void DrainAndApply(Action<T> appliedFunc)
-        {
-            var nb = _queue.Count;
-            for (var i = 0; i < nb; i++)
-            {
-                T data;
-                if (!_queue.TryDequeue(out data))
-                    break;
-                appliedFunc(data);
-            }
-
-            TriggerDataAvailability();
-        }
-
-        public IEnumerable<T> Drain()
-        {
-            T data;
-            while (_queue.TryDequeue(out data))
-            {
-                yield return data;
-            }
-
-            TriggerDataAvailability();
-        }
-
         public bool TryTake(out T data)
         {
-            try
-            {
+            try {
                 return _queue.TryDequeue(out data);
-            }
-            finally
-            {
+            } finally {
                 if (_queue.IsEmpty) TriggerDataAvailability();
             }
         }

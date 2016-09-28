@@ -69,7 +69,7 @@ namespace KafkaClient.Tests.Unit
 
             Assert.That(aq.OnHasDataAvailable(CancellationToken.None).IsCompleted, Is.True, "Task should indicate data available.");
 
-            var drained = aq.Drain().ToList();
+            var drained = aq.Take().ToList();
             Assert.That(aq.OnHasDataAvailable(CancellationToken.None).IsCompleted, Is.False, "Task should indicate no data available.");
         }
 
@@ -254,7 +254,7 @@ namespace KafkaClient.Tests.Unit
 
             Console.WriteLine("Waiting to unwind test...");
             await highVolumeAdding;
-            collection.Drain();
+            collection.Take();
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
