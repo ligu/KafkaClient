@@ -33,7 +33,7 @@ namespace KafkaClient.Protocol
                         EncodeRequest(context, produceRequest), 
                         context.CorrelationId, 
                         request.ApiKey, 
-                        produceRequest.Payload.Sum(x => x.Messages.Count));
+                        produceRequest.Payloads.Sum(x => x.Messages.Count));
                 }
 
                 default:
@@ -91,7 +91,7 @@ namespace KafkaClient.Protocol
         private static byte[] EncodeRequest(IRequestContext context, ProduceRequest request)
         {
             int totalCompressedBytes = 0;
-            var groupedPayloads = (from p in request.Payload
+            var groupedPayloads = (from p in request.Payloads
                                    group p by new
                                    {
                                        p.TopicName,
@@ -129,7 +129,7 @@ namespace KafkaClient.Protocol
                 }
 
                 var bytes = message.Payload();
-                StatisticsTracker.RecordProduceRequest(request.Payload.Sum(x => x.Messages.Count), bytes.Length, totalCompressedBytes);
+                StatisticsTracker.RecordProduceRequest(request.Payloads.Sum(x => x.Messages.Count), bytes.Length, totalCompressedBytes);
                 return bytes;
             }
         }

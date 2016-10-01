@@ -75,7 +75,7 @@ namespace KafkaClient.Tests.Unit
 
             var request = new ProduceRequest(new List<Payload>(), TimeSpan.FromMilliseconds(timeoutMilliseconds), acks);
             for (var t = 0; t < topicsPerRequest; t++) {
-                request.Payload.Add(new Payload(topic + t, t % totalPartitions, GenerateMessages(messagesPerSet, (byte) (version >= 2 ? 1 : 0))));
+                request.Payloads.Add(new Payload(topic + t, t % totalPartitions, GenerateMessages(messagesPerSet, (byte) (version >= 2 ? 1 : 0))));
             }
 
             var context = new RequestContext(clientId.GetHashCode(), version, clientId);

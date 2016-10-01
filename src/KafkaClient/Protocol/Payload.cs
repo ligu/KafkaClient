@@ -6,6 +6,7 @@ namespace KafkaClient.Protocol
 {
     /// <summary>
     /// Buffer represents a collection of messages to be posted to a specified Topic on specified Partition.
+    /// Included in <see cref="ProduceRequest"/>
     /// </summary>
     public class Payload : Topic
     {

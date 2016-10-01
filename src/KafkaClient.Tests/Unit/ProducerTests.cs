@@ -267,7 +267,7 @@ namespace KafkaClient.Tests.Unit
                 await senderTask;
 
                 Assert.That(senderTask.IsCompleted);
-                Assert.That(producer.BufferedCount, Is.EqualTo(1000));
+                Assert.That(producer.BufferedMessageCount, Is.EqualTo(1000));
             }
         }
 
@@ -287,19 +287,19 @@ namespace KafkaClient.Tests.Unit
                 var senderTask = Task.Factory.StartNew(async () => {
                     for (int i = 0; i < 3; i++) {
                         await producer.SendMessageAsync(new Message(i.ToString()), FakeBrokerRouter.TestTopic, CancellationToken.None);
-                        Console.WriteLine("Await: {0}", producer.BufferedCount);
+                        Console.WriteLine("Await: {0}", producer.BufferedMessageCount);
                         Interlocked.Increment(ref count);
                     }
                 });
 
                 await TaskTest.WaitFor(() => count > 0);
-                Assert.That(producer.BufferedCount, Is.EqualTo(1));
+                Assert.That(producer.BufferedMessageCount, Is.EqualTo(1));
 
                 Console.WriteLine("Waiting for the rest...");
                 senderTask.Wait(TimeSpan.FromSeconds(5));
 
                 Assert.That(senderTask.IsCompleted);
-                Assert.That(producer.BufferedCount, Is.EqualTo(1), "One message should be left in the buffer.");
+                Assert.That(producer.BufferedMessageCount, Is.EqualTo(1), "One message should be left in the buffer.");
 
                 Console.WriteLine("Unwinding...");
             }
@@ -326,7 +326,7 @@ namespace KafkaClient.Tests.Unit
 
                 var wait = TaskTest.WaitFor(() => producer.ActiveSenders > 0);
                 Assert.That(sendTasks.Any(x => x.IsCompleted) == false, "All the async tasks should be blocking or in transit.");
-                Assert.That(producer.BufferedCount, Is.EqualTo(5), "We sent 5 unfinished messages, they should be counted towards the buffer.");
+                Assert.That(producer.BufferedMessageCount, Is.EqualTo(5), "We sent 5 unfinished messages, they should be counted towards the buffer.");
 
                 semaphore.Release(2);
             }
@@ -366,11 +366,11 @@ namespace KafkaClient.Tests.Unit
         // using (var producer = new Producer(fakeRouter.Create()) { BatchDelayTime =
         // TimeSpan.FromMilliseconds(500) }) { var sendTask =
         // producer.SendMessagesAsync(FakeBrokerRouter.TestTopic, new[] { new Message() });
-        // Assert.That(producer.BufferedCount, Is.EqualTo(1));
+        // Assert.That(producer.BufferedMessageCount, Is.EqualTo(1));
 
         // producer.Stop(true, TimeSpan.FromSeconds(5));
 
-        // sendTask; Assert.That(producer.BufferedCount, Is.EqualTo(0));
+        // sendTask; Assert.That(producer.BufferedMessageCount, Is.EqualTo(0));
         // Assert.That(sendTask.IsCompleted, Is.True);
 
         //        Console.WriteLine("Unwinding test...");

@@ -6,6 +6,7 @@ using System.Runtime.ExceptionServices;
 using System.Runtime.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
+using Nito.AsyncEx;
 
 namespace KafkaClient.Common
 {
@@ -44,25 +45,21 @@ namespace KafkaClient.Common
             return exception;
         }
 
-        public static int DrainAndApply<T>(this AsyncCollection<T> collection, Action<T> apply)
+        public static int TakeAndApply<T>(this AsyncCollection<T> collection, Action<T> apply, CancellationToken? cancellationToken = null)
         {
             var count = 0;
-            T item;
-            while (collection.TryTake(out item)) {
+            foreach (var item in collection.GetConsumingEnumerable(cancellationToken ?? new CancellationToken(true))) {
                 apply(item);
                 count++;
             }
             return count;
         }
 
-        public static IEnumerable<T> Take<T>(this AsyncCollection<T> collection, int? max = null)
+        public static void AddRange<T>(this AsyncCollection<T> collection, IEnumerable<T> items, CancellationToken cancellationToken)
         {
-            var taken = new List<T>();
-            T item;
-            while ((!max.HasValue || taken.Count < max.Value) && collection.TryTake(out item)) {
-                taken.Add(item);
+            foreach (var item in items) {
+                collection.Add(item, cancellationToken);
             }
-            return taken;
         }
 
         public static IEnumerable<T> Repeat<T>(this int count, Func<T> producer)

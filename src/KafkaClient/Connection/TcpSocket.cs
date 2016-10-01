@@ -5,6 +5,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Common;
+using Nito.AsyncEx;
 
 namespace KafkaClient.Connection
 {
@@ -113,10 +114,10 @@ namespace KafkaClient.Connection
         private void SetExceptionToAllPendingTasks(Exception ex)
         {
             var wrappedException = WrappedException(ex);
-            if (_sendTaskQueue.DrainAndApply(p => p.Tcs.TrySetException(wrappedException)) > 0) {
+            if (_sendTaskQueue.TakeAndApply(p => p.Tcs.TrySetException(wrappedException)) > 0) {
                 _log.ErrorFormat(ex, "TcpSocket received an exception, cancelling all pending tasks");
             }
-            _receiveTaskQueue.DrainAndApply(p => p.Tcs.TrySetException(wrappedException));
+            _receiveTaskQueue.TakeAndApply(p => p.Tcs.TrySetException(wrappedException));
         }
 
         private async Task ProcessNetworkstreamTasks(NetworkStream netStream)
@@ -142,10 +143,10 @@ namespace KafkaClient.Connection
             Task lastTask = Task.FromResult(true);
             while (_disposeToken.IsCancellationRequested == false && stream != null) {
                 await lastTask;
-                var hasAvailableData = await queue.OnHasDataAvailablebool(_disposeToken.Token);
-                if (!hasAvailableData) return;
+                var takeResult = await queue.TryTakeAsync(_disposeToken.Token);
+                if (!takeResult.Success) return;
 
-                lastTask = asyncProcess(stream, queue.Pop());
+                lastTask = asyncProcess(stream, takeResult.Item);
             }
         }
 

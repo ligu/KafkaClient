@@ -435,8 +435,8 @@ namespace KafkaClient.Tests.Unit
             Assert.That(reader.ReadInt16(), Is.EqualTo(request.Acks), "acks");
             Assert.That(reader.ReadInt32(), Is.EqualTo((int)request.Timeout.TotalMilliseconds), "timeout");
 
-            Assert.That(reader.ReadInt32(), Is.EqualTo(request.Payload.Count), "[topic_data]");
-            foreach (var payload in request.Payload) {
+            Assert.That(reader.ReadInt32(), Is.EqualTo(request.Payloads.Count), "[topic_data]");
+            foreach (var payload in request.Payloads) {
                 Assert.That(reader.ReadInt16String(), Is.EqualTo(payload.TopicName), "TopicName");
                 Assert.That(reader.ReadInt32(), Is.EqualTo(1), "[Partition]"); // this is a mismatch between the protocol and the object model
                 Assert.That(reader.ReadInt32(), Is.EqualTo(payload.PartitionId), "Partition");

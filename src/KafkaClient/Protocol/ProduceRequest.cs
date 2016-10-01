@@ -17,7 +17,7 @@ namespace KafkaClient.Protocol
         {
             Timeout = timeout.GetValueOrDefault(TimeSpan.FromSeconds(1));
             Acks = acks;
-            Payload = ImmutableList<Payload>.Empty.AddNotNullRange(payload);
+            Payloads = ImmutableList<Payload>.Empty.AddNotNullRange(payload);
         }
 
         /// <summary>
@@ -33,6 +33,6 @@ namespace KafkaClient.Protocol
         /// <summary>
         /// Collection of payloads to post to kafka
         /// </summary>
-        public ImmutableList<Payload> Payload { get; }
+        public ImmutableList<Payload> Payloads { get; }
     }
 }

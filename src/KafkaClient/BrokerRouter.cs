@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using KafkaClient.Common;
 using KafkaClient.Connection;
 using KafkaClient.Protocol;
+using Nito.AsyncEx;
 
 namespace KafkaClient
 {
@@ -206,7 +207,7 @@ namespace KafkaClient
             var missing = new List<string>();
             var topics = new List<MetadataTopic>();
 
-            foreach (var topicName in topicNames) {
+            foreach (var topicName in topicNames.Distinct()) {
                 var topic = TryGetCachedTopic(topicName, expiration);
                 if (topic != null) {
                     topics.Add(topic);

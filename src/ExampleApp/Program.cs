@@ -59,11 +59,11 @@ namespace ExampleApp
             //send multiple messages
             var sendTask = producer.SendMessagesAsync(Enumerable.Range(0, count).Select(x => new Message(x.ToString())), topicName, CancellationToken.None);
             
-            Console.WriteLine("Posted #{0} messages.  Buffered:{1} ActiveSenders:{2}", count, producer.BufferedCount, producer.ActiveSenders);
+            Console.WriteLine("Posted #{0} messages. InFlight:{1} ActiveSenders:{2}", count, producer.InFlightMessageCount, producer.ActiveSenders);
 
             var response = await sendTask;
 
-            Console.WriteLine("Completed send of batch: {0}. Buffered:{1} ActiveSenders:{2}", count, producer.BufferedCount, producer.ActiveSenders);
+            Console.WriteLine("Completed send of batch: {0}. InFlight:{1} ActiveSenders:{2}", count, producer.InFlightMessageCount, producer.ActiveSenders);
             foreach (var result in response.OrderBy(x => x.PartitionId))
             {
                 Console.WriteLine("Topic:{0} PartitionId:{1} Offset:{2}", result.TopicName, result.PartitionId, result.Offset);
