@@ -50,7 +50,7 @@ namespace KafkaClient.Common
             }
         }
 
-        public static async Task<bool> WithCancellation(this Task task, CancellationToken cancellationToken)
+        public static async Task<bool> WhenCompleted(this Task task, CancellationToken cancellationToken)
         {
             var tcs = new TaskCompletionSource<bool>();
             using (cancellationToken.Register(_ => ((TaskCompletionSource<bool>)_).TrySetResult(true), tcs)) {

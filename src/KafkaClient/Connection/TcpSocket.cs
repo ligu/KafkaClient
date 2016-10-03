@@ -17,7 +17,6 @@ namespace KafkaClient.Connection
     {
         private readonly CancellationTokenSource _disposeToken = new CancellationTokenSource();
         private readonly CancellationTokenRegistration _disposeRegistration;
-        private readonly Task _disposeTask;
         private int _disposeCount;
 
         private readonly ILog _log;
@@ -45,10 +44,7 @@ namespace KafkaClient.Connection
             _sendTaskQueue = new AsyncCollection<SocketPayloadSendTask>();
             _receiveTaskQueue = new AsyncCollection<SocketPayloadReceiveTask>();
 
-            var tcs = new TaskCompletionSource<bool>();
-            _disposeTask = tcs.Task;
             _disposeRegistration = _disposeToken.Token.Register(() => {
-                tcs.SetCanceled();
                 _sendTaskQueue.CompleteAdding();
                 _receiveTaskQueue.CompleteAdding();
             });
@@ -93,9 +89,7 @@ namespace KafkaClient.Connection
                 // block here until we can get connections then start loop pushing data through network stream
                 try {
                     var netStreamTask = GetStreamAsync();
-                    await Task.WhenAny(_disposeTask, netStreamTask).ConfigureAwait(false);
-
-                    if (_disposeToken.IsCancellationRequested) {
+                    if (!await netStreamTask.WhenCompleted(_disposeToken.Token).ConfigureAwait(false)) {
                         var disposedException = new ObjectDisposedException($"Object is disposing (TcpSocket for {Endpoint})");
                         SetExceptionToAllPendingTasks(disposedException);
                         _configuration.OnDisconnected?.Invoke(Endpoint, disposedException);
@@ -291,7 +285,7 @@ namespace KafkaClient.Connection
                     return new RetryAttempt<TcpClient>(_client);
                 },
                 (attempt, retry) => _log.WarnFormat(retryMessage, Endpoint, retry),
-                (attempt) => {
+                attempt => {
                     _log.WarnFormat(finalMessage, Endpoint, attempt);
                     throw new ConnectionException(Endpoint);
                 },
