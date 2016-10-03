@@ -117,7 +117,7 @@ namespace KafkaClient.Tests.Unit
 
                     server.DropConnection();
                     await TaskTest.WaitFor(() => conn.IsInErrorState);
-                    Assert.AreEqual(disconnected,connectionAttempt);
+                    Assert.AreEqual(disconnected, connectionAttempt);
                     Assert.IsTrue(conn.IsInErrorState);
 
                     Assert.That(mockLog.LogEvents.Count(e => e.Item1 == LogLevel.Error && e.Item2.Message.StartsWith("Exception occured in polling read thread")), Is.EqualTo(connectionAttempt));

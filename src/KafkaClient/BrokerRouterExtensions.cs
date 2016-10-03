@@ -154,7 +154,7 @@ namespace KafkaClient
                     if (exceptions.Count > 1) throw new AggregateException(exceptions);
 
                     if (results.Count == 0) return new RetryAttempt<MetadataResponse>(response);
-                    foreach (var result in results) {
+                    foreach (var result in results.Where(r => !string.IsNullOrEmpty(r.Message))) {
                         brokerRouter.Log.Warn(() => LogEvent.Create(result.Message));
                     }
 

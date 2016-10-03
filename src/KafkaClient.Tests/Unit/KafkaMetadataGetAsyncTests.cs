@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Net;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Common;
@@ -8,7 +8,6 @@ using KafkaClient.Connection;
 using KafkaClient.Protocol;
 using KafkaClient.Tests.Helpers;
 using Moq;
-using Ninject.MockingKernel.Moq;
 using NSubstitute;
 using NUnit.Framework;
 
@@ -24,7 +23,8 @@ namespace KafkaClient.Tests.Unit
         [SetUp]
         public void Setup()
         {
-            _log = Substitute.ForPartsOf<MemoryLog>();
+            _log = new MemoryLog();
+            //_log = Substitute.ForPartsOf<MemoryLog>();
             _brokerRouter = Substitute.For<IBrokerRouter>();
             _brokerRouter.Log.ReturnsForAnyArgs(_log);
             _brokerRouter.Configuration.ReturnsForAnyArgs(new CacheConfiguration());
@@ -47,11 +47,15 @@ namespace KafkaClient.Tests.Unit
             Received.InOrder(() =>
             {
                 conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
-                _log.Log(LogLevel.Warn, It.Is<LogEvent>(e => e.Message.StartsWith("Failed metadata request on attempt 0: Will retry in")));
+                //_log.OnLogged(LogLevel.Warn, It.Is<LogEvent>(e => e.Message.StartsWith("Failed metadata request on attempt 0: Will retry in")));
                 conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
-                _log.Log(LogLevel.Warn, It.Is<LogEvent>(e => e.Message.StartsWith("Failed metadata request on attempt 1: Will retry in")));
+                //_log.OnLogged(LogLevel.Warn, It.Is<LogEvent>(e => e.Message.StartsWith("Failed metadata request on attempt 1: Will retry in")));
                 conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
             });
+
+            Assert.That(_log.LogEvents.Any(e => e.Item1 == LogLevel.Warn && e.Item2.Message.StartsWith("Failed metadata request on attempt 0: Will retry in")));
+            Assert.That(_log.LogEvents.Any(e => e.Item1 == LogLevel.Warn && e.Item2.Message.StartsWith("Failed metadata request on attempt 1: Will retry in")));
+            Assert.That(_log.LogEvents.Count(e => e.Item1 == LogLevel.Warn && e.Item2.Message.StartsWith("Failed metadata request on attempt")), Is.EqualTo(2));
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
@@ -68,9 +72,12 @@ namespace KafkaClient.Tests.Unit
             Received.InOrder(() =>
             {
                 conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
-                _log.Log(LogLevel.Warn, It.Is<LogEvent>(e => e.Message.StartsWith("Failed metadata request on attempt 0: Will retry in")));
+                //_log.OnLogged.Invoke(LogLevel.Warn, It.Is<LogEvent>(e => e.Message.StartsWith("Failed metadata request on attempt 0: Will retry in")));
                 conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
             });
+
+            Assert.That(_log.LogEvents.Any(e => e.Item1 == LogLevel.Warn && e.Item2.Message.StartsWith("Failed metadata request on attempt 0: Will retry in")));
+            Assert.That(_log.LogEvents.Count(e => e.Item1 == LogLevel.Warn && e.Item2.Message.StartsWith("Failed metadata request on attempt")), Is.EqualTo(1));
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]

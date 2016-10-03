@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -17,18 +16,18 @@ namespace KafkaClient
     /// </summary>
     public class Producer : IProducer
     {
-        private readonly CancellationTokenSource _stopToken = new CancellationTokenSource();
-        private readonly ConcurrentQueue<ProduceTopicTask> _internalQueue;
+        private readonly CancellationTokenSource _stopToken;
         private readonly AsyncCollection<ProduceTopicTask> _produceMessageQueue;
         private readonly SemaphoreSlim _produceRequestSemaphore;
         private readonly Task _batchSendTask;
 
         private int _inFlightMessageCount;
+        private int _bufferedMessageCount;
 
         /// <summary>
         /// Get the number of messages sitting in the buffer waiting to be sent.
         /// </summary>
-        public int BufferedMessageCount => _internalQueue.Count;
+        public int BufferedMessageCount => _bufferedMessageCount;
 
         /// <summary>
         /// Get the number of messages staged for Async upload.
@@ -67,9 +66,9 @@ namespace KafkaClient
         {
             BrokerRouter = brokerRouter;
             Configuration = configuration ?? new ProducerConfiguration();
-            _internalQueue = new ConcurrentQueue<ProduceTopicTask>();
-            _produceMessageQueue = new AsyncCollection<ProduceTopicTask>(_internalQueue);
+            _produceMessageQueue = new AsyncCollection<ProduceTopicTask>();
             _produceRequestSemaphore = new SemaphoreSlim(Configuration.RequestParallelization, Configuration.RequestParallelization);
+            _stopToken = new CancellationTokenSource();
             _batchSendTask = Task.Run(BatchSendAsync, _stopToken.Token);
         }
 
@@ -77,7 +76,12 @@ namespace KafkaClient
         public async Task<ProduceTopic[]> SendMessagesAsync(IEnumerable<Message> messages, string topicName, int? partition, ISendMessageConfiguration configuration, CancellationToken cancellationToken)
         {
             var produceTopicTasks = messages.Select(message => new ProduceTopicTask(topicName, partition, message, configuration ?? Configuration.SendDefaults, cancellationToken)).ToArray();
-            _produceMessageQueue.AddRange(produceTopicTasks, cancellationToken); 
+            Interlocked.Add(ref _bufferedMessageCount, produceTopicTasks.Length);
+            try {
+                _produceMessageQueue.AddRange(produceTopicTasks, cancellationToken); 
+            } catch (InvalidOperationException ex) {
+                throw new ObjectDisposedException("Cannot send messages after Stopped or Disposed", ex);
+            }
             return await Task.WhenAll(produceTopicTasks.Select(x => x.Tcs.Task)).ConfigureAwait(false);
         }
 
@@ -86,8 +90,8 @@ namespace KafkaClient
         /// </summary>
         public async Task StopAsync(CancellationToken cancellationToken)
         {
-            // block incoming data
-            _produceMessageQueue.CompleteAdding();
+            BrokerRouter.Log.Debug(() => LogEvent.Create("Producer stopping"));
+            _produceMessageQueue.CompleteAdding(); // block incoming data
             await Task.WhenAny(_batchSendTask, Task.Delay(Configuration.StopTimeout, cancellationToken)).ConfigureAwait(false);
             _stopToken.Cancel();
         }
@@ -96,37 +100,51 @@ namespace KafkaClient
         {
             BrokerRouter.Log.Info(() => LogEvent.Create("Producer sending task starting"));
             try {
-                while (true) {
+                while (!_stopToken.IsCancellationRequested) {
                     var batch = ImmutableList<ProduceTopicTask>.Empty;
-
                     try {
+                        var initialBatch = ImmutableList<ProduceTopicTask>.Empty;
                         try {
                             if (await _produceMessageQueue.OutputAvailableAsync(_stopToken.Token).ConfigureAwait(false)) {
                                 using (var cancellation = new TimedCancellation(_stopToken.Token, Configuration.BatchMaxDelay)) {
-                                    while (batch.Count < Configuration.BatchSize && !cancellation.Token.IsCancellationRequested) {
+                                    while (initialBatch.Count < Configuration.BatchSize && !cancellation.Token.IsCancellationRequested) {
                                         var produceTopicTask = await _produceMessageQueue.TakeAsync(cancellation.Token).ConfigureAwait(false);
+                                        Interlocked.Decrement(ref _bufferedMessageCount);
                                         if (produceTopicTask.CancellationToken.IsCancellationRequested) {
                                             produceTopicTask.Tcs.SetCanceled();
                                         } else {
-                                            batch = batch.Add(produceTopicTask);
+                                            Interlocked.Increment(ref _inFlightMessageCount);
+                                            initialBatch = initialBatch.Add(produceTopicTask);
                                         }
                                     }
                                 }
+                            } else if (initialBatch.IsEmpty) {
+                                initialBatch = initialBatch.AddRange(await DrainProduceTasksFromClosedCollection(new CancellationToken(true)));
+                                if (initialBatch.IsEmpty) {
+                                    BrokerRouter.Log.Info(() => LogEvent.Create("Producer finished draining remaining items into batch: Nothing available"));
+                                    break;
+                                }
                             }
-                        } catch (OperationCanceledException ex) {
-                            BrokerRouter.Log.Debug(() => LogEvent.Create(ex));
+                        //} catch (InvalidOperationException) {
+                            // Happends when Stop or Dispose has been called (and _produceMessageQueue is not accepting any messages, and is empty)
+                        } catch (OperationCanceledException) {
+                            // cancellation token fired while attempting to get tasks, expected behavior
                         }
+                        BrokerRouter.Log.Debug(() => LogEvent.Create($"Producer finished initial compile of batch({initialBatch.Count}): IsStopped {_stopToken.Token.IsCancellationRequested}"));
 
-                        // in case the collection has been closed ...
-                        batch = batch.AddRange(_produceMessageQueue.GetConsumingEnumerable(new CancellationToken(true)));
-
+                        batch = initialBatch.AddRange(await DrainProduceTasksFromClosedCollection(new CancellationToken(true)));
                         if (!batch.IsEmpty) {
                             foreach (var codec in new[] {MessageCodec.CodecNone, MessageCodec.CodecGzip}) {
                                 await ProduceAndSendBatchAsync(batch, codec).ConfigureAwait(false);
                             }
                         }
                     } catch (Exception ex) {
+                        BrokerRouter.Log.Debug(() => LogEvent.Create(ex));
                         batch.ForEach(x => x.Tcs.TrySetException(ex));
+                    } finally {
+                        if (!batch.IsEmpty) {
+                            Interlocked.Add(ref _inFlightMessageCount, -batch.Count);
+                        }
                     }
                 }
             } catch(Exception ex) { 
@@ -134,6 +152,32 @@ namespace KafkaClient
             } finally {
                 BrokerRouter.Log.Info(() => LogEvent.Create("Producer sending task ending"));
             }
+        }
+
+        private async Task<IEnumerable<ProduceTopicTask>> DrainProduceTasksFromClosedCollection(CancellationToken cancellationToken)
+        {
+            var remainingTasks = ImmutableList<ProduceTopicTask>.Empty;
+            try {
+                // in case the collection has been closed and is not empty
+                AsyncCollection<ProduceTopicTask>.TakeResult result;
+                do {
+                    result = await _produceMessageQueue.TryTakeAsync(cancellationToken);
+                    if (result.Success) {
+                        remainingTasks = remainingTasks.Add(result.Item);
+                    }
+                } while (result.Success);
+            } catch (OperationCanceledException) {
+                // ignore issue thrown for completed and disposed collection
+            } catch (InvalidOperationException) {
+                // ignore issue thrown for completed and disposed collection
+            } finally {
+                if (!remainingTasks.IsEmpty) {
+                    Interlocked.Add(ref _bufferedMessageCount, -remainingTasks.Count);
+                    Interlocked.Add(ref _inFlightMessageCount, remainingTasks.Count);
+                    BrokerRouter.Log.Debug(() => LogEvent.Create($"Producer finished draining remaining items into batch({remainingTasks.Count})"));
+                }
+            }
+            return remainingTasks;
         }
 
         private async Task ProduceAndSendBatchAsync(IEnumerable<ProduceTopicTask> batch, MessageCodec codec)
@@ -150,48 +194,45 @@ namespace KafkaClient
                 await ProduceAndSendBatchAsync(filteredBatch, codec, _stopToken.Token).ConfigureAwait(false);
             }
         }
+
         private async Task ProduceAndSendBatchAsync(IReadOnlyCollection<ProduceTopicTask> produceTasks, MessageCodec codec, CancellationToken cancellationToken)
         {
-            Interlocked.Add(ref _inFlightMessageCount, produceTasks.Count);
-            try {
-                await BrokerRouter.GetTopicMetadataAsync(produceTasks.Select(m => m.TopicName), cancellationToken).ConfigureAwait(false);
+            await BrokerRouter.GetTopicMetadataAsync(produceTasks.Select(m => m.TopicName), cancellationToken).ConfigureAwait(false);
 
-                // we must send a different produce request for each ack level and timeout combination.
-                // we must also send requests to the correct broker / endpoint
-                var endpointGroups = produceTasks.Select(
-                    ptt => new {
-                        ProduceTask = ptt,
-                        Route = ptt.Partition.HasValue
-                            ? BrokerRouter.GetBrokerRoute(ptt.TopicName, ptt.Partition.Value)
-                            : BrokerRouter.GetBrokerRoute(ptt.TopicName, ptt.Message.Key)
-                    })
-                    .GroupBy(_ => new {_.ProduceTask.Acks, _.ProduceTask.AckTimeout, _.Route.Connection.Endpoint});
+            // we must send a different produce request for each ack level and timeout combination.
+            // we must also send requests to the correct broker / endpoint
+            var endpointGroups = produceTasks.Select(
+                ptt => new {
+                    ProduceTask = ptt,
+                    Route = ptt.Partition.HasValue
+                        ? BrokerRouter.GetBrokerRoute(ptt.TopicName, ptt.Partition.Value)
+                        : BrokerRouter.GetBrokerRoute(ptt.TopicName, ptt.Message.Key)
+                })
+                .GroupBy(_ => new {_.ProduceTask.Acks, _.ProduceTask.AckTimeout, _.Route.Connection.Endpoint});
 
-                var sendBatches = new List<ProduceTaskBatch>();
-                foreach (var endpointGroup in endpointGroups) {
-                    var produceTasksByTopicPayload = endpointGroup
-                        .GroupBy(_ => new Topic(_.Route.TopicName, _.Route.PartitionId))
-                        .ToImmutableDictionary(g => g.Key, g => g.Select(_ => _.ProduceTask).ToImmutableList());
-                    var payloads = produceTasksByTopicPayload.Select(p => new Payload(p.Key.TopicName, p.Key.PartitionId, p.Value.Select(_ => _.Message), codec));
-                    var request = new ProduceRequest(payloads, endpointGroup.Key.AckTimeout, endpointGroup.Key.Acks);
+            var sendBatches = new List<ProduceTaskBatch>();
+            foreach (var endpointGroup in endpointGroups) {
+                var produceTasksByTopicPayload = endpointGroup
+                    .GroupBy(_ => new Topic(_.Route.TopicName, _.Route.PartitionId))
+                    .ToImmutableDictionary(g => g.Key, g => g.Select(_ => _.ProduceTask).ToImmutableList());
+                var payloads = produceTasksByTopicPayload.Select(p => new Payload(p.Key.TopicName, p.Key.PartitionId, p.Value.Select(_ => _.Message), codec));
+                var request = new ProduceRequest(payloads, endpointGroup.Key.AckTimeout, endpointGroup.Key.Acks);
+                BrokerRouter.Log.Debug(() => LogEvent.Create($"Produce request with topics{request.Payloads.Aggregate("", (buffer, p) => $"{buffer} {p}")}"));
 
-                    var connection = endpointGroup.Select(_ => _.Route).First().Connection; // they'll all be the same since they're grouped by this
-                    await _produceRequestSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-                    var sendGroupTask = connection.SendAsync(request, cancellationToken);
-                    // ReSharper disable once UnusedVariable
-                    var continuation = sendGroupTask.ContinueWith(t => _produceRequestSemaphore.Release(), CancellationToken.None);
-                    sendBatches.Add(new ProduceTaskBatch(connection.Endpoint, endpointGroup.Key.Acks, sendGroupTask, produceTasksByTopicPayload));
-                }
-
-                try {
-                    await Task.WhenAll(sendBatches.Select(batch => batch.ReceiveTask)).ConfigureAwait(false);
-                } catch (Exception ex) {
-                    BrokerRouter.Log.Error(LogEvent.Create(ex));
-                }
-                await SetResult(sendBatches).ConfigureAwait(false);
-            } finally {
-                Interlocked.Add(ref _inFlightMessageCount, -produceTasks.Count);
+                var connection = endpointGroup.Select(_ => _.Route).First().Connection; // they'll all be the same since they're grouped by this
+                await _produceRequestSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+                var sendGroupTask = connection.SendAsync(request, cancellationToken);
+                // ReSharper disable once UnusedVariable
+                var continuation = sendGroupTask.ContinueWith(t => _produceRequestSemaphore.Release(), CancellationToken.None);
+                sendBatches.Add(new ProduceTaskBatch(connection.Endpoint, endpointGroup.Key.Acks, sendGroupTask, produceTasksByTopicPayload));
             }
+
+            try {
+                await Task.WhenAll(sendBatches.Select(batch => batch.ReceiveTask)).ConfigureAwait(false);
+            } catch (Exception ex) {
+                BrokerRouter.Log.Error(LogEvent.Create(ex));
+            }
+            await SetResult(sendBatches).ConfigureAwait(false);
         }
 
         private async Task SetResult(IEnumerable<ProduceTaskBatch> batches)
@@ -199,18 +240,21 @@ namespace KafkaClient
             foreach (var batch in batches) {
                 try {
                     var batchResult = await batch.ReceiveTask.ConfigureAwait(false); // await triggers exceptions correctly
+                    var resultTopics = batchResult.Topics.ToImmutableDictionary(t => new Topic(t.TopicName, t.PartitionId));
+                    BrokerRouter.Log.Debug(() => LogEvent.Create($"Produce response with topics{resultTopics.Keys.Aggregate("", (buffer, p) => $"{buffer} {p}")}"));
 
-                    foreach (var topic in batch.TasksByTopicPayload.Keys.Except(batchResult.Topics)) {
-                        BrokerRouter.Log.Warn(() => LogEvent.Create($"produce batch on {batch.Endpoint} included topic{topic.TopicName}/partition{topic.PartitionId} but had no corresponding response"));
+                    foreach (var topic in batch.TasksByTopicPayload.Keys.Except(resultTopics.Keys)) {
+                        BrokerRouter.Log.Warn(() => LogEvent.Create($"No response included for produce batch topic/{topic.TopicName}/partition/{topic.PartitionId} on {batch.Endpoint}"));
                         foreach (var task in batch.TasksByTopicPayload[topic]) {
                             task.Tcs.SetResult(null);
                         }
                     }
 
-                    foreach (var topic in batchResult.Topics) {
+                    foreach (var pair in resultTopics) {
+                        var topic = pair.Value;
                         ImmutableList<ProduceTopicTask> tasks;
-                        if (!batch.TasksByTopicPayload.TryGetValue(topic, out tasks)) {
-                            BrokerRouter.Log.Error(LogEvent.Create($"produce batch on {batch.Endpoint} got response for topic{topic.TopicName}/partition{topic.PartitionId} but had no corresponding request"));
+                        if (!batch.TasksByTopicPayload.TryGetValue(pair.Key, out tasks)) {
+                            BrokerRouter.Log.Error(LogEvent.Create($"Extra response to produce batch topic/{topic.TopicName}/partition/{topic.PartitionId} on {batch.Endpoint}"));
                             continue;
                         }
 
@@ -233,8 +277,8 @@ namespace KafkaClient
 
         public void Dispose()
         {
-            // block incoming data
-            _produceMessageQueue.CompleteAdding();
+            BrokerRouter.Log.Debug(() => LogEvent.Create("Producer disposing"));
+            _produceMessageQueue.CompleteAdding(); // block incoming data
             _stopToken.Cancel();
 
             // cleanup

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Threading;
 
 namespace KafkaClient.Common
@@ -11,9 +12,9 @@ namespace KafkaClient.Common
         public MergedCancellation(params CancellationToken[] tokens)
         {
             _source = new CancellationTokenSource();
-            _registrations = new CancellationTokenRegistration[tokens.Length];
-            for (var i = 0; i < tokens.Length; i++) {
-                _registrations[i] = tokens[i].Register(() => _source.Cancel());
+            _registrations = tokens.Select(t => t.Register(_source.Cancel)).ToArray();
+            if (tokens.Any(t => t.IsCancellationRequested)) {
+                _source.Cancel();
             }
         }
 

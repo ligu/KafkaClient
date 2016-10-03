@@ -19,7 +19,7 @@ namespace KafkaClient.Tests.Unit
         #region SendMessagesAsync Tests...
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
-        public void ProducerShouldGroupMessagesByBroker()
+        public async Task ProducerShouldGroupMessagesByBroker()
         {
             var routerProxy = new FakeBrokerRouter();
             var router = routerProxy.Create();
@@ -30,7 +30,7 @@ namespace KafkaClient.Tests.Unit
                     new Message("1"), new Message("2")
                 };
 
-                var response = producer.SendMessagesAsync(messages, "UnitTest", CancellationToken.None).Result;
+                var response = await producer.SendMessagesAsync(messages, "UnitTest", CancellationToken.None);
 
                 Assert.That(response.Length, Is.EqualTo(2));
                 Assert.That(routerProxy.BrokerConn0.ProduceRequestCallCount, Is.EqualTo(1));
@@ -58,7 +58,7 @@ namespace KafkaClient.Tests.Unit
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
-        public async Task ProducerShouldReportCorrectAmountOfAsyncRequests()
+        public async Task ProducerShouldReportCorrectNumberOfAsyncRequests()
         {
             // var log = new ConsoleLog(); for (int i = 0; i < 100; i++) {
             var semaphore = new SemaphoreSlim(0);
@@ -255,19 +255,18 @@ namespace KafkaClient.Tests.Unit
 
             using (producer)
             {
-                int numberOfTime = 1000;
+                var count = 1000;
 
-                var senderTask = Task.Run(() =>
-                {
-                    for (int i = 0; i < numberOfTime; i++)
-                    {
+                var senderTask = Task.Run(() => {
+                    for (var i = 0; i < count; i++) {
                         producer.SendMessageAsync(new Message(i.ToString()), FakeBrokerRouter.TestTopic, CancellationToken.None);
                     }
                 });
                 await senderTask;
+                _log.Info(() => LogEvent.Create("Finished test send task"));
 
                 Assert.That(senderTask.IsCompleted);
-                Assert.That(producer.BufferedMessageCount, Is.EqualTo(1000));
+                Assert.That(producer.InFlightMessageCount + producer.BufferedMessageCount, Is.EqualTo(1000));
             }
         }
 
@@ -287,7 +286,7 @@ namespace KafkaClient.Tests.Unit
                 var senderTask = Task.Factory.StartNew(async () => {
                     for (int i = 0; i < 3; i++) {
                         await producer.SendMessageAsync(new Message(i.ToString()), FakeBrokerRouter.TestTopic, CancellationToken.None);
-                        Console.WriteLine("Await: {0}", producer.BufferedMessageCount);
+                        Console.WriteLine("BufferedMessageCount: {0}", producer.BufferedMessageCount);
                         Interlocked.Increment(ref count);
                     }
                 });
@@ -351,7 +350,7 @@ namespace KafkaClient.Tests.Unit
         public async Task SendingMessageWhenStoppedShouldThrow()
         {
             var router = Substitute.For<IBrokerRouter>();
-            using (var producer = new Producer(router))
+            using (var producer = new Producer(router, new ProducerConfiguration(stopTimeout: TimeSpan.FromMilliseconds(200))))
             {
                 await producer.StopAsync(CancellationToken.None);
                 await producer.SendMessageAsync(new Message("1"), "Test", CancellationToken.None);

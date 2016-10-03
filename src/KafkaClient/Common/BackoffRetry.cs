@@ -4,12 +4,14 @@ namespace KafkaClient.Common
 {
     public class BackoffRetry : Retry
     {
-        private readonly TimeSpan? _delay;
+        private readonly TimeSpan _delay;
+        private readonly bool _isLinear;
 
-        public BackoffRetry(TimeSpan timeout, TimeSpan? delay, int? maxAttempts = null)
+        public BackoffRetry(TimeSpan timeout, TimeSpan delay, int? maxAttempts = null, bool isLinear = false)
             : base (timeout, maxAttempts)
         {
             _delay = delay;
+            _isLinear = isLinear;
         }
 
         protected override TimeSpan? GetDelay(int attempt, TimeSpan timeTaken)
@@ -17,13 +19,13 @@ namespace KafkaClient.Common
             if (timeTaken > Timeout) return null;
 
             double delayMilliseconds = 0;
-            if (_delay.HasValue) {
+            if (_isLinear) {
                 // multiplied backoff
-                delayMilliseconds = _delay.Value.TotalMilliseconds*attempt;
+                delayMilliseconds = _delay.TotalMilliseconds*attempt;
             } else if (attempt > 0) {
                 // exponential backoff
                 // from: http://alexandrebrisebois.wordpress.com/2013/02/19/calculating-an-exponential-back-off-delay-based-on-failed-attempts/
-                delayMilliseconds = 1d / 2d * (Math.Pow(2d, attempt) - 1d);
+                delayMilliseconds = _delay.TotalMilliseconds / 2d * (Math.Pow(2d, attempt) - 1d);
             }
 
             return TimeSpan.FromMilliseconds(Math.Min(delayMilliseconds, Timeout.TotalMilliseconds - timeTaken.TotalMilliseconds));

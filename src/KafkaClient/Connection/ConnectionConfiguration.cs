@@ -124,7 +124,7 @@ namespace KafkaClient.Connection
             /// <summary>
             /// The default max retries for <see cref="ConnectionConfiguration.ConnectionRetry"/>
             /// </summary>
-            public const int MaxConnectionAttempts = 5;
+            public const int MaxConnectionAttempts = 6;
 
             /// <summary>
             /// The default <see cref="ConnectionConfiguration.ConnectionRetry"/> backoff delay

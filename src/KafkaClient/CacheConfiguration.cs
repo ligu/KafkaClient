@@ -44,7 +44,8 @@ namespace KafkaClient
                 return new BackoffRetry(
                     timeout ?? TimeSpan.FromSeconds(RefreshTimeoutSeconds), 
                     TimeSpan.FromMilliseconds(RefreshDelayMilliseconds), 
-                    MaxRefreshAttempts);
+                    MaxRefreshAttempts,
+                    true);
             }
         }
     }

@@ -273,7 +273,7 @@ namespace KafkaClient
         {
             if (Interlocked.Increment(ref _disposeCount) != 1) return;
 
-            _options.Log.Debug(() => LogEvent.Create("Consumer: Disposing..."));
+            _options.Log?.Debug(() => LogEvent.Create("Consumer: Disposing..."));
             _disposeToken.Cancel();
             _disposeTask.SetResult(1);
             //wait for all threads to unwind

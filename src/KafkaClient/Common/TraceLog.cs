@@ -31,10 +31,14 @@ namespace KafkaClient.Common
                 var logEvent = producer();
                 var timestamp = DateTime.Now.ToString("hh:mm:ss-ffffff");
                 var threadId = System.Threading.Thread.CurrentThread.ManagedThreadId;
-                var message = $"{timestamp} [{level}] thread={threadId} Message=\"{logEvent.Message}\" in {logEvent.SourceFile}:line {logEvent.SourceLine.GetValueOrDefault()} ";
+                var message = $"{timestamp} [{level,-5}]";
+                if (!string.IsNullOrEmpty(logEvent.Message)) {
+                    message += $" Message=\"{logEvent.Message}\"";
+                }
                 if (logEvent.Exception != null) {
                     message += $"\r\nException=\"{logEvent.Exception}\"";
                 }
+                message += $" thread={threadId} in {logEvent.SourceFile}:{logEvent.SourceLine.GetValueOrDefault()}";
                 Trace.WriteLine(message);
             }
         }
