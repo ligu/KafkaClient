@@ -83,10 +83,10 @@ namespace KafkaClient.Tests.Fakes
         private async Task StartHandlingClientRequestAsync()
         {
             while (_disposeToken.IsCancellationRequested == false) {
-                _log.InfoFormat("FakeTcpServer: Accepting clients.");
+                _log.Info(() => LogEvent.Create("FakeTcpServer: Accepting clients."));
                 _client = await _listener.AcceptTcpClientAsync();
 
-                _log.InfoFormat("FakeTcpServer: Connected client");
+                _log.Info(() => LogEvent.Create("FakeTcpServer: Connected client"));
                 OnClientConnected?.Invoke();
                 _semaphoreSlim.Release();
 

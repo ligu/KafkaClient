@@ -190,10 +190,9 @@ namespace KafkaClient
                         }
                         catch (BufferUnderRunException ex)
                         {
-                            bufferSizeHighWatermark = (int)(ex.RequiredBufferSize * _options.FetchBufferMultiplier) +
-                                                      ex.MessageHeaderSize;
-                            _options.Log.InfoFormat("Buffer underrun: Increasing buffer size to {0}",
-                                bufferSizeHighWatermark);
+                            bufferSizeHighWatermark = (int)(ex.RequiredBufferSize * _options.FetchBufferMultiplier) + ex.MessageHeaderSize;
+                            // ReSharper disable once AccessToModifiedClosure
+                            _options.Log.Info(() => LogEvent.Create($"Buffer underrun: Increasing buffer size to {bufferSizeHighWatermark}"));
                         }
                         catch (FetchOutOfRangeException ex) when (ex.ErrorCode == ErrorResponseCode.OffsetOutOfRange)
                         {

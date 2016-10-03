@@ -21,22 +21,6 @@ namespace KafkaClient.Common
         }
 
         /// <summary>
-        /// Record info information using the String.Format syntax.
-        /// </summary>
-        public static void InfoFormat(this ILog log, string format, params object[] args)
-        {
-            log.Write(LogLevel.Info, () => LogEvent.Create(string.Format(format, args)));
-        }
-
-        /// <summary>
-        /// Record info information using the String.Format syntax.
-        /// </summary>
-        public static void InfoFormat(this ILog log, Exception exception, string format = null, params object[] args)
-        {
-            log.Write(LogLevel.Info, () => LogEvent.Create(exception, string.Format(format, args)));
-        }
-
-        /// <summary>
         /// Record debug information to the log.
         /// </summary>
         public static void Debug(this ILog log, Func<LogEvent> producer)

@@ -143,7 +143,7 @@ namespace KafkaClient.Connection
 
                             CorrelatePayloadToRequest(message);
                             if (IsInErrorState) {
-                                _log.InfoFormat("Polling read thread has recovered on {0}", _socket.Endpoint);
+                                _log.Info(() => LogEvent.Create($"Polling read thread has recovered on {_socket.Endpoint}"));
                             }
 
                             IsInErrorState = false;

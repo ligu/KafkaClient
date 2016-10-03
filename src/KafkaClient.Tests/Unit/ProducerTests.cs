@@ -96,7 +96,7 @@ namespace KafkaClient.Tests.Unit
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         public async Task SendAsyncShouldBlockWhenMaximumAsyncQueueReached()
         {
-            _log.InfoFormat("Start SendAsyncShouldBlockWhenMaximumAsyncQueueReached");
+            _log.Info(() => LogEvent.Create("Start SendAsyncShouldBlockWhenMaximumAsyncQueueReached"));
             int count = 0;
             var semaphore = new SemaphoreSlim(0);
             var routerProxy = new FakeBrokerRouter();

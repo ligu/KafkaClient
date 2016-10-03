@@ -60,7 +60,7 @@ namespace KafkaClient.Tests.Integration
                 var blockingEnumerableOfMessage = consumer.Consume();
                 foreach (var message in blockingEnumerableOfMessage)
                 {
-                    _log.InfoFormat("Offset{0}", message.Offset);
+                    _log.Info(() => LogEvent.Create($"Offset{message.Offset}"));
                 }
             }
         }
@@ -79,7 +79,7 @@ namespace KafkaClient.Tests.Integration
                     }
                     catch (Exception ex)
                     {
-                        _log.InfoFormat("can't send:\n" + ex);
+                        _log.Info(() => LogEvent.Create(ex, "can't send:"));
                     }
                 }
             });
@@ -97,7 +97,7 @@ namespace KafkaClient.Tests.Integration
                     {
                         foreach (var message in messages)
                         {
-                            _log.InfoFormat("Offset{0}  ", message.Offset);
+                            _log.Info(() => LogEvent.Create($"Offset{message.Offset}"));
                         }
                         offset = messages.Max(x => x.Offset) + 1;
                     }
@@ -108,7 +108,7 @@ namespace KafkaClient.Tests.Integration
                 }
                 catch (Exception ex)
                 {
-                    _log.InfoFormat("can't read:\n" + ex);
+                    _log.Info(() => LogEvent.Create(ex, "can't read:"));
                 }
             }
         }

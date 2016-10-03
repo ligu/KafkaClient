@@ -88,7 +88,7 @@ namespace KafkaClient.Connection
                     return selectedAddress;
                 }
             } catch (Exception ex) {
-                log?.InfoFormat(ex);
+                log?.Info(() => LogEvent.Create(ex));
             }
 
             throw new ConnectionException($"Could not resolve the following hostname: {hostname}");

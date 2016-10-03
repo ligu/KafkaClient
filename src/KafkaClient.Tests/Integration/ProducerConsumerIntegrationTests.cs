@@ -124,7 +124,7 @@ namespace KafkaClient.Tests.Integration
                     var results = consumer.Consume().Take(20).ToList();
 
                     //ensure the produced messages arrived
-                    IntegrationConfig.NoDebugLog.InfoFormat("Message order:  {0}", string.Join(", ", results.Select(x => x.Value.ToUtf8String()).ToList()));
+                    IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create($"Message order:  {string.Join(", ", results.Select(x => x.Value.ToUtf8String()).ToList())}"));
 
                     Assert.That(results.Count, Is.EqualTo(20));
                     Assert.That(results.Select(x => x.Value.ToUtf8String()).ToList(), Is.EqualTo(expected), "Expected the message list in the correct order.");
@@ -141,14 +141,14 @@ namespace KafkaClient.Tests.Integration
         {
             int partition = 0;
             int numberOfMessage = 200;
-            IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("create BrokerRouter"));
+            IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(IntegrationConfig.Highlight("create BrokerRouter")));
             var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri));
             int causesRaceConditionOldVersion = 2;
             var producer = new Producer(router, new ProducerConfiguration(causesRaceConditionOldVersion, batchMaxDelay: TimeSpan.Zero)); // this is slow on purpose
             //this is not slow  var producer = new Producer(router);
-            IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("create producer"));
+            IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(IntegrationConfig.Highlight("create producer")));
             var offsets = await producer.BrokerRouter.GetTopicOffsetAsync(IntegrationConfig.IntegrationTopic, CancellationToken.None);
-            IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("request Offset"));
+            IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(IntegrationConfig.Highlight("request Offset")));
             List<Task> sendList = new List<Task>(numberOfMessage);
             for (int i = 0; i < numberOfMessage; i++)
             {
@@ -157,21 +157,21 @@ namespace KafkaClient.Tests.Integration
             }
 
             await Task.WhenAll(sendList.ToArray());
-            IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("done send"));
+            IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(IntegrationConfig.Highlight("done send")));
 
-            IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("create Consumer"));
+            IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(IntegrationConfig.Highlight("create Consumer")));
             ConsumerOptions consumerOptions = new ConsumerOptions(IntegrationConfig.IntegrationTopic, router);
             consumerOptions.PartitionWhitelist = new List<int> { partition };
 
             Consumer consumer = new Consumer(consumerOptions, offsets.Select(x => new OffsetPosition(x.PartitionId, x.Offsets.Max())).ToArray());
 
             int expected = 0;
-            IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("start Consume"));
+            IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(IntegrationConfig.Highlight("start Consume")));
             await Task.Run((() =>
             {
                 var results = consumer.Consume().Take(numberOfMessage).ToList();
                 Assert.IsTrue(results.Count() == numberOfMessage, "not Consume all ,messages");
-                IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("done Consume"));
+                IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(IntegrationConfig.Highlight("done Consume")));
 
                 foreach (Message message in results)
                 {
@@ -180,11 +180,11 @@ namespace KafkaClient.Tests.Integration
                     expected++;
                 }
             }));
-            IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("start producer Dispose"));
+            IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(IntegrationConfig.Highlight("start producer Dispose")));
             producer.Dispose();
-            IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("start consumer Dispose"));
+            IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(IntegrationConfig.Highlight("start consumer Dispose")));
             consumer.Dispose();
-            IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("start router Dispose"));
+            IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(IntegrationConfig.Highlight("start router Dispose")));
             router.Dispose();
         }
 
@@ -200,14 +200,14 @@ namespace KafkaClient.Tests.Integration
             Stopwatch stopwatch = new Stopwatch();
             stopwatch.Start();
 
-            IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("create BrokerRouter ,time Milliseconds:{0}", stopwatch.ElapsedMilliseconds));
+            IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(IntegrationConfig.Highlight("create BrokerRouter ,time Milliseconds:{0}", stopwatch.ElapsedMilliseconds)));
             var router = new BrokerRouter(IntegrationConfig.IntegrationUri, log: IntegrationConfig.NoDebugLog);
             stopwatch.Restart();
             var producer = new Producer(router, new ProducerConfiguration(batchSize: numberOfMessage / 10, batchMaxDelay: TimeSpan.FromMilliseconds(10)));
-            IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("create producer ,time Milliseconds:{0}", stopwatch.ElapsedMilliseconds));
+            IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(IntegrationConfig.Highlight("create producer ,time Milliseconds:{0}", stopwatch.ElapsedMilliseconds)));
             stopwatch.Restart();
             var offsets = await producer.BrokerRouter.GetTopicOffsetAsync(IntegrationConfig.IntegrationTopic, CancellationToken.None);
-            IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("request Offset,time Milliseconds:{0}", stopwatch.ElapsedMilliseconds));
+            IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(IntegrationConfig.Highlight("request Offset,time Milliseconds:{0}", stopwatch.ElapsedMilliseconds)));
             stopwatch.Restart();
             List<Task> sendList = new List<Task>(numberOfMessage);
             for (int i = 0; i < numberOfMessage; i++)
@@ -220,7 +220,7 @@ namespace KafkaClient.Tests.Integration
             await Task.WhenAny(doneSend, Task.Delay(maxTimeToRun));
             Assert.IsTrue(doneSend.IsCompleted, "not done to send in time");
 
-            IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("done send ,time Milliseconds:{0}", stopwatch.ElapsedMilliseconds));
+            IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(IntegrationConfig.Highlight("done send ,time Milliseconds:{0}", stopwatch.ElapsedMilliseconds)));
             stopwatch.Restart();
 
             ConsumerOptions consumerOptions = new ConsumerOptions(IntegrationConfig.IntegrationTopic, router);
@@ -229,14 +229,14 @@ namespace KafkaClient.Tests.Integration
             Consumer consumer = new Consumer(consumerOptions, offsets.Select(x => new OffsetPosition(x.PartitionId, x.Offsets.Max())).ToArray());
 
             int expected = 0;
-            IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("start Consume ,time Milliseconds:{0}", stopwatch.ElapsedMilliseconds));
+            IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(IntegrationConfig.Highlight("start Consume ,time Milliseconds:{0}", stopwatch.ElapsedMilliseconds)));
 
             IEnumerable<Message> messages = null;
             var doneConsume = Task.Run((() =>
              {
                  stopwatch.Restart();
                  messages = consumer.Consume().Take(numberOfMessage).ToArray();
-                 IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("done Consume ,time Milliseconds:{0}", stopwatch.ElapsedMilliseconds));
+                 IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(IntegrationConfig.Highlight("done Consume ,time Milliseconds:{0}", stopwatch.ElapsedMilliseconds)));
                  stopwatch.Restart();
              }));
 
@@ -253,15 +253,15 @@ namespace KafkaClient.Tests.Integration
             }
             stopwatch.Restart();
 
-            IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("start producer Dispose ,time Milliseconds:{0}", stopwatch.ElapsedMilliseconds));
+            IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(IntegrationConfig.Highlight("start producer Dispose ,time Milliseconds:{0}", stopwatch.ElapsedMilliseconds)));
             producer.Dispose();
 
-            IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("start consumer Dispose ,time Milliseconds:{0}", stopwatch.ElapsedMilliseconds));
+            IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(IntegrationConfig.Highlight("start consumer Dispose ,time Milliseconds:{0}", stopwatch.ElapsedMilliseconds)));
             consumer.Dispose();
 
             stopwatch.Restart();
 
-            IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("start router Dispose,time Milliseconds:{0}", stopwatch.ElapsedMilliseconds));
+            IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(IntegrationConfig.Highlight("start router Dispose,time Milliseconds:{0}", stopwatch.ElapsedMilliseconds)));
             router.Dispose();
         }
 
@@ -287,7 +287,7 @@ namespace KafkaClient.Tests.Integration
                     var sentMessages = consumer.Consume().Take(20).ToList();
 
                     //ensure the produced messages arrived
-                    IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("Message order:  {0}", string.Join(", ", sentMessages.Select(x => x.Value.ToUtf8String()).ToList())));
+                    IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(IntegrationConfig.Highlight("Message order:  {0}", string.Join(", ", sentMessages.Select(x => x.Value.ToUtf8String()).ToList()))));
 
                     Assert.That(sentMessages.Count, Is.EqualTo(20));
                     Assert.That(sentMessages.Select(x => x.Value.ToUtf8String()).ToList(), Is.EqualTo(expected));
@@ -299,7 +299,7 @@ namespace KafkaClient.Tests.Integration
                     var resetPositionMessages = consumer.Consume().Take(20).ToList();
 
                     //ensure all produced messages arrive again
-                    IntegrationConfig.NoDebugLog.InfoFormat(IntegrationConfig.Highlight("Message order:  {0}", string.Join(", ", resetPositionMessages.Select(x => x.Value).ToList())));
+                    IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(IntegrationConfig.Highlight("Message order:  {0}", string.Join(", ", resetPositionMessages.Select(x => x.Value).ToList()))));
 
                     Assert.That(resetPositionMessages.Count, Is.EqualTo(20));
                     Assert.That(resetPositionMessages.Select(x => x.Value.ToUtf8String()).ToList(), Is.EqualTo(expected));
