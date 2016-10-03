@@ -88,8 +88,10 @@ namespace KafkaClient
                     if (errors.Count == 0) return new RetryAttempt<T>(response);
 
                     metadataInvalid = errors.All(IsRecoverableByMetadaRefresh);
-                    brokerRouter.Log.WarnFormat("Error response in Router SendAsync (attempt {0}): {1}", 
-                        attempt + 1, errors.Aggregate($"{route} -", (buffer, e) => $"{buffer} {e}"));
+                    brokerRouter.Log.Warn(() => {
+                        var routes = errors.Aggregate($"{route} -", (buffer, e) => $"{buffer} {e}");
+                        return LogEvent.Create($"Error response in Router SendAsync (attempt {attempt + 1}): {routes}");
+                    });
 
                     if (!metadataInvalid.Value) throw request.ExtractExceptions(response, endpoint);
                     return RetryAttempt<T>.Failed;
@@ -154,17 +156,17 @@ namespace KafkaClient
 
                     if (results.Count == 0) return new RetryAttempt<MetadataResponse>(response);
                     foreach (var result in results) {
-                        brokerRouter.Log.WarnFormat(result.Message);
+                        brokerRouter.Log.Warn(() => LogEvent.Create(result.Message));
                     }
 
                     return RetryAttempt<MetadataResponse>.Failed;
                 },
-                (attempt, retry) => brokerRouter.Log.WarnFormat("Failed metadata request on attempt {0}: Will retry in {1}", attempt, retry),
+                (attempt, retry) => brokerRouter.Log.Warn(() => LogEvent.Create($"Failed metadata request on attempt {attempt}: Will retry in {retry}")),
                 null, // return the failed response above, resulting in a null
                 (ex, attempt, retry) => {
                     throw ex.PrepareForRethrow();
                 },
-                (ex, attempt) => brokerRouter.Log.WarnFormat(ex, "Failed metadata request on attempt {0}", attempt),
+                (ex, attempt) => brokerRouter.Log.Warn(() => LogEvent.Create(ex, $"Failed metadata request on attempt {attempt}")),
                 cancellationToken);
         }
 
@@ -177,7 +179,7 @@ namespace KafkaClient
                     return await connection.SendAsync(request, cancellationToken).ConfigureAwait(false);
                 } catch (Exception ex) {
                     servers.Add(server);
-                    brokerRouter.Log.WarnFormat(ex, "Failed to contact {0}: Trying next server", server);
+                    brokerRouter.Log.Warn(() => LogEvent.Create(ex, $"Failed to contact {server}: Trying next server"));
                 }
             }
 

@@ -13,5 +13,10 @@ namespace KafkaClient.Tests.Helpers
         {
             LogEvents.Add(new Tuple<LogLevel, LogEvent>(level, producer()));
         }
+
+        // for mocking interception purposes
+        public virtual void Log(LogLevel level, LogEvent logEvent)
+        {
+        }
     }
 }

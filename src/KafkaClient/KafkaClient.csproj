@@ -63,6 +63,8 @@
     <Compile Include="Common\BigEndianBinaryWriter.cs" />
     <Compile Include="Common\Disposable.cs" />
     <Compile Include="Common\IScheduledTimer.cs" />
+    <Compile Include="Common\LogEvent.cs" />
+    <Compile Include="Common\LogExtensions.cs" />
     <Compile Include="Common\MergedCancellation.cs" />
     <Compile Include="Common\MessagePacker.cs" />
     <Compile Include="Common\LilliputianExtensions.cs" />

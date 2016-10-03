@@ -132,12 +132,12 @@ namespace KafkaClient.Tests.Unit
             const int correlationId = 99;
             var receivedData = false;
 
-            var mockLog = _kernel.GetMock<ILog>();
+            var mockLog = new MemoryLog();
 
             var config = new ConnectionConfiguration(onRead: (endpoint, buffer, elapsed) => receivedData = true);
             using (var server = new FakeTcpServer(_log, 8999))
-            using (var socket = new TcpSocket(_endpoint, config, log: mockLog.Object))
-            using (var conn = new Connection.Connection(socket, config, log: mockLog.Object))
+            using (var socket = new TcpSocket(_endpoint, config, log: mockLog))
+            using (var conn = new Connection.Connection(socket, config, log: mockLog))
             {
                 //send correlation message
                 server.SendDataAsync(CreateCorrelationMessage(correlationId)).Wait(TimeSpan.FromSeconds(5));
@@ -149,8 +149,7 @@ namespace KafkaClient.Tests.Unit
                 await TaskTest.WaitFor(() => receivedData);
 
                 //should log a warning and keep going
-                mockLog.Verify(x => x.WarnFormat(It.Is<string>(f => f == "Unexpected Response from {0} with CorrelationId {1} (not in request queue)."), 
-                    It.Is<object[]>(o => o != null && o.Length == 2 && (int)o[1] == correlationId)));
+                Assert.That(mockLog.LogEvents.Any(e => e.Item1 == LogLevel.Warn && e.Item2.Message == $"Unexpected Response from {_endpoint} with CorrelationId {correlationId} (not in request queue)."));
             }
         }
 

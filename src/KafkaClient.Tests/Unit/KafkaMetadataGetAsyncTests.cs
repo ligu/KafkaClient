@@ -18,13 +18,13 @@ namespace KafkaClient.Tests.Unit
     [TestFixture]
     public class KafkaMetadataGetAsyncTests
     {
-        private ILog _log;
+        private MemoryLog _log;
         private IBrokerRouter _brokerRouter;
 
         [SetUp]
         public void Setup()
         {
-            _log = Substitute.For<ILog>();
+            _log = Substitute.ForPartsOf<MemoryLog>();
             _brokerRouter = Substitute.For<IBrokerRouter>();
             _brokerRouter.Log.ReturnsForAnyArgs(_log);
             _brokerRouter.Configuration.ReturnsForAnyArgs(new CacheConfiguration());
@@ -47,9 +47,9 @@ namespace KafkaClient.Tests.Unit
             Received.InOrder(() =>
             {
                 conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
-                _log.WarnFormat("Failed metadata request on attempt {0}: Will retry in {1}", Arg.Any<object[]>());
+                _log.Log(LogLevel.Warn, It.Is<LogEvent>(e => e.Message.StartsWith("Failed metadata request on attempt 0: Will retry in")));
                 conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
-                _log.WarnFormat("Failed metadata request on attempt {0}: Will retry in {1}", Arg.Any<object[]>());
+                _log.Log(LogLevel.Warn, It.Is<LogEvent>(e => e.Message.StartsWith("Failed metadata request on attempt 1: Will retry in")));
                 conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
             });
         }
@@ -68,7 +68,7 @@ namespace KafkaClient.Tests.Unit
             Received.InOrder(() =>
             {
                 conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
-                _log.WarnFormat("Failed metadata request on attempt {0}: Will retry in {1}", Arg.Any<object[]>());
+                _log.Log(LogLevel.Warn, It.Is<LogEvent>(e => e.Message.StartsWith("Failed metadata request on attempt 0: Will retry in")));
                 conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
             });
         }

@@ -94,7 +94,7 @@ namespace KafkaClient
 
         private async Task BatchSendAsync()
         {
-            BrokerRouter.Log.InfoFormat("Producer sending task starting");
+            BrokerRouter.Log.Info(() => LogEvent.Create("Producer sending task starting"));
             try {
                 while (true) {
                     var batch = ImmutableList<ProduceTopicTask>.Empty;
@@ -130,9 +130,9 @@ namespace KafkaClient
                     }
                 }
             } catch(Exception ex) { 
-                BrokerRouter.Log.WarnFormat(ex, "Error during producer send");
+                BrokerRouter.Log.Warn(() => LogEvent.Create(ex, "Error during producer send"));
             } finally {
-                BrokerRouter.Log.InfoFormat("Producer sending task ending");
+                BrokerRouter.Log.Info(() => LogEvent.Create("Producer sending task ending"));
             }
         }
 
@@ -201,7 +201,7 @@ namespace KafkaClient
                     var batchResult = await batch.ReceiveTask.ConfigureAwait(false); // await triggers exceptions correctly
 
                     foreach (var topic in batch.TasksByTopicPayload.Keys.Except(batchResult.Topics)) {
-                        BrokerRouter.Log.WarnFormat("produce batch on {0} included topic{1}/partition{2} but had no corresponding response", batch.Endpoint, topic.TopicName, topic.PartitionId);
+                        BrokerRouter.Log.Warn(() => LogEvent.Create($"produce batch on {batch.Endpoint} included topic{topic.TopicName}/partition{topic.PartitionId} but had no corresponding response"));
                         foreach (var task in batch.TasksByTopicPayload[topic]) {
                             task.Tcs.SetResult(null);
                         }

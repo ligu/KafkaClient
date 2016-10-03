@@ -58,7 +58,7 @@ namespace KafkaClient
                     var connection = _connectionFactory.Create(endpoint, ConnectionConfiguration, Log);
                     _allConnections = _allConnections.SetItem(endpoint, connection);
                 } catch (ConnectionException ex) {
-                    Log.WarnFormat(ex, "Ignoring uri that could not be resolved: {0}", uri);
+                    Log.Warn(() => LogEvent.Create(ex, $"Ignoring uri that could not be resolved: {uri}"));
                 }
             }
 
@@ -305,7 +305,8 @@ namespace KafkaClient
                         if (connection.Endpoint.Equals(endpoint)) {
                             // existing connection, nothing to change
                         } else {
-                            Log.WarnFormat("Broker {0} Uri changed from {1} to {2}", broker.BrokerId, connection.Endpoint, endpoint);
+                            // ReSharper disable once AccessToModifiedClosure
+                            Log.Warn(() => LogEvent.Create($"Broker {broker.BrokerId} Uri changed from {connection.Endpoint} to {endpoint}"));
                             
                             // A connection changed for a broker, so close the old connection and create a new one
                             connectionsToDispose = connectionsToDispose.Add(connection);

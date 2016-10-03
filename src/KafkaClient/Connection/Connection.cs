@@ -181,7 +181,7 @@ namespace KafkaClient.Connection
                 _log.DebugFormat("Matched Response from {0} with CorrelationId {1}", Endpoint, correlationId);
                 asyncRequest.ReceiveTask.SetResult(payload);
             } else {
-                _log.WarnFormat("Unexpected Response from {0} with CorrelationId {1} (not in request queue).", Endpoint, correlationId);
+                _log.Warn(() => LogEvent.Create($"Unexpected Response from {Endpoint} with CorrelationId {correlationId} (not in request queue)."));
             }
         }
 

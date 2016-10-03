@@ -263,10 +263,8 @@ namespace KafkaClient.Connection
         /// </summary>
         private Task<TcpClient> ReEstablishConnectionAsync()
         {
-            _log.DebugFormat("No connection to {0}: Attempting to connect...", Endpoint);
+            _log.DebugFormat($"No connection to {Endpoint}: Attempting to connect...");
 
-            const string finalMessage = "Failed connection to {0} on attempt {1}";
-            const string retryMessage = "Failed connection to {0}: Will retry in {1}";
             return _configuration.ConnectionRetry.AttemptAsync(
                 async (attempt, timer) => {
                     _configuration.OnConnecting?.Invoke(Endpoint, attempt, timer.Elapsed);
@@ -284,13 +282,13 @@ namespace KafkaClient.Connection
                     _configuration.OnConnected?.Invoke(Endpoint, attempt, timer.Elapsed);
                     return new RetryAttempt<TcpClient>(_client);
                 },
-                (attempt, retry) => _log.WarnFormat(retryMessage, Endpoint, retry),
+                (attempt, retry) => _log.Warn(() => LogEvent.Create($"Failed connection to {Endpoint}: Will retry in {retry}")),
                 attempt => {
-                    _log.WarnFormat(finalMessage, Endpoint, attempt);
+                    _log.Warn(() => LogEvent.Create($"Failed connection to {Endpoint} on attempt {attempt}"));
                     throw new ConnectionException(Endpoint);
                 },
-                (ex, attempt, retry) => _log.WarnFormat(ex, retryMessage, Endpoint, retry),
-                (ex, attempt) => _log.WarnFormat(ex, finalMessage, Endpoint, attempt),
+                (ex, attempt, retry) => _log.Warn(() => LogEvent.Create(ex, $"Failed connection to {Endpoint}: Will retry in {retry}")),
+                (ex, attempt) => _log.Warn(() => LogEvent.Create(ex, $"Failed connection to {Endpoint} on attempt {attempt}")),
                 _disposeToken.Token);
         }
 
