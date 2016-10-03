@@ -57,7 +57,7 @@ namespace KafkaClient.Tests.Fakes
                 _log.DebugFormat("FakeTcpServer: writing {0} bytes.", data.Length);
                 await _client.GetStream().WriteAsync(data, 0, data.Length).ConfigureAwait(false);
             } catch (Exception ex) {
-                _log.ErrorFormat("error:{0} stack{1}", ex.Message, ex.StackTrace);
+                _log.Error(LogEvent.Create(ex));
             } finally {
                 _semaphoreSlim.Release();
             }
@@ -107,10 +107,10 @@ namespace KafkaClient.Tests.Fakes
                         }
                     }
                 } catch (Exception ex) {
-                    _log.ErrorFormat("FakeTcpServer: Client exception...  Exception:{0}", ex.Message);
+                    _log.Error(LogEvent.Create(ex, "FakeTcpServer: Client exception..."));
                 }
 
-                _log.ErrorFormat("FakeTcpServer: Client Disconnected.");
+                _log.Error(LogEvent.Create("FakeTcpServer: Client Disconnected."));
                 await _semaphoreSlim.WaitAsync(); //remove the one client
                 OnClientDisconnected?.Invoke();
             }

@@ -160,7 +160,7 @@ namespace KafkaClient.Connection
 
                                 //TODO create an event on kafkaTcpSocket and resume only when the connection is online
                                 if (!IsInErrorState) {
-                                    _log.ErrorFormat(ex, "Polling read thread {0}", _socket.Endpoint);
+                                    _log.Error(LogEvent.Create(ex, $"Polling read thread {_socket.Endpoint}"));
                                     IsInErrorState = true;
                                 }
                             }

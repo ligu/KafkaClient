@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using KafkaClient.Common;
 using KafkaClient.Connection;
 using KafkaClient.Protocol;
 
@@ -102,7 +103,7 @@ namespace KafkaClient
             }
             catch (Exception ex)
             {
-                _options.Log.ErrorFormat(ex, "Trying to setup consumer for topic/{0}", _options.Topic);
+                _options.Log.Error(LogEvent.Create(ex, $"Trying to setup consumer for topic/{_options.Topic}"));
             }
             finally
             {
@@ -185,7 +186,7 @@ namespace KafkaClient
                         catch (ConnectionException ex)
                         {
                             needToRefreshMetadata = true;
-                            _options.Log.ErrorFormat(ex.Message);
+                            _options.Log.Error(LogEvent.Create(ex));
                         }
                         catch (BufferUnderRunException ex)
                         {
@@ -197,14 +198,14 @@ namespace KafkaClient
                         catch (FetchOutOfRangeException ex) when (ex.ErrorCode == ErrorResponseCode.OffsetOutOfRange)
                         {
                             //TODO this turned out really ugly.  Need to fix this section.
-                            _options.Log.ErrorFormat(ex.Message);
+                            _options.Log.Error(LogEvent.Create(ex));
                             await FixOffsetOutOfRangeExceptionAsync(ex.Fetch);
                         }
                         catch (CachedMetadataException ex)
                         {
                             // refresh our metadata and ensure we are polling the correct partitions
                             needToRefreshMetadata = true;
-                            _options.Log.ErrorFormat(ex.Message);
+                            _options.Log.Error(LogEvent.Create(ex));
                         }
 
                         catch (TaskCanceledException)
@@ -213,7 +214,7 @@ namespace KafkaClient
                         }
                         catch (Exception ex)
                         {
-                            _options.Log.ErrorFormat(ex, "Failed polling topic/{0}/partition/{1}: Polling will continue", topic, partitionId);
+                            _options.Log.Error(LogEvent.Create(ex, $"Failed polling topic/{topic}/partition/{partitionId}: Polling will continue"));
                         }
                     }
                 }
@@ -264,8 +265,7 @@ namespace KafkaClient
                        }
                        catch (Exception ex)
                        {
-                           _options.Log.ErrorFormat(ex, "Failed to fix the offset out of range exception on topic/{0}/partition/{1}: Polling will continue",
-                               fetch.TopicName, fetch.PartitionId);
+                           _options.Log.Error(LogEvent.Create(ex, $"Failed to fix the offset out of range exception on topic/{fetch.TopicName}/partition/{fetch.PartitionId}: Polling will continue"));;
                        }
                    });
         }

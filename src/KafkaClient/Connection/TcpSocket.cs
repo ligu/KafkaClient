@@ -115,7 +115,7 @@ namespace KafkaClient.Connection
         {
             var wrappedException = WrappedException(ex);
             if (_sendTaskQueue.TakeAndApply(p => p.Tcs.TrySetException(wrappedException)) > 0) {
-                _log.ErrorFormat(ex, "TcpSocket received an exception, cancelling all pending tasks");
+                _log.Error(LogEvent.Create(ex, "TcpSocket received an exception, cancelling all pending tasks"));
             }
             _receiveTaskQueue.TakeAndApply(p => p.Tcs.TrySetException(wrappedException));
         }
@@ -279,8 +279,9 @@ namespace KafkaClient.Connection
                     _client = new TcpClient();
 
                     var connectTask = _client.ConnectAsync(Endpoint.IP.Address, Endpoint.IP.Port);
-                    await Task.WhenAny(connectTask, _disposeTask).ConfigureAwait(false);
-                    if (_disposeToken.IsCancellationRequested) throw new ObjectDisposedException($"Object is disposing (TcpSocket for endpoint {Endpoint})");
+                    if (!await connectTask.WhenCompleted(_disposeToken.Token).ConfigureAwait(false)) {
+                        throw new ObjectDisposedException($"Object is disposing (TcpSocket for endpoint {Endpoint})");
+                    }
 
                     await connectTask.ConfigureAwait(false);
                     if (!_client.Connected) return RetryAttempt<TcpClient>.Failed;

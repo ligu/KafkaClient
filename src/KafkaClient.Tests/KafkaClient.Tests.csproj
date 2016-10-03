@@ -72,6 +72,7 @@
     <Compile Include="Fakes\FakeConnection.cs" />
     <Compile Include="Fakes\FakeTcpServer.cs" />
     <Compile Include="Helpers\IntegrationConfig.cs" />
+    <Compile Include="Helpers\MemoryLog.cs" />
     <Compile Include="Helpers\MessageHelper.cs" />
     <Compile Include="Helpers\TaskTest.cs" />
     <Compile Include="Integration\GzipProducerConsumerTests.cs" />

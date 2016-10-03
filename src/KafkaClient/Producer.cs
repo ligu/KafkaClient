@@ -186,7 +186,7 @@ namespace KafkaClient
                 try {
                     await Task.WhenAll(sendBatches.Select(batch => batch.ReceiveTask)).ConfigureAwait(false);
                 } catch (Exception ex) {
-                    BrokerRouter.Log.ErrorFormat(ex);
+                    BrokerRouter.Log.Error(LogEvent.Create(ex));
                 }
                 await SetResult(sendBatches).ConfigureAwait(false);
             } finally {
@@ -210,7 +210,7 @@ namespace KafkaClient
                     foreach (var topic in batchResult.Topics) {
                         ImmutableList<ProduceTopicTask> tasks;
                         if (!batch.TasksByTopicPayload.TryGetValue(topic, out tasks)) {
-                            BrokerRouter.Log.ErrorFormat("produce batch on {0} got response for topic{1}/partition{2} but had no corresponding request", batch.Endpoint, topic.TopicName, topic.PartitionId);
+                            BrokerRouter.Log.Error(LogEvent.Create($"produce batch on {batch.Endpoint} got response for topic{topic.TopicName}/partition{topic.PartitionId} but had no corresponding request"));
                             continue;
                         }
 
@@ -223,7 +223,7 @@ namespace KafkaClient
                         }
                     }
                 } catch (Exception ex) {
-                    BrokerRouter.Log.ErrorFormat(ex, "failed to send batch to {0} with acks {1}", batch.Endpoint, batch.Acks);
+                    BrokerRouter.Log.Error(LogEvent.Create(ex, $"failed to send batch to {batch.Endpoint} with acks {batch.Acks}"));
                     foreach (var productTopicTask in batch.TasksByTopicPayload.Values.SelectMany(_ => _)) {
                         productTopicTask.Tcs.TrySetException(ex);
                     }

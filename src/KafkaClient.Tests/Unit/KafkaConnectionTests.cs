@@ -93,7 +93,7 @@ namespace KafkaClient.Tests.Unit
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         public async Task KafkaConnectionShouldLogDisconnectAndRecover()
         {
-            var mockLog =new Mock<ILog>();
+            var mockLog = new MemoryLog();
             var log = new TraceLog(LogLevel.Error);
             var disconnected = 0;
 
@@ -102,7 +102,7 @@ namespace KafkaClient.Tests.Unit
                                                      });
             using (var server = new FakeTcpServer(log, 8999))
             using (var socket = new TcpSocket(_endpoint, config, log: log))
-            using (var conn = new Connection.Connection(socket, config, log: mockLog.Object))
+            using (var conn = new Connection.Connection(socket, config, log: mockLog))
             {
                 for (int connectionAttempt = 1; connectionAttempt < 4; connectionAttempt++)
                 {
@@ -113,14 +113,14 @@ namespace KafkaClient.Tests.Unit
                     await TaskTest.WaitFor(() => !conn.IsInErrorState);
 
                     Assert.IsFalse(conn.IsInErrorState);
-                    mockLog.Verify(x => x.InfoFormat("Polling read thread has recovered: {0}", It.IsAny<object[]>()), Times.Exactly(connectionAttempt-1));
+                    Assert.That(mockLog.LogEvents.Count(e => e.Item1 == LogLevel.Info && e.Item2.Message.StartsWith("Polling read thread has recovered: ")), Is.EqualTo(connectionAttempt-1));
 
                     server.DropConnection();
                     await TaskTest.WaitFor(() => conn.IsInErrorState);
                     Assert.AreEqual(disconnected,connectionAttempt);
                     Assert.IsTrue(conn.IsInErrorState);
 
-                    mockLog.Verify(x => x.ErrorFormat("Exception occured in polling read thread {0}: {1}", It.IsAny<object[]>()), Times.Exactly(connectionAttempt ));
+                    Assert.That(mockLog.LogEvents.Count(e => e.Item1 == LogLevel.Error && e.Item2.Message.StartsWith("Exception occured in polling read thread")), Is.EqualTo(connectionAttempt));
                 }
 
             }
