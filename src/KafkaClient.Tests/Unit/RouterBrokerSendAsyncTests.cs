@@ -208,7 +208,7 @@ namespace KafkaClient.Tests.Unit
             TaskCompletionSource<int> x = new TaskCompletionSource<int>();
             Func<Task<FetchResponse>> ShouldReturnNotLeaderForPartitionAndThenNoError = async () =>
             {
-                log.DebugFormat("FetchResponse Start ");
+                log.Debug(() => LogEvent.Create("FetchResponse Start "));
                 if (!x.Task.IsCompleted)
                 {
                     if (Interlocked.Increment(ref numberOfErrorSend) == numberOfCall)
@@ -216,14 +216,14 @@ namespace KafkaClient.Tests.Unit
                         await Task.Delay(routerProxy._cacheExpiration);
                         await Task.Delay(1);
                         x.TrySetResult(1);
-                        log.DebugFormat("all is complete ");
+                        log.Debug(() => LogEvent.Create("all is complete "));
                     }
 
                     await x.Task;
-                    log.DebugFormat("SocketException ");
+                    log.Debug(() => LogEvent.Create("SocketException "));
                     throw new ConnectionException("");
                 }
-                log.DebugFormat("Completed ");
+                log.Debug(() => LogEvent.Create("Completed "));
 
                 return new FetchResponse();
             };

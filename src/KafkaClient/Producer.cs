@@ -114,7 +114,7 @@ namespace KafkaClient
                                 }
                             }
                         } catch (OperationCanceledException ex) {
-                            BrokerRouter.Log.DebugFormat(ex);
+                            BrokerRouter.Log.Debug(() => LogEvent.Create(ex));
                         }
 
                         // in case the collection has been closed ...

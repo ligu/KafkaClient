@@ -51,7 +51,7 @@ namespace KafkaClient
         /// <returns>Blocking enumberable of messages from Kafka.</returns>
         public IEnumerable<Message> Consume(CancellationToken? cancellationToken = null)
         {
-            _options.Log.DebugFormat("Consumer: Beginning consumption of topic/{0}", _options.Topic);
+            _options.Log.Debug(() => LogEvent.Create($"Consumer: Beginning consumption of topic/{_options.Topic}"));
             EnsurePartitionPollingThreads();
             return _fetchResponseQueue.GetConsumingEnumerable(cancellationToken ?? CancellationToken.None);
         }
@@ -85,7 +85,7 @@ namespace KafkaClient
             {
                 if (Interlocked.Increment(ref _ensureOneThread) == 1)
                 {
-                    _options.Log.DebugFormat("Consumer: Refreshing partitions for topic/{0}", _options.Topic);
+                    _options.Log.Debug(() => LogEvent.Create($"Consumer: Refreshing partitions for topic/{_options.Topic}"));
                     _topic = _options.Router.GetTopicMetadataAsync(_options.Topic, CancellationToken.None).Result;
 
                     //create one thread per partition, if they are in the white list.
@@ -120,7 +120,7 @@ namespace KafkaClient
                 {
                     var bufferSizeHighWatermark = FetchRequest.DefaultBufferSize;
 
-                    _options.Log.DebugFormat("Consumer: Creating polling task for topic/{0}/parition/{1}", topic, partitionId);
+                    _options.Log.Debug(() => LogEvent.Create($"Consumer: Creating polling task for topic/{topic}/parition/{partitionId}"));
                     while (_disposeToken.IsCancellationRequested == false)
                     {
                         try
@@ -219,7 +219,7 @@ namespace KafkaClient
                 }
                 finally
                 {
-                    _options.Log.DebugFormat("Consumer disabling polling task for topic/{0}/parition/{1}", topic, partitionId);
+                    _options.Log.Debug(() => LogEvent.Create($"Consumer disabling polling task for topic/{topic}/partition/{partitionId}"));
                     Task tempTask;
                     _partitionPollingIndex.TryRemove(partitionId, out tempTask);
                 }
@@ -264,7 +264,7 @@ namespace KafkaClient
                        }
                        catch (Exception ex)
                        {
-                           _options.Log.Error(LogEvent.Create(ex, $"Failed to fix the offset out of range exception on topic/{fetch.TopicName}/partition/{fetch.PartitionId}: Polling will continue"));;
+                           _options.Log.Error(LogEvent.Create(ex, $"Failed to fix the offset out of range exception on topic/{fetch.TopicName}/partition/{fetch.PartitionId}: Polling will continue"));
                        }
                    });
         }
@@ -273,7 +273,7 @@ namespace KafkaClient
         {
             if (Interlocked.Increment(ref _disposeCount) != 1) return;
 
-            _options.Log.DebugFormat("Consumer: Disposing...");
+            _options.Log.Debug(() => LogEvent.Create("Consumer: Disposing..."));
             _disposeToken.Cancel();
             _disposeTask.SetResult(1);
             //wait for all threads to unwind

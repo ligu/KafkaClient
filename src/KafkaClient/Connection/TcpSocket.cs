@@ -160,11 +160,11 @@ namespace KafkaClient.Connection
                     for (var totalBytesReceived = 0; totalBytesReceived < receiveTask.ReadSize;) {
                         var readSize = receiveTask.ReadSize - totalBytesReceived;
 
-                        _log.DebugFormat("Receiving data from {0}, desired size {1}", Endpoint, readSize);
+                        _log.Debug(() => LogEvent.Create($"Receiving data from {Endpoint}, desired size {readSize}"));
                         _configuration.OnReadingChunk?.Invoke(Endpoint, receiveTask.ReadSize, totalBytesReceived, timer.Elapsed);
                         var bytesReceived = await stream.ReadAsync(buffer, totalBytesReceived, readSize, receiveTask.CancellationToken).ConfigureAwait(false);
                         _configuration.OnReadChunk?.Invoke(Endpoint, receiveTask.ReadSize, receiveTask.ReadSize - totalBytesReceived, bytesReceived, timer.Elapsed);
-                        _log.DebugFormat("Received data from {0}, actual size {1}", Endpoint, bytesReceived);
+                        _log.Debug(() => LogEvent.Create($"Received data from {Endpoint}, actual size {bytesReceived} ({(receiveTask.CancellationToken.IsCancellationRequested ? "" : "not ")}cancelled)"));
                         totalBytesReceived += bytesReceived;
 
                         if (bytesReceived <= 0) {
@@ -221,13 +221,13 @@ namespace KafkaClient.Connection
             using (sendTask) {
                 var timer = new Stopwatch();
                 try {
-                    _log.DebugFormat("Sending data to {0} with CorrelationId {1}", Endpoint, sendTask.Payload.CorrelationId);
+                    _log.Debug(() => LogEvent.Create($"Sending data to {Endpoint} with CorrelationId {sendTask.Payload.CorrelationId}"));
                     _configuration.OnWriting?.Invoke(Endpoint, sendTask.Payload);
                     timer.Start();
                     await stream.WriteAsync(sendTask.Payload.Buffer, 0, sendTask.Payload.Buffer.Length, _disposeToken.Token).ConfigureAwait(false);
                     timer.Stop();
                     _configuration.OnWritten?.Invoke(Endpoint, sendTask.Payload, timer.Elapsed);
-                    _log.DebugFormat("Sent data to {0} with CorrelationId {1}", Endpoint, sendTask.Payload.CorrelationId);
+                    _log.Debug(() => LogEvent.Create($"Sent data to {Endpoint} with CorrelationId {sendTask.Payload.CorrelationId}"));
                     sendTask.Tcs.TrySetResult(sendTask.Payload);
                 } catch (Exception ex) {
                     var wrappedException = WrappedException(ex);
@@ -263,7 +263,7 @@ namespace KafkaClient.Connection
         /// </summary>
         private Task<TcpClient> ReEstablishConnectionAsync()
         {
-            _log.DebugFormat($"No connection to {Endpoint}: Attempting to connect...");
+            _log.Debug(() => LogEvent.Create($"No connection to {Endpoint}: Attempting to connect..."));
 
             return _configuration.ConnectionRetry.AttemptAsync(
                 async (attempt, timer) => {
@@ -278,7 +278,7 @@ namespace KafkaClient.Connection
                     await connectTask.ConfigureAwait(false);
                     if (!_client.Connected) return RetryAttempt<TcpClient>.Failed;
 
-                    _log.DebugFormat("Connection established to {0}", Endpoint);
+                    _log.Debug(() => LogEvent.Create($"Connection established to {Endpoint}"));
                     _configuration.OnConnected?.Invoke(Endpoint, attempt, timer.Elapsed);
                     return new RetryAttempt<TcpClient>(_client);
                 },

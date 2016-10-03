@@ -75,7 +75,7 @@ namespace KafkaClient.Connection
         {
             context = context.WithCorrelation(NextCorrelationId());
 
-            _log.DebugFormat("SendAsync Api={0} CorrelationId={1} to {2} ", request.ApiKey, context.CorrelationId, Endpoint);
+            _log.Debug(() => LogEvent.Create($"SendAsync Api {request.ApiKey} CorrelationId {context.CorrelationId} to {Endpoint}"));
             if (!request.ExpectResponse) {
                 await _socket.WriteAsync(KafkaEncoder.Encode(context, request), token).ConfigureAwait(false);
                 return default(T);
@@ -134,11 +134,11 @@ namespace KafkaClient.Connection
 
                     while (_disposeToken.IsCancellationRequested == false) {
                         try {
-                            _log.DebugFormat("Awaiting message from {0}", _socket.Endpoint);
+                            _log.Debug(() => LogEvent.Create($"Awaiting message from {_socket.Endpoint}"));
                             var messageSizeResult = await _socket.ReadAsync(4, _disposeToken.Token).ConfigureAwait(false);
                             var messageSize = messageSizeResult.ToInt32();
 
-                            _log.DebugFormat("Received message of size {0} from {1}", messageSize, _socket.Endpoint);
+                            _log.Debug(() => LogEvent.Create($"Received message of size {messageSize} from {_socket.Endpoint}"));
                             var message = await _socket.ReadAsync(messageSize, _disposeToken.Token).ConfigureAwait(false);
 
                             CorrelatePayloadToRequest(message);
@@ -168,7 +168,7 @@ namespace KafkaClient.Connection
                     }
                 } finally {
                     Interlocked.Decrement(ref _activeReaderCount);
-                    _log.DebugFormat("Closed down connection to {0}", _socket.Endpoint);
+                    _log.Debug(() => LogEvent.Create($"Closed down connection to {_socket.Endpoint}"));
                 }
             });
         }
@@ -178,7 +178,7 @@ namespace KafkaClient.Connection
             var correlationId = payload.Take(4).ToArray().ToInt32();
             AsyncRequestItem asyncRequest;
             if (_requestsByCorrelation.TryRemove(correlationId, out asyncRequest)) {
-                _log.DebugFormat("Matched Response from {0} with CorrelationId {1}", Endpoint, correlationId);
+                _log.Debug(() => LogEvent.Create($"Matched Response from {Endpoint} with CorrelationId {correlationId}"));
                 asyncRequest.ReceiveTask.SetResult(payload);
             } else {
                 _log.Warn(() => LogEvent.Create($"Unexpected Response from {Endpoint} with CorrelationId {correlationId} (not in request queue)."));

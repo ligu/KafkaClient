@@ -80,11 +80,11 @@ namespace KafkaClient.Connection
                 var addresses = Dns.GetHostAddresses(hostname);
                 if (addresses.Length > 0) {
                     foreach (var address in addresses) {
-                        log?.DebugFormat("Found address {0} for {1}", address, hostname);
+                        log?.Debug(() => LogEvent.Create($"Found address {address} for {hostname}"));
                     }
 
                     var selectedAddress = addresses.FirstOrDefault(item => item.AddressFamily == AddressFamily.InterNetwork) ?? addresses.First();
-                    log?.DebugFormat("Using address {0} for {1}", selectedAddress, hostname);
+                    log?.Debug(() => LogEvent.Create($"Using address {selectedAddress} for {hostname}"));
                     return selectedAddress;
                 }
             } catch (Exception ex) {

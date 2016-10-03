@@ -54,7 +54,7 @@ namespace KafkaClient.Tests.Fakes
         {
             try {
                 await _semaphoreSlim.WaitAsync();
-                _log.DebugFormat("FakeTcpServer: writing {0} bytes.", data.Length);
+                _log.Debug(() => LogEvent.Create($"FakeTcpServer: writing {data.Length} bytes."));
                 await _client.GetStream().WriteAsync(data, 0, data.Length).ConfigureAwait(false);
             } catch (Exception ex) {
                 _log.Error(LogEvent.Create(ex));

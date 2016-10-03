@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Common;
@@ -76,7 +75,7 @@ namespace KafkaClient
                         metadataInvalid = false;
                     }
 
-                    brokerRouter.Log.DebugFormat("Router SendAsync request {0} (attempt {1})", request.ApiKey, attempt + 1);
+                    brokerRouter.Log.Debug(() => LogEvent.Create($"Router SendAsync request {request.ApiKey} (attempt {attempt})"));
                     var route = await brokerRouter.GetBrokerRouteAsync(topicName, partition, cancellationToken);
                     endpoint = route.Connection.Endpoint;
                     response = await route.Connection.SendAsync(request, cancellationToken, context).ConfigureAwait(false);
