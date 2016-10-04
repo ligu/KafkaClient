@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using KafkaClient.Common;
 using KafkaClient.Protocol;
 
-namespace KafkaClient.Connection
+namespace KafkaClient.Connections
 {
     /// <summary>
     /// Connection represents the lowest level TCP stream connection to a Kafka broker.

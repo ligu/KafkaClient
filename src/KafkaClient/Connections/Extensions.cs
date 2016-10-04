@@ -1,4 +1,4 @@
-﻿namespace KafkaClient.Connection
+﻿namespace KafkaClient.Connections
 {
     public static class Extensions
     {

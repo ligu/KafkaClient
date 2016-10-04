@@ -2,7 +2,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace KafkaClient.Connection
+namespace KafkaClient.Connections
 {
     public interface ITcpSocket : IDisposable
     {

@@ -1,7 +1,7 @@
 ﻿using System;
 using KafkaClient.Common;
 
-namespace KafkaClient.Connection
+namespace KafkaClient.Connections
 {
     public interface IConnectionFactory
     {

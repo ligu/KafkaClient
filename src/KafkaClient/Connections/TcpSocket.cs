@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using KafkaClient.Common;
 using Nito.AsyncEx;
 
-namespace KafkaClient.Connection
+namespace KafkaClient.Connections
 {
     /// <summary>
     /// The TcpSocket provides an abstraction from the main driver from having to handle connection to and reconnections with a server.

@@ -1,7 +1,7 @@
 using System.Threading;
 using KafkaClient.Common;
 
-namespace KafkaClient.Connection
+namespace KafkaClient.Connections
 {
     internal class SocketPayloadSendTask : CancellableTask<DataPayload>
     {

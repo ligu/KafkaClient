@@ -1,6 +1,6 @@
 using KafkaClient.Protocol;
 
-namespace KafkaClient.Connection
+namespace KafkaClient.Connections
 {
     public class DataPayload
     {

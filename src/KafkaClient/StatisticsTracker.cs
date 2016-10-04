@@ -6,7 +6,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using KafkaClient.Common;
-using KafkaClient.Connection;
+using KafkaClient.Connections;
 
 namespace KafkaClient
 {

@@ -2,7 +2,7 @@
 using System.Runtime.Serialization;
 using KafkaClient.Common;
 
-namespace KafkaClient.Connection
+namespace KafkaClient.Connections
 {
     /// <summary>
     /// An exception cause by a failure in the connection to Kafka

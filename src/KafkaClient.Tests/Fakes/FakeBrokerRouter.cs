@@ -2,7 +2,7 @@
 using System.Net;
 using System.Threading;
 using KafkaClient.Common;
-using KafkaClient.Connection;
+using KafkaClient.Connections;
 using KafkaClient.Protocol;
 using NSubstitute;
 

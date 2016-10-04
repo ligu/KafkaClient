@@ -3,7 +3,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Common;
-using KafkaClient.Connection;
+using KafkaClient.Connections;
 using KafkaClient.Protocol;
 using KafkaClient.Tests.Helpers;
 using NUnit.Framework;
@@ -17,7 +17,7 @@ namespace KafkaClient.Tests.Integration
     [Category("Integration")]
     public class KafkaConnectionIntegrationTests
     {
-        private Connection.Connection _conn;
+        private Connection _conn;
 
         [SetUp]
         public void Setup()
@@ -25,7 +25,7 @@ namespace KafkaClient.Tests.Integration
             var options = new KafkaOptions(IntegrationConfig.IntegrationUri, new ConnectionConfiguration());
             var endpoint = new ConnectionFactory().Resolve(options.ServerUris.First(), options.Log);
 
-            _conn = new Connection.Connection(new TcpSocket(endpoint, options.ConnectionConfiguration), options.ConnectionConfiguration, options.Log);
+            _conn = new Connection(new TcpSocket(endpoint, options.ConnectionConfiguration), options.ConnectionConfiguration, options.Log);
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]

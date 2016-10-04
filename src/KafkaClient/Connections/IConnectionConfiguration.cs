@@ -1,7 +1,7 @@
 ﻿using System;
 using KafkaClient.Common;
 
-namespace KafkaClient.Connection
+namespace KafkaClient.Connections
 {
     public delegate void ConnectError(Endpoint endpoint, Exception exception);
     public delegate void Connecting(Endpoint endpoint, int attempt, TimeSpan elapsed);

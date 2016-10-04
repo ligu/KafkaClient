@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using KafkaClient.Connection;
+using KafkaClient.Connections;
 
 namespace KafkaClient.Protocol
 {

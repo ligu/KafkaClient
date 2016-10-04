@@ -76,16 +76,16 @@
     <Compile Include="Common\BackoffRetry.cs" />
     <Compile Include="Common\DelayedRetry.cs" />
     <Compile Include="Common\TimedCancellation.cs" />
-    <Compile Include="Connection\Extensions.cs" />
-    <Compile Include="Connection\IConnectionConfiguration.cs" />
-    <Compile Include="Connection\ConnectionComparer.cs" />
-    <Compile Include="Connection\ConnectionConfiguration.cs" />
-    <Compile Include="Connection\DataPayload.cs" />
+    <Compile Include="Connections\Extensions.cs" />
+    <Compile Include="Connections\IConnectionConfiguration.cs" />
+    <Compile Include="Connections\ConnectionComparer.cs" />
+    <Compile Include="Connections\ConnectionConfiguration.cs" />
+    <Compile Include="Connections\DataPayload.cs" />
     <Compile Include="Common\IRetry.cs" />
     <Compile Include="Common\NoRetry.cs" />
     <Compile Include="Common\Retry.cs" />
-    <Compile Include="Connection\SocketPayloadReceiveTask.cs" />
-    <Compile Include="Connection\SocketPayloadSendTask.cs" />
+    <Compile Include="Connections\SocketPayloadReceiveTask.cs" />
+    <Compile Include="Connections\SocketPayloadSendTask.cs" />
     <Compile Include="Common\CancellableTask.cs" />
     <Compile Include="ICacheConfiguration.cs" />
     <Compile Include="IManualConsumer.cs" />
@@ -104,7 +104,7 @@
     <Compile Include="Protocol\CrcValidationException.cs" />
     <Compile Include="Protocol\FetchOutOfRangeException.cs" />
     <Compile Include="Protocol\IRequestContext.cs" />
-    <Compile Include="Connection\ConnectionException.cs" />
+    <Compile Include="Connections\ConnectionException.cs" />
     <Compile Include="Protocol\KafkaEncoder.cs" />
     <Compile Include="KafkaException.cs" />
     <Compile Include="Protocol\Request.cs" />
@@ -138,13 +138,13 @@
     <Compile Include="Protocol\ProduceResponse.cs" />
     <Compile Include="Protocol\ProduceTopic.cs" />
     <Compile Include="StatisticsTracker.cs" />
-    <Compile Include="Connection\ConnectionFactory.cs" />
+    <Compile Include="Connections\ConnectionFactory.cs" />
     <Compile Include="IKafkaClient.cs" />
-    <Compile Include="Connection\ITcpSocket.cs" />
+    <Compile Include="Connections\ITcpSocket.cs" />
     <Compile Include="BrokerRoute.cs" />
     <Compile Include="Common\ScheduledTimer.cs" />
     <Compile Include="Consumer.cs" />
-    <Compile Include="Connection\IConnection.cs" />
+    <Compile Include="Connections\IConnection.cs" />
     <Compile Include="IBrokerRouter.cs" />
     <Compile Include="BrokerRouterExtensions.cs" />
     <Compile Include="ConsumerOptions.cs" />
@@ -152,11 +152,11 @@
     <Compile Include="Common\ILog.cs" />
     <Compile Include="IPartitionSelector.cs" />
     <Compile Include="BrokerRouter.cs" />
-    <Compile Include="Connection\Endpoint.cs" />
+    <Compile Include="Connections\Endpoint.cs" />
     <Compile Include="Common\Crc32Provider.cs" />
-    <Compile Include="Connection\IConnectionFactory.cs" />
+    <Compile Include="Connections\IConnectionFactory.cs" />
     <Compile Include="Producer.cs" />
-    <Compile Include="Connection\Connection.cs" />
+    <Compile Include="Connections\Connection.cs" />
     <Compile Include="Common\Extensions.cs" />
     <Compile Include="KafkaOptions.cs" />
     <Compile Include="Protocol\GroupCoordinatorRequest.cs" />
@@ -172,7 +172,7 @@
     <Compile Include="Protocol\OffsetRequest.cs" />
     <Compile Include="Protocol\ProduceRequest.cs" />
     <Compile Include="Common\TraceLog.cs" />
-    <Compile Include="Connection\TcpSocket.cs" />
+    <Compile Include="Connections\TcpSocket.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="KafkaClient.nuspec">

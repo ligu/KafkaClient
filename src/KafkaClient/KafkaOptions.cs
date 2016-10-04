@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using KafkaClient.Common;
-using KafkaClient.Connection;
+using KafkaClient.Connections;
 
 namespace KafkaClient
 {

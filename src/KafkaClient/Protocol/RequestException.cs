@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.Serialization;
-using KafkaClient.Connection;
 using KafkaClient.Common;
+using KafkaClient.Connections;
 
 namespace KafkaClient.Protocol
 {

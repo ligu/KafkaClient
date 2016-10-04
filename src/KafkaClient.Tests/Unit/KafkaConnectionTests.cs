@@ -3,7 +3,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Common;
-using KafkaClient.Connection;
+using KafkaClient.Connections;
 using KafkaClient.Protocol;
 using KafkaClient.Tests.Fakes;
 using KafkaClient.Tests.Helpers;
@@ -39,7 +39,7 @@ namespace KafkaClient.Tests.Unit
         public async Task ShouldStartReadPollingOnConstruction()
         {
             using (var socket = new TcpSocket(_endpoint, log: _log))
-            using (var conn = new Connection.Connection(socket, log: _log))
+            using (var conn = new Connection(socket, log: _log))
             {
                 await TaskTest.WaitFor(() => conn.IsReaderAlive);
                 Assert.That(conn.IsReaderAlive, Is.True);
@@ -51,7 +51,7 @@ namespace KafkaClient.Tests.Unit
         {
             var expectedUrl = _endpoint;
             using (var socket = new TcpSocket(expectedUrl, log: _log))
-            using (var conn = new Connection.Connection(socket, log: _log))
+            using (var conn = new Connection(socket, log: _log))
             {
                 Assert.That(conn.Endpoint, Is.EqualTo(expectedUrl));
             }
@@ -67,7 +67,7 @@ namespace KafkaClient.Tests.Unit
             using (var server = new FakeTcpServer(_log, 8999))
             using (var socket = new TcpSocket(_endpoint, log: _log))
             {
-                var conn = new Connection.Connection(socket, log: _log);
+                var conn = new Connection(socket, log: _log);
                 await TaskTest.WaitFor(() => server.ConnectionEventcount > 0);
                 using (conn) { }
             }
@@ -77,7 +77,7 @@ namespace KafkaClient.Tests.Unit
         public void ShouldDisposeWithoutExceptionEvenWhileCallingSendAsync()
         {
             using (var socket = new TcpSocket(_endpoint, log: _log))
-            using (var conn = new Connection.Connection(socket, log: _log))
+            using (var conn = new Connection(socket, log: _log))
             {
                 var task = conn.SendAsync(new MetadataRequest(), CancellationToken.None);
                 task.Wait(TimeSpan.FromMilliseconds(1000));
@@ -102,7 +102,7 @@ namespace KafkaClient.Tests.Unit
                                                      });
             using (var server = new FakeTcpServer(log, 8999))
             using (var socket = new TcpSocket(_endpoint, config, log: log))
-            using (var conn = new Connection.Connection(socket, config, log: mockLog))
+            using (var conn = new Connection(socket, config, log: mockLog))
             {
                 for (int connectionAttempt = 1; connectionAttempt < 4; connectionAttempt++)
                 {
@@ -137,7 +137,7 @@ namespace KafkaClient.Tests.Unit
             var config = new ConnectionConfiguration(onRead: (endpoint, buffer, elapsed) => receivedData = true);
             using (var server = new FakeTcpServer(_log, 8999))
             using (var socket = new TcpSocket(_endpoint, config, log: mockLog))
-            using (var conn = new Connection.Connection(socket, config, log: mockLog))
+            using (var conn = new Connection(socket, config, log: mockLog))
             {
                 //send correlation message
                 server.SendDataAsync(CreateCorrelationMessage(correlationId)).Wait(TimeSpan.FromSeconds(5));
@@ -162,7 +162,7 @@ namespace KafkaClient.Tests.Unit
         {
             using (var server = new FakeTcpServer(_log, 8999))
             using (var socket = new TcpSocket(_endpoint, log: _log))
-            using (var conn = new Connection.Connection(socket, new ConnectionConfiguration(requestTimeout: TimeSpan.FromMilliseconds(1)), log: _log))
+            using (var conn = new Connection(socket, new ConnectionConfiguration(requestTimeout: TimeSpan.FromMilliseconds(1)), log: _log))
             {
                 await TaskTest.WaitFor(() => server.ConnectionEventcount > 0);
                 Assert.That(server.ConnectionEventcount, Is.EqualTo(1));
@@ -180,7 +180,7 @@ namespace KafkaClient.Tests.Unit
         public async Task SendAsyncShouldNotAllowResponseToTimeoutWhileAwaitingKafkaToEstableConnection()
         {
             using (var socket = new TcpSocket(_endpoint, log: _log))
-            using (var conn = new Connection.Connection(socket, new ConnectionConfiguration(requestTimeout: TimeSpan.FromSeconds(1000)), log: _log))
+            using (var conn = new Connection(socket, new ConnectionConfiguration(requestTimeout: TimeSpan.FromSeconds(1000)), log: _log))
             {
                 Console.WriteLine("SendAsync blocked by reconnection attempts...");
                 var taskResult = conn.SendAsync(new MetadataRequest(), CancellationToken.None);
@@ -212,7 +212,7 @@ namespace KafkaClient.Tests.Unit
         {
             using (var server = new FakeTcpServer(_log, 8999))
             using (var socket = new TcpSocket(_endpoint, log: _log))
-            using (var conn = new Connection.Connection(socket, new ConnectionConfiguration(requestTimeout: TimeSpan.FromMilliseconds(100)), log: _log))
+            using (var conn = new Connection(socket, new ConnectionConfiguration(requestTimeout: TimeSpan.FromMilliseconds(100)), log: _log))
             {
                 server.HasClientConnected.Wait(TimeSpan.FromSeconds(3));
                 Assert.That(server.ConnectionEventcount, Is.EqualTo(1));

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Net;
 using KafkaClient.Common;
-using KafkaClient.Connection;
+using KafkaClient.Connections;
 using KafkaClient.Tests.Helpers;
 using NUnit.Framework;
 

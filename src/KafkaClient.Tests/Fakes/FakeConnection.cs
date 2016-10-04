@@ -2,7 +2,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Common;
-using KafkaClient.Connection;
+using KafkaClient.Connections;
 using KafkaClient.Protocol;
 
 namespace KafkaClient.Tests.Fakes

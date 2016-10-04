@@ -2,7 +2,7 @@
 using System.IO;
 using System.Net;
 using System.Runtime.Serialization.Formatters.Binary;
-using KafkaClient.Connection;
+using KafkaClient.Connections;
 using KafkaClient.Protocol;
 using NUnit.Framework;
 

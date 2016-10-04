@@ -5,7 +5,7 @@ using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Common;
-using KafkaClient.Connection;
+using KafkaClient.Connections;
 using KafkaClient.Protocol;
 using KafkaClient.Tests.Helpers;
 using NUnit.Framework;
@@ -18,11 +18,11 @@ namespace KafkaClient.Tests.Integration
     {
         private readonly KafkaOptions _options = new KafkaOptions(IntegrationConfig.IntegrationUri);
 
-        private Connection.Connection GetKafkaConnection()
+        private Connection GetKafkaConnection()
         {
             var endpoint = new ConnectionFactory().Resolve(_options.ServerUris.First(), _options.Log);
             var configuration = _options.ConnectionConfiguration;
-            return new Connection.Connection(new TcpSocket(endpoint, configuration), configuration, _options.Log);
+            return new Connection(new TcpSocket(endpoint, configuration), configuration, _options.Log);
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]

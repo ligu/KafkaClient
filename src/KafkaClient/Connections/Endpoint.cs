@@ -6,7 +6,7 @@ using System.Net.Sockets;
 using System.Runtime.Serialization;
 using KafkaClient.Common;
 
-namespace KafkaClient.Connection
+namespace KafkaClient.Connections
 {
     [Serializable]
     public class Endpoint : IEquatable<Endpoint>

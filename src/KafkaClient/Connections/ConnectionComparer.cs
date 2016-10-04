@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace KafkaClient.Connection
+namespace KafkaClient.Connections
 {
     public class ConnectionComparer : IEqualityComparer<IConnection>
     {

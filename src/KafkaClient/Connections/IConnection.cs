@@ -3,7 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Protocol;
 
-namespace KafkaClient.Connection
+namespace KafkaClient.Connections
 {
     public interface IConnection : IDisposable
     {

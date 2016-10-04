@@ -1,4 +1,4 @@
-﻿using KafkaClient.Connection;
+﻿using KafkaClient.Connections;
 using KafkaClient.Protocol;
 
 namespace KafkaClient
