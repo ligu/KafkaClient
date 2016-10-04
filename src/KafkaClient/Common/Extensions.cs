@@ -45,14 +45,21 @@ namespace KafkaClient.Common
             return exception;
         }
 
-        public static int TakeAndApply<T>(this AsyncCollection<T> collection, Action<T> apply, CancellationToken? cancellationToken = null)
+        public static async Task<bool> TryApplyAsync<T>(this AsyncCollection<T> collection, Action<T> apply, CancellationToken cancellationToken)
         {
-            var count = 0;
-            foreach (var item in collection.GetConsumingEnumerable(cancellationToken ?? new CancellationToken(true))) {
-                apply(item);
-                count++;
+            var appliedToAny = false;
+            try {
+                while (true) {
+                    // Try rather than simply Take (in case the collection has been closed and is not empty)
+                    var result = await collection.TryTakeAsync(cancellationToken);
+                    if (!result.Success) break;
+
+                    apply(result.Item);
+                    appliedToAny = true;
+                }
+            } catch (OperationCanceledException) {
             }
-            return count;
+            return appliedToAny;
         }
 
         public static void AddRange<T>(this AsyncCollection<T> collection, IEnumerable<T> items, CancellationToken cancellationToken)

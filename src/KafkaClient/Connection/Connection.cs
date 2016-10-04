@@ -132,7 +132,7 @@ namespace KafkaClient.Connection
                     // only allow one reader to execute, dump out all other requests
                     if (Interlocked.Increment(ref _activeReaderCount) != 1) return;
 
-                    while (_disposeToken.IsCancellationRequested == false) {
+                    while (!_disposeToken.IsCancellationRequested) {
                         try {
                             _log.Debug(() => LogEvent.Create($"Awaiting message from {_socket.Endpoint}"));
                             var messageSizeResult = await _socket.ReadAsync(4, _disposeToken.Token).ConfigureAwait(false);

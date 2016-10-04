@@ -23,18 +23,17 @@ namespace KafkaClient
         private readonly Task _batchSendTask;
 
         private int _sendingMessageCount;
-        private int _batchingMessageCount;
-        private int _requestingMessageCount;
+        private ImmutableList<ProduceTopicTask> _batch = ImmutableList<ProduceTopicTask>.Empty;
 
         /// <summary>
         /// Get the number of messages sitting in the buffer waiting to be sent.
         /// </summary>
-        public int BufferedMessageCount => _sendingMessageCount - (_batchingMessageCount + _requestingMessageCount);
+        public int BufferedMessageCount => _sendingMessageCount - _batch.Count;
 
         /// <summary>
-        /// Get the number of messages staged for Async upload.
+        /// Get the number of messages staged for Async Request.
         /// </summary>
-        public int InFlightMessageCount => _batchingMessageCount;
+        public int InFlightMessageCount => _batch.Count;
 
         /// <summary>
         /// Get the number of active async threads sending messages.
@@ -89,55 +88,39 @@ namespace KafkaClient
             }
         }
 
-        /// <summary>
-        /// Stops the producer from accepting new messages, waiting for in-flight messages to be sent before returning.
-        /// </summary>
-        public async Task StopAsync(CancellationToken cancellationToken)
-        {
-            if (Interlocked.Increment(ref _stopCount) != 1) return;
-            BrokerRouter.Log.Debug(() => LogEvent.Create("Producer stopping"));
-            _produceMessageQueue.CompleteAdding(); // block incoming data
-            await Task.WhenAny(_batchSendTask, Task.Delay(Configuration.StopTimeout, cancellationToken)).ConfigureAwait(false);
-            _stopToken.Cancel();
-        }
-
         private async Task BatchSendAsync()
         {
             BrokerRouter.Log.Info(() => LogEvent.Create("Producer sending task starting"));
             try {
                 while (!_stopToken.IsCancellationRequested) {
-                    var batch = ImmutableList<ProduceTopicTask>.Empty;
+                    _batch = ImmutableList<ProduceTopicTask>.Empty;
                     try {
-                        batch = await GetNextBatchAsync();
-                        Interlocked.Add(ref _sendingMessageCount, batch.Count);
-                        if (batch.IsEmpty) {
+                        _batch = await GetNextBatchAsync();
+                        if (_batch.IsEmpty) {
                             if (_stopCount > 0) {
                                 BrokerRouter.Log.Info(() => LogEvent.Create("Producer stopping and nothing available to send"));
                                 break;
                             }
                         } else {
                             foreach (var codec in new[] {MessageCodec.CodecNone, MessageCodec.CodecGzip}) {
-                                var filteredBatch = batch.Where(_ => _.Codec == codec).ToImmutableList();
+                                var filteredBatch = _batch.Where(_ => _.Codec == codec).ToImmutableList();
                                 if (filteredBatch.IsEmpty) continue;
 
                                 BrokerRouter.Log.Debug(() => LogEvent.Create($"Producer compiled batch({filteredBatch.Count}) on codec {codec}{(_stopCount == 0 ? "" : ": producer is stopping")}"));
                                 var batchToken = filteredBatch[0].CancellationToken;
                                 if (filteredBatch.TrueForAll(p => p.CancellationToken == batchToken)) {
                                     using (var merged = new MergedCancellation(_stopToken.Token, batchToken)) {
-                                        await ProduceAndSendBatchAsync(filteredBatch, codec, merged.Token).ConfigureAwait(false);
+                                        await SendBatchWithCodecAsync(filteredBatch, codec, merged.Token).ConfigureAwait(false);
                                     }
                                 } else {
-                                    await ProduceAndSendBatchAsync(filteredBatch, codec, _stopToken.Token).ConfigureAwait(false);
+                                    await SendBatchWithCodecAsync(filteredBatch, codec, _stopToken.Token).ConfigureAwait(false);
                                 }
-                                batch = batch.Where(_ => _.Codec != codec).ToImmutableList(); // so the below catch doesn't update tasks that are already completed
-                                Interlocked.Add(ref _sendingMessageCount, -filteredBatch.Count);
+                                _batch = _batch.Where(_ => _.Codec != codec).ToImmutableList(); // so the below catch doesn't update tasks that are already completed
                             }
                         }
                     } catch (Exception ex) {
                         BrokerRouter.Log.Debug(() => LogEvent.Create(ex));
-                        batch.ForEach(x => x.Tcs.TrySetException(ex));
-                    } finally {
-                        Interlocked.Add(ref _batchingMessageCount, -batch.Count);
+                        _batch.ForEach(x => x.Tcs.TrySetException(ex));
                     }
                 }
             } catch(Exception ex) { 
@@ -165,60 +148,52 @@ namespace KafkaClient
                         }
                     }
                 }
-                //} catch (InvalidOperationException) { // Happens when Stop or Dispose has been called (and _produceMessageQueue is not accepting any messages, and is empty)
             } catch (OperationCanceledException) { // cancellation token fired while attempting to get tasks: normal behavior
             }
             return batch;
         }
 
-        private async Task ProduceAndSendBatchAsync(IReadOnlyCollection<ProduceTopicTask> produceTasks, MessageCodec codec, CancellationToken cancellationToken)
+        private async Task SendBatchWithCodecAsync(IReadOnlyCollection<ProduceTopicTask> produceTasks, MessageCodec codec, CancellationToken cancellationToken)
         {
-            var totalMessageCount = 0;
-            try {
-                await BrokerRouter.GetTopicMetadataAsync(produceTasks.Select(m => m.TopicName), cancellationToken).ConfigureAwait(false);
+            await BrokerRouter.GetTopicMetadataAsync(produceTasks.Select(m => m.TopicName), cancellationToken).ConfigureAwait(false);
 
-                // we must send a different produce request for each ack level and timeout combination.
-                // we must also send requests to the correct broker / endpoint
-                var endpointGroups = produceTasks.Select(
-                    ptt => new {
-                        ProduceTask = ptt,
-                        Route = ptt.Partition.HasValue
-                            ? BrokerRouter.GetBrokerRoute(ptt.TopicName, ptt.Partition.Value)
-                            : BrokerRouter.GetBrokerRoute(ptt.TopicName, ptt.Message.Key)
-                    })
-                    .GroupBy(_ => new {_.ProduceTask.Acks, _.ProduceTask.AckTimeout, _.Route.Connection.Endpoint});
+            // we must send a different produce request for each ack level and timeout combination.
+            // we must also send requests to the correct broker / endpoint
+            var endpointGroups = produceTasks.Select(
+                ptt => new {
+                    ProduceTask = ptt,
+                    Route = ptt.Partition.HasValue
+                        ? BrokerRouter.GetBrokerRoute(ptt.TopicName, ptt.Partition.Value)
+                        : BrokerRouter.GetBrokerRoute(ptt.TopicName, ptt.Message.Key)
+                })
+                .GroupBy(_ => new {_.ProduceTask.Acks, _.ProduceTask.AckTimeout, _.Route.Connection.Endpoint});
 
-                var sendBatches = new List<ProduceTaskBatch>();
-                foreach (var endpointGroup in endpointGroups) {
-                    var produceTasksByTopicPayload = endpointGroup
-                        .GroupBy(_ => new Topic(_.Route.TopicName, _.Route.PartitionId))
-                        .ToImmutableDictionary(g => g.Key, g => g.Select(_ => _.ProduceTask).ToImmutableList());
-                    var messageCount = produceTasksByTopicPayload.Values.Sum(_ => _.Count);
-                    var payloads = produceTasksByTopicPayload.Select(p => new Payload(p.Key.TopicName, p.Key.PartitionId, p.Value.Select(_ => _.Message), codec));
-                    var request = new ProduceRequest(payloads, endpointGroup.Key.AckTimeout, endpointGroup.Key.Acks);
-                    BrokerRouter.Log.Debug(() => LogEvent.Create($"Produce request for topics{request.Payloads.Aggregate("", (buffer, p) => $"{buffer} {p}")} with {messageCount} messages"));
+            var sendBatches = new List<ProduceTaskBatch>();
+            foreach (var endpointGroup in endpointGroups) {
+                var produceTasksByTopicPayload = endpointGroup
+                    .GroupBy(_ => new Topic(_.Route.TopicName, _.Route.PartitionId))
+                    .ToImmutableDictionary(g => g.Key, g => g.Select(_ => _.ProduceTask).ToImmutableList());
+                var messageCount = produceTasksByTopicPayload.Values.Sum(_ => _.Count);
+                var payloads = produceTasksByTopicPayload.Select(p => new Payload(p.Key.TopicName, p.Key.PartitionId, p.Value.Select(_ => _.Message), codec));
+                var request = new ProduceRequest(payloads, endpointGroup.Key.AckTimeout, endpointGroup.Key.Acks);
+                BrokerRouter.Log.Debug(() => LogEvent.Create($"Produce request for topics{request.Payloads.Aggregate("", (buffer, p) => $"{buffer} {p}")} with {messageCount} messages"));
 
-                    var connection = endpointGroup.Select(_ => _.Route).First().Connection; // they'll all be the same since they're grouped by this
-                    await _produceRequestSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-                    totalMessageCount += messageCount;
-                    Interlocked.Add(ref _requestingMessageCount, messageCount);
-                    var sendGroupTask = connection.SendAsync(request, cancellationToken);
-                    // ReSharper disable once UnusedVariable
-                    var continuation = sendGroupTask.ContinueWith(t => _produceRequestSemaphore.Release(), CancellationToken.None);
-                    sendBatches.Add(new ProduceTaskBatch(connection.Endpoint, endpointGroup.Key.Acks, sendGroupTask, produceTasksByTopicPayload));
-                }
+                var connection = endpointGroup.Select(_ => _.Route).First().Connection; // they'll all be the same since they're grouped by this
+                await _produceRequestSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-                try {
-                    await Task.WhenAll(sendBatches.Select(batch => batch.ReceiveTask)).ConfigureAwait(false);
-                } catch (Exception ex) {
-                    BrokerRouter.Log.Error(LogEvent.Create(ex));
-                }
-                Interlocked.Add(ref _requestingMessageCount, -totalMessageCount);
-                totalMessageCount = 0;
-                await SetResult(sendBatches).ConfigureAwait(false);
-            } finally {
-                Interlocked.Add(ref _requestingMessageCount, -totalMessageCount);
+                // TODO: what about retryability like for the broker router?? Need this to be robust to node failures
+                var sendGroupTask = connection.SendAsync(request, cancellationToken);
+                // ReSharper disable once UnusedVariable
+                var continuation = sendGroupTask.ContinueWith(t => _produceRequestSemaphore.Release(), CancellationToken.None);
+                sendBatches.Add(new ProduceTaskBatch(connection.Endpoint, endpointGroup.Key.Acks, sendGroupTask, produceTasksByTopicPayload));
             }
+
+            try {
+                await Task.WhenAll(sendBatches.Select(batch => batch.ReceiveTask)).ConfigureAwait(false);
+            } catch (Exception ex) {
+                BrokerRouter.Log.Error(LogEvent.Create(ex));
+            }
+            await SetResult(sendBatches).ConfigureAwait(false);
         }
 
         private async Task SetResult(IEnumerable<ProduceTaskBatch> batches)
@@ -269,9 +244,23 @@ namespace KafkaClient
             }
         }
 
+        /// <summary>
+        /// Stops the producer from accepting new messages, waiting for in-flight messages to be sent before returning.
+        /// </summary>
+        public async Task<bool> StopAsync(CancellationToken cancellationToken)
+        {
+            if (Interlocked.Increment(ref _stopCount) != 1) return false;
+
+            BrokerRouter.Log.Debug(() => LogEvent.Create("Producer stopping"));
+            _produceMessageQueue.CompleteAdding(); // block incoming data
+            await Task.WhenAny(_batchSendTask, Task.Delay(Configuration.StopTimeout, cancellationToken)).ConfigureAwait(false);
+            _stopToken.Cancel();
+            return true;
+        }
+
         public void Dispose()
         {
-            AsyncContext.Run(() => StopAsync(new CancellationToken(true)));
+            if (!AsyncContext.Run(() => StopAsync(new CancellationToken(true)))) return;
 
             // cleanup
             using (_stopToken) {

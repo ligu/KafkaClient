@@ -91,7 +91,7 @@ namespace KafkaClient.Connection
                     var netStreamTask = GetStreamAsync();
                     if (!await netStreamTask.WhenCompleted(_disposeToken.Token).ConfigureAwait(false)) {
                         var disposedException = new ObjectDisposedException($"Object is disposing (TcpSocket for {Endpoint})");
-                        SetExceptionToAllPendingTasks(disposedException);
+                        await SetExceptionToAllPendingTasksAsync(disposedException);
                         _configuration.OnDisconnected?.Invoke(Endpoint, disposedException);
                         return;
                     }
@@ -99,19 +99,20 @@ namespace KafkaClient.Connection
                     var netStream = await netStreamTask.ConfigureAwait(false);
                     await ProcessNetworkstreamTasks(netStream).ConfigureAwait(false);
                 } catch (Exception ex) {
-                    SetExceptionToAllPendingTasks(ex);
+                    await SetExceptionToAllPendingTasksAsync(ex);
                     _configuration.OnDisconnected?.Invoke(Endpoint, ex);
                 }
             }
         }
 
-        private void SetExceptionToAllPendingTasks(Exception ex)
+        private async Task SetExceptionToAllPendingTasksAsync(Exception ex)
         {
             var wrappedException = WrappedException(ex);
-            if (_sendTaskQueue.TakeAndApply(p => p.Tcs.TrySetException(wrappedException)) > 0) {
+            var cancelledAny = await _sendTaskQueue.TryApplyAsync(p => p.Tcs.TrySetException(wrappedException), new CancellationToken(true));
+            cancelledAny = await _receiveTaskQueue.TryApplyAsync(p => p.Tcs.TrySetException(wrappedException), new CancellationToken(true)) || cancelledAny;
+            if (cancelledAny) {
                 _log.Error(LogEvent.Create(ex, "TcpSocket received an exception, cancelling all pending tasks"));
             }
-            _receiveTaskQueue.TakeAndApply(p => p.Tcs.TrySetException(wrappedException));
         }
 
         private async Task ProcessNetworkstreamTasks(NetworkStream netStream)
