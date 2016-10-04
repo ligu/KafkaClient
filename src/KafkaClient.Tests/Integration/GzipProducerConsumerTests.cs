@@ -16,7 +16,7 @@ namespace KafkaClient.Tests.Integration
     [Category("Integration")]
     public class GzipProducerConsumerTests
     {
-        private readonly KafkaOptions _options = new KafkaOptions(IntegrationConfig.IntegrationUri, log: IntegrationConfig.NoDebugLog);
+        private readonly KafkaOptions _options = new KafkaOptions(IntegrationConfig.IntegrationUri);
 
         private Connection.Connection GetKafkaConnection()
         {
@@ -58,34 +58,28 @@ namespace KafkaClient.Tests.Integration
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
-        public void EnsureGzipCanDecompressMessageFromKafka()
+        public async Task EnsureGzipCanDecompressMessageFromKafka([Values(3)]int numberOfMessages)
         {
             var router = new BrokerRouter(_options);
-            var producer = new Producer(router);
+            using (var producer = new Producer(router, new ProducerConfiguration(batchSize: numberOfMessages))) {
+                var offsets = await producer.BrokerRouter.GetTopicOffsetAsync(IntegrationConfig.IntegrationCompressionTopic, CancellationToken.None);
+                var offsetPositions = offsets.Where(x => !x.Offsets.IsEmpty).Select(x => new OffsetPosition(x.PartitionId, x.Offsets.Max()));
+                var consumerOptions = new ConsumerOptions(IntegrationConfig.IntegrationCompressionTopic, router) { PartitionWhitelist = new List<int> { 0 } };
+                using (var consumer = new Consumer(consumerOptions, offsetPositions.ToArray()))
+                {
+                    var messages = new List<Message>();
+                    for (var i = 0; i < numberOfMessages; i++) {
+                        messages.Add(new Message(i.ToString()));
+                    }
+                    await producer.SendMessagesAsync(messages, IntegrationConfig.IntegrationCompressionTopic, 0, new SendMessageConfiguration(codec: MessageCodec.CodecGzip), CancellationToken.None);
 
-            var offsets = producer.BrokerRouter.GetTopicOffsetAsync(IntegrationConfig.IntegrationCompressionTopic, CancellationToken.None).Result;
-
-            var offsetPositions = offsets.Where(x => !x.Offsets.IsEmpty).Select(x => new OffsetPosition(x.PartitionId, x.Offsets.Max()));
-            var consumer = new Consumer(new ConsumerOptions(IntegrationConfig.IntegrationCompressionTopic, router) {
-                                            PartitionWhitelist = new List<int> {0}
-                                        }, offsetPositions.ToArray());
-            int numberOfmessage = 3;
-            for (int i = 0; i < numberOfmessage; i++)
-            {
-#pragma warning disable 4014
-                producer.SendMessageAsync(new Message(i.ToString()), IntegrationConfig.IntegrationCompressionTopic, 0, new SendMessageConfiguration(codec: MessageCodec.CodecGzip), CancellationToken.None);
-#pragma warning restore 4014
+                    var results = consumer.Consume(new CancellationTokenSource(TimeSpan.FromMinutes(1)).Token).Take(messages.Count).ToList();
+                    for (var i = 0; i < messages.Count; i++)
+                    {
+                        Assert.That(results[i].Value.ToUtf8String(), Is.EqualTo(i.ToString()));
+                    }
+                }
             }
-
-            var results = consumer.Consume(new CancellationTokenSource(TimeSpan.FromMinutes(1)).Token).Take(numberOfmessage).ToList();
-
-            for (int i = 0; i < numberOfmessage; i++)
-            {
-                Assert.That(results[i].Value.ToUtf8String(), Is.EqualTo(i.ToString()));
-            }
-
-            using (producer)
-            using (consumer) { }
         }
     }
 }
