@@ -84,9 +84,11 @@
     <Compile Include="Common\IRetry.cs" />
     <Compile Include="Common\NoRetry.cs" />
     <Compile Include="Common\Retry.cs" />
+    <Compile Include="Connections\IVersionSupport.cs" />
     <Compile Include="Connections\SocketPayloadReceiveTask.cs" />
     <Compile Include="Connections\SocketPayloadSendTask.cs" />
     <Compile Include="Common\CancellableTask.cs" />
+    <Compile Include="Connections\VersionSupport.cs" />
     <Compile Include="ICacheConfiguration.cs" />
     <Compile Include="IManualConsumer.cs" />
     <Compile Include="IProducer.cs" />

@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using KafkaClient.Common;
 using KafkaClient.Connections;
 using KafkaClient.Protocol;
 using KafkaClient.Tests.Helpers;

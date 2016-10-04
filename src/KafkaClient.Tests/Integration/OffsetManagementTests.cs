@@ -12,7 +12,7 @@ namespace KafkaClient.Tests.Integration
     [Category("Integration")]
     public class OffsetManagementTests
     {
-        private readonly KafkaOptions Options = new KafkaOptions(IntegrationConfig.IntegrationUri);
+        private readonly KafkaOptions _options = new KafkaOptions(IntegrationConfig.IntegrationUri);
 
         [SetUp]
         public void Setup()
@@ -20,14 +20,13 @@ namespace KafkaClient.Tests.Integration
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
-        [Ignore("Not supported currently in 8.1.2?")]
         public async Task OffsetFetchRequestOfNonExistingGroupShouldReturnNoError()
         {
             //From documentation: https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+ProtocolTests#AGuideToTheKafkaProtocol-OffsetFetchRequest
             //Note that if there is no offset associated with a topic-partition under that consumer group the broker does not set an error code
             //(since it is not really an error), but returns empty metadata and sets the offset field to -1.
             const int partitionId = 0;
-            var router = new BrokerRouter(Options);
+            var router = new BrokerRouter(_options);
 
             var request = CreateOffsetFetchRequest(Guid.NewGuid().ToString(), partitionId);
             await router.GetTopicMetadataAsync(IntegrationConfig.IntegrationTopic, CancellationToken.None);
@@ -46,7 +45,7 @@ namespace KafkaClient.Tests.Integration
         public async Task OffsetCommitShouldStoreAndReturnSuccess()
         {
             const int partitionId = 0;
-            var router = new BrokerRouter(Options);
+            var router = new BrokerRouter(_options);
 
             await router.GetTopicMetadataAsync(IntegrationConfig.IntegrationTopic, CancellationToken.None);
             var conn = router.GetBrokerRoute(IntegrationConfig.IntegrationTopic, partitionId);
@@ -67,7 +66,7 @@ namespace KafkaClient.Tests.Integration
             const int partitionId = 0;
             const long offset = 99;
 
-            var router = new BrokerRouter(Options);
+            var router = new BrokerRouter(_options);
 
             await router.GetTopicMetadataAsync(IntegrationConfig.IntegrationTopic, CancellationToken.None);
             var conn = router.GetBrokerRoute(IntegrationConfig.IntegrationTopic, partitionId);
@@ -90,14 +89,13 @@ namespace KafkaClient.Tests.Integration
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
-        [Ignore("The response does not seem to return metadata information.  Not supported yet in kafka?")]
         public void OffsetCommitShouldStoreMetadata()
         {
             const int partitionId = 0;
             const long offset = 101;
             const string metadata = "metadata";
 
-            var router = new BrokerRouter(Options);
+            var router = new BrokerRouter(_options);
 
             var conn = router.GetBrokerRoute(IntegrationConfig.IntegrationTopic, partitionId);
 
@@ -120,16 +118,15 @@ namespace KafkaClient.Tests.Integration
         }
 
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
-        [Ignore("Not supported currently in 8.1.1?")]
-        public void ConsumerMetadataRequestShouldReturnWithoutError()
+        public async Task ConsumerMetadataRequestShouldReturnWithoutError()
         {
-            using (var router = new BrokerRouter(Options))
+            using (var router = new BrokerRouter(_options))
             {
                 var conn = router.GetBrokerRoute(IntegrationConfig.IntegrationTopic);
 
                 var request = new GroupCoordinatorRequest(IntegrationConfig.IntegrationConsumer);
 
-                var response = conn.Connection.SendAsync(request, CancellationToken.None).Result;
+                var response = await conn.Connection.SendAsync(request, CancellationToken.None);
 
                 Assert.That(response, Is.Not.Null);
                 Assert.That(response.ErrorCode, Is.EqualTo((int)ErrorResponseCode.NoError));

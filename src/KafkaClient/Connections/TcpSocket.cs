@@ -62,7 +62,7 @@ namespace KafkaClient.Connections
         public Task<byte[]> ReadAsync(int readSize, CancellationToken cancellationToken)
         {
             var readTask = new SocketPayloadReceiveTask(readSize, cancellationToken);
-            _receiveTaskQueue.Add(readTask);
+            _receiveTaskQueue.Add(readTask, cancellationToken);
             return readTask.Tcs.Task;
         }
 
@@ -70,7 +70,7 @@ namespace KafkaClient.Connections
         public Task<DataPayload> WriteAsync(DataPayload payload, CancellationToken cancellationToken)
         {
             var sendTask = new SocketPayloadSendTask(payload, cancellationToken);
-            _sendTaskQueue.Add(sendTask);
+            _sendTaskQueue.Add(sendTask, cancellationToken);
             _configuration.OnWriteEnqueued?.Invoke(Endpoint, payload);
             return sendTask.Tcs.Task;
         }
@@ -89,7 +89,7 @@ namespace KafkaClient.Connections
                 // block here until we can get connections then start loop pushing data through network stream
                 try {
                     var netStreamTask = GetStreamAsync();
-                    if (!await netStreamTask.WhenCompleted(_disposeToken.Token).ConfigureAwait(false)) {
+                    if (await netStreamTask.IsCancelled(_disposeToken.Token).ConfigureAwait(false)) {
                         var disposedException = new ObjectDisposedException($"Object is disposing (TcpSocket for {Endpoint})");
                         await SetExceptionToAllPendingTasksAsync(disposedException);
                         _configuration.OnDisconnected?.Invoke(Endpoint, disposedException);
@@ -129,8 +129,7 @@ namespace KafkaClient.Connections
             await Task.WhenAny(receiveTask, sendTask).ConfigureAwait(false);
             if (_disposeToken.IsCancellationRequested) return;
 
-            await ThrowTaskExceptionIfFaulted(receiveTask);
-            await ThrowTaskExceptionIfFaulted(sendTask);
+            await Task.WhenAll(receiveTask, sendTask).ConfigureAwait(false);
         }
 
         private async Task ProcessNetworkstreamTask<T>(Stream stream, AsyncCollection<T> queue, Func<Stream, T, Task> asyncProcess)
@@ -143,11 +142,6 @@ namespace KafkaClient.Connections
 
                 lastTask = asyncProcess(stream, takeResult.Item);
             }
-        }
-
-        private async Task ThrowTaskExceptionIfFaulted(Task task)
-        {
-            if (task.IsFaulted || task.IsCanceled) await task;
         }
 
         private async Task ProcessReceiveTaskAsync(Stream stream, SocketPayloadReceiveTask receiveTask)
@@ -165,7 +159,7 @@ namespace KafkaClient.Connections
                         _configuration.OnReadingChunk?.Invoke(Endpoint, receiveTask.ReadSize, totalBytesReceived, timer.Elapsed);
                         var bytesReceived = await stream.ReadAsync(buffer, totalBytesReceived, readSize, receiveTask.CancellationToken).ConfigureAwait(false);
                         _configuration.OnReadChunk?.Invoke(Endpoint, receiveTask.ReadSize, receiveTask.ReadSize - totalBytesReceived, bytesReceived, timer.Elapsed);
-                        _log.Debug(() => LogEvent.Create($"Received data from {Endpoint}, actual size {bytesReceived} ({(receiveTask.CancellationToken.IsCancellationRequested ? "" : "not ")}cancelled)"));
+                        _log.Debug(() => LogEvent.Create($"Received data from {Endpoint}, actual size {bytesReceived}{(receiveTask.CancellationToken.IsCancellationRequested ? " (cancelled)" : "")}"));
                         totalBytesReceived += bytesReceived;
 
                         if (bytesReceived <= 0) {
@@ -272,7 +266,7 @@ namespace KafkaClient.Connections
                     _client = new TcpClient();
 
                     var connectTask = _client.ConnectAsync(Endpoint.IP.Address, Endpoint.IP.Port);
-                    if (!await connectTask.WhenCompleted(_disposeToken.Token).ConfigureAwait(false)) {
+                    if (await connectTask.IsCancelled(_disposeToken.Token).ConfigureAwait(false)) {
                         throw new ObjectDisposedException($"Object is disposing (TcpSocket for endpoint {Endpoint})");
                     }
 

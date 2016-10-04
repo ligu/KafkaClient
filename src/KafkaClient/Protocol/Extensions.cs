@@ -46,10 +46,5 @@ namespace KafkaClient.Protocol
         {
             return UnixEpoch.AddMilliseconds(milliseconds);
         }
-
-        public static IRequestContext WithCorrelation(this IRequestContext context, int correlationId)
-        {
-            return new RequestContext(correlationId, context?.ApiVersion, context?.ClientId);
-        }
     }
 }

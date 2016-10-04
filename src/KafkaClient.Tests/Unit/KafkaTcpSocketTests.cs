@@ -17,7 +17,7 @@ namespace KafkaClient.Tests.Unit
     /// Note these integration tests require an actively running kafka server defined in the app.config file.
     /// </summary>
     [TestFixture]
-    [Category("Integration")]
+    [Category("Unit")]
     public class KafkaTcpSocketTests
     {
         private const int FakeServerPort = 8999;
@@ -369,7 +369,8 @@ namespace KafkaClient.Tests.Unit
         [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
         public async Task ShouldReconnectAfterLosingConnectionAndBeAbleToStartNewRead()
         {
-            using (var server = new FakeTcpServer(_log, FakeServerPort))
+            var log = new TraceLog();
+            using (var server = new FakeTcpServer(log, FakeServerPort))
             {
                 var disconnects = 0;
                 var connects = 0;
@@ -377,24 +378,32 @@ namespace KafkaClient.Tests.Unit
 
                 server.OnClientConnected += () => Interlocked.Increment(ref connects);
                 server.OnClientDisconnected += () => Interlocked.Increment(ref disconnects);
-                var config = new ConnectionConfiguration(onDisconnected: (endpoint, exception) => disconnectEvent.TrySetResult(1));
-                var socket = new TcpSocket(_fakeServerUrl, config, _log);
+                var config = new ConnectionConfiguration(onDisconnected: (endpoint, exception) => {
+                    log.Info(() => LogEvent.Create("inside onDisconnected"));
+                                                             disconnectEvent.TrySetResult(1);
+                                                         });
+                var socket = new TcpSocket(_fakeServerUrl, config, log);
 
                 //wait till connected
                 await TaskTest.WaitFor(() => connects > 0);
+                log.Info(() => LogEvent.Create("connects > 0"));
                 var readTask = socket.ReadAsync(4, CancellationToken.None);
 
+                log.Info(() => LogEvent.Create("Connected: Dropping connection..."));
                 server.DropConnection();
 
                 //wait till Disconnected
+                log.Info(() => LogEvent.Create("Waiting for onDisconnected"));
                 await Task.WhenAny(disconnectEvent.Task, Task.Delay(100000));
                 Assert.IsTrue(disconnectEvent.Task.IsCompleted, "Server should have disconnected the client.");
                 Assert.Throws<ConnectionException>(async () => await readTask);
                 await TaskTest.WaitFor(() => connects == 2, 6000);
+                log.Info(() => LogEvent.Create("connects == 2"));
                 Assert.That(connects, Is.EqualTo(2), "Socket should have reconnected.");
 
                 var readTask2 = socket.ReadAsync(4, CancellationToken.None);
 
+                log.Info(() => LogEvent.Create("sending data (99)"));
                 await server.SendDataAsync(99.ToBytes());
                 var result = await readTask2;
                 Assert.That(result.ToInt32(), Is.EqualTo(99), "Socket should have received the 4 bytes.");

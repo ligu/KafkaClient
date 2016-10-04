@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using KafkaClient.Common;
 using KafkaClient.Protocol;
+using KafkaClient.Tests.Unit;
 
 namespace KafkaClient.Tests.Helpers
 {
@@ -20,17 +22,16 @@ namespace KafkaClient.Tests.Helpers
 
         public static byte[] CreateMetadataResponse(int correlationId, string topic)
         {
-            return new MessagePacker()
-               .Pack(correlationId)
-               .Pack(2) //broker count
-               .Pack(1).Pack("http://localhost", StringPrefixEncoding.Int16).Pack(8990)
-               .Pack(2).Pack("http://localhost", StringPrefixEncoding.Int16).Pack(8991)
-               .Pack(1) //topic count
-               .Pack((Int16)ErrorResponseCode.NoError).Pack(topic, StringPrefixEncoding.Int16)
-               .Pack(2) //partition count
-               .Pack((Int16)ErrorResponseCode.NoError).Pack(0).Pack(0).Pack(0).Pack(0)
-               .Pack((Int16)ErrorResponseCode.NoError).Pack(1).Pack(1).Pack(0).Pack(0)
-               .Payload();
+            return KafkaDecoder.EncodeResponseBytes(
+                new RequestContext(correlationId),
+                new MetadataResponse(
+                    new[] {new Broker(1, "http://localhost", 8990), new Broker(2, "http://localhost", 8991)},
+                    new[] {
+                        new MetadataTopic(
+                            topic,
+                            ErrorResponseCode.NoError,
+                            new[] {new MetadataPartition(0, 0), new MetadataPartition(1, 1)})
+                    }));
         }
     }
 }

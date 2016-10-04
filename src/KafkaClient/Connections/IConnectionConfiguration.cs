@@ -25,6 +25,11 @@ namespace KafkaClient.Connections
         IRetry ConnectionRetry { get; }
 
         /// <summary>
+        /// Support for different protocol versions for Kakfa requests and responses.
+        /// </summary>
+        IVersionSupport VersionSupport { get; }
+
+        /// <summary>
         /// The maximum time to wait for requests.
         /// </summary>
         TimeSpan RequestTimeout { get; }

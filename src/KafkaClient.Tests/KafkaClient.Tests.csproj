@@ -88,6 +88,7 @@
     <Compile Include="Unit\CircularBufferTests.cs" />
     <Compile Include="Unit\FakeTcpServerTests.cs" />
     <Compile Include="Unit\KafkaConnectionTests.cs" />
+    <Compile Include="Unit\KafkaDecoder.cs" />
     <Compile Include="Unit\KafkaEndpointTests.cs" />
     <Compile Include="Unit\KafkaMetadataGetAsyncTests.cs" />
     <Compile Include="Unit\KafkaTcpSocketTests.cs" />

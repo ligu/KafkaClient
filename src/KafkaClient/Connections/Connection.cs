@@ -1,11 +1,14 @@
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Common;
 using KafkaClient.Protocol;
+using Nito.AsyncEx;
+using Nito.AsyncEx.Synchronous;
 
 namespace KafkaClient.Connections
 {
@@ -20,8 +23,6 @@ namespace KafkaClient.Connections
     /// </summary>
     public class Connection : IConnection
     {
-        public bool IsInErrorState { get; private set; }
-
         private readonly ConcurrentDictionary<int, AsyncRequestItem> _requestsByCorrelation = new ConcurrentDictionary<int, AsyncRequestItem>();
         private readonly ILog _log;
         private readonly ITcpSocket _socket;
@@ -33,6 +34,7 @@ namespace KafkaClient.Connections
         private Task _readerTask;
         private int _activeReaderCount;
         private int _correlationIdSeed;
+        private IVersionSupport _versionSupport;
 
         /// <summary>
         /// Initializes a new instance of the Connection class.
@@ -45,7 +47,7 @@ namespace KafkaClient.Connections
             _socket = socket;
             _log = log ?? TraceLog.Log;
             _configuration = configuration ?? new ConnectionConfiguration();
-
+            _versionSupport = _configuration.VersionSupport.IsDynamic ? null : _configuration.VersionSupport;
             StartReader();
         }
 
@@ -67,9 +69,13 @@ namespace KafkaClient.Connections
         /// <returns></returns>
         public async Task<T> SendAsync<T>(IRequest<T> request, CancellationToken token, IRequestContext context = null) where T : class, IResponse
         {
-            context = context.WithCorrelation(NextCorrelationId());
+            var version = context?.ApiVersion;
+            if (!version.HasValue) {
+                version = await GetVersionAsync(request.ApiKey, token);
+            }
+            context = new RequestContext(NextCorrelationId(), version, context?.ClientId);
 
-            _log.Debug(() => LogEvent.Create($"SendAsync Api {request.ApiKey} CorrelationId {context.CorrelationId} to {Endpoint}"));
+            _log.Debug(() => LogEvent.Create($"SendAsync Api {request.ApiKey} version {context.ApiVersion.GetValueOrDefault()} CorrelationId {context.CorrelationId} to {Endpoint}"));
             if (!request.ExpectResponse) {
                 await _socket.WriteAsync(KafkaEncoder.Encode(context, request), token).ConfigureAwait(false);
                 return default(T);
@@ -94,6 +100,31 @@ namespace KafkaClient.Connections
                 var response = await asyncRequest.ReceiveTask.Task.ThrowIfCancellationRequested(token).ConfigureAwait(false);
                 return KafkaEncoder.Decode<T>(context, response);
             }
+        }
+
+        private async Task<short> GetVersionAsync(ApiKeyRequestType requestType, CancellationToken cancellationToken)
+        {
+            if (_configuration.VersionSupport.IsDynamic) {
+                try {
+                    var response = await SendAsync(new ApiVersionsRequest(), cancellationToken, new RequestContext(version: 0));
+                    // TODO: what if it doesn't respond or it's unknown ?
+                    if (response.ErrorCode == ErrorResponseCode.NoError) {
+                        var supportedVersions = response.SupportedVersions.ToImmutableDictionary(
+                                                       _ => _.ApiKey,
+                                                       _ => _.MaxVersion);
+                        _versionSupport = new VersionSupport(supportedVersions);
+                    }
+                } catch (Exception ex) {
+                    _log.Error(LogEvent.Create(ex));
+                    _versionSupport = _configuration.VersionSupport;
+                }
+            }
+            return _versionSupport
+                .GetVersion(requestType)
+                .GetValueOrDefault(_configuration
+                    .VersionSupport
+                    .GetVersion(requestType)
+                    .GetValueOrDefault());
         }
 
         #region Equals
@@ -126,40 +157,39 @@ namespace KafkaClient.Connections
                     // only allow one reader to execute, dump out all other requests
                     if (Interlocked.Increment(ref _activeReaderCount) != 1) return;
 
-                    while (!_disposeToken.IsCancellationRequested) {
-                        try {
+                    var messageSize = 0;
+                    // use backoff so we don't take over the CPU when there's a failure
+                    await new BackoffRetry(TimeSpan.MaxValue, TimeSpan.FromMilliseconds(10), maxDelay: TimeSpan.FromSeconds(5)).AttemptAsync(
+                        async attempt => {
                             _log.Debug(() => LogEvent.Create($"Awaiting message from {_socket.Endpoint}"));
-                            var messageSizeResult = await _socket.ReadAsync(4, _disposeToken.Token).ConfigureAwait(false);
-                            var messageSize = messageSizeResult.ToInt32();
+                            if (messageSize == 0) {
+                                var messageSizeResult = await _socket.ReadAsync(4, _disposeToken.Token).ConfigureAwait(false);
+                                messageSize = messageSizeResult.ToInt32(); // hold onto it in case we fail while reading from the socket
+                            }
 
-                            _log.Debug(() => LogEvent.Create($"Received message of size {messageSize} from {_socket.Endpoint}"));
-                            var message = await _socket.ReadAsync(messageSize, _disposeToken.Token).ConfigureAwait(false);
+                            var currentSize = messageSize;
+                            _log.Debug(() => LogEvent.Create($"Received message of size {currentSize} from {_socket.Endpoint}"));
+                            var message = await _socket.ReadAsync(currentSize, _disposeToken.Token).ConfigureAwait(false);
+                            messageSize = 0; // reset so we read the size next time through -- note that if the ReadAsync reads partially we're still in trouble
 
                             CorrelatePayloadToRequest(message);
-                            if (IsInErrorState) {
+                            if (attempt > 0) {
                                 _log.Info(() => LogEvent.Create($"Polling read thread has recovered on {_socket.Endpoint}"));
                             }
-
-                            IsInErrorState = false;
-                        } catch (Exception ex) {
-                            // this may have unexpected behavior for exceptions that don't result in an error state or cancellation since the 
-                            // resulting position in the tcp stream is likely wrong ...
-
-                            // Also, it is possible for orphaned requests to exist in the _requestsByCorrelation after failure
-
-                            //don't record the exception if we are disposing
-                            if (_disposeToken.IsCancellationRequested == false) {
-                                //TODO being in sync with the byte order on read is important.  What happens if this exception causes us to be out of sync?
-                                //record exception and continue to scan for data.
-
-                                //TODO create an event on kafkaTcpSocket and resume only when the connection is online
-                                if (!IsInErrorState) {
-                                    _log.Error(LogEvent.Create(ex, $"Polling read thread {_socket.Endpoint}"));
-                                    IsInErrorState = true;
+                        },
+                        (exception, attempt, delay) => {
+                            // It is possible for orphaned requests to exist in the _requestsByCorrelation after failure
+                            if (!_disposeToken.IsCancellationRequested) {
+                                _log.Debug(() => LogEvent.Create(exception, $"Polling failure on {_socket.Endpoint} attempt {attempt} delay {delay}"));
+                                if (attempt == 0) {
+                                    _log.Error(LogEvent.Create(exception, $"Polling read thread {_socket?.Endpoint}"));
                                 }
                             }
-                        }
-                    }
+                            _disposeToken.Token.ThrowIfCancellationRequested();
+                        },
+                        null, // since there is no max attempts/delay
+                        _disposeToken.Token
+                    ).ConfigureAwait(false);
                 } finally {
                     Interlocked.Decrement(ref _activeReaderCount);
                     _log.Debug(() => LogEvent.Create($"Closed down connection to {_socket.Endpoint}"));
@@ -218,7 +248,7 @@ namespace KafkaClient.Connections
             if (Interlocked.Increment(ref _disposeCount) != 1) return;
 
             _disposeToken.Cancel();
-            _readerTask?.Wait(TimeSpan.FromSeconds(1));
+            Task.WaitAny(_readerTask, Task.Delay(TimeSpan.FromSeconds(1)));
 
             using (_disposeToken) {
                 using (_socket) {

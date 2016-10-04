@@ -443,7 +443,7 @@ namespace KafkaClient.Protocol
         {
             return new MessagePacker()
                 .Pack((short)request.ApiKey)
-                 .Pack(context.ApiVersion)
+                 .Pack(context.ApiVersion.GetValueOrDefault())
                  .Pack(context.CorrelationId)
                  .Pack(context.ClientId, StringPrefixEncoding.Int16);
         }

@@ -15,6 +15,6 @@ namespace KafkaClient.Protocol
         /// <summary>
         /// This is a numeric version number for the api request. It allows the server to properly interpret the request as the protocol evolves. Responses will always be in the format corresponding to the request version.
         /// </summary>
-        short ApiVersion { get; }
+        short? ApiVersion { get; }
     }
 }

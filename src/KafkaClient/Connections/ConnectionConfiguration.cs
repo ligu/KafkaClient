@@ -21,6 +21,7 @@ namespace KafkaClient.Connections
         /// Configuration for the tcp connection.
         /// </summary>
         /// <param name="connectionRetry">Retry details for (re)establishing the connection.</param>
+        /// <param name="versionSupport">Support for different protocol versions for Kakfa requests and responses.</param>
         /// <param name="requestTimeout">The maximum time to wait for requests.</param>
         /// <param name="onDisconnected">Triggered when the tcp socket is disconnected.</param>
         /// <param name="onConnecting">Triggered when the tcp socket is connecting.</param>
@@ -36,6 +37,7 @@ namespace KafkaClient.Connections
         /// <param name="onReadFailed">Triggered after failing to read from the tcp stream.</param>
         public ConnectionConfiguration(
             IRetry connectionRetry = null, 
+            IVersionSupport versionSupport = null,
             TimeSpan? requestTimeout = null,
             ConnectError onDisconnected = null, 
             Connecting onConnecting = null, 
@@ -52,6 +54,7 @@ namespace KafkaClient.Connections
             )
         {
             ConnectionRetry = connectionRetry ?? Defaults.ConnectionRetry();
+            VersionSupport = versionSupport ?? Connections.VersionSupport.Kafka8;
             RequestTimeout = requestTimeout ?? TimeSpan.FromSeconds(Defaults.RequestTimeoutSeconds);
             OnDisconnected = onDisconnected;
             OnConnecting = onConnecting;
@@ -69,6 +72,9 @@ namespace KafkaClient.Connections
 
         /// <inheritdoc />
         public IRetry ConnectionRetry { get; }
+
+        /// <inheritdoc />
+        public IVersionSupport VersionSupport { get; }
 
         /// <inheritdoc />
         public TimeSpan RequestTimeout { get; }

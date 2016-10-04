@@ -274,6 +274,8 @@ namespace KafkaClient
 
         private void UpdateTopicCache(MetadataResponse metadata)
         {
+            if (metadata == null) return;
+
             var partitionElections = metadata.Topics.SelectMany(
                 t => t.Partitions
                       .Where(p => p.IsElectingLeader)
@@ -293,6 +295,8 @@ namespace KafkaClient
 
         private void UpdateConnectionCache(MetadataResponse metadata)
         {
+            if (metadata == null) return;
+
             var allConnections = _allConnections;
             var brokerConnections = _brokerConnections;
             var connectionsToDispose = ImmutableList<IConnection>.Empty;

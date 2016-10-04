@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using KafkaClient.Common;
 using KafkaClient.Protocol;
@@ -326,7 +325,7 @@ namespace KafkaClient.Tests.Unit
                 var finalPosition = reader.ReadInt32() + reader.Position;
                 reader.AssertMessageSet(context, topic.Messages);
                 Assert.That(reader.Position, Is.EqualTo(finalPosition),
-                            string.Format("MessageSetSize was {0} but ended in a different spot.", finalPosition - 4));
+                            $"MessageSetSize was {finalPosition - 4} but ended in a different spot.");
             }
         }
 
@@ -604,29 +603,5 @@ namespace KafkaClient.Tests.Unit
                             string.Format("Size was {0} but ended in a different spot.", finalPosition - 4));
             }
         }
-
-        public static byte[] PrefixWithInt32Length(this byte[] source)
-        {
-            var destination = new byte[source.Length + 4]; 
-            using (var stream = new MemoryStream(destination)) {
-                using (var writer = new BigEndianBinaryWriter(stream)) {
-                    writer.Write(source.Length);
-                }
-            }
-            Buffer.BlockCopy(source, 0, destination, 4, source.Length);
-            return destination;
-        }
-
-        /// <summary>
-        /// From http://kafka.apache.org/protocol.html#protocol_messages
-        /// 
-        /// Response Header => correlation_id 
-        ///  correlation_id => INT32  -- The user-supplied value passed in with the request
-        /// </summary>
-        public static void WriteResponseHeader(this BigEndianBinaryWriter writer, int correlationId)
-        {
-            writer.Write(correlationId);
-        }
-
     }
 }

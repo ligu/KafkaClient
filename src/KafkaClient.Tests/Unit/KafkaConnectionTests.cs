@@ -7,13 +7,12 @@ using KafkaClient.Connections;
 using KafkaClient.Protocol;
 using KafkaClient.Tests.Fakes;
 using KafkaClient.Tests.Helpers;
-using Moq;
 using Ninject.MockingKernel.Moq;
 using NUnit.Framework;
 
 namespace KafkaClient.Tests.Unit
 {
-    [Category("Integration")]
+    [Category("Unit")]
     [TestFixture]
     public class KafkaConnectionTests
     {
@@ -94,35 +93,36 @@ namespace KafkaClient.Tests.Unit
         public async Task KafkaConnectionShouldLogDisconnectAndRecover()
         {
             var mockLog = new MemoryLog();
-            var log = new TraceLog(LogLevel.Error);
             var disconnected = 0;
+            var connected = 0;
 
-            var config = new ConnectionConfiguration(onDisconnected: (endpoint, exception) => {
-                                                         Interlocked.Increment(ref disconnected);
-                                                     });
-            using (var server = new FakeTcpServer(log, 8999))
-            using (var socket = new TcpSocket(_endpoint, config, log: log))
+            var config = new ConnectionConfiguration(
+                onDisconnected: (endpoint, exception) => {
+                    Interlocked.Increment(ref disconnected);
+                },
+                onConnected: (endpoint, attempt, elapsed) => {
+                    Interlocked.Increment(ref connected);
+                });
+
+            using (var server = new FakeTcpServer(new TraceLog(), 8999))
+            using (var socket = new TcpSocket(_endpoint, config, log: new TraceLog()))
             using (var conn = new Connection(socket, config, log: mockLog))
             {
                 for (int connectionAttempt = 1; connectionAttempt < 4; connectionAttempt++)
                 {
-
-                    await TaskTest.WaitFor(() => server.ConnectionEventcount == connectionAttempt);
+                    var currentAttempt = connectionAttempt;
+                    await TaskTest.WaitFor(() => server.ConnectionEventcount == currentAttempt);
                     Assert.That(server.ConnectionEventcount, Is.EqualTo(connectionAttempt));
                     server.SendDataAsync(CreateCorrelationMessage(1)).Wait(TimeSpan.FromSeconds(5));
-                    await TaskTest.WaitFor(() => !conn.IsInErrorState);
+                    await TaskTest.WaitFor(() => connected == disconnected);
 
-                    Assert.IsFalse(conn.IsInErrorState);
-                    Assert.That(mockLog.LogEvents.Count(e => e.Item1 == LogLevel.Info && e.Item2.Message.StartsWith("Polling read thread has recovered: ")), Is.EqualTo(connectionAttempt-1));
+                    Assert.That(mockLog.LogEvents.Count(e => e.Item1 == LogLevel.Info && e.Item2.Message.StartsWith("Polling read thread has recovered on ")), Is.EqualTo(currentAttempt-1));
 
                     server.DropConnection();
-                    await TaskTest.WaitFor(() => conn.IsInErrorState);
-                    Assert.AreEqual(disconnected, connectionAttempt);
-                    Assert.IsTrue(conn.IsInErrorState);
+                    await TaskTest.WaitFor(() => disconnected == currentAttempt);
 
-                    Assert.That(mockLog.LogEvents.Count(e => e.Item1 == LogLevel.Error && e.Item2.Message.StartsWith("Exception occured in polling read thread")), Is.EqualTo(connectionAttempt));
+                    Assert.That(mockLog.LogEvents.Count(e => e.Item1 == LogLevel.Debug && e.Item2.Message.StartsWith("Polling failure on")), Is.EqualTo(currentAttempt));
                 }
-
             }
         }
 
@@ -204,6 +204,27 @@ namespace KafkaClient.Tests.Unit
                     Assert.That(taskResult.IsCanceled, Is.False);
                     Assert.That(taskResult.Status, Is.EqualTo(TaskStatus.RanToCompletion));
                 }
+            }
+        }
+
+        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        public async Task SendAsyncShouldUseStatictVersionInfo()
+        {
+            IRequestContext context = null;
+            using (var server = new FakeTcpServer(_log, 8999))
+            using (var socket = new TcpSocket(_endpoint, log: _log))
+            using (var conn = new Connection(socket, new ConnectionConfiguration(requestTimeout: TimeSpan.FromSeconds(1000), versionSupport: VersionSupport.Kafka10), log: _log))
+            {
+                server.OnBytesReceived += data =>
+                {
+                    context = KafkaDecoder.DecodeHeader(data);
+                    var send = server.SendDataAsync(KafkaDecoder.EncodeResponseBytes(context, new FetchResponse()));
+                };
+
+                await conn.SendAsync(new FetchRequest(new Fetch("Foo", 0, 0)), CancellationToken.None);
+                await TaskTest.WaitFor(() => context != null);
+
+                Assert.That(context.ApiVersion.Value, Is.EqualTo(2));
             }
         }
 

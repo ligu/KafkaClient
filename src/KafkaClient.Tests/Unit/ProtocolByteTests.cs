@@ -127,7 +127,7 @@ namespace KafkaClient.Tests.Unit
             byte[] data = null;
             using (var stream = new MemoryStream()) {
                 var writer = new BigEndianBinaryWriter(stream);
-                writer.WriteResponseHeader(correlationId);
+                writer.Write(correlationId);
 
                 writer.Write(topicsPerRequest);
                 for (var t = 0; t < topicsPerRequest; t++) {
@@ -243,7 +243,7 @@ namespace KafkaClient.Tests.Unit
             byte[] data = null;
             using (var stream = new MemoryStream()) {
                 var writer = new BigEndianBinaryWriter(stream);
-                writer.WriteResponseHeader(correlationId);
+                writer.Write(correlationId);
 
                 if (version >= 1) {
                     writer.Write(throttleTime);
@@ -345,7 +345,7 @@ namespace KafkaClient.Tests.Unit
             byte[] data = null;
             using (var stream = new MemoryStream()) {
                 var writer = new BigEndianBinaryWriter(stream);
-                writer.WriteResponseHeader(correlationId);
+                writer.Write(correlationId);
 
                 writer.Write(topicsPerRequest);
                 for (var t = 0; t < topicsPerRequest; t++) {
@@ -439,7 +439,7 @@ namespace KafkaClient.Tests.Unit
             byte[] data = null;
             using (var stream = new MemoryStream()) {
                 var writer = new BigEndianBinaryWriter(stream);
-                writer.WriteResponseHeader(correlationId);
+                writer.Write(correlationId);
 
                 writer.Write(brokersPerRequest);
                 for (var b = 0; b < brokersPerRequest; b++) {
@@ -566,7 +566,7 @@ namespace KafkaClient.Tests.Unit
             byte[] data = null;
             using (var stream = new MemoryStream()) {
                 var writer = new BigEndianBinaryWriter(stream);
-                writer.WriteResponseHeader(correlationId);
+                writer.Write(correlationId);
 
                 writer.Write(topicsPerRequest);
                 for (var t = 0; t < topicsPerRequest; t++) {
@@ -657,7 +657,7 @@ namespace KafkaClient.Tests.Unit
             byte[] data = null;
             using (var stream = new MemoryStream()) {
                 var writer = new BigEndianBinaryWriter(stream);
-                writer.WriteResponseHeader(correlationId);
+                writer.Write(correlationId);
 
                 writer.Write(topicsPerRequest);
                 for (var t = 0; t < topicsPerRequest; t++) {
@@ -733,7 +733,7 @@ namespace KafkaClient.Tests.Unit
             byte[] data = null;
             using (var stream = new MemoryStream()) {
                 var writer = new BigEndianBinaryWriter(stream);
-                writer.WriteResponseHeader(correlationId);
+                writer.Write(correlationId);
                 writer.Write((short)errorCode);
                 writer.Write(coordinatorId);
                 writer.Write("broker-" + coordinatorId, StringPrefixEncoding.Int16);
@@ -797,7 +797,7 @@ namespace KafkaClient.Tests.Unit
             byte[] data = null;
             using (var stream = new MemoryStream()) {
                 var writer = new BigEndianBinaryWriter(stream);
-                writer.WriteResponseHeader(correlationId);
+                writer.Write(correlationId);
                 writer.Write((short)errorCode);
 
                 

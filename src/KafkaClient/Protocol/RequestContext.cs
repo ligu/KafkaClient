@@ -5,7 +5,7 @@ namespace KafkaClient.Protocol
         public RequestContext(int? correlationId = null, short? version = null, string clientId = null)
         {
             CorrelationId = correlationId.GetValueOrDefault(1);
-            ApiVersion = version.GetValueOrDefault(0);
+            ApiVersion = version;
             ClientId = clientId ?? "Kafka-Net";
         }
 
@@ -25,6 +25,6 @@ namespace KafkaClient.Protocol
         /// properly interpret the request as the protocol evolves. Responses will always 
         /// be in the format corresponding to the request version.
         /// </summary>
-        public short ApiVersion { get; }
+        public short? ApiVersion { get; }
     }
 }

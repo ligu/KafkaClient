@@ -10,7 +10,7 @@ using NUnit.Framework;
 namespace KafkaClient.Tests.Unit
 {
     [TestFixture]
-    [Category("Integration")]
+    [Category("Unit")]
     public class FakeTcpServerTests
     {
         private readonly Uri _fakeServerUrl;

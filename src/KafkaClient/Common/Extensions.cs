@@ -76,6 +76,31 @@ namespace KafkaClient.Common
             }
         }
 
+        public static async Task AttemptAsync(
+            this IRetry policy, 
+            Func<int, Task> action, 
+            Action<Exception, int, TimeSpan> onException, 
+            Action<Exception, int> onFinalException, 
+            CancellationToken cancellationToken)
+        {
+            var timer = new Stopwatch();
+            timer.Start();
+            for (var attempt = 0; !cancellationToken.IsCancellationRequested; attempt++) {
+                cancellationToken.ThrowIfCancellationRequested();
+                try {
+                    await action(attempt).ConfigureAwait(false);
+                    // reset attempt when successful
+                    attempt = -1;
+                    timer.Restart();
+                } catch (Exception ex) {
+                    if (attempt == 0) { // first failure
+                        timer.Restart();
+                    }
+                    await policy.HandleErrorAndDelayAsync(onException, onFinalException, attempt, timer, ex, cancellationToken);
+                }
+            }
+        }
+
         public static async Task<T> AttemptAsync<T>(
             this IRetry policy, 
             Func<int, Stopwatch, Task<RetryAttempt<T>>> action, 
