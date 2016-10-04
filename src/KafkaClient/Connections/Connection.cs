@@ -57,12 +57,6 @@ namespace KafkaClient.Connections
         /// <inheritdoc />
         public Endpoint Endpoint => _socket.Endpoint;
 
-        /// <inheritdoc />
-        public Task SendAsync(DataPayload payload, CancellationToken token)
-        {
-            return _socket.WriteAsync(payload, token);
-        }
-
         /// <summary>
         /// Send kafka payload to server and receive a task event when response is received.
         /// </summary>

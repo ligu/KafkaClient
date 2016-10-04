@@ -13,19 +13,6 @@ namespace KafkaClient.Connections
         Endpoint Endpoint { get; }
 
         /// <summary>
-        /// Value indicating the read polling thread is still active.
-        /// </summary>
-        bool IsReaderAlive { get; }
-
-        /// <summary>
-        /// Send raw byte[] payload to the kafka server with a task indicating upload is complete.
-        /// </summary>
-        /// <param name="payload">kafka protocol formatted byte[] payload</param>
-        /// <param name="token">Cancellation token used to cancel the transfer.</param>
-        /// <returns>Task which signals the completion of the upload of data to the server.</returns>
-        Task SendAsync(DataPayload payload, CancellationToken token);
-
-        /// <summary>
         /// Send a specific IRequest to the connected endpoint.
         /// </summary>
         /// <typeparam name="T">The type of the KafkaResponse expected from the request being sent.</typeparam>
