@@ -183,7 +183,7 @@ namespace KafkaClient.Tests.Unit
         public async void ProducesShouldSendOneProduceRequestForEachBatchSize()
         {
             var routerProxy = new FakeBrokerRouter();
-            var producer = new Producer(routerProxy.Create(), new ProducerConfiguration(batchSize: 2));
+            var producer = new Producer(routerProxy.Create(), new ProducerConfiguration(batchSize: 4));
             using (producer)
             {
                 var calls = new[]
@@ -191,7 +191,11 @@ namespace KafkaClient.Tests.Unit
                     producer.SendMessageAsync(new Message("1"), FakeBrokerRouter.TestTopic, CancellationToken.None),
                     producer.SendMessageAsync(new Message("2"), FakeBrokerRouter.TestTopic, CancellationToken.None),
                     producer.SendMessageAsync(new Message("3"), FakeBrokerRouter.TestTopic, CancellationToken.None),
-                    producer.SendMessageAsync(new Message("4"), FakeBrokerRouter.TestTopic, CancellationToken.None)
+                    producer.SendMessageAsync(new Message("4"), FakeBrokerRouter.TestTopic, CancellationToken.None),
+                    producer.SendMessageAsync(new Message("5"), FakeBrokerRouter.TestTopic, CancellationToken.None),
+                    producer.SendMessageAsync(new Message("6"), FakeBrokerRouter.TestTopic, CancellationToken.None),
+                    producer.SendMessageAsync(new Message("7"), FakeBrokerRouter.TestTopic, CancellationToken.None),
+                    producer.SendMessageAsync(new Message("8"), FakeBrokerRouter.TestTopic, CancellationToken.None)
                 };
 
                 await Task.WhenAll(calls);
@@ -286,7 +290,7 @@ namespace KafkaClient.Tests.Unit
                 var senderTask = Task.Factory.StartNew(async () => {
                     for (int i = 0; i < 3; i++) {
                         await producer.SendMessageAsync(new Message(i.ToString()), FakeBrokerRouter.TestTopic, CancellationToken.None);
-                        Console.WriteLine("BufferedMessageCount: {0}", producer.BufferedMessageCount);
+                        Console.WriteLine("Buffered: {0}, In Flight: {1}", producer.BufferedMessageCount, producer.InFlightMessageCount);
                         Interlocked.Increment(ref count);
                     }
                 });

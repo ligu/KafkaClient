@@ -154,7 +154,7 @@ namespace KafkaClient.Tests.Integration
         }
 
         [Test]
-       [ExpectedException(typeof(FetchOutOfRangeException), ExpectedMessage = "Kafka returned error response for Fetch: OffsetOutOfRange", MatchType = MessageMatch.StartsWith)]
+       [ExpectedException(typeof(FetchOutOfRangeException), ExpectedMessage = "Kafka returned OffsetOutOfRange for Fetch request", MatchType = MessageMatch.StartsWith)]
         public async Task FetchMessagesOffsetBiggerThanLastOffsetInQueueTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer

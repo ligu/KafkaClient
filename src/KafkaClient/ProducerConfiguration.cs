@@ -12,7 +12,7 @@ namespace KafkaClient
             ISendMessageConfiguration sendDefaults = null)
         {
             RequestParallelization = requestParallelization;
-            BatchSize = batchSize;
+            BatchSize = Math.Max(1, batchSize);
             BatchMaxDelay = batchMaxDelay ?? TimeSpan.FromMilliseconds(Defaults.BatchMaxDelayMilliseconds);
             StopTimeout = stopTimeout ?? TimeSpan.FromSeconds(Defaults.DefaultStopTimeoutSeconds);
             SendDefaults = sendDefaults ?? new SendMessageConfiguration();
