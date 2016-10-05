@@ -109,9 +109,9 @@ namespace KafkaClient.Connections
         {
             var wrappedException = WrappedException(ex);
             var cancelledAny = await _sendTaskQueue.TryApplyAsync(p => p.Tcs.TrySetException(wrappedException), new CancellationToken(true));
-            cancelledAny = await _receiveTaskQueue.TryApplyAsync(p => p.Tcs.TrySetException(wrappedException), new CancellationToken(true)) || cancelledAny;
+            await _receiveTaskQueue.TryApplyAsync(p => p.Tcs.TrySetException(wrappedException), new CancellationToken(true));
             if (cancelledAny) {
-                _log.Error(LogEvent.Create(ex, "TcpSocket received an exception, cancelling all pending tasks"));
+                _log.Error(LogEvent.Create(ex, "TcpSocket received an exception, cancelled all pending tasks"));
             }
         }
 
@@ -129,13 +129,13 @@ namespace KafkaClient.Connections
             await Task.WhenAny(receiveTask, sendTask).ConfigureAwait(false);
             if (_disposeToken.IsCancellationRequested) return;
 
-            await ThrowTaskExceptionIfFaulted(receiveTask).ConfigureAwait(false);
-            await ThrowTaskExceptionIfFaulted(sendTask).ConfigureAwait(false);
+            await ThrowTaskExceptionIfFaulted(receiveTask);
+            await ThrowTaskExceptionIfFaulted(sendTask);
         }
 
-        private async Task ThrowTaskExceptionIfFaulted(Task task)
+        private static async Task ThrowTaskExceptionIfFaulted(Task task)
         {
-            if (task.IsFaulted || task.IsCanceled) await task.ConfigureAwait(false);
+            if (task.IsFaulted || task.IsCanceled) await task;
         }
 
         private async Task ProcessNetworkstreamTask<T>(Stream stream, AsyncCollection<T> queue, Func<Stream, T, Task> asyncProcess)
@@ -163,7 +163,7 @@ namespace KafkaClient.Connections
 
                         _log.Debug(() => LogEvent.Create($"Receiving data from {Endpoint}, desired size {readSize}"));
                         _configuration.OnReadingChunk?.Invoke(Endpoint, receiveTask.ReadSize, totalBytesReceived, timer.Elapsed);
-                        var bytesReceived = await stream.ReadAsync(buffer, totalBytesReceived, readSize, receiveTask.CancellationToken).ConfigureAwait(false);
+                        var bytesReceived = await stream.ReadAsync(buffer, totalBytesReceived, readSize, receiveTask.CancellationToken);
                         _configuration.OnReadChunk?.Invoke(Endpoint, receiveTask.ReadSize, receiveTask.ReadSize - totalBytesReceived, bytesReceived, timer.Elapsed);
                         _log.Debug(() => LogEvent.Create($"Received data from {Endpoint}, actual size {bytesReceived}{(receiveTask.CancellationToken.IsCancellationRequested ? " (cancelled)" : "")}"));
                         totalBytesReceived += bytesReceived;
@@ -225,7 +225,7 @@ namespace KafkaClient.Connections
                     _log.Debug(() => LogEvent.Create($"Sending data to {Endpoint} with CorrelationId {sendTask.Payload.CorrelationId}"));
                     _configuration.OnWriting?.Invoke(Endpoint, sendTask.Payload);
                     timer.Start();
-                    await stream.WriteAsync(sendTask.Payload.Buffer, 0, sendTask.Payload.Buffer.Length, _disposeToken.Token).ConfigureAwait(false);
+                    await stream.WriteAsync(sendTask.Payload.Buffer, 0, sendTask.Payload.Buffer.Length, _disposeToken.Token);
                     timer.Stop();
                     _configuration.OnWritten?.Invoke(Endpoint, sendTask.Payload, timer.Elapsed);
                     _log.Debug(() => LogEvent.Create($"Sent data to {Endpoint} with CorrelationId {sendTask.Payload.CorrelationId}"));
