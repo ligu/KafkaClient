@@ -34,7 +34,7 @@ namespace KafkaClient.Tests.Unit
 
         #region Construct...
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public async Task ShouldStartReadPollingOnConstruction()
         {
             using (var socket = new TcpSocket(_endpoint, log: _log))
@@ -45,7 +45,7 @@ namespace KafkaClient.Tests.Unit
             }
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void ShouldReportServerUriOnConstruction()
         {
             var expectedUrl = _endpoint;
@@ -60,7 +60,7 @@ namespace KafkaClient.Tests.Unit
 
         #region Dispose Tests...
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public async Task ShouldDisposeWithoutExceptionThrown()
         {
             using (var server = new FakeTcpServer(_log, 8999))
@@ -72,7 +72,7 @@ namespace KafkaClient.Tests.Unit
             }
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void ShouldDisposeWithoutExceptionEvenWhileCallingSendAsync()
         {
             using (var socket = new TcpSocket(_endpoint, log: _log))
@@ -89,7 +89,7 @@ namespace KafkaClient.Tests.Unit
         #region Read Tests...
 
     
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public async Task KafkaConnectionShouldLogDisconnectAndRecover()
         {
             var mockLog = new MemoryLog();
@@ -126,7 +126,7 @@ namespace KafkaClient.Tests.Unit
             }
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public async Task ReadShouldIgnoreMessageWithUnknownCorrelationId()
         {
             const int correlationId = 99;
@@ -157,7 +157,7 @@ namespace KafkaClient.Tests.Unit
 
         #region Send Tests...
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public async Task SendAsyncShouldTimeoutWhenSendAsyncTakesTooLong()
         {
             using (var server = new FakeTcpServer(_log, 8999))
@@ -176,7 +176,7 @@ namespace KafkaClient.Tests.Unit
             }
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public async Task SendAsyncShouldNotAllowResponseToTimeoutWhileAwaitingKafkaToEstableConnection()
         {
             using (var socket = new TcpSocket(_endpoint, log: _log))
@@ -207,7 +207,7 @@ namespace KafkaClient.Tests.Unit
             }
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public async Task SendAsyncShouldUseStatictVersionInfo()
         {
             IRequestContext context = null;
@@ -228,7 +228,7 @@ namespace KafkaClient.Tests.Unit
             }
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public async Task SendAsyncShouldTimeoutMultipleMessagesAtATime()
         {
             using (var server = new FakeTcpServer(_log, 8999))

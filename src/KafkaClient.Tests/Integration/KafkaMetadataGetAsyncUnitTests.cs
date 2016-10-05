@@ -22,7 +22,7 @@ namespace KafkaClient.Tests.Integration
             return new Connection(new TcpSocket(endpoint, config), config, _options.Log);
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         [Ignore("Disable auto topic create in our server")]
         public async Task NewlyCreatedTopicShouldRetryUntilBrokerIsAssigned()
         {

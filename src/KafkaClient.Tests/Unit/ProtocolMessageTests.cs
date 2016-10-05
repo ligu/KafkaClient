@@ -13,7 +13,7 @@ namespace KafkaClient.Tests.Unit
     [Category("Unit")]
     public class ProtocolMessageTests
     {
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         [ExpectedException(typeof(CrcValidationException))]
         public void DecodeMessageShouldThrowWhenCrcFails()
         {
@@ -24,7 +24,7 @@ namespace KafkaClient.Tests.Unit
             var result = KafkaEncoder.DecodeMessage(0, encoded).First();
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         [TestCase("test key", "test message")]
         [TestCase(null, "test message")]
         [TestCase("test key", null)]
@@ -40,7 +40,7 @@ namespace KafkaClient.Tests.Unit
             Assert.That(testMessage.Value, Is.EqualTo(result.Value));
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void EncodeMessageSetEncodesMultipleMessages()
         {
             //expected generated from python library
@@ -63,7 +63,7 @@ namespace KafkaClient.Tests.Unit
             Assert.That(expected, Is.EqualTo(result));
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void DecodeMessageSetShouldHandleResponseWithMaxBufferSizeHit()
         {
             //This message set has a truncated message bytes at the end of it
@@ -75,7 +75,7 @@ namespace KafkaClient.Tests.Unit
             Assert.That(result.Count, Is.EqualTo(529));
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void WhenMessageIsTruncatedThenBufferUnderRunExceptionIsThrown()
         {
             // arrange
@@ -93,7 +93,7 @@ namespace KafkaClient.Tests.Unit
             Assert.Throws<BufferUnderRunException>(() => KafkaEncoder.DecodeMessageSet(payloadBytes).ToList());
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void WhenMessageIsExactlyTheSizeOfBufferThenMessageIsDecoded()
         {
             // arrange

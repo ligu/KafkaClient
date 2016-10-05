@@ -9,7 +9,7 @@ namespace KafkaClient.Tests.Unit
     [Category("Unit")]
     public class ProtocolBaseRequestTests
     {
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void EnsureHeaderShouldPackCorrectByteLengths()
         {
             var result = KafkaEncoder.EncodeRequestBytes(new RequestContext(123456789, clientId: "test"), new ApiVersionsRequest());

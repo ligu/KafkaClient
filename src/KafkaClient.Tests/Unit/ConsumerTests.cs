@@ -17,7 +17,7 @@ namespace KafkaClient.Tests.Unit
     [Category("Unit")]
     public class ConsumerTests
     {
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void CancellationShouldInterruptConsumption()
         {
             var routerProxy = new BrokerRouterProxy(new MoqMockingKernel());
@@ -46,7 +46,7 @@ namespace KafkaClient.Tests.Unit
             }
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public async Task ConsumerWhitelistShouldOnlyConsumeSpecifiedPartition()
         {
             var routerProxy = new BrokerRouterProxy(new MoqMockingKernel());
@@ -70,7 +70,7 @@ namespace KafkaClient.Tests.Unit
             }
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public async Task ConsumerWithEmptyWhitelistShouldConsumeAllPartition()
         {
             var routerProxy = new BrokerRouterProxy(new MoqMockingKernel());
@@ -96,7 +96,7 @@ namespace KafkaClient.Tests.Unit
             }
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void ConsumerShouldCreateTaskForEachBroker()
         {
             var routerProxy = new BrokerRouterProxy(new MoqMockingKernel());
@@ -115,7 +115,7 @@ namespace KafkaClient.Tests.Unit
             }
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void ConsumerShouldReturnOffset()
         {
             var routerProxy = new BrokerRouterProxy(new MoqMockingKernel());
@@ -134,7 +134,7 @@ namespace KafkaClient.Tests.Unit
             }
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void EnsureConsumerDisposesRouter()
         {
             var router = new MoqMockingKernel().GetMock<IBrokerRouter>();
@@ -144,7 +144,7 @@ namespace KafkaClient.Tests.Unit
             router.Verify(x => x.Dispose(), Times.Once());
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void EnsureConsumerDisposesAllTasks()
         {
             var routerProxy = new BrokerRouterProxy(new MoqMockingKernel());

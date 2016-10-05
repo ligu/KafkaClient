@@ -19,7 +19,7 @@ namespace KafkaClient.Tests.Integration
         {
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public async Task OffsetFetchRequestOfNonExistingGroupShouldReturnNoError()
         {
             //From documentation: https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+ProtocolTests#AGuideToTheKafkaProtocol-OffsetFetchRequest
@@ -28,9 +28,9 @@ namespace KafkaClient.Tests.Integration
             const int partitionId = 0;
             var router = new BrokerRouter(_options);
 
-            var request = CreateOffsetFetchRequest(Guid.NewGuid().ToString(), partitionId);
-            await router.GetTopicMetadataAsync(IntegrationConfig.IntegrationTopic, CancellationToken.None);
-            var conn = router.GetBrokerRoute(IntegrationConfig.IntegrationTopic, partitionId);
+            var request = new OffsetFetchRequest(Guid.NewGuid().ToString(), new Topic(IntegrationConfig.TopicName(), partitionId));
+            await router.GetTopicMetadataAsync(IntegrationConfig.TopicName(), CancellationToken.None);
+            var conn = router.GetBrokerRoute(IntegrationConfig.TopicName(), partitionId);
 
             var response = await conn.Connection.SendAsync(request, CancellationToken.None);
             var topic = response.Topics.FirstOrDefault();
@@ -41,16 +41,16 @@ namespace KafkaClient.Tests.Integration
             router.Dispose();
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public async Task OffsetCommitShouldStoreAndReturnSuccess()
         {
             const int partitionId = 0;
             var router = new BrokerRouter(_options);
 
-            await router.GetTopicMetadataAsync(IntegrationConfig.IntegrationTopic, CancellationToken.None);
-            var conn = router.GetBrokerRoute(IntegrationConfig.IntegrationTopic, partitionId);
+            await router.GetTopicMetadataAsync(IntegrationConfig.TopicName(), CancellationToken.None);
+            var conn = router.GetBrokerRoute(IntegrationConfig.TopicName(), partitionId);
 
-            var commit = CreateOffsetCommitRequest(IntegrationConfig.IntegrationConsumer, partitionId, 10);
+            var commit = new OffsetCommitRequest(IntegrationConfig.ConsumerName(), new []{ new OffsetCommit(IntegrationConfig.TopicName(), partitionId, 10, null) });
             var response = await conn.Connection.SendAsync(commit, CancellationToken.None);
             var topic = response.Topics.FirstOrDefault();
 
@@ -60,7 +60,7 @@ namespace KafkaClient.Tests.Integration
             router.Dispose();
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public async Task OffsetCommitShouldStoreOffsetValue()
         {
             const int partitionId = 0;
@@ -68,17 +68,17 @@ namespace KafkaClient.Tests.Integration
 
             var router = new BrokerRouter(_options);
 
-            await router.GetTopicMetadataAsync(IntegrationConfig.IntegrationTopic, CancellationToken.None);
-            var conn = router.GetBrokerRoute(IntegrationConfig.IntegrationTopic, partitionId);
+            await router.GetTopicMetadataAsync(IntegrationConfig.TopicName(), CancellationToken.None);
+            var conn = router.GetBrokerRoute(IntegrationConfig.TopicName(), partitionId);
 
-            var commit = CreateOffsetCommitRequest(IntegrationConfig.IntegrationConsumer, partitionId, offset);
+            var commit = new OffsetCommitRequest(IntegrationConfig.ConsumerName(), new []{ new OffsetCommit(IntegrationConfig.TopicName(), partitionId, offset, null) });
             var commitResponse = await conn.Connection.SendAsync(commit, CancellationToken.None);
             var commitTopic = commitResponse.Topics.SingleOrDefault();
 
             Assert.That(commitTopic, Is.Not.Null);
             Assert.That(commitTopic.ErrorCode, Is.EqualTo(ErrorResponseCode.NoError));
 
-            var fetch = CreateOffsetFetchRequest(IntegrationConfig.IntegrationConsumer, partitionId);
+            var fetch = new OffsetFetchRequest(IntegrationConfig.ConsumerName(), new Topic(IntegrationConfig.TopicName(), partitionId));
             var fetchResponse = await conn.Connection.SendAsync(fetch, CancellationToken.None);
             var fetchTopic = fetchResponse.Topics.SingleOrDefault();
 
@@ -88,7 +88,7 @@ namespace KafkaClient.Tests.Integration
             router.Dispose();
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void OffsetCommitShouldStoreMetadata()
         {
             const int partitionId = 0;
@@ -97,16 +97,16 @@ namespace KafkaClient.Tests.Integration
 
             var router = new BrokerRouter(_options);
 
-            var conn = router.GetBrokerRoute(IntegrationConfig.IntegrationTopic, partitionId);
+            var conn = router.GetBrokerRoute(IntegrationConfig.TopicName(), partitionId);
 
-            var commit = CreateOffsetCommitRequest(IntegrationConfig.IntegrationConsumer, partitionId, offset, metadata);
+            var commit = new OffsetCommitRequest(IntegrationConfig.ConsumerName(), new []{ new OffsetCommit(IntegrationConfig.TopicName(), partitionId, offset, metadata) });
             var commitResponse = conn.Connection.SendAsync(commit, CancellationToken.None).Result;
             var commitTopic = commitResponse.Topics.SingleOrDefault();
 
             Assert.That(commitTopic, Is.Not.Null);
             Assert.That(commitTopic.ErrorCode, Is.EqualTo(ErrorResponseCode.NoError));
 
-            var fetch = CreateOffsetFetchRequest(IntegrationConfig.IntegrationConsumer, partitionId);
+            var fetch = new OffsetFetchRequest(IntegrationConfig.ConsumerName(), new Topic(IntegrationConfig.TopicName(), partitionId));
             var fetchResponse = conn.Connection.SendAsync(fetch, CancellationToken.None).Result;
             var fetchTopic = fetchResponse.Topics.SingleOrDefault();
 
@@ -117,32 +117,20 @@ namespace KafkaClient.Tests.Integration
             router.Dispose();
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public async Task ConsumerMetadataRequestShouldReturnWithoutError()
         {
             using (var router = new BrokerRouter(_options))
             {
-                var conn = router.GetBrokerRoute(IntegrationConfig.IntegrationTopic);
+                var conn = router.GetBrokerRoute(IntegrationConfig.TopicName());
 
-                var request = new GroupCoordinatorRequest(IntegrationConfig.IntegrationConsumer);
+                var request = new GroupCoordinatorRequest(IntegrationConfig.ConsumerName());
 
                 var response = await conn.Connection.SendAsync(request, CancellationToken.None);
 
                 Assert.That(response, Is.Not.Null);
                 Assert.That(response.ErrorCode, Is.EqualTo((int)ErrorResponseCode.NoError));
             }
-        }
-
-        private OffsetFetchRequest CreateOffsetFetchRequest(string consumerGroup, int partitionId)
-        {
-            var request = new OffsetFetchRequest(consumerGroup, new Topic(IntegrationConfig.IntegrationTopic, partitionId));
-            return request;
-        }
-
-        private OffsetCommitRequest CreateOffsetCommitRequest(string consumerGroup, int partitionId, long offset, string metadata = null)
-        {
-            var commit = new OffsetCommitRequest(consumerGroup, new []{ new OffsetCommit(IntegrationConfig.IntegrationTopic, partitionId, offset, metadata) });
-            return commit;
         }
     }
 }

@@ -17,7 +17,7 @@ namespace KafkaClient.Tests.Unit
     {
         // validates my assumptions about the default implementation doing the opposite of this implementation
         [Theory]
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         [TestCase((Int32)0, new Byte[] { 0x00, 0x00, 0x00, 0x00 })]
         [TestCase((Int32)1, new Byte[] { 0x01, 0x00, 0x00, 0x00 })]
         [TestCase((Int32)(-1), new Byte[] { 0xFF, 0xFF, 0xFF, 0xFF })]
@@ -37,7 +37,7 @@ namespace KafkaClient.Tests.Unit
             Assert.That(expectedBytes, Is.EqualTo(actualBytes));
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         [Theory]
         [TestCase((Int32)0, new Byte[] { 0x00, 0x00, 0x00, 0x00 })]
         [TestCase((Int32)1, new Byte[] { 0x00, 0x00, 0x00, 0x01 })]
@@ -58,7 +58,7 @@ namespace KafkaClient.Tests.Unit
             Assert.That(expectedBytes, Is.EqualTo(actualBytes));
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         [Theory]
         [TestCase((Int16)0, new Byte[] { 0x00, 0x00 })]
         [TestCase((Int16)1, new Byte[] { 0x00, 0x01 })]
@@ -79,7 +79,7 @@ namespace KafkaClient.Tests.Unit
             Assert.That(expectedBytes, Is.EqualTo(actualBytes));
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         [Theory]
         [TestCase((UInt32)0, new Byte[] { 0x00, 0x00, 0x00, 0x00 })]
         [TestCase((UInt32)1, new Byte[] { 0x00, 0x00, 0x00, 0x01 })]
@@ -101,7 +101,7 @@ namespace KafkaClient.Tests.Unit
         }
 
         [Theory]
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         [TestCase((Single)(0), new Byte[] { 0x00, 0x00, 0x00, 0x00 })]
         [TestCase((Single)(1), new Byte[] { 0x3F, 0x80, 0x00, 0x00 })]
         [TestCase((Single)(-1), new Byte[] { 0xBF, 0x80, 0x00, 0x00 })]
@@ -125,7 +125,7 @@ namespace KafkaClient.Tests.Unit
         }
 
         [Theory]
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         [TestCase((Double)(0), new Byte[] { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 })]
         [TestCase((Double)(1), new Byte[] { 0x3F, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 })]
         [TestCase((Double)(-1), new Byte[] { 0xBF, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 })]
@@ -148,7 +148,7 @@ namespace KafkaClient.Tests.Unit
             Assert.That(expectedBytes, Is.EqualTo(actualBytes));
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         [ExpectedException(typeof(NotSupportedException))]
         public void StringNotSupportedTest()
         {
@@ -186,7 +186,7 @@ namespace KafkaClient.Tests.Unit
         }
 
         [Theory]
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         [TestCase('0', new Byte[] { 0x30 })]
         [TestCase('€', new Byte[] { 0xE2, 0x82, 0xAC })]
         public void CharTests(Char value, Byte[] expectedBytes)
@@ -204,7 +204,7 @@ namespace KafkaClient.Tests.Unit
         }
 
         [Theory]
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         [TestCase(new Char[] { '0', '0', '0', '0' }, new Byte[] { 0x30, 0x30, 0x30, 0x30 })]
         [TestCase(new Char[] { '€', '€', '€', '€' }, new Byte[] { 0xE2, 0x82, 0xAC, 0xE2, 0x82, 0xAC, 0xE2, 0x82, 0xAC, 0xE2, 0x82, 0xAC })]
         public void CharArrayTests(Char[] value, Byte[] expectedBytes)
@@ -222,7 +222,7 @@ namespace KafkaClient.Tests.Unit
         }
 
         [Theory]
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         [TestCase(new Char[] { '0', '1', '2', '3' }, 1, 2, new Byte[] { 0x31, 0x32 })]
         [TestCase(new Char[] { '€', '2', '€', '€' }, 1, 2, new Byte[] { 0x32, 0xE2, 0x82, 0xAC })]
         public void CharSubArrayTests(Char[] value, Int32 index, Int32 count, Byte[] expectedBytes)

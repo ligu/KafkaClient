@@ -24,25 +24,26 @@ namespace KafkaClient.Tests.Integration
             return new Connection(new TcpSocket(endpoint, configuration), configuration, _options.Log);
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         [Ignore]
         public async Task EnsureGzipCompressedMessageCanSend()
         {
+            var topicName = IntegrationConfig.TopicName();
             IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(IntegrationConfig.Highlight("start EnsureGzipCompressedMessageCanSend")));
             using (var conn = GetKafkaConnection())
             {
-                conn.SendAsync(new MetadataRequest(IntegrationConfig.IntegrationCompressionTopic), CancellationToken.None)
+                conn.SendAsync(new MetadataRequest(topicName), CancellationToken.None)
                     .Wait(TimeSpan.FromSeconds(10));
             }
 
             using (var router = new BrokerRouter(_options))
             {
                 IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(IntegrationConfig.Highlight("start RefreshMissingTopicMetadataAsync")));
-                await router.GetTopicMetadataAsync(IntegrationConfig.IntegrationCompressionTopic, CancellationToken.None);
+                await router.GetTopicMetadataAsync(topicName, CancellationToken.None);
                 IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(IntegrationConfig.Highlight("end RefreshMissingTopicMetadataAsync")));
-                var conn = router.GetBrokerRoute(IntegrationConfig.IntegrationCompressionTopic, 0);
+                var conn = router.GetBrokerRoute(topicName, 0);
 
-                var request = new ProduceRequest(new Payload(IntegrationConfig.IntegrationCompressionTopic, 0, new [] {
+                var request = new ProduceRequest(new Payload(topicName, 0, new [] {
                                     new Message("0", "1"),
                                     new Message("1", "1"),
                                     new Message("2", "1")
@@ -56,21 +57,22 @@ namespace KafkaClient.Tests.Integration
             IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(IntegrationConfig.Highlight("end EnsureGzipCompressedMessageCanSend")));
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public async Task EnsureGzipCanDecompressMessageFromKafka([Values(3)]int numberOfMessages)
         {
+            var topicName = IntegrationConfig.TopicName();
             var router = new BrokerRouter(_options);
             using (var producer = new Producer(router, new ProducerConfiguration(batchSize: numberOfMessages))) {
-                var offsets = await producer.BrokerRouter.GetTopicOffsetAsync(IntegrationConfig.IntegrationCompressionTopic, CancellationToken.None);
+                var offsets = await producer.BrokerRouter.GetTopicOffsetAsync(topicName, CancellationToken.None);
                 var offsetPositions = offsets.Where(x => !x.Offsets.IsEmpty).Select(x => new OffsetPosition(x.PartitionId, x.Offsets.Max()));
-                var consumerOptions = new ConsumerOptions(IntegrationConfig.IntegrationCompressionTopic, router) { PartitionWhitelist = new List<int> { 0 } };
+                var consumerOptions = new ConsumerOptions(topicName, router) { PartitionWhitelist = new List<int> { 0 } };
                 using (var consumer = new Consumer(consumerOptions, offsetPositions.ToArray()))
                 {
                     var messages = new List<Message>();
                     for (var i = 0; i < numberOfMessages; i++) {
                         messages.Add(new Message(i.ToString()));
                     }
-                    await producer.SendMessagesAsync(messages, IntegrationConfig.IntegrationCompressionTopic, 0, new SendMessageConfiguration(codec: MessageCodec.CodecGzip), CancellationToken.None);
+                    await producer.SendMessagesAsync(messages, topicName, 0, new SendMessageConfiguration(codec: MessageCodec.CodecGzip), CancellationToken.None);
 
                     var results = consumer.Consume(new CancellationTokenSource(TimeSpan.FromMinutes(1)).Token).Take(messages.Count).ToList();
                     for (var i = 0; i < messages.Count; i++)

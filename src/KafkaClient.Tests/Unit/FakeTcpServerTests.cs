@@ -21,7 +21,7 @@ namespace KafkaClient.Tests.Unit
             _fakeServerUrl = new Uri("http://localhost:8999");
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public async Task FakeShouldBeAbleToReconnect()
         {
             using (var server = new FakeTcpServer(_ilog, 8999))
@@ -47,7 +47,7 @@ namespace KafkaClient.Tests.Unit
             }
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void ShouldDisposeEvenWhenTryingToSendWithoutExceptionThrown()
         {
             using (var server = new FakeTcpServer(_ilog, 8999))
@@ -57,7 +57,7 @@ namespace KafkaClient.Tests.Unit
             }
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void ShouldDisposeWithoutExecptionThrown()
         {
             using (var server = new FakeTcpServer(_ilog, 8999))
@@ -66,7 +66,7 @@ namespace KafkaClient.Tests.Unit
             }
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void SendAsyncShouldWaitUntilClientIsConnected()
         {
             const int testData = 99;

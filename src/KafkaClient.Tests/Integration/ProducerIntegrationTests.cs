@@ -12,13 +12,13 @@ namespace KafkaClient.Tests.Integration
     [Category("Integration")]
     public class ProducerIntegrationTests
     {
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void ProducerShouldNotExpectResponseWhenAckIsZero()
         {
             using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri)))
             using (var producer = new Producer(router))
             {
-                var sendTask = producer.SendMessageAsync(new Message(Guid.NewGuid().ToString()), IntegrationConfig.IntegrationTopic, null, new SendMessageConfiguration(acks: 0), CancellationToken.None);
+                var sendTask = producer.SendMessageAsync(new Message(Guid.NewGuid().ToString()), IntegrationConfig.TopicName(), null, new SendMessageConfiguration(acks: 0), CancellationToken.None);
 
                 sendTask.Wait(TimeSpan.FromMinutes(2));
 
@@ -26,26 +26,26 @@ namespace KafkaClient.Tests.Integration
             }
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public async void SendAsyncShouldGetOneResultForMessage()
         {
             using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri)))
             using (var producer = new Producer(router))
             {
-                var result = await producer.SendMessagesAsync(new[] { new Message(Guid.NewGuid().ToString()) }, IntegrationConfig.IntegrationTopic, CancellationToken.None);
+                var result = await producer.SendMessagesAsync(new[] { new Message(Guid.NewGuid().ToString()) }, IntegrationConfig.TopicName(), CancellationToken.None);
 
                 Assert.That(result.Length, Is.EqualTo(1));
             }
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public async void SendAsyncShouldGetAResultForEachPartitionSentTo()
         {
             using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri)))
             using (var producer = new Producer(router))
             {
                 var messages = new[] { new Message("1"), new Message("2"), new Message("3") };
-                var result = await producer.SendMessagesAsync(messages, IntegrationConfig.IntegrationTopic, CancellationToken.None);
+                var result = await producer.SendMessagesAsync(messages, IntegrationConfig.TopicName(), CancellationToken.None);
 
                 Assert.That(result.Length, Is.EqualTo(messages.Distinct().Count()));
 
@@ -53,16 +53,16 @@ namespace KafkaClient.Tests.Integration
             }
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public async void SendAsyncShouldGetOneResultForEachPartitionThroughBatching()
         {
             using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri)))
             using (var producer = new Producer(router))
             {
                 var tasks = new[] {
-                    producer.SendMessageAsync(new Message("1"), IntegrationConfig.IntegrationTopic, CancellationToken.None),
-                    producer.SendMessageAsync(new Message("2"), IntegrationConfig.IntegrationTopic, CancellationToken.None),
-                    producer.SendMessageAsync(new Message("3"), IntegrationConfig.IntegrationTopic, CancellationToken.None),
+                    producer.SendMessageAsync(new Message("1"), IntegrationConfig.TopicName(), CancellationToken.None),
+                    producer.SendMessageAsync(new Message("2"), IntegrationConfig.TopicName(), CancellationToken.None),
+                    producer.SendMessageAsync(new Message("3"), IntegrationConfig.TopicName(), CancellationToken.None),
                 };
 
                 await Task.WhenAll(tasks);

@@ -9,7 +9,7 @@ namespace KafkaClient.Tests.Unit
     [Category("Unit")]
     public class CircularBufferTests
     {
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void BufferShouldOnlyStoreMaxAmount()
         {
             var buffer = new StatisticsTracker.ConcurrentCircularBuffer<int>(2);
@@ -22,7 +22,7 @@ namespace KafkaClient.Tests.Unit
             Assert.That(buffer.Count, Is.EqualTo(2));
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void BufferShouldCountUntilMaxHitThenAlswaysShowMax()
         {
             var buffer = new StatisticsTracker.ConcurrentCircularBuffer<int>(2);
@@ -36,7 +36,7 @@ namespace KafkaClient.Tests.Unit
             Assert.That(buffer.Count, Is.EqualTo(2));
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void BufferMaxSizeShouldReportMax()
         {
             var buffer = new StatisticsTracker.ConcurrentCircularBuffer<int>(2);
@@ -46,7 +46,7 @@ namespace KafkaClient.Tests.Unit
             Assert.That(buffer.MaxSize, Is.EqualTo(2));
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void EnumerationShouldReturnOnlyRecordsWithData()
         {
             var buffer = new StatisticsTracker.ConcurrentCircularBuffer<int>(2);
@@ -60,7 +60,7 @@ namespace KafkaClient.Tests.Unit
             Assert.That(buffer.ToList().Count, Is.EqualTo(2));
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void EnqueueShouldAddToFirstSlot()
         {
             var buffer = new StatisticsTracker.ConcurrentCircularBuffer<int>(2);
@@ -68,7 +68,7 @@ namespace KafkaClient.Tests.Unit
             Assert.That(buffer.First(), Is.EqualTo(1));
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void EnqueueCanBeUseFromDefferantThread()
         {
             var buffer = new StatisticsTracker.ConcurrentCircularBuffer<int>(2);

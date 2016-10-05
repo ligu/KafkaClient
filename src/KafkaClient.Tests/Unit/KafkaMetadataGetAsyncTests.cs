@@ -30,7 +30,7 @@ namespace KafkaClient.Tests.Unit
             _brokerRouter.Configuration.ReturnsForAnyArgs(new CacheConfiguration());
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         [TestCase(ErrorResponseCode.LeaderNotAvailable)]
         [TestCase(ErrorResponseCode.OffsetsLoadInProgress)]
         [TestCase(ErrorResponseCode.ConsumerCoordinatorNotAvailable)]
@@ -58,7 +58,7 @@ namespace KafkaClient.Tests.Unit
             Assert.That(_log.LogEvents.Count(e => e.Item1 == LogLevel.Warn && e.Item2.Message.StartsWith("Failed metadata request on attempt")), Is.EqualTo(2));
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public async Task ShouldRetryWhenReceiveBrokerIdNegativeOne()
         {
             var conn = Substitute.For<IConnection>();
@@ -80,7 +80,7 @@ namespace KafkaClient.Tests.Unit
             Assert.That(_log.LogEvents.Count(e => e.Item1 == LogLevel.Warn && e.Item2.Message.StartsWith("Failed metadata request on attempt")), Is.EqualTo(1));
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void ShouldReturnWhenNoErrorReceived()
         {
             var conn = Substitute.For<IConnection>();
@@ -96,7 +96,7 @@ namespace KafkaClient.Tests.Unit
             conn.Received(1).SendAsync(Arg.Any<IRequest<MetadataResponse>>(), Arg.Any<CancellationToken>());
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void ShouldReturnWhenNoErrorReceivedAndTopicsNotSpecified()
         {
             var conn = Substitute.For<IConnection>();
@@ -112,7 +112,7 @@ namespace KafkaClient.Tests.Unit
             conn.Received(1).SendAsync(Arg.Any<IRequest<MetadataResponse>>(), Arg.Any<CancellationToken>());
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         [TestCase(ErrorResponseCode.Unknown)]
         [TestCase(ErrorResponseCode.RequestTimedOut)]
         [TestCase(ErrorResponseCode.InvalidMessage)]
@@ -127,7 +127,7 @@ namespace KafkaClient.Tests.Unit
             var response = await _brokerRouter.GetMetadataAsync(new [] { "Test"}, CancellationToken.None);
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         [TestCase(null)]
         [TestCase("")]
         [ExpectedException(typeof(ConnectionException))]
@@ -141,7 +141,7 @@ namespace KafkaClient.Tests.Unit
             var response = await _brokerRouter.GetMetadataAsync(new [] { "Test"}, CancellationToken.None);
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         [TestCase(0)]
         [TestCase(-1)]
         [ExpectedException(typeof(ConnectionException))]

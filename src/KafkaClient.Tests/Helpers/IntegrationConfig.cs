@@ -1,15 +1,23 @@
 ﻿using System;
 using System.Configuration;
+using System.Runtime.CompilerServices;
 using KafkaClient.Common;
 
 namespace KafkaClient.Tests.Helpers
 {
     public static class IntegrationConfig
     {
-        public static string IntegrationCompressionTopic = Environment.MachineName + "IntegrationCompressionTopic1";
-        public static string IntegrationTopic = Environment.MachineName + "IntegrationTopic1";
-        public static string IntegrationConsumer = Environment.MachineName + "IntegrationConsumer1";
-        public const int NumberOfRepeat = 1;
+        public const int TestAttempts = 1;
+
+        public static string TopicName([CallerMemberName] string name = null)
+        {
+            return $"{Environment.MachineName}-Topic-{name}";
+        }
+
+        public static string ConsumerName([CallerMemberName] string name = null)
+        {
+            return $"{Environment.MachineName}-Consumer-{name}";
+        }
 
         // Some of the tests measured performance.my log is too slow so i change the log level to
         // only critical message
@@ -19,12 +27,12 @@ namespace KafkaClient.Tests.Helpers
 
         public static string Highlight(string message)
         {
-            return String.Format("**************************{0}**************************", message);
+            return $"**************************{message}**************************";
         }
 
         public static string Highlight(string message, params object[] args)
         {
-            return String.Format("**************************{0}**************************", string.Format(message, args));
+            return $"**************************{string.Format(message, args)}**************************";
         }
 
         public static Uri IntegrationUri

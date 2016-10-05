@@ -22,7 +22,7 @@ namespace KafkaClient.Tests.Unit
 
         #region GetTopicOffset Tests...
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void GetTopicOffsetShouldQueryEachBroker()
         {
             var routerProxy = new BrokerRouterProxy(_kernel);
@@ -33,7 +33,7 @@ namespace KafkaClient.Tests.Unit
             Assert.That(routerProxy.BrokerConn1.OffsetRequestCallCount, Is.EqualTo(1));
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void GetTopicOffsetShouldThrowAnyException()
         {
             var routerProxy = new BrokerRouterProxy(_kernel);
@@ -51,7 +51,7 @@ namespace KafkaClient.Tests.Unit
 
         #region GetTopic Tests...
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public async Task GetTopicShouldReturnTopic()
         {
             var routerProxy = new BrokerRouterProxy(_kernel);
@@ -62,7 +62,7 @@ namespace KafkaClient.Tests.Unit
             Assert.That(result.TopicName, Is.EqualTo(BrokerRouterProxy.TestTopic));
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         [ExpectedException(typeof(CachedMetadataException))]
         public void EmptyTopicMetadataShouldThrowException()
         {

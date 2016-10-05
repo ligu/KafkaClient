@@ -11,7 +11,7 @@ namespace KafkaClient.Tests.Unit
     [Category("Unit")]
     public class ScheduledTimerFixture
     {
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void CreateInstance()
         {
             var sut = new ScheduledTimer();
@@ -19,7 +19,7 @@ namespace KafkaClient.Tests.Unit
             Assert.That(sut, Is.Not.Null);
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void StatusShouldBeStoppedWhenInstanceCreated()
         {
             const ScheduledTimerStatus expected = ScheduledTimerStatus.Stopped;
@@ -29,7 +29,7 @@ namespace KafkaClient.Tests.Unit
             Assert.That(sut.Status, Is.EqualTo(expected));
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void StatusShouldBeStoppedWhenFluentDoesNotSpecifyBegin()
         {
             int count = 0;
@@ -64,7 +64,7 @@ namespace KafkaClient.Tests.Unit
             Assert.That(count, Is.EqualTo(1));
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void StartWithNoParameterShouldUpdateTheStatusToRunning()
         {
             const ScheduledTimerStatus expected = ScheduledTimerStatus.Running;
@@ -76,7 +76,7 @@ namespace KafkaClient.Tests.Unit
             Assert.That(sut.Status, Is.EqualTo(expected));
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void StartThenStopShouldUpdateStatusToStopped()
         {
             const ScheduledTimerStatus expectedRunning = ScheduledTimerStatus.Running;
@@ -93,7 +93,7 @@ namespace KafkaClient.Tests.Unit
             Assert.That(sut.Status, Is.EqualTo(expectedStopped));
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void ObjectCreationShouldCreateTheTimerObject()
         {
             var sut = new ScheduledTimer();
@@ -101,7 +101,7 @@ namespace KafkaClient.Tests.Unit
             Assert.That(sut.TimerObject, Is.Not.Null);
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void IntervalShouldBeSetTo1WhenStartWithNoParameterIsCalled()
         {
             var sut = new ScheduledTimer();
@@ -111,7 +111,7 @@ namespace KafkaClient.Tests.Unit
             Assert.That(sut.TimerObject.Interval, Is.EqualTo(1));
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void SetReplicationIntervalShouldUpdateTheTimerIntervalAndAutoResetAccordingly()
         {
             var sut = new ScheduledTimer();
@@ -128,7 +128,7 @@ namespace KafkaClient.Tests.Unit
             Assert.That(counter, Is.GreaterThanOrEqualTo(5));
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void SetStartTimeShouldUpdateTheTimerIntervalAccordingly()
         {
             var sut = new ScheduledTimer();
@@ -139,7 +139,7 @@ namespace KafkaClient.Tests.Unit
             Assert.That(sut.TimerObject.Interval, Is.InRange(2900d, 3000d));
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void SettingStartTimeShouldOverwriteIntervalPreviouslySet()
         {
             var sut = new ScheduledTimer();
@@ -154,7 +154,7 @@ namespace KafkaClient.Tests.Unit
             Assert.That(sut.TimerObject.Interval, Is.InRange(2900d, 3000d));
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void IntervalUpdatedBeforeStartShouldChangeTheIntervalUntilStartHasBeenCalled()
         {
             var sut = new ScheduledTimer();
@@ -175,7 +175,7 @@ namespace KafkaClient.Tests.Unit
             Assert.That(sut.TimerObject.Interval, Is.EqualTo(100));
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void IntervalUpdatedAfterStartShouldNotChangeTheIntervalUntilStartHasBeenCalled()
         {
             var sut = new ScheduledTimer();
@@ -197,7 +197,7 @@ namespace KafkaClient.Tests.Unit
             Assert.That(sut.TimerObject.Interval, Is.EqualTo(200));
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void DisposeWithTimerRunningShouldStopTimerAndDisposeInternalTimer()
         {
             const ScheduledTimerStatus expected = ScheduledTimerStatus.Stopped;
@@ -215,7 +215,7 @@ namespace KafkaClient.Tests.Unit
             Assert.That(disposed, Is.True);
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void DisposeWithTimerStoppedShouldDisposeInternalTimer()
         {
             const ScheduledTimerStatus expected = ScheduledTimerStatus.Stopped;
@@ -231,7 +231,7 @@ namespace KafkaClient.Tests.Unit
             Assert.That(disposed, Is.True);
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void StartingAtShouldWaitToStart()
         {
             int count = 0;
@@ -260,7 +260,7 @@ namespace KafkaClient.Tests.Unit
             Assert.That(count, Is.EqualTo(1));
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         [Ignore("Not using this feature.")]
         public void TimerShouldNotWaitWhenSet()
         {

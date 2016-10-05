@@ -38,7 +38,7 @@ namespace KafkaClient.Tests.Unit
                 .Returns<Uri, ILog>((uri, log) => new Endpoint(uri, new IPEndPoint(IPAddress.Parse("127.0.0.1"), uri.Port)));
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void BrokerRouterCanConstruct()
         {
             var result = new BrokerRouter(new Uri("http://localhost:1"), _mockKafkaConnectionFactory.Object);
@@ -46,20 +46,20 @@ namespace KafkaClient.Tests.Unit
             Assert.That(result, Is.Not.Null);
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         [ExpectedException(typeof(ConnectionException))]
         public void BrokerRouterConstructorThrowsException()
         {
             var result = new BrokerRouter(new Uri("http://noaddress:1"));
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void BrokerRouterConstructorShouldIgnoreUnresolvableUriWhenAtLeastOneIsGood()
         {
             var result = new BrokerRouter(new [] { new Uri("http://noaddress:1"), new Uri("http://localhost:1") });
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public async Task BrokerRouterUsesFactoryToAddNewBrokers()
         {
             var router = new BrokerRouter(new Uri("http://localhost:1"), _mockKafkaConnectionFactory.Object);
@@ -73,7 +73,7 @@ namespace KafkaClient.Tests.Unit
 
         #region MetadataRequest Tests...
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public async Task BrokerRouteShouldCycleThroughEachBrokerUntilOneIsFound()
         {
             var routerProxy = new BrokerRouterProxy(_kernel);
@@ -86,7 +86,7 @@ namespace KafkaClient.Tests.Unit
             Assert.That(routerProxy.BrokerConn1.MetadataRequestCallCount, Is.EqualTo(1));
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         [ExpectedException(typeof(RequestException))]
         public async Task BrokerRouteShouldThrowIfCycleCouldNotConnectToAnyServer()
         {
@@ -108,7 +108,7 @@ namespace KafkaClient.Tests.Unit
             }
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public async Task BrokerRouteShouldReturnTopicFromCache()
         {
             var routerProxy = new BrokerRouterProxy(_kernel);
@@ -123,7 +123,7 @@ namespace KafkaClient.Tests.Unit
             Assert.That(result2.TopicName, Is.EqualTo(TestTopic));
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void BrokerRouteShouldThrowNoLeaderElectedForPartition()
         {
             var routerProxy = new BrokerRouterProxy(_kernel);
@@ -134,7 +134,7 @@ namespace KafkaClient.Tests.Unit
             Assert.AreEqual(0, router.GetTopicMetadata().Count);
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public async Task BrokerRouteShouldReturnAllTopicsFromCache()
         {
             var routerProxy = new BrokerRouterProxy(_kernel);
@@ -150,7 +150,7 @@ namespace KafkaClient.Tests.Unit
             Assert.That(result2[0].TopicName, Is.EqualTo(TestTopic));
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public async Task RefreshTopicMetadataShouldIgnoreCacheAndAlwaysCauseMetadataRequestAfterExpertionDate()
         {
             var routerProxy = new BrokerRouterProxy(_kernel);
@@ -164,7 +164,7 @@ namespace KafkaClient.Tests.Unit
             Assert.That(routerProxy.BrokerConn0.MetadataRequestCallCount, Is.EqualTo(2));
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public async Task RefreshAllTopicMetadataShouldAlwaysDoRequest()
         {
             var routerProxy = new BrokerRouterProxy(_kernel);
@@ -175,7 +175,7 @@ namespace KafkaClient.Tests.Unit
             Assert.That(routerProxy.BrokerConn0.MetadataRequestCallCount, Is.EqualTo(2));
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public async Task SelectBrokerRouteShouldChange()
         {
             var routerProxy = new BrokerRouterProxy(_kernel);
@@ -200,7 +200,7 @@ namespace KafkaClient.Tests.Unit
             Assert.That(router1.Connection.Endpoint, Is.Not.EqualTo(router2.Connection.Endpoint));
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public async Task SimultaneouslyRefreshTopicMetadataShouldNotGetDataFromCacheOnSameRequest()
         {
             var routerProxy = new BrokerRouterProxy(_kernel);
@@ -213,7 +213,7 @@ namespace KafkaClient.Tests.Unit
             Assert.That(routerProxy.BrokerConn0.MetadataRequestCallCount, Is.EqualTo(2));
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public async Task SimultaneouslyRefreshMissingTopicMetadataShouldGetDataFromCacheOnSameRequest()
         {
             var routerProxy = new BrokerRouterProxy(_kernel);
@@ -230,7 +230,7 @@ namespace KafkaClient.Tests.Unit
 
         #region SelectBrokerRouteAsync Exact Tests...
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public async Task SelectExactPartitionShouldReturnRequestedPartition()
         {
             var routerProxy = new BrokerRouterProxy(_kernel);
@@ -243,7 +243,7 @@ namespace KafkaClient.Tests.Unit
             Assert.That(p1.PartitionId, Is.EqualTo(1));
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         [ExpectedException(typeof(CachedMetadataException))]
         public async Task SelectExactPartitionShouldThrowWhenPartitionDoesNotExist()
         {
@@ -253,7 +253,7 @@ namespace KafkaClient.Tests.Unit
             router.GetBrokerRoute(TestTopic, 3);
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         [ExpectedException(typeof(CachedMetadataException))]
         public async Task SelectExactPartitionShouldThrowWhenTopicsCollectionIsEmpty()
         {
@@ -268,7 +268,7 @@ namespace KafkaClient.Tests.Unit
             routerProxy.Create().GetBrokerRoute(TestTopic, 1);
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         [ExpectedException(typeof(CachedMetadataException))]
         public async Task SelectExactPartitionShouldThrowWhenBrokerCollectionIsEmpty()
         {
@@ -288,7 +288,7 @@ namespace KafkaClient.Tests.Unit
 
         #region SelectBrokerRouteAsync Select Tests...
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         [TestCase(null)]
         [TestCase("withkey")]
         public async Task SelectPartitionShouldUsePartitionSelector(string testCase)
@@ -307,7 +307,7 @@ namespace KafkaClient.Tests.Unit
             _mockPartitionSelector.Verify(f => f.Select(It.Is<MetadataTopic>(x => x.TopicName == TestTopic), key), Times.Once());
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         [ExpectedException(typeof(CachedMetadataException))]
         public async Task SelectPartitionShouldThrowWhenTopicsCollectionIsEmpty()
         {
@@ -322,7 +322,7 @@ namespace KafkaClient.Tests.Unit
             routerProxy.Create().GetBrokerRoute(TestTopic);
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         [ExpectedException(typeof(CachedMetadataException))]
         public async Task SelectPartitionShouldThrowWhenBrokerCollectionIsEmpty()
         {

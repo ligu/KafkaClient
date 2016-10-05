@@ -13,7 +13,7 @@ namespace KafkaClient.Tests.Unit
     {
         private readonly ILog _log = new TraceLog(LogLevel.Warn);
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void EnsureEndpointCanBeResulved()
         {
             var expected = IPAddress.Parse("127.0.0.1");
@@ -22,7 +22,7 @@ namespace KafkaClient.Tests.Unit
             Assert.That(endpoint.IP.Port, Is.EqualTo(8888));
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void EnsureTwoEndpointNotOfTheSameReferenceButSameIPAreEqual()
         {
             var endpoint1 = new ConnectionFactory().Resolve(new Uri("http://localhost:8888"), _log);
@@ -32,7 +32,7 @@ namespace KafkaClient.Tests.Unit
             Assert.That(endpoint1, Is.EqualTo(endpoint2));
         }
 
-        [Test, Repeat(IntegrationConfig.NumberOfRepeat)]
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void EnsureTwoEndointWithSameIPButDifferentPortsAreNotEqual()
         {
             var endpoint1 = new ConnectionFactory().Resolve(new Uri("http://localhost:8888"), _log);
