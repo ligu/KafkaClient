@@ -106,9 +106,9 @@ namespace KafkaClient.Tests.Unit
 
             using (var server = new FakeTcpServer(new TraceLog(), 8999))
             using (var socket = new TcpSocket(_endpoint, config, log: new TraceLog()))
-            using (var conn = new Connection(socket, config, log: mockLog))
+            using (new Connection(socket, config, log: mockLog))
             {
-                for (int connectionAttempt = 1; connectionAttempt < 4; connectionAttempt++)
+                for (var connectionAttempt = 1; connectionAttempt < 4; connectionAttempt++)
                 {
                     var currentAttempt = connectionAttempt;
                     await TaskTest.WaitFor(() => server.ConnectionEventcount == currentAttempt);
@@ -121,7 +121,7 @@ namespace KafkaClient.Tests.Unit
                     server.DropConnection();
                     await TaskTest.WaitFor(() => disconnected == currentAttempt);
 
-                    Assert.That(mockLog.LogEvents.Count(e => e.Item1 == LogLevel.Debug && e.Item2.Message.StartsWith("Polling failure on")), Is.EqualTo(currentAttempt));
+                    Assert.That(mockLog.LogEvents.Count(e => e.Item1 == LogLevel.Debug && e.Item2.Message.StartsWith("Polling failure on")), Is.AtLeast(currentAttempt));
                 }
             }
         }

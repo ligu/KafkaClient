@@ -115,7 +115,7 @@ namespace KafkaClient.Connections
             }
         }
 
-        private async Task ProcessNetworkstreamTasks(NetworkStream netStream)
+        private async Task ProcessNetworkstreamTasks(Stream netStream)
         {
             //reading/writing from network steam is not thread safe
             //Read and write operations can be performed simultaneously on an instance of the NetworkStream class without the need for synchronization.
@@ -129,7 +129,13 @@ namespace KafkaClient.Connections
             await Task.WhenAny(receiveTask, sendTask).ConfigureAwait(false);
             if (_disposeToken.IsCancellationRequested) return;
 
-            await Task.WhenAll(receiveTask, sendTask).ConfigureAwait(false);
+            await ThrowTaskExceptionIfFaulted(receiveTask).ConfigureAwait(false);
+            await ThrowTaskExceptionIfFaulted(sendTask).ConfigureAwait(false);
+        }
+
+        private async Task ThrowTaskExceptionIfFaulted(Task task)
+        {
+            if (task.IsFaulted || task.IsCanceled) await task.ConfigureAwait(false);
         }
 
         private async Task ProcessNetworkstreamTask<T>(Stream stream, AsyncCollection<T> queue, Func<Stream, T, Task> asyncProcess)
@@ -263,19 +269,19 @@ namespace KafkaClient.Connections
             return _configuration.ConnectionRetry.AttemptAsync(
                 async (attempt, timer) => {
                     _configuration.OnConnecting?.Invoke(Endpoint, attempt, timer.Elapsed);
-                    _client = new TcpClient();
+                    var client = new TcpClient();
 
-                    var connectTask = _client.ConnectAsync(Endpoint.IP.Address, Endpoint.IP.Port);
+                    var connectTask = client.ConnectAsync(Endpoint.IP.Address, Endpoint.IP.Port);
                     if (await connectTask.IsCancelled(_disposeToken.Token).ConfigureAwait(false)) {
                         throw new ObjectDisposedException($"Object is disposing (TcpSocket for endpoint {Endpoint})");
                     }
 
                     await connectTask.ConfigureAwait(false);
-                    if (!_client.Connected) return RetryAttempt<TcpClient>.Failed;
+                    if (!client.Connected) return RetryAttempt<TcpClient>.Failed;
 
                     _log.Debug(() => LogEvent.Create($"Connection established to {Endpoint}"));
                     _configuration.OnConnected?.Invoke(Endpoint, attempt, timer.Elapsed);
-                    return new RetryAttempt<TcpClient>(_client);
+                    return new RetryAttempt<TcpClient>(client);
                 },
                 (attempt, retry) => _log.Warn(() => LogEvent.Create($"Failed connection to {Endpoint}: Will retry in {retry}")),
                 attempt => {

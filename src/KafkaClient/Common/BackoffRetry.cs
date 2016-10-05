@@ -23,11 +23,11 @@ namespace KafkaClient.Common
             double delayMilliseconds = 0;
             if (_isLinear) {
                 // multiplied backoff
-                delayMilliseconds = _delay.TotalMilliseconds*attempt;
-            } else if (attempt > 0) {
+                delayMilliseconds = _delay.TotalMilliseconds*(attempt + 1);
+            } else {
                 // exponential backoff
                 // from: http://alexandrebrisebois.wordpress.com/2013/02/19/calculating-an-exponential-back-off-delay-based-on-failed-attempts/
-                delayMilliseconds = _delay.TotalMilliseconds / 2d * (Math.Pow(2d, attempt) - 1d);
+                delayMilliseconds = _delay.TotalMilliseconds / 2d * (Math.Pow(2d, attempt + 1) - 1d);
             }
 
             if (_maxDelay.HasValue) {

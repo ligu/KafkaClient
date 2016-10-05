@@ -159,7 +159,7 @@ namespace KafkaClient.Connections
 
                     var messageSize = 0;
                     // use backoff so we don't take over the CPU when there's a failure
-                    await new BackoffRetry(TimeSpan.MaxValue, TimeSpan.FromMilliseconds(10), maxDelay: TimeSpan.FromSeconds(5)).AttemptAsync(
+                    await new BackoffRetry(TimeSpan.MaxValue, TimeSpan.FromMilliseconds(50), maxDelay: TimeSpan.FromSeconds(5)).AttemptAsync(
                         async attempt => {
                             _log.Debug(() => LogEvent.Create($"Awaiting message from {_socket.Endpoint}"));
                             if (messageSize == 0) {
@@ -178,18 +178,21 @@ namespace KafkaClient.Connections
                             }
                         },
                         (exception, attempt, delay) => {
-                            // It is possible for orphaned requests to exist in the _requestsByCorrelation after failure
-                            if (!_disposeToken.IsCancellationRequested) {
-                                _log.Debug(() => LogEvent.Create(exception, $"Polling failure on {_socket.Endpoint} attempt {attempt} delay {delay}"));
-                                if (attempt == 0) {
-                                    _log.Error(LogEvent.Create(exception, $"Polling read thread {_socket?.Endpoint}"));
-                                }
+                            if (_disposeToken.IsCancellationRequested) {
+                                throw exception.PrepareForRethrow();
                             }
-                            _disposeToken.Token.ThrowIfCancellationRequested();
+
+                            // It is possible for orphaned requests to exist in the _requestsByCorrelation after failure
+                            _log.Debug(() => LogEvent.Create(exception, $"Polling failure on {_socket.Endpoint} attempt {attempt} delay {delay}"));
+                            if (attempt == 0) {
+                                _log.Error(LogEvent.Create(exception, $"Polling read thread {_socket?.Endpoint}"));
+                            }
                         },
                         null, // since there is no max attempts/delay
                         _disposeToken.Token
                     ).ConfigureAwait(false);
+                } catch (Exception ex) {
+                    _log.Debug(() => LogEvent.Create(ex));
                 } finally {
                     Interlocked.Decrement(ref _activeReaderCount);
                     _log.Debug(() => LogEvent.Create($"Closed down connection to {_socket.Endpoint}"));

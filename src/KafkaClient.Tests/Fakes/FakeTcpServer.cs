@@ -96,11 +96,7 @@ namespace KafkaClient.Tests.Fakes
                         var stream = _client.GetStream();
 
                         while (!_disposeToken.IsCancellationRequested) {
-                            //connect client
-                            var connectTask = stream.ReadAsync(buffer, 0, buffer.Length, _disposeToken.Token);
-
-                            var bytesReceived = await connectTask;
-
+                            var bytesReceived = await stream.ReadAsync(buffer, 0, buffer.Length, _disposeToken.Token);
                             if (bytesReceived > 0) {
                                 OnBytesReceived?.Invoke(buffer.Take(bytesReceived).ToArray());
                             }
