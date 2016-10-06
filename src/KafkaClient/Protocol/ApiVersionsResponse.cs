@@ -6,7 +6,7 @@ namespace KafkaClient.Protocol
 {
     public class ApiVersionsResponse : IResponse
     {
-        public ApiVersionsResponse(ErrorResponseCode errorCode = ErrorResponseCode.NoError, IEnumerable<ApiVersionSupport> supportedVersions = null)
+        public ApiVersionsResponse(ErrorResponseCode errorCode = ErrorResponseCode.None, IEnumerable<ApiVersionSupport> supportedVersions = null)
         {
             ErrorCode = errorCode;
             Errors = ImmutableList<ErrorResponseCode>.Empty.Add(ErrorCode);

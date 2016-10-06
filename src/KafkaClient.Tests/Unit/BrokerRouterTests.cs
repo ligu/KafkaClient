@@ -297,7 +297,7 @@ namespace KafkaClient.Tests.Unit
             var routerProxy = new BrokerRouterProxy(_kernel);
 
             _mockPartitionSelector.Setup(x => x.Select(It.IsAny<MetadataTopic>(), key))
-                                  .Returns(() => new MetadataPartition(0, 0, ErrorResponseCode.NoError, new []{ 1 }, new []{ 1 }));
+                                  .Returns(() => new MetadataPartition(0, 0, ErrorResponseCode.None, new []{ 1 }, new []{ 1 }));
 
             routerProxy.PartitionSelector = _mockPartitionSelector.Object;
             var router = routerProxy.Create();

@@ -20,11 +20,11 @@ namespace KafkaClient.Tests.Unit
         [SetUp]
         public void Setup()
         {
-            _topicA = new MetadataTopic("a", ErrorResponseCode.NoError, new [] {
+            _topicA = new MetadataTopic("a", ErrorResponseCode.None, new [] {
                                             new MetadataPartition(0, 0),
                                             new MetadataPartition(1, 1),
                                         });
-            _topicB = new MetadataTopic("b", ErrorResponseCode.NoError, new [] {
+            _topicB = new MetadataTopic("b", ErrorResponseCode.None, new [] {
                                             new MetadataPartition(0, 0),
                                             new MetadataPartition(1, 1),
                                         });

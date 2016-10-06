@@ -36,7 +36,7 @@ namespace KafkaClient.Tests.Integration
                 //So this assertion will never pass
                 //Assert.That(results.Count, Is.EqualTo(amount));
 
-                Assert.That(results.Any(x => x.ErrorCode != ErrorResponseCode.NoError), Is.False,
+                Assert.That(results.Any(x => x.ErrorCode != ErrorResponseCode.None), Is.False,
                     "Should not have received any results as failures.");
             }
         }
@@ -418,7 +418,7 @@ namespace KafkaClient.Tests.Integration
                     Console.WriteLine("Sending {0} test messages", expectedCount);
                     var response = await producer.SendMessagesAsync(Enumerable.Range(0, expectedCount).Select(x => new Message(x.ToString())), IntegrationConfig.TopicName(), CancellationToken.None);
 
-                    Assert.That(response.Any(x => x.ErrorCode != (int)ErrorResponseCode.NoError), Is.False, "Error occured sending test messages to server.");
+                    Assert.That(response.Any(x => x.ErrorCode != (int)ErrorResponseCode.None), Is.False, "Error occured sending test messages to server.");
 
                     var stream = consumer.Consume();
 

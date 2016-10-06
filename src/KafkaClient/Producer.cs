@@ -204,7 +204,7 @@ namespace KafkaClient
                     if (batch.Acks == 0 && batchResult == null) {
                         foreach (var topic in batch.TasksByTopicPayload.Keys) {
                             foreach (var task in batch.TasksByTopicPayload[topic]) {
-                                task.Tcs.SetResult(new ProduceTopic(topic.TopicName, topic.PartitionId, ErrorResponseCode.NoError, -1));
+                                task.Tcs.SetResult(new ProduceTopic(topic.TopicName, topic.PartitionId, ErrorResponseCode.None, -1));
                             }
                         }
                         return;
@@ -230,7 +230,7 @@ namespace KafkaClient
                         var offsetCount = 0;
                         foreach (var task in tasks) {
                             task.Tcs.SetResult(batch.Acks == 0
-                                ? new ProduceTopic(topic.TopicName, topic.PartitionId, ErrorResponseCode.NoError, -1)
+                                ? new ProduceTopic(topic.TopicName, topic.PartitionId, ErrorResponseCode.None, -1)
                                 : new ProduceTopic(topic.TopicName, topic.PartitionId, topic.ErrorCode, topic.Offset + offsetCount, topic.Timestamp));
                             offsetCount += 1;
                         }

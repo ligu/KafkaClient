@@ -32,8 +32,8 @@ namespace KafkaClient.Tests.Integration
         {
             var result1 = _conn.SendAsync(new MetadataRequest(), CancellationToken.None).Result;
             var result2 = _conn.SendAsync(new MetadataRequest(), CancellationToken.None).Result;
-            Assert.That(result1.Errors.Count(code => code != ErrorResponseCode.NoError), Is.EqualTo(0));
-            Assert.That(result2.Errors.Count(code => code != ErrorResponseCode.NoError), Is.EqualTo(0));
+            Assert.That(result1.Errors.Count(code => code != ErrorResponseCode.None), Is.EqualTo(0));
+            Assert.That(result2.Errors.Count(code => code != ErrorResponseCode.None), Is.EqualTo(0));
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
@@ -43,9 +43,9 @@ namespace KafkaClient.Tests.Integration
             var result2 = _conn.SendAsync(new MetadataRequest(), CancellationToken.None);
             var result3 = _conn.SendAsync(new MetadataRequest(), CancellationToken.None);
 
-            Assert.That(result1.Result.Errors.Count(code => code != ErrorResponseCode.NoError), Is.EqualTo(0));
-            Assert.That(result2.Result.Errors.Count(code => code != ErrorResponseCode.NoError), Is.EqualTo(0));
-            Assert.That(result3.Result.Errors.Count(code => code != ErrorResponseCode.NoError), Is.EqualTo(0));
+            Assert.That(result1.Result.Errors.Count(code => code != ErrorResponseCode.None), Is.EqualTo(0));
+            Assert.That(result2.Result.Errors.Count(code => code != ErrorResponseCode.None), Is.EqualTo(0));
+            Assert.That(result3.Result.Errors.Count(code => code != ErrorResponseCode.None), Is.EqualTo(0));
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]

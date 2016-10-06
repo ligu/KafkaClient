@@ -2,76 +2,78 @@
 {
     /// <summary>
     /// Enumeration of error codes that might be returned from a Kafka server
+    /// 
+    /// See http://kafka.apache.org/protocol.html#protocol_error_codes for details.
     /// </summary>
     public enum ErrorResponseCode : short
     {
         /// <summary>
-        /// No error--it worked!
+        /// No error -- it worked!
         /// </summary>
-        NoError = 0,
+        None = 0,
 
         /// <summary>
-        /// An unexpected server error
+        /// The server experienced an unexpected error when processing the request
         /// </summary>
         Unknown = -1,
 
         /// <summary>
-        /// The requested offset is outside the range of offsets maintained by the server for the given topic/partition.
+        /// The requested offset is not within the range of offsets maintained by the server.
         /// </summary>
         OffsetOutOfRange = 1,
 
         /// <summary>
-        /// This indicates that a message contents does not match its CRC
+        /// This message has failed its CRC checksum, exceeds the valid size, or is otherwise corrupt.
         /// </summary>
-        InvalidMessage = 2,
+        CorruptMessage = 2,
 
         /// <summary>
-        /// This request is for a topic or partition that does not exist on this broker.
+        /// This server does not host this topic-partition.
         /// </summary>
         UnknownTopicOrPartition = 3,
 
         /// <summary>
-        /// The message has a negative size
+        /// The requested fetch size is invalid (negative?).
         /// </summary>
-        InvalidMessageSize = 4,
+        InvalidFetchSize = 4,
 
         /// <summary>
-        /// This error is thrown if we are in the middle of a leadership election and there is currently no leader for this partition and hence it is unavailable for writes.
+        /// There is no leader for this topic-partition as we are in the middle of a leadership election.
         /// </summary>
         LeaderNotAvailable = 5,
 
         /// <summary>
-        /// This error is thrown if the client attempts to send messages to a replica that is not the leader for some partition. It indicates that the clients metadata is out of date.
+        /// This server is not the leader for that topic-partition. It indicates that the clients metadata is out of date.
         /// </summary>
         NotLeaderForPartition = 6,
 
         /// <summary>
-        /// This error is thrown if the request exceeds the user-specified time limit in the request.
+        /// The request timed out (on the server).
         /// </summary>
         RequestTimedOut = 7,
 
         /// <summary>
-        /// This is not a client facing error and is used only internally by intra-cluster broker communication.
+        /// Internal error code for broker-to-broker communication: The broker is not available.
         /// </summary>
         BrokerNotAvailable = 8,
 
         /// <summary>
-        /// If replica is expected on a broker, but is not.
+        /// The replica is not available for the requested topic-partition.
         /// </summary>
         ReplicaNotAvailable = 9,
 
         /// <summary>
-        /// The server has a configurable maximum message size to avoid unbounded memory allocation. This error is thrown if the client attempt to produce a message larger than this maximum.
+        /// The request included a message larger than the max message size the server will accept.
         /// </summary>
-        MessageSizeTooLarge = 10,
+        MessageTooLarge = 10,
 
         /// <summary>
-        /// Internal error code for broker-to-broker communication.
+        /// Internal error code for broker-to-broker communication: The controller moved to another broker.
         /// </summary>
         StaleControllerEpoch = 11,
 
         /// <summary>
-        /// If you specify a string larger than configured maximum for offset metadata
+        /// The metadata field of the offset request was too large.
         /// </summary>
         OffsetMetadataTooLarge = 12,
 
@@ -81,19 +83,19 @@
         NetworkException = 13,
 
         /// <summary>
-        /// The broker returns this error code for an offset fetch request if it is still loading offsets (after a leader change for that offsets topic partition).
+        /// The coordinator is loading and hence can't process requests for this group.
         /// </summary>
-        OffsetsLoadInProgress = 14,
+        GroupLoadInProgress = 14,
 
         /// <summary>
-        /// The broker returns this error code for consumer metadata requests or offset commit requests if the offsets topic has not yet been created.
+        /// The group coordinator is not available.
         /// </summary>
-        ConsumerCoordinatorNotAvailable = 15,
+        GroupCoordinatorNotAvailable = 15,
 
         /// <summary>
-        /// The broker returns this error code if it receives an offset fetch or commit request for a consumer group that it is not a coordinator for.
+        /// This is not the correct coordinator for this group.
         /// </summary>
-        NotCoordinatorForConsumer = 16,
+        NotCoordinatorForGroup = 16,
 
         /// <summary>
         /// The request attempted to perform an operation on an invalid topic.

@@ -230,11 +230,11 @@ namespace KafkaClient
         {
             switch (response.ErrorCode)
             {
-                case ErrorResponseCode.NoError:
+                case ErrorResponseCode.None:
                     return;
 
                 case ErrorResponseCode.BrokerNotAvailable:
-                case ErrorResponseCode.ConsumerCoordinatorNotAvailable:
+                case ErrorResponseCode.GroupCoordinatorNotAvailable:
                 case ErrorResponseCode.LeaderNotAvailable:
                 case ErrorResponseCode.NotLeaderForPartition:
                     throw new CachedMetadataException(

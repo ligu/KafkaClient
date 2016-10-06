@@ -7,7 +7,7 @@ namespace KafkaClient.Protocol
 {
     public class OffsetTopic : TopicResponse, IEquatable<OffsetTopic>
     {
-        public OffsetTopic(string topic, int partitionId, ErrorResponseCode errorCode = ErrorResponseCode.NoError, IEnumerable<long> offsets = null) 
+        public OffsetTopic(string topic, int partitionId, ErrorResponseCode errorCode = ErrorResponseCode.None, IEnumerable<long> offsets = null) 
             : base(topic, partitionId, errorCode)
         {
             Offsets = ImmutableList<long>.Empty.AddNotNullRange(offsets);

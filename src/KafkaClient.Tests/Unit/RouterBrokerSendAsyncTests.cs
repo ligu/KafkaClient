@@ -36,8 +36,8 @@ namespace KafkaClient.Tests.Unit
 
         [TestCase(ErrorResponseCode.NotLeaderForPartition)]
         [TestCase(ErrorResponseCode.LeaderNotAvailable)]
-        [TestCase(ErrorResponseCode.ConsumerCoordinatorNotAvailable)]
-        [TestCase(ErrorResponseCode.BrokerNotAvailable)]
+        [TestCase(ErrorResponseCode.GroupCoordinatorNotAvailable)]
+        [TestCase(ErrorResponseCode.UnknownTopicOrPartition)]
         [Test, Repeat(IntegrationConfig.TestAttempts)]
         public async Task ShouldTryToRefreshMataDataIfCanRecoverByRefreshMetadata(ErrorResponseCode code)
         {
@@ -107,15 +107,10 @@ namespace KafkaClient.Tests.Unit
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
         [ExpectedException(typeof(RequestException))]
-        [TestCase(ErrorResponseCode.InvalidMessage)]
-        [TestCase(ErrorResponseCode.InvalidMessageSize)]
-        [TestCase(ErrorResponseCode.MessageSizeTooLarge)]
+        [TestCase(ErrorResponseCode.InvalidFetchSize)]
+        [TestCase(ErrorResponseCode.MessageTooLarge)]
         [TestCase(ErrorResponseCode.OffsetMetadataTooLarge)]
         [TestCase(ErrorResponseCode.OffsetOutOfRange)]
-        [TestCase(ErrorResponseCode.NotCoordinatorForConsumer)]
-        [TestCase(ErrorResponseCode.RequestTimedOut)]
-        [TestCase(ErrorResponseCode.OffsetsLoadInProgress)]
-        [TestCase(ErrorResponseCode.UnknownTopicOrPartition)]
         [TestCase(ErrorResponseCode.Unknown)]
         [TestCase(ErrorResponseCode.StaleControllerEpoch)]
         [TestCase(ErrorResponseCode.ReplicaNotAvailable)]

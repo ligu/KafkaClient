@@ -6,7 +6,7 @@ namespace KafkaClient.Protocol
 {
     public class MetadataTopic
     {
-        public MetadataTopic(string topicName, ErrorResponseCode errorCode = ErrorResponseCode.NoError, IEnumerable<MetadataPartition> partitions = null)
+        public MetadataTopic(string topicName, ErrorResponseCode errorCode = ErrorResponseCode.None, IEnumerable<MetadataPartition> partitions = null)
         {
             ErrorCode = errorCode;
             TopicName = topicName;

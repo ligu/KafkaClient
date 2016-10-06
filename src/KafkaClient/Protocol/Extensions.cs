@@ -10,10 +10,10 @@ namespace KafkaClient.Protocol
         public static Exception ExtractExceptions<TResponse>(this IRequest<TResponse> request, TResponse response, Endpoint endpoint = null) where TResponse : IResponse
         {
             var exceptions = new List<Exception>();
-            foreach (var errorCode in response.Errors.Where(e => e != ErrorResponseCode.NoError)) {
+            foreach (var errorCode in response.Errors.Where(e => e != ErrorResponseCode.None)) {
                 exceptions.Add(ExtractException(request, errorCode, endpoint));
             }
-            if (exceptions.Count == 0) return new RequestException(request.ApiKey, ErrorResponseCode.NoError) { Endpoint = endpoint };
+            if (exceptions.Count == 0) return new RequestException(request.ApiKey, ErrorResponseCode.None) { Endpoint = endpoint };
             if (exceptions.Count == 1) return exceptions[0];
             return new AggregateException(exceptions);
         }
@@ -46,5 +46,34 @@ namespace KafkaClient.Protocol
         {
             return UnixEpoch.AddMilliseconds(milliseconds);
         }
+
+        /// <summary>
+        /// See http://kafka.apache.org/protocol.html#protocol_error_codes for details
+        /// </summary>
+        public static bool IsRetryable(this ErrorResponseCode code)
+        {
+            return code == ErrorResponseCode.CorruptMessage
+                || code == ErrorResponseCode.UnknownTopicOrPartition
+                || code == ErrorResponseCode.LeaderNotAvailable
+                || code == ErrorResponseCode.NotLeaderForPartition
+                || code == ErrorResponseCode.RequestTimedOut
+                || code == ErrorResponseCode.NetworkException
+                || code == ErrorResponseCode.GroupLoadInProgress
+                || code == ErrorResponseCode.GroupCoordinatorNotAvailable
+                || code == ErrorResponseCode.NotCoordinatorForGroup
+                || code == ErrorResponseCode.NotEnoughReplicas
+                || code == ErrorResponseCode.NotEnoughReplicasAfterAppend;
+        }
+
+        public static bool IsFromStaleMetadata(this ErrorResponseCode code)
+        {
+            return code == ErrorResponseCode.UnknownTopicOrPartition
+                || code == ErrorResponseCode.LeaderNotAvailable
+                || code == ErrorResponseCode.NotLeaderForPartition
+                || code == ErrorResponseCode.GroupLoadInProgress
+                || code == ErrorResponseCode.GroupCoordinatorNotAvailable
+                || code == ErrorResponseCode.NotCoordinatorForGroup;
+        }
+
     }
 }

@@ -6,7 +6,7 @@ namespace KafkaClient.Protocol
 {
     public class MetadataPartition
     {
-        public MetadataPartition(int partitionId, int leaderId, ErrorResponseCode errorCode = ErrorResponseCode.NoError, IEnumerable<int> replicas = null, IEnumerable<int> isrs = null)
+        public MetadataPartition(int partitionId, int leaderId, ErrorResponseCode errorCode = ErrorResponseCode.None, IEnumerable<int> replicas = null, IEnumerable<int> isrs = null)
         {
             ErrorCode = errorCode;
             PartitionId = partitionId;

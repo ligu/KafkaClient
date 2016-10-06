@@ -108,7 +108,7 @@ namespace KafkaClient.Connections
                 try {
                     var response = await SendAsync(new ApiVersionsRequest(), cancellationToken, new RequestContext(version: 0));
                     // TODO: what if it doesn't respond or it's unknown ?
-                    if (response.ErrorCode == ErrorResponseCode.NoError) {
+                    if (response.ErrorCode == ErrorResponseCode.None) {
                         var supportedVersions = response.SupportedVersions.ToImmutableDictionary(
                                                        _ => _.ApiKey,
                                                        _ => _.MaxVersion);

@@ -32,15 +32,15 @@ namespace KafkaClient.Tests.Fakes
 
             _fakeConn0 = new FakeConnection(new Uri("http://localhost:1"));
 #pragma warning disable 1998
-            _fakeConn0.ProduceResponseFunction = async () => new ProduceResponse(new ProduceTopic(TestTopic, 0, ErrorResponseCode.NoError, _offset0++));
+            _fakeConn0.ProduceResponseFunction = async () => new ProduceResponse(new ProduceTopic(TestTopic, 0, ErrorResponseCode.None, _offset0++));
             _fakeConn0.MetadataResponseFunction = async () => MetadataResponse();
-            _fakeConn0.OffsetResponseFunction = async () => new OffsetResponse(new OffsetTopic(TestTopic, 0, ErrorResponseCode.NoError, new []{ 0L, 99L }));
+            _fakeConn0.OffsetResponseFunction = async () => new OffsetResponse(new OffsetTopic(TestTopic, 0, ErrorResponseCode.None, new []{ 0L, 99L }));
             _fakeConn0.FetchResponseFunction = async () => { Thread.Sleep(500); return null; };
 
             _fakeConn1 = new FakeConnection(new Uri("http://localhost:2"));
-            _fakeConn1.ProduceResponseFunction = async () => new ProduceResponse(new ProduceTopic(TestTopic, 1, ErrorResponseCode.NoError, _offset1++));
+            _fakeConn1.ProduceResponseFunction = async () => new ProduceResponse(new ProduceTopic(TestTopic, 1, ErrorResponseCode.None, _offset1++));
             _fakeConn1.MetadataResponseFunction = async () => MetadataResponse();
-            _fakeConn1.OffsetResponseFunction = async () => new OffsetResponse(new OffsetTopic(TestTopic, 1, ErrorResponseCode.NoError, new []{ 0L, 100L }));
+            _fakeConn1.OffsetResponseFunction = async () => new OffsetResponse(new OffsetTopic(TestTopic, 1, ErrorResponseCode.None, new []{ 0L, 100L }));
             _fakeConn1.FetchResponseFunction = async () => { Thread.Sleep(500); return null; };
 #pragma warning restore 1998
 
@@ -69,9 +69,9 @@ namespace KafkaClient.Tests.Fakes
                 },
                 new [] {
                     new MetadataTopic(TestTopic, 
-                        ErrorResponseCode.NoError, new [] {
-                                          new MetadataPartition(0, 0, ErrorResponseCode.NoError, new [] { 1 }, new []{ 1 }),
-                                          new MetadataPartition(1, 1, ErrorResponseCode.NoError, new [] { 1 }, new []{ 1 }),
+                        ErrorResponseCode.None, new [] {
+                                          new MetadataPartition(0, 0, ErrorResponseCode.None, new [] { 1 }, new []{ 1 }),
+                                          new MetadataPartition(1, 1, ErrorResponseCode.None, new [] { 1 }, new []{ 1 }),
                                       })
                 });
         }

@@ -7,7 +7,7 @@ namespace KafkaClient.Protocol
 {
     public class FetchTopicResponse : TopicResponse, IEquatable<FetchTopicResponse>
     {
-        public FetchTopicResponse(string topic, int partitionId, long highWaterMark, ErrorResponseCode errorCode = ErrorResponseCode.NoError, IEnumerable<Message> messages = null)
+        public FetchTopicResponse(string topic, int partitionId, long highWaterMark, ErrorResponseCode errorCode = ErrorResponseCode.None, IEnumerable<Message> messages = null)
             : base(topic, partitionId, errorCode)
         {
             HighWaterMark = highWaterMark;

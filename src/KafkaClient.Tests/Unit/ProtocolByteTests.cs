@@ -115,8 +115,8 @@ namespace KafkaClient.Tests.Unit
             [Values(1, 10)] int topicsPerRequest, 
             [Values(1, 5)] int totalPartitions, 
             [Values(
-                ErrorResponseCode.NoError,
-                ErrorResponseCode.InvalidMessage
+                ErrorResponseCode.None,
+                ErrorResponseCode.CorruptMessage
             )] ErrorResponseCode errorCode,
             [Values(0, 100000)] int throttleTime)
         {
@@ -230,7 +230,7 @@ namespace KafkaClient.Tests.Unit
             [Values(1, 10)] int topicsPerRequest, 
             [Values(1, 5)] int totalPartitions, 
             [Values(
-                ErrorResponseCode.NoError,
+                ErrorResponseCode.None,
                 ErrorResponseCode.OffsetOutOfRange
             )] ErrorResponseCode errorCode, 
             [Values(3)] int messagesPerSet
@@ -428,7 +428,7 @@ namespace KafkaClient.Tests.Unit
             [Values(1, 10)] int topicsPerRequest,
             [Values(1, 5)] int partitionsPerTopic,
             [Values(
-                 ErrorResponseCode.NoError,
+                 ErrorResponseCode.None,
                  ErrorResponseCode.UnknownTopicOrPartition
              )] ErrorResponseCode errorCode)
         {
@@ -556,7 +556,7 @@ namespace KafkaClient.Tests.Unit
             [Values(1, 10)] int topicsPerRequest,
             [Values(1, 5)] int partitionsPerTopic,
             [Values(
-                 ErrorResponseCode.NoError,
+                 ErrorResponseCode.None,
                  ErrorResponseCode.OffsetMetadataTooLarge
              )] ErrorResponseCode errorCode)
         {
@@ -640,10 +640,10 @@ namespace KafkaClient.Tests.Unit
             [Values(1, 10)] int topicsPerRequest,
             [Values(1, 5)] int partitionsPerTopic,
             [Values(
-                 ErrorResponseCode.NoError,
+                 ErrorResponseCode.None,
                  ErrorResponseCode.UnknownTopicOrPartition,
-                 ErrorResponseCode.OffsetsLoadInProgress,
-                 ErrorResponseCode.NotCoordinatorForConsumer,
+                 ErrorResponseCode.GroupLoadInProgress,
+                 ErrorResponseCode.NotCoordinatorForGroup,
                  ErrorResponseCode.IllegalGeneration,
                  ErrorResponseCode.UnknownMemberId,
                  ErrorResponseCode.TopicAuthorizationFailed,
@@ -720,8 +720,8 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public void GroupCoordinatorApiResponse(
             [Values(
-                 ErrorResponseCode.NoError,
-                 ErrorResponseCode.ConsumerCoordinatorNotAvailable,
+                 ErrorResponseCode.None,
+                 ErrorResponseCode.GroupCoordinatorNotAvailable,
                  ErrorResponseCode.GroupAuthorizationFailed
              )] ErrorResponseCode errorCode,
             [Values(0, 1)] int coordinatorId
@@ -785,7 +785,7 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public void ApiVersionsApiResponse(
             [Values(
-                 ErrorResponseCode.NoError,
+                 ErrorResponseCode.None,
                  ErrorResponseCode.BrokerNotAvailable
              )] ErrorResponseCode errorCode
             )

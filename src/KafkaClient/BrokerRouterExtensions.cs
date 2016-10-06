@@ -83,16 +83,17 @@ namespace KafkaClient
                     // this can happen if you send ProduceRequest with ack level=0
                     if (response == null) return new RetryAttempt<T>(null);
 
-                    var errors = response.Errors.Where(e => e != ErrorResponseCode.NoError).ToList();
+                    var errors = response.Errors.Where(e => e != ErrorResponseCode.None).ToList();
                     if (errors.Count == 0) return new RetryAttempt<T>(response);
 
-                    metadataInvalid = errors.All(IsRecoverableByMetadaRefresh);
+                    var shouldRetry = errors.Any(e => e.IsRetryable());
+                    metadataInvalid = errors.All(e => e.IsFromStaleMetadata());
                     brokerRouter.Log.Warn(() => {
                         var routes = errors.Aggregate($"{route} -", (buffer, e) => $"{buffer} {e}");
                         return LogEvent.Create($"Error response in Router SendAsync (attempt {attempt + 1}): {routes}");
                     });
 
-                    if (!metadataInvalid.Value) throw request.ExtractExceptions(response, endpoint);
+                    if (!shouldRetry) throw request.ExtractExceptions(response, endpoint);
                     return RetryAttempt<T>.Failed;
                 },
                 null, // do nothing on normal retry -- should log?
@@ -114,14 +115,6 @@ namespace KafkaClient
                 || exception is TimeoutException
                 || exception is ConnectionException
                 || exception is CachedMetadataException;
-        }
-
-        private static bool IsRecoverableByMetadaRefresh(ErrorResponseCode error)
-        {
-            return  error == ErrorResponseCode.BrokerNotAvailable ||
-                    error == ErrorResponseCode.ConsumerCoordinatorNotAvailable ||
-                    error == ErrorResponseCode.LeaderNotAvailable ||
-                    error == ErrorResponseCode.NotLeaderForPartition;
         }
 
         /// <summary>
@@ -182,7 +175,7 @@ namespace KafkaClient
                 }
             }
 
-            throw new RequestException(request.ApiKey, ErrorResponseCode.NoError, $"Unable to make Metadata Request to any of {string.Join(" ", servers)}");
+            throw new RequestException(request.ApiKey, ErrorResponseCode.None, $"Unable to make Metadata Request to any of {string.Join(" ", servers)}");
         }
 
         private class MetadataResult
@@ -195,11 +188,11 @@ namespace KafkaClient
             {
                 if (IsValid.GetValueOrDefault(true)) return null;
 
-                if (_errorCode == ErrorResponseCode.NoError) return new ConnectionException(Message);
+                if (_errorCode == ErrorResponseCode.None) return new ConnectionException(Message);
                 return new RequestException(ApiKeyRequestType.Metadata, _errorCode, Message);
             }
 
-            public MetadataResult(ErrorResponseCode errorCode = ErrorResponseCode.NoError, bool? isValid = null, string message = null)
+            public MetadataResult(ErrorResponseCode errorCode = ErrorResponseCode.None, bool? isValid = null, string message = null)
             {
                 Message = message ?? "";
                 _errorCode = errorCode;
@@ -210,26 +203,17 @@ namespace KafkaClient
         private static MetadataResult ValidateBroker(Broker broker)
         {
             if (broker.BrokerId == -1)             return new MetadataResult(ErrorResponseCode.Unknown);
-            if (string.IsNullOrEmpty(broker.Host)) return new MetadataResult(ErrorResponseCode.NoError, false, "Broker missing host information.");
-            if (broker.Port <= 0)                  return new MetadataResult(ErrorResponseCode.NoError, false, "Broker missing port information.");
+            if (string.IsNullOrEmpty(broker.Host)) return new MetadataResult(ErrorResponseCode.None, false, "Broker missing host information.");
+            if (broker.Port <= 0)                  return new MetadataResult(ErrorResponseCode.None, false, "Broker missing port information.");
             return new MetadataResult(isValid: true);
         }
 
         private static MetadataResult ValidateTopic(MetadataTopic topic)
         {
             var errorCode = topic.ErrorCode;
-            switch (errorCode) {
-                case ErrorResponseCode.NoError:
-                    return new MetadataResult(isValid: true);
-
-                case ErrorResponseCode.LeaderNotAvailable:
-                case ErrorResponseCode.OffsetsLoadInProgress:
-                case ErrorResponseCode.ConsumerCoordinatorNotAvailable:
-                    return new MetadataResult(errorCode, null, $"topic/{topic.TopicName} returned error code of {errorCode}: Retrying");
-
-                default:
-                    return new MetadataResult(errorCode, false, $"topic/{topic.TopicName} returned an error of {errorCode}");
-            }
+            if (errorCode == ErrorResponseCode.None) return new MetadataResult(isValid: true);
+            if (errorCode.IsRetryable()) return new MetadataResult(errorCode, null, $"topic/{topic.TopicName} returned error code of {errorCode}: Retrying");
+            return new MetadataResult(errorCode, false, $"topic/{topic.TopicName} returned an error of {errorCode}");
         }
     }
 }

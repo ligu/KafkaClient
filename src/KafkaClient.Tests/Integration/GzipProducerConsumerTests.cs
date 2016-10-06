@@ -51,7 +51,7 @@ namespace KafkaClient.Tests.Integration
                 IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(IntegrationConfig.Highlight("start SendAsync")));
                 var response = conn.Connection.SendAsync(request, CancellationToken.None).Result;
                 IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create("end SendAsync"));
-                Assert.That(response.Errors.Any(e => e != ErrorResponseCode.NoError), Is.False);
+                Assert.That(response.Errors.Any(e => e != ErrorResponseCode.None), Is.False);
                 IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create("start dispose"));
             }
             IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(IntegrationConfig.Highlight("end EnsureGzipCompressedMessageCanSend")));

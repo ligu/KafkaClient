@@ -29,7 +29,7 @@ namespace KafkaClient.Tests.Helpers
                     new[] {
                         new MetadataTopic(
                             topic,
-                            ErrorResponseCode.NoError,
+                            ErrorResponseCode.None,
                             new[] {new MetadataPartition(0, 0), new MetadataPartition(1, 1)})
                     }));
         }
