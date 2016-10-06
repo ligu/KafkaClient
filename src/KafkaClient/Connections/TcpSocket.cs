@@ -161,11 +161,11 @@ namespace KafkaClient.Connections
                     for (var totalBytesReceived = 0; totalBytesReceived < receiveTask.ReadSize;) {
                         var readSize = receiveTask.ReadSize - totalBytesReceived;
 
-                        _log.Debug(() => LogEvent.Create($"Receiving data from {Endpoint}, desired size {readSize}"));
+                        _log.Debug(() => LogEvent.Create($"Receiving ({readSize}? bytes) from {Endpoint}"));
                         _configuration.OnReadingChunk?.Invoke(Endpoint, receiveTask.ReadSize, totalBytesReceived, timer.Elapsed);
                         var bytesReceived = await stream.ReadAsync(buffer, totalBytesReceived, readSize, receiveTask.CancellationToken);
                         _configuration.OnReadChunk?.Invoke(Endpoint, receiveTask.ReadSize, receiveTask.ReadSize - totalBytesReceived, bytesReceived, timer.Elapsed);
-                        _log.Debug(() => LogEvent.Create($"Received data from {Endpoint}, actual size {bytesReceived}{(receiveTask.CancellationToken.IsCancellationRequested ? " (cancelled)" : "")}"));
+                        _log.Debug(() => LogEvent.Create($"Received {bytesReceived} bytes from {Endpoint}{(receiveTask.CancellationToken.IsCancellationRequested ? " (cancelled)" : "")}"));
                         totalBytesReceived += bytesReceived;
 
                         if (bytesReceived <= 0) {
@@ -222,13 +222,13 @@ namespace KafkaClient.Connections
             using (sendTask) {
                 var timer = new Stopwatch();
                 try {
-                    _log.Debug(() => LogEvent.Create($"Sending data to {Endpoint} with CorrelationId {sendTask.Payload.CorrelationId}"));
+                    _log.Debug(() => LogEvent.Create($"Sending {sendTask.Payload.Buffer.Length} bytes to {Endpoint} with cId {sendTask.Payload.CorrelationId}"));
                     _configuration.OnWriting?.Invoke(Endpoint, sendTask.Payload);
                     timer.Start();
                     await stream.WriteAsync(sendTask.Payload.Buffer, 0, sendTask.Payload.Buffer.Length, _disposeToken.Token);
                     timer.Stop();
                     _configuration.OnWritten?.Invoke(Endpoint, sendTask.Payload, timer.Elapsed);
-                    _log.Debug(() => LogEvent.Create($"Sent data to {Endpoint} with CorrelationId {sendTask.Payload.CorrelationId}"));
+                    _log.Debug(() => LogEvent.Create($"Sent {sendTask.Payload.Buffer.Length} bytes to {Endpoint} with cId {sendTask.Payload.CorrelationId}"));
                     sendTask.Tcs.TrySetResult(sendTask.Payload);
                 } catch (Exception ex) {
                     var wrappedException = WrappedException(ex);

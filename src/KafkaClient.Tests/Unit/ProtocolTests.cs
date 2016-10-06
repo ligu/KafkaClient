@@ -14,7 +14,6 @@ namespace KafkaClient.Tests.Unit
         {
             var response = KafkaEncoder.Decode<MetadataResponse>(new RequestContext(1), MessageHelper.CreateMetadataResponse(1, "Test").Skip(4).ToArray());
 
-            //Assert.That(response.CorrelationId, Is.EqualTo(1));
             Assert.That(response.Topics[0].TopicName, Is.EqualTo("Test"));
         }
     }

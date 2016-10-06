@@ -75,13 +75,13 @@ namespace KafkaClient.Connections
             }
             context = new RequestContext(NextCorrelationId(), version, context?.ClientId);
 
-            _log.Debug(() => LogEvent.Create($"SendAsync Api {request.ApiKey} version {context.ApiVersion.GetValueOrDefault()} CorrelationId {context.CorrelationId} to {Endpoint}"));
+            _log.Debug(() => LogEvent.Create($"Sending {request.ApiKey} request v.{context.ApiVersion.GetValueOrDefault()} cId {context.CorrelationId} to {Endpoint}"));
             if (!request.ExpectResponse) {
                 await _socket.WriteAsync(KafkaEncoder.Encode(context, request), token).ConfigureAwait(false);
                 return default(T);
             }
 
-            using (var asyncRequest = new AsyncRequestItem(context.CorrelationId, _configuration.RequestTimeout)) {
+            using (var asyncRequest = new AsyncRequestItem(context.CorrelationId, request.ApiKey, _configuration.RequestTimeout)) {
                 try {
                     AddAsyncRequestItemToResponseQueue(asyncRequest);
                     ExceptionDispatchInfo exceptionDispatchInfo = null;
@@ -98,6 +98,7 @@ namespace KafkaClient.Connections
                 }
 
                 var response = await asyncRequest.ReceiveTask.Task.ThrowIfCancellationRequested(token).ConfigureAwait(false);
+                _log.Debug(() => LogEvent.Create($"Received {request.ApiKey} response v.{context.ApiVersion.GetValueOrDefault()} cId {context.CorrelationId} ({response.Length} bytes) from {Endpoint}"));
                 return KafkaEncoder.Decode<T>(context, response);
             }
         }
@@ -161,14 +162,14 @@ namespace KafkaClient.Connections
                     // use backoff so we don't take over the CPU when there's a failure
                     await new BackoffRetry(TimeSpan.MaxValue, TimeSpan.FromMilliseconds(50), maxDelay: TimeSpan.FromSeconds(5)).AttemptAsync(
                         async attempt => {
-                            _log.Debug(() => LogEvent.Create($"Awaiting message from {_socket.Endpoint}"));
+                            _log.Debug(() => LogEvent.Create($"Awaiting data from {_socket.Endpoint}"));
                             if (messageSize == 0) {
                                 var messageSizeResult = await _socket.ReadAsync(4, _disposeToken.Token).ConfigureAwait(false);
                                 messageSize = messageSizeResult.ToInt32(); // hold onto it in case we fail while reading from the socket
                             }
 
                             var currentSize = messageSize;
-                            _log.Debug(() => LogEvent.Create($"Received message of size {currentSize} from {_socket.Endpoint}"));
+                            _log.Debug(() => LogEvent.Create($"Reading {currentSize} bytes from tcp {_socket.Endpoint}"));
                             var message = await _socket.ReadAsync(currentSize, _disposeToken.Token).ConfigureAwait(false);
                             messageSize = 0; // reset so we read the size next time through -- note that if the ReadAsync reads partially we're still in trouble
 
@@ -205,10 +206,10 @@ namespace KafkaClient.Connections
             var correlationId = payload.Take(4).ToArray().ToInt32();
             AsyncRequestItem asyncRequest;
             if (_requestsByCorrelation.TryRemove(correlationId, out asyncRequest)) {
-                _log.Debug(() => LogEvent.Create($"Matched Response from {Endpoint} with CorrelationId {correlationId}"));
+                _log.Debug(() => LogEvent.Create($"Matched {asyncRequest.RequestType} response cId {correlationId} from {Endpoint}"));
                 asyncRequest.ReceiveTask.SetResult(payload);
             } else {
-                _log.Warn(() => LogEvent.Create($"Unexpected Response from {Endpoint} with CorrelationId {correlationId} (not in request queue)."));
+                _log.Warn(() => LogEvent.Create($"Unexpected response from {Endpoint} with cId {correlationId} (not in request queue)."));
             }
         }
 
@@ -263,14 +264,16 @@ namespace KafkaClient.Connections
         {
             private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
 
-            public AsyncRequestItem(int correlationId, TimeSpan timeout)
+            public AsyncRequestItem(int correlationId, ApiKeyRequestType requestType, TimeSpan timeout)
             {
                 CorrelationId = correlationId;
                 Timeout = timeout;
+                RequestType = requestType;
                 ReceiveTask = new TaskCompletionSource<byte[]>();
             }
 
             public int CorrelationId { get; }
+            public ApiKeyRequestType RequestType { get; }
             public TimeSpan Timeout { get; }
             public TaskCompletionSource<byte[]> ReceiveTask { get; }
 
