@@ -1,8 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using KafkaClient.Common;
+﻿using KafkaClient.Common;
 using KafkaClient.Protocol;
-using KafkaClient.Tests.Unit;
+using KafkaClient.Tests.Protocol;
 
 namespace KafkaClient.Tests.Helpers
 {

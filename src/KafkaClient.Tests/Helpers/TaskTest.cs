@@ -10,10 +10,8 @@ namespace KafkaClient.Tests.Helpers
         public static async Task<bool> WaitFor(Func<bool> predicate, int milliSeconds = 3000)
         {
             var sw = Stopwatch.StartNew();
-            while (predicate() == false)
-            {
-                if (sw.ElapsedMilliseconds > milliSeconds)
-                    return false;
+            while (predicate() == false) {
+                if (sw.ElapsedMilliseconds > milliSeconds) return false;
                 await Task.Delay(50).ConfigureAwait(false);
             }
             return true;

@@ -1,0 +1,171 @@
+﻿using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using KafkaClient.Common;
+using KafkaClient.Connections;
+using KafkaClient.Protocol;
+using KafkaClient.Tests.Helpers;
+using Moq;
+using NSubstitute;
+using NUnit.Framework;
+
+namespace KafkaClient.Tests
+{
+    [Category("Unit")]
+    [TestFixture]
+    public class KafkaMetadataGetAsyncTests
+    {
+        private MemoryLog _log;
+        private IBrokerRouter _brokerRouter;
+
+        [SetUp]
+        public void Setup()
+        {
+            _log = new MemoryLog();
+            //_log = Substitute.ForPartsOf<MemoryLog>();
+            _brokerRouter = Substitute.For<IBrokerRouter>();
+            _brokerRouter.Log.ReturnsForAnyArgs(_log);
+            _brokerRouter.Configuration.ReturnsForAnyArgs(new CacheConfiguration());
+        }
+
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [TestCase(ErrorResponseCode.LeaderNotAvailable)]
+        [TestCase(ErrorResponseCode.GroupLoadInProgress)]
+        [TestCase(ErrorResponseCode.GroupCoordinatorNotAvailable)]
+        public async Task ShouldRetryWhenReceiveAnRetryErrorCode(ErrorResponseCode errorCode)
+        {
+            var conn = Substitute.For<IConnection>();
+
+            conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>())
+                .Returns(x => CreateMetadataResponse(errorCode), x => CreateMetadataResponse(errorCode));
+
+            _brokerRouter.Connections.ReturnsForAnyArgs(new List<IConnection> {conn});
+            var response = await _brokerRouter.GetMetadataAsync(new []{ "Test"}, CancellationToken.None);
+
+            Received.InOrder(() =>
+            {
+                conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
+                //_log.OnLogged(LogLevel.Warn, It.Is<LogEvent>(e => e.Message.StartsWith("Failed metadata request on attempt 0: Will retry in")));
+                conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
+                //_log.OnLogged(LogLevel.Warn, It.Is<LogEvent>(e => e.Message.StartsWith("Failed metadata request on attempt 1: Will retry in")));
+                conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
+            });
+
+            Assert.That(_log.LogEvents.Any(e => e.Item1 == LogLevel.Warn && e.Item2.Message.StartsWith("Failed metadata request on attempt 0: Will retry in")));
+            Assert.That(_log.LogEvents.Any(e => e.Item1 == LogLevel.Warn && e.Item2.Message.StartsWith("Failed metadata request on attempt 1: Will retry in")));
+            Assert.That(_log.LogEvents.Count(e => e.Item1 == LogLevel.Warn && e.Item2.Message.StartsWith("Failed metadata request on attempt")), Is.EqualTo(2));
+        }
+
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        public async Task ShouldRetryWhenReceiveBrokerIdNegativeOne()
+        {
+            var conn = Substitute.For<IConnection>();
+
+            conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>(), Arg.Any<IRequestContext>())
+                .Returns(x => CreateMetadataResponse(-1, "123", 1), x => CreateMetadataResponse(ErrorResponseCode.None));
+
+            _brokerRouter.Connections.ReturnsForAnyArgs(new List<IConnection> {conn});
+            var response = await _brokerRouter.GetMetadataAsync(new []{ "Test"}, CancellationToken.None);
+
+            Received.InOrder(() =>
+            {
+                conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
+                //_log.OnLogged.Invoke(LogLevel.Warn, It.Is<LogEvent>(e => e.Message.StartsWith("Failed metadata request on attempt 0: Will retry in")));
+                conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
+            });
+
+            Assert.That(_log.LogEvents.Any(e => e.Item1 == LogLevel.Warn && e.Item2.Message.StartsWith("Failed metadata request on attempt 0: Will retry in")));
+            Assert.That(_log.LogEvents.Count(e => e.Item1 == LogLevel.Warn && e.Item2.Message.StartsWith("Failed metadata request on attempt")), Is.EqualTo(1));
+        }
+
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        public void ShouldReturnWhenNoErrorReceived()
+        {
+            var conn = Substitute.For<IConnection>();
+
+            conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>())
+                .Returns(x => CreateMetadataResponse(ErrorResponseCode.None));
+
+            _brokerRouter.Connections.ReturnsForAnyArgs(new List<IConnection> {conn});
+            var source = new CancellationTokenSource();
+            var response = _brokerRouter.GetMetadataAsync(new [] { "Test"}, source.Token);
+            source.Cancel();
+
+            conn.Received(1).SendAsync(Arg.Any<IRequest<MetadataResponse>>(), Arg.Any<CancellationToken>());
+        }
+
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        public void ShouldReturnWhenNoErrorReceivedAndTopicsNotSpecified()
+        {
+            var conn = Substitute.For<IConnection>();
+
+            conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>())
+                .Returns(x => CreateMetadataResponse(ErrorResponseCode.None));
+
+            _brokerRouter.Connections.ReturnsForAnyArgs(new List<IConnection> {conn});
+            var source = new CancellationTokenSource();
+            var response = _brokerRouter.GetMetadataAsync(new string[] { }, source.Token);
+            source.Cancel();
+
+            conn.Received(1).SendAsync(Arg.Any<IRequest<MetadataResponse>>(), Arg.Any<CancellationToken>());
+        }
+
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [TestCase(ErrorResponseCode.Unknown)]
+        [TestCase(ErrorResponseCode.InvalidTopic)]
+        [TestCase(ErrorResponseCode.InvalidRequiredAcks)]
+        [ExpectedException(typeof(RequestException))]
+        public async Task ShouldThrowExceptionWhenNotARetriableErrorCode(ErrorResponseCode errorCode)
+        {
+            var conn = Substitute.For<IConnection>();
+
+            conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>()).Returns(x => CreateMetadataResponse(errorCode));
+
+            _brokerRouter.Connections.ReturnsForAnyArgs(new List<IConnection> {conn});
+            var response = await _brokerRouter.GetMetadataAsync(new [] { "Test"}, CancellationToken.None);
+        }
+
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [TestCase(null)]
+        [TestCase("")]
+        [ExpectedException(typeof(ConnectionException))]
+        public async Task ShouldThrowExceptionWhenHostIsMissing(string host)
+        {
+            var conn = Substitute.For<IConnection>();
+
+            conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>()).Returns(x => CreateMetadataResponse(1, host, 1));
+
+            _brokerRouter.Connections.ReturnsForAnyArgs(new List<IConnection> {conn});
+            var response = await _brokerRouter.GetMetadataAsync(new [] { "Test"}, CancellationToken.None);
+        }
+
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [TestCase(0)]
+        [TestCase(-1)]
+        [ExpectedException(typeof(ConnectionException))]
+        public async Task ShouldThrowExceptionWhenPortIsMissing(int port)
+        {
+            var conn = Substitute.For<IConnection>();
+
+            conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>()).Returns(x => CreateMetadataResponse(1, "123", port));
+
+            _brokerRouter.Connections.ReturnsForAnyArgs(new List<IConnection> {conn});
+            var response = await _brokerRouter.GetMetadataAsync(new [] { "Test"}, CancellationToken.None);
+        }
+
+#pragma warning disable 1998
+        private Task<MetadataResponse> CreateMetadataResponse(int brokerId, string host, int port)
+        {
+            var tcs = new TaskCompletionSource<MetadataResponse>();
+            tcs.SetResult(new MetadataResponse(new [] { new Broker(brokerId, host, port) }, new MetadataTopic[] {}));
+            return tcs.Task;
+        }
+
+        private async Task<MetadataResponse> CreateMetadataResponse(ErrorResponseCode errorCode)
+        {
+            return new MetadataResponse(new Broker[] {}, new [] { new MetadataTopic("Test", errorCode, new MetadataPartition[] {})});
+        }
+#pragma warning restore 1998
+    }
+}
