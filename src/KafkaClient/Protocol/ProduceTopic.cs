@@ -11,7 +11,7 @@ namespace KafkaClient.Protocol
             : base(topic, partitionId, errorCode)
         {
             Offset = offset;
-            Timestamp = timestamp;
+            Timestamp = timestamp.HasValue && timestamp.Value >= Extensions.UnixEpoch ? timestamp : null;
         }
 
         /// <summary>

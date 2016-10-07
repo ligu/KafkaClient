@@ -6,7 +6,7 @@ namespace KafkaClient.Protocol
     /// <summary>
     /// Message represents the data from a single event occurance.
     /// </summary>
-    public class Message
+    public class Message : IEquatable<Message>
     {
         public Message(byte[] value, byte attribute, long offset = 0, int partitionId = 0, byte version = 0, byte[] key = null, DateTime? timestamp = null)
         {
@@ -69,5 +69,56 @@ namespace KafkaClient.Protocol
         /// This is the timestamp of the message. The timestamp type is indicated in the attributes. Unit is milliseconds since beginning of the epoch (midnight Jan 1, 1970 (UTC)).
         /// </summary>
         public DateTime? Timestamp { get; }
+
+        #region Equality
+
+        /// <inheritdoc />
+        public override bool Equals(object obj)
+        {
+            return Equals(obj as Message);
+        }
+
+        /// <inheritdoc />
+        public bool Equals(Message other)
+        {
+            if (ReferenceEquals(null, other)) return false;
+            if (ReferenceEquals(this, other)) return true;
+            return Offset == other.Offset 
+                && PartitionId == other.PartitionId 
+                && MessageVersion == other.MessageVersion 
+                && Attribute == other.Attribute 
+                && Key.HasEqualElementsInOrder(other.Key)
+                && Value.HasEqualElementsInOrder(other.Value) 
+                && Timestamp.ToUnixEpochMilliseconds() == other.Timestamp.ToUnixEpochMilliseconds();
+        }
+
+        /// <inheritdoc />
+        public override int GetHashCode()
+        {
+            unchecked {
+                var hashCode = Offset.GetHashCode();
+                hashCode = (hashCode*397) ^ PartitionId;
+                hashCode = (hashCode*397) ^ MessageVersion.GetHashCode();
+                hashCode = (hashCode*397) ^ Attribute.GetHashCode();
+                hashCode = (hashCode*397) ^ (Key?.GetHashCode() ?? 0);
+                hashCode = (hashCode*397) ^ (Value?.GetHashCode() ?? 0);
+                hashCode = (hashCode*397) ^ Timestamp.GetHashCode();
+                return hashCode;
+            }
+        }
+
+        /// <inheritdoc />
+        public static bool operator ==(Message left, Message right)
+        {
+            return Equals(left, right);
+        }
+
+        /// <inheritdoc />
+        public static bool operator !=(Message left, Message right)
+        {
+            return !Equals(left, right);
+        }
+
+        #endregion
     }
 }

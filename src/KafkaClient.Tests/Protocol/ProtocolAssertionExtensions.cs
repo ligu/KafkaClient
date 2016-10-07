@@ -9,6 +9,36 @@ namespace KafkaClient.Tests.Protocol
 {
     public static class ProtocolAssertionExtensions
     {
+        public static void AssertCanEncodeDecodeRequest<T>(this T request, short version) where T : class, IRequest
+        {
+            var context = new RequestContext(17, version, "Test-Request");
+            var data = KafkaEncoder.EncodeRequestBytes(context, request);
+            var decoded = KafkaDecoder.Decode<T>(data);
+
+            if (!request.Equals(decoded)) {
+                var original = request.ToFormattedString();
+                var final = decoded.ToFormattedString();
+                Console.WriteLine($"Original\n{original}\nFinal\n{final}");
+                Assert.That(final, Is.EqualTo(original));
+                Assert.Fail("Not equal, although strings suggest they are?");
+            }
+        }
+
+        public static void AssertCanEncodeDecodeResponse<T>(this T response, short version) where T : class, IResponse
+        {
+            var context = new RequestContext(16, version, "Test-Response");
+            var data = KafkaDecoder.EncodeResponseBytes(context, response);
+            var decoded = KafkaEncoder.Decode<T>(context, data, true);
+
+            if (!response.Equals(decoded)) {
+                var original = response.ToFormattedString();
+                var final = decoded.ToFormattedString();
+                Console.WriteLine($"Original\n{original}\nFinal\n{final}");
+                Assert.That(final, Is.EqualTo(original));
+                Assert.Fail("Not equal, although strings suggest they are?");
+            }
+        }
+
         /// <summary>
         /// ApiVersionsResponse => ErrorCode [ApiKey MinVersion MaxVersion]
         ///  ErrorCode => int16  -- The error code.
@@ -364,86 +394,6 @@ namespace KafkaClient.Tests.Protocol
 
                 Assert.That(reader.ReadInt64(), Is.EqualTo(payload.Offset), "FetchOffset");
                 Assert.That(reader.ReadInt32(), Is.EqualTo(payload.MaxBytes), "MaxBytes");
-            }
-        }
-
-        /// <summary>
-        /// ProduceResponse => [TopicName [Partition ErrorCode Offset *Timestamp]] *ThrottleTime
-        ///  *ThrottleTime is only version 1 (0.9.0) and above
-        ///  *Timestamp is only version 2 (0.10.0) and above
-        ///  TopicName => string   -- The topic this response entry corresponds to.
-        ///  Partition => int32    -- The partition this response entry corresponds to.
-        ///  ErrorCode => int16    -- The error from this partition, if any. Errors are given on a per-partition basis because a given partition may be 
-        ///                           unavailable or maintained on a different host, while others may have successfully accepted the produce request.
-        ///  Offset => int64       -- The offset assigned to the first message in the message set appended to this partition.
-        ///  Timestamp => int64    -- If LogAppendTime is used for the topic, this is the timestamp assigned by the broker to the message set. 
-        ///                           All the messages in the message set have the same timestamp.
-        ///                           If CreateTime is used, this field is always -1. The producer can assume the timestamp of the messages in the 
-        ///                           produce request has been accepted by the broker if there is no error code returned.
-        ///                           Unit is milliseconds since beginning of the epoch (midnight Jan 1, 1970 (UTC)).
-        ///  ThrottleTime => int32 -- Duration in milliseconds for which the request was throttled due to quota violation. 
-        ///                           (Zero if the request did not violate any quota).
-        /// 
-        /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-Messagesets
-        /// </summary>
-        public static void AssertProduceResponse(this BigEndianBinaryReader reader, IRequestContext context, ProduceResponse response)
-        {
-            var responses = response.Topics;
-            Assert.That(reader.ReadInt32(), Is.EqualTo(responses.Count), "[TopicName]");
-            foreach (var payload in responses) {
-                Assert.That(reader.ReadInt16String(), Is.EqualTo(payload.TopicName), "TopicName");
-                Assert.That(reader.ReadInt32(), Is.EqualTo(1), "[Partition]"); // this is a mismatch between the protocol and the object model
-                Assert.That(reader.ReadInt32(), Is.EqualTo(payload.PartitionId), "Partition");
-                Assert.That(reader.ReadInt16(), Is.EqualTo((short)payload.ErrorCode), "ErrorCode");
-                Assert.That(reader.ReadInt64(), Is.EqualTo(payload.Offset), "Offset");
-                if (context.ApiVersion >= 2) {
-                    var timestamp = reader.ReadInt64();
-                    if (timestamp == -1L) {
-                        Assert.That(payload.Timestamp, Is.Null, "Timestamp");
-                    } else {
-                        Assert.That(payload.Timestamp, Is.Not.Null, "Timestamp");
-                        Assert.That(payload.Timestamp.Value, Is.EqualTo(timestamp.FromUnixEpochMilliseconds()), "Timestamp");
-                    }
-                }
-            }
-            if (context.ApiVersion >= 1) {
-                Assert.That(reader.ReadInt32(), Is.EqualTo((int)response.ThrottleTime.Value.TotalMilliseconds), "ThrottleTime");
-            }
-        }
-
-        /// <summary>
-        /// ProduceRequest => RequiredAcks Timeout [TopicName [Partition MessageSetSize MessageSet]]
-        ///  RequiredAcks => int16   -- This field indicates how many acknowledgements the servers should receive before responding to the request. 
-        ///                             If it is 0 the server will not send any response (this is the only case where the server will not reply to 
-        ///                             a request). If it is 1, the server will wait the data is written to the local log before sending a response. 
-        ///                             If it is -1 the server will block until the message is committed by all in sync replicas before sending a response.
-        ///  Timeout => int32        -- This provides a maximum time in milliseconds the server can await the receipt of the number of acknowledgements 
-        ///                             in RequiredAcks. The timeout is not an exact limit on the request time for a few reasons: (1) it does not include 
-        ///                             network latency, (2) the timer begins at the beginning of the processing of this request so if many requests are 
-        ///                             queued due to server overload that wait time will not be included, (3) we will not terminate a local write so if 
-        ///                             the local write time exceeds this timeout it will not be respected. To get a hard timeout of this type the client 
-        ///                             should use the socket timeout.
-        ///  TopicName => string     -- The topic that data is being published to.
-        ///  Partition => int32      -- The partition that data is being published to.
-        ///  MessageSetSize => int32 -- The size, in bytes, of the message set that follows.
-        /// 
-        /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-Messagesets
-        /// </summary>
-        public static void AssertProduceRequest(this BigEndianBinaryReader reader, IRequestContext context, ProduceRequest request)
-        {
-            Assert.That(reader.ReadInt16(), Is.EqualTo(request.Acks), "acks");
-            Assert.That(reader.ReadInt32(), Is.EqualTo((int)request.Timeout.TotalMilliseconds), "timeout");
-
-            Assert.That(reader.ReadInt32(), Is.EqualTo(request.Payloads.Count), "[topic_data]");
-            foreach (var payload in request.Payloads) {
-                Assert.That(reader.ReadInt16String(), Is.EqualTo(payload.TopicName), "TopicName");
-                Assert.That(reader.ReadInt32(), Is.EqualTo(1), "[Partition]"); // this is a mismatch between the protocol and the object model
-                Assert.That(reader.ReadInt32(), Is.EqualTo(payload.PartitionId), "Partition");
-
-                var finalPosition = reader.ReadInt32() + reader.Position;
-                reader.AssertMessageSet(context, payload.Messages);
-                Assert.That(reader.Position, Is.EqualTo(finalPosition),
-                            string.Format("MessageSetSize was {0} but ended in a different spot.", finalPosition - 4));
             }
         }
 

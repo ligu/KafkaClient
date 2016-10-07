@@ -43,6 +43,8 @@ namespace KafkaClient.Tests.Protocol
     [Category("Unit")]
     public class ProtocolByteTests
     {
+        private readonly Randomizer _randomizer = new Randomizer();
+
         /// <summary>
         /// ProduceRequest => RequiredAcks Timeout [TopicName [Partition MessageSetSize MessageSet]]
         ///  RequiredAcks => int16   -- This field indicates how many acknowledgements the servers should receive before responding to the request. 
@@ -71,21 +73,14 @@ namespace KafkaClient.Tests.Protocol
             [Values(1, 5)] int totalPartitions, 
             [Values(3)] int messagesPerSet)
         {
-            var clientId = "ProduceApiRequest";
-
-            var request = new ProduceRequest(new List<Payload>(), TimeSpan.FromMilliseconds(timeoutMilliseconds), acks);
+            var payloads = new List<Payload>();
             for (var t = 0; t < topicsPerRequest; t++) {
-                request.Payloads.Add(new Payload(topic + t, t % totalPartitions, GenerateMessages(messagesPerSet, (byte) (version >= 2 ? 1 : 0))));
+                var partition = 1 + t%totalPartitions;
+                payloads.Add(new Payload(topic + t, partition, GenerateMessages(messagesPerSet, (byte) (version >= 2 ? 1 : 0), partition)));
             }
+            var request = new ProduceRequest(payloads, TimeSpan.FromMilliseconds(timeoutMilliseconds), acks);
 
-            var context = new RequestContext(clientId.GetHashCode(), version, clientId);
-            var data = KafkaEncoder.EncodeRequestBytes(context, request);
-
-            data.AssertProtocol(
-                reader => {
-                    reader.AssertRequestHeader(context, request);
-                    reader.AssertProduceRequest(context, request);
-                });
+            request.AssertCanEncodeDecodeRequest(version);
         }
 
         /// <summary>
@@ -111,7 +106,7 @@ namespace KafkaClient.Tests.Protocol
         public void ProduceApiResponse(
             [Values(0, 1, 2)] short version,
             [Values(-1, 0, 10000000)] long timestampMilliseconds, 
-            [Values("test", "a really long name, with spaces and punctuation!")] string topic, 
+            [Values("test", "a really long name, with spaces and punctuation!")] string topicName, 
             [Values(1, 10)] int topicsPerRequest, 
             [Values(1, 5)] int totalPartitions, 
             [Values(
@@ -120,41 +115,13 @@ namespace KafkaClient.Tests.Protocol
             )] ErrorResponseCode errorCode,
             [Values(0, 100000)] int throttleTime)
         {
-            var randomizer = new Randomizer();
-            var clientId = "ProduceApiResponse";
-            var correlationId = clientId.GetHashCode();
-
-            byte[] data = null;
-            using (var stream = new MemoryStream()) {
-                var writer = new BigEndianBinaryWriter(stream);
-                writer.Write(correlationId);
-
-                writer.Write(topicsPerRequest);
-                for (var t = 0; t < topicsPerRequest; t++) {
-                    writer.Write(topic + t, StringPrefixEncoding.Int16);
-                    writer.Write(1); // partitionsPerTopic
-                    writer.Write(t % totalPartitions);
-                    writer.Write((short)errorCode);
-                    writer.Write((long)randomizer.Next());
-                    if (version >= 2) {
-                        writer.Write(timestampMilliseconds);
-                    }
-                }
-                if (version >= 1) {
-                    writer.Write(throttleTime);    
-                }
-                data = new byte[stream.Position];
-                Buffer.BlockCopy(stream.GetBuffer(), 0, data, 0, data.Length);
+            var topics = new List<ProduceTopic>();
+            for (var t = 0; t < topicsPerRequest; t++) {
+                topics.Add(new ProduceTopic(topicName + t, t % totalPartitions, errorCode, _randomizer.Next(), version >= 2 ? timestampMilliseconds.FromUnixEpochMilliseconds() : (DateTime?)null));
             }
+            var response = new ProduceResponse(topics, version >= 1 ? TimeSpan.FromMilliseconds(throttleTime) : (TimeSpan?)null);
 
-            var context = new RequestContext(clientId.GetHashCode(), version, clientId);
-            var response = KafkaEncoder.Decode<ProduceResponse>(context, data); // doesn't include the size in the decode
-            data.PrefixWithInt32Length().AssertProtocol(
-                reader =>
-                {
-                    reader.AssertResponseHeader(context);
-                    reader.AssertProduceResponse(context, response);
-                });
+            response.AssertCanEncodeDecodeResponse(version);
         }
 
         /// <summary>
@@ -823,19 +790,18 @@ namespace KafkaClient.Tests.Protocol
 
 
 
-        private List<Message> GenerateMessages(int count, byte version)
+        private List<Message> GenerateMessages(int count, byte version, int partition = 0)
         {
-            var randomizer = new Randomizer();
             var messages = new List<Message>();
             for (var m = 0; m < count; m++) {
                 var key = m > 0 ? new byte[8] : null;
                 var value = new byte[8*(m + 1)];
                 if (key != null) {
-                    randomizer.NextBytes(key);
+                    _randomizer.NextBytes(key);
                 }
-                randomizer.NextBytes(value);
+                _randomizer.NextBytes(value);
 
-                messages.Add(new Message(value, 0, version: version, key: key, timestamp: DateTime.UtcNow));
+                messages.Add(new Message(value, 0, partitionId: partition, version: version, key: key, timestamp: version > 0 ? DateTime.UtcNow : (DateTime?)null));
             }
             return messages;
         }

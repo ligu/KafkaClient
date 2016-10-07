@@ -6,7 +6,7 @@ using KafkaClient.Common;
 
 namespace KafkaClient.Protocol
 {
-    public class ProduceResponse : IResponse
+    public class ProduceResponse : IResponse, IEquatable<ProduceResponse>
     {
         public ProduceResponse(ProduceTopic topic, TimeSpan? throttleTime = null)
             : this (new []{ topic }, throttleTime)
@@ -29,5 +29,42 @@ namespace KafkaClient.Protocol
         /// (Zero if the request did not violate any quota). Only version 1 (0.9.0) and above.
         /// </summary>
         public TimeSpan? ThrottleTime { get; }
+
+        /// <inheritdoc />
+        public override bool Equals(object obj)
+        {
+            return Equals(obj as ProduceResponse);
+        }
+
+        /// <inheritdoc />
+        public bool Equals(ProduceResponse other)
+        {
+            if (ReferenceEquals(null, other)) return false;
+            if (ReferenceEquals(this, other)) return true;
+            return Topics.HasEqualElementsInOrder(other.Topics) 
+                && (int?)ThrottleTime?.TotalMilliseconds == (int?)other.ThrottleTime?.TotalMilliseconds;
+        }
+
+        /// <inheritdoc />
+        public override int GetHashCode()
+        {
+            unchecked {
+                var hashCode = Topics?.GetHashCode() ?? 0;
+                hashCode = (hashCode*397) ^ ThrottleTime.GetHashCode();
+                return hashCode;
+            }
+        }
+
+        /// <inheritdoc />
+        public static bool operator ==(ProduceResponse left, ProduceResponse right)
+        {
+            return Equals(left, right);
+        }
+
+        /// <inheritdoc />
+        public static bool operator !=(ProduceResponse left, ProduceResponse right)
+        {
+            return !Equals(left, right);
+        }
     }
 }

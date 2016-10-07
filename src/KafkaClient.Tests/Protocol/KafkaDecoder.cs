@@ -106,7 +106,7 @@ namespace KafkaClient.Tests.Protocol
                         payloads.Add(new Payload(topicName, partitionId, messages));
                     }
                 }
-                return new ProduceRequest(payloads, timeout > 0 ? TimeSpan.FromMilliseconds(timeout) : (TimeSpan?)null, acks);
+                return new ProduceRequest(payloads, TimeSpan.FromMilliseconds(timeout), acks);
             }
         }
 
@@ -391,7 +391,7 @@ namespace KafkaClient.Tests.Protocol
                     writer.Write((short)partition.ErrorCode);
                     writer.Write(partition.Offset);
                     if (context.ApiVersion >= 2) {
-                        writer.Write(partition.Timestamp?.ToUnixEpochMilliseconds() ?? -1L);
+                        writer.Write(partition.Timestamp.ToUnixEpochMilliseconds() ?? -1L);
                     }
                 }
             }

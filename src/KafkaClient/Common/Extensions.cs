@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Runtime.Serialization;
 using System.Threading;
@@ -29,6 +30,14 @@ namespace KafkaClient.Common
             }
             if (nextbatch.Count > 0)
                 yield return nextbatch;
+        }
+
+        public static bool HasEqualElementsInOrder<T>(this IEnumerable<T> self, IEnumerable<T> other)
+        {
+            if (ReferenceEquals(self, other)) return true;
+            if (ReferenceEquals(null, other)) return false;
+
+            return self.Zip(other, (s, o) => Equals(s, o)).All(_ => _);
         }
 
         /// <summary>

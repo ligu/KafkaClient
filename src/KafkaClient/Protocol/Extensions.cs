@@ -38,7 +38,12 @@ namespace KafkaClient.Protocol
             return null;
         } 
 
-        private static readonly DateTime UnixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        internal static readonly DateTime UnixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        public static long? ToUnixEpochMilliseconds(this DateTime? pointInTime)
+        {
+            return pointInTime?.ToUnixEpochMilliseconds();
+        }
 
         public static long ToUnixEpochMilliseconds(this DateTime pointInTime)
         {

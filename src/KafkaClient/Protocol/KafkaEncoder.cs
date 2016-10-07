@@ -11,16 +11,16 @@ namespace KafkaClient.Protocol
     [SuppressMessage("ReSharper", "UnusedParameter.Local")]
     public static class KafkaEncoder
     {
-        public static T Decode<T>(IRequestContext context, byte[] payload) where T : class, IResponse
+        public static T Decode<T>(IRequestContext context, byte[] payload, bool hasSize = false) where T : class, IResponse
         {
-            if (typeof(T) == typeof(FetchResponse)) return (T)FetchResponse(context, payload);
-            if (typeof(T) == typeof(MetadataResponse)) return (T)MetadataResponse(context, payload);
-            if (typeof(T) == typeof(ProduceResponse)) return (T)ProduceResponse(context, payload);
-            if (typeof(T) == typeof(OffsetResponse)) return (T)OffsetResponse(context, payload);
-            if (typeof(T) == typeof(OffsetCommitResponse)) return (T)OffsetCommitResponse(context, payload);
-            if (typeof(T) == typeof(OffsetFetchResponse)) return (T)OffsetFetchResponse(context, payload);
-            if (typeof(T) == typeof(GroupCoordinatorResponse)) return (T)GroupCoordinatorResponse(context, payload);
-            if (typeof(T) == typeof(ApiVersionsResponse)) return (T)ApiVersionsResponse(context, payload);
+            if (typeof(T) == typeof(FetchResponse)) return (T)FetchResponse(context, payload, hasSize);
+            if (typeof(T) == typeof(MetadataResponse)) return (T)MetadataResponse(context, payload, hasSize);
+            if (typeof(T) == typeof(ProduceResponse)) return (T)ProduceResponse(context, payload, hasSize);
+            if (typeof(T) == typeof(OffsetResponse)) return (T)OffsetResponse(context, payload, hasSize);
+            if (typeof(T) == typeof(OffsetCommitResponse)) return (T)OffsetCommitResponse(context, payload, hasSize);
+            if (typeof(T) == typeof(OffsetFetchResponse)) return (T)OffsetFetchResponse(context, payload, hasSize);
+            if (typeof(T) == typeof(GroupCoordinatorResponse)) return (T)GroupCoordinatorResponse(context, payload, hasSize);
+            if (typeof(T) == typeof(ApiVersionsResponse)) return (T)ApiVersionsResponse(context, payload, hasSize);
             return default(T);
         }
 
@@ -471,9 +471,9 @@ namespace KafkaClient.Protocol
         /// 
         /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-Messagesets
         /// </summary>
-        private static IResponse ProduceResponse(IRequestContext context, byte[] data)
+        private static IResponse ProduceResponse(IRequestContext context, byte[] payload, bool hasSize)
         {
-            using (var stream = new BigEndianBinaryReader(data, 4)) {
+            using (var stream = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
                 TimeSpan? throttleTime = null;
 
                 var topics = new List<ProduceTopic>();
@@ -521,9 +521,9 @@ namespace KafkaClient.Protocol
         /// 
         /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-FetchResponse
         /// </summary>
-        private static IResponse FetchResponse(IRequestContext context, byte[] payload)
+        private static IResponse FetchResponse(IRequestContext context, byte[] payload, bool hasSize)
         {
-            using (var stream = new BigEndianBinaryReader(payload, 4)) {
+            using (var stream = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
                 TimeSpan? throttleTime = null;
 
                 if (context.ApiVersion >= 1) {
@@ -641,9 +641,9 @@ namespace KafkaClient.Protocol
         /// 
         /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetAPI(AKAListOffset)
         /// </summary>
-        private static IResponse OffsetResponse(IRequestContext context, byte[] payload)
+        private static IResponse OffsetResponse(IRequestContext context, byte[] payload, bool hasSize)
         {
-            using (var stream = new BigEndianBinaryReader(payload, 4)) {
+            using (var stream = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
                 var topics = new List<OffsetTopic>();
                 var topicCount = stream.ReadInt32();
                 for (int t = 0; t < topicCount; t++) {
@@ -687,9 +687,9 @@ namespace KafkaClient.Protocol
         ///
         /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-MetadataAPI
         /// </summary>
-        private static IResponse MetadataResponse(IRequestContext context, byte[] payload)
+        private static IResponse MetadataResponse(IRequestContext context, byte[] payload, bool hasSize)
         {
-            using (var stream = new BigEndianBinaryReader(payload, 4)) {
+            using (var stream = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
                 var brokers = new List<Broker>();
                 var brokerCount = stream.ReadInt32();
                 for (var b = 0; b < brokerCount; b++) {
@@ -737,9 +737,9 @@ namespace KafkaClient.Protocol
         ///
         /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
         /// </summary>
-        private static IResponse OffsetCommitResponse(IRequestContext context, byte[] payload)
+        private static IResponse OffsetCommitResponse(IRequestContext context, byte[] payload, bool hasSize)
         {
-            using (var stream = new BigEndianBinaryReader(payload, 4)) {
+            using (var stream = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
                 var topics = new List<TopicResponse>();
                 var topicCount = stream.ReadInt32();
                 for (int t = 0; t < topicCount; t++) {
@@ -768,9 +768,9 @@ namespace KafkaClient.Protocol
         ///
         /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
         /// </summary>
-        private static IResponse OffsetFetchResponse(IRequestContext context, byte[] payload)
+        private static IResponse OffsetFetchResponse(IRequestContext context, byte[] payload, bool hasSize)
         {
-            using (var stream = new BigEndianBinaryReader(payload, 4)) {
+            using (var stream = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
                 var topics = new List<OffsetFetchTopic>();
                 var topicCount = stream.ReadInt32();
                 for (int t = 0; t < topicCount; t++) {
@@ -800,9 +800,9 @@ namespace KafkaClient.Protocol
         ///
         /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
         /// </summary>
-        private static IResponse GroupCoordinatorResponse(IRequestContext context, byte[] payload)
+        private static IResponse GroupCoordinatorResponse(IRequestContext context, byte[] payload, bool hasSize)
         {
-            using (var stream = new BigEndianBinaryReader(payload, 4)) {
+            using (var stream = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
                 var errorCode = (ErrorResponseCode)stream.ReadInt16();
                 var coordinatorId = stream.ReadInt32();
                 var coordinatorHost = stream.ReadInt16String();
@@ -821,9 +821,9 @@ namespace KafkaClient.Protocol
         ///
         /// From http://kafka.apache.org/protocol.html#protocol_messages
         /// </summary>
-        private static IResponse ApiVersionsResponse(IRequestContext context, byte[] payload)
+        private static IResponse ApiVersionsResponse(IRequestContext context, byte[] payload, bool hasSize)
         {
-            using (var stream = new BigEndianBinaryReader(payload, 4)) {
+            using (var stream = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
                 var errorCode = (ErrorResponseCode)stream.ReadInt16();
 
                 var apiKeys = new ApiVersionSupport[stream.ReadInt32()];
