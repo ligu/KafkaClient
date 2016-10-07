@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using KafkaClient.Common;
 
@@ -9,7 +10,7 @@ namespace KafkaClient.Protocol
     /// for a given consumer group.  Essentially this part of the api allows a user to save/load a given offset position
     /// under any abritrary name.
     /// </summary>
-    public class OffsetFetchRequest : Request, IRequest<OffsetFetchResponse>
+    public class OffsetFetchRequest : Request, IRequest<OffsetFetchResponse>, IEquatable<OffsetFetchRequest>
     {
         public OffsetFetchRequest(string consumerGroup, params Topic[] topics) 
             : this(consumerGroup, (IEnumerable<Topic>)topics)
@@ -26,5 +27,40 @@ namespace KafkaClient.Protocol
         public string ConsumerGroup { get; }
 
         public IImmutableList<Topic> Topics { get; }
+
+        /// <inheritdoc />
+        public override bool Equals(object obj)
+        {
+            return Equals(obj as OffsetFetchRequest);
+        }
+
+        /// <inheritdoc />
+        public bool Equals(OffsetFetchRequest other)
+        {
+            if (ReferenceEquals(null, other)) return false;
+            if (ReferenceEquals(this, other)) return true;
+            return string.Equals(ConsumerGroup, other.ConsumerGroup) 
+                && Topics.HasEqualElementsInOrder(other.Topics);
+        }
+
+        /// <inheritdoc />
+        public override int GetHashCode()
+        {
+            unchecked {
+                return ((ConsumerGroup?.GetHashCode() ?? 0)*397) ^ (Topics?.GetHashCode() ?? 0);
+            }
+        }
+
+        /// <inheritdoc />
+        public static bool operator ==(OffsetFetchRequest left, OffsetFetchRequest right)
+        {
+            return Equals(left, right);
+        }
+
+        /// <inheritdoc />
+        public static bool operator !=(OffsetFetchRequest left, OffsetFetchRequest right)
+        {
+            return !Equals(left, right);
+        }
     }
 }

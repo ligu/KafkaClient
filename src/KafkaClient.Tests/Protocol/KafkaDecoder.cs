@@ -152,7 +152,7 @@ namespace KafkaClient.Tests.Protocol
                         fetches.Add(new Fetch(topicName, partitionId, offset, maxBytes));
                     }
                 }
-                return new FetchRequest(fetches, maxWaitTime > 0 ? TimeSpan.FromMilliseconds(maxWaitTime) : (TimeSpan?)null, minBytes);
+                return new FetchRequest(fetches, TimeSpan.FromMilliseconds(maxWaitTime), minBytes);
             }
         }
 

@@ -5,7 +5,7 @@ using KafkaClient.Common;
 
 namespace KafkaClient.Protocol
 {
-    public class FetchRequest : Request, IRequest<FetchResponse>
+    public class FetchRequest : Request, IRequest<FetchResponse>, IEquatable<FetchRequest>
     {
         public FetchRequest(Fetch fetch, TimeSpan? maxWaitTime = null, int minBytes = DefaultMinBlockingByteBufferSize) 
             : this (new []{ fetch }, maxWaitTime, minBytes)
@@ -15,7 +15,7 @@ namespace KafkaClient.Protocol
         public FetchRequest(IEnumerable<Fetch> fetches = null, TimeSpan? maxWaitTime = null, int minBytes = DefaultMinBlockingByteBufferSize) 
             : base(ApiKeyRequestType.Fetch)
         {
-            MaxWaitTime = maxWaitTime.GetValueOrDefault(TimeSpan.FromMilliseconds(DefaultMaxBlockingWaitTime));
+            MaxWaitTime = maxWaitTime ?? TimeSpan.FromMilliseconds(DefaultMaxBlockingWaitTime);
             MinBytes = minBytes;
             Fetches = ImmutableList<Fetch>.Empty.AddNotNullRange(fetches);
         }
@@ -39,5 +39,44 @@ namespace KafkaClient.Protocol
         public int MinBytes { get; }
 
         public IImmutableList<Fetch> Fetches { get; }
+
+        /// <inheritdoc />
+        public override bool Equals(object obj)
+        {
+            return Equals(obj as FetchRequest);
+        }
+
+        /// <inheritdoc />
+        public bool Equals(FetchRequest other)
+        {
+            if (ReferenceEquals(null, other)) return false;
+            if (ReferenceEquals(this, other)) return true;
+            return MaxWaitTime.Equals(other.MaxWaitTime) 
+                && MinBytes == other.MinBytes 
+                && Fetches.HasEqualElementsInOrder(other.Fetches);
+        }
+
+        /// <inheritdoc />
+        public override int GetHashCode()
+        {
+            unchecked {
+                var hashCode = MaxWaitTime.GetHashCode();
+                hashCode = (hashCode*397) ^ MinBytes;
+                hashCode = (hashCode*397) ^ (Fetches?.GetHashCode() ?? 0);
+                return hashCode;
+            }
+        }
+
+        /// <inheritdoc />
+        public static bool operator ==(FetchRequest left, FetchRequest right)
+        {
+            return Equals(left, right);
+        }
+
+        /// <inheritdoc />
+        public static bool operator !=(FetchRequest left, FetchRequest right)
+        {
+            return !Equals(left, right);
+        }
     }
 }

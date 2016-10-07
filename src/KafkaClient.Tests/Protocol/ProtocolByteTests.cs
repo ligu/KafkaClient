@@ -64,7 +64,7 @@ namespace KafkaClient.Tests.Protocol
         /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-Messagesets
         /// </summary>
         [Test]
-        public void ProduceApiRequest(
+        public void ProduceRequest(
             [Values(0, 1, 2)] short version,
             [Values(0, 2, -1)] short acks, 
             [Values(0, 1000)] int timeoutMilliseconds, 
@@ -103,7 +103,7 @@ namespace KafkaClient.Tests.Protocol
         /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-Messagesets
         /// </summary>
         [Test]
-        public void ProduceApiResponse(
+        public void ProduceResponse(
             [Values(0, 1, 2)] short version,
             [Values(-1, 0, 10000000)] long timestampMilliseconds, 
             [Values("test", "a really long name, with spaces and punctuation!")] string topicName, 
@@ -146,32 +146,21 @@ namespace KafkaClient.Tests.Protocol
         /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-FetchAPI
         /// </summary>
         [Test]
-        public void FetchApiRequest(
+        public void FetchRequest(
             [Values(0, 1, 2)] short version,
-            [Values(0, 100)] int timeoutMilliseconds, 
+            [Values(0, 100)] int maxWaitMilliseconds, 
             [Values(0, 64000)] int minBytes, 
             [Values("test", "a really long name, with spaces and punctuation!")] string topic, 
             [Values(1, 10)] int topicsPerRequest, 
             [Values(1, 5)] int totalPartitions, 
             [Values(25600000)] int maxBytes)
         {
-            var randomizer = new Randomizer();
-            var clientId = "FetchApiRequest";
-
             var fetches = new List<Fetch>();
             for (var t = 0; t < topicsPerRequest; t++) {
-                fetches.Add(new Fetch(topic + t, t % totalPartitions, randomizer.Next(0, int.MaxValue), maxBytes));
+                fetches.Add(new Fetch(topic + t, t % totalPartitions, _randomizer.Next(0, int.MaxValue), maxBytes));
             }
-            var request = new FetchRequest(fetches, TimeSpan.FromMilliseconds(timeoutMilliseconds), minBytes);
-
-            var context = new RequestContext(clientId.GetHashCode(), version, clientId);
-            var data = KafkaEncoder.EncodeRequestBytes(context, request);
-
-            data.AssertProtocol(
-                reader => {
-                    reader.AssertRequestHeader(context, request);
-                    reader.AssertFetchRequest(context, request);
-                });
+            var request = new FetchRequest(fetches, TimeSpan.FromMilliseconds(maxWaitMilliseconds), minBytes);
+            request.AssertCanEncodeDecodeRequest(version);
         }
 
         /// <summary>
@@ -190,10 +179,10 @@ namespace KafkaClient.Tests.Protocol
         /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-FetchResponse
         /// </summary>
         [Test]
-        public void FetchApiResponse(
+        public void FetchResponse(
             [Values(0, 1, 2)] short version,
             [Values(0, 1234)] int throttleTime,
-            [Values("test", "a really long name, with spaces and punctuation!")] string topic, 
+            [Values("test", "a really long name, with spaces and punctuation!")] string topicName, 
             [Values(1, 10)] int topicsPerRequest, 
             [Values(1, 5)] int totalPartitions, 
             [Values(
@@ -203,42 +192,15 @@ namespace KafkaClient.Tests.Protocol
             [Values(3)] int messagesPerSet
             )
         {
-            var randomizer = new Randomizer();
-            var clientId = "FetchApiResponse";
-            var correlationId = clientId.GetHashCode();
-
-            byte[] data = null;
-            using (var stream = new MemoryStream()) {
-                var writer = new BigEndianBinaryWriter(stream);
-                writer.Write(correlationId);
-
-                if (version >= 1) {
-                    writer.Write(throttleTime);
-                }
-                writer.Write(topicsPerRequest);
-                for (var t = 0; t < topicsPerRequest; t++) {
-                    writer.Write(topic + t, StringPrefixEncoding.Int16);
-                    writer.Write(1); // partitionsPerTopic
-                    writer.Write(t % totalPartitions);
-                    writer.Write((short)errorCode);
-                    writer.Write((long)randomizer.Next());
-
-                    var messageSet = KafkaEncoder.EncodeMessageSet(GenerateMessages(messagesPerSet, (byte) (version >= 2 ? 1 : 0)));
-                    writer.Write(messageSet.Length);
-                    writer.Write(messageSet);
-                }
-                data = new byte[stream.Position];
-                Buffer.BlockCopy(stream.GetBuffer(), 0, data, 0, data.Length);
+            var topics = new List<FetchTopicResponse>();
+            for (var t = 0; t < topicsPerRequest; t++) {
+                var partitionId = t % totalPartitions;
+                var messages = GenerateMessages(messagesPerSet, (byte) (version >= 2 ? 1 : 0), partitionId);
+                topics.Add(new FetchTopicResponse(topicName + t, partitionId, _randomizer.Next(), errorCode, messages));
             }
+            var response = new FetchResponse(topics, version >= 1 ? TimeSpan.FromMilliseconds(throttleTime) : (TimeSpan?)null);
 
-            var context = new RequestContext(clientId.GetHashCode(), version, clientId);
-            var response = KafkaEncoder.Decode<FetchResponse>(context, data); // doesn't include the size in the decode
-            data.PrefixWithInt32Length().AssertProtocol(
-                reader =>
-                {
-                    reader.AssertResponseHeader(context);
-                    reader.AssertFetchResponse(context, response);
-                });
+            response.AssertCanEncodeDecodeResponse(version);
         }
 
         /// <summary>
@@ -256,15 +218,13 @@ namespace KafkaClient.Tests.Protocol
         /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetAPI(AKAListOffset)
         /// </summary>
         [Test]
-        public void OffsetsApiRequest(
+        public void OffsetsRequest(
             [Values("test", "a really long name, with spaces and punctuation!")] string topic, 
             [Values(1, 10)] int topicsPerRequest, 
             [Values(1, 5)] int totalPartitions, 
             [Values(-2, -1, 123456, 10000000)] long time,
             [Values(1, 10)] int maxOffsets)
         {
-            var clientId = "OffsetsApiRequest";
-
             var offsets = new List<Offset>();
             for (var t = 0; t < topicsPerRequest; t++) {
                 var offset = new Offset(topic + t, t % totalPartitions, time, maxOffsets);
@@ -272,14 +232,7 @@ namespace KafkaClient.Tests.Protocol
             }
             var request = new OffsetRequest(offsets);
 
-            var context = new RequestContext(clientId.GetHashCode(), 0, clientId);
-            var data = KafkaEncoder.EncodeRequestBytes(context, request);
-
-            data.AssertProtocol(
-                reader => {
-                    reader.AssertRequestHeader(context, request);
-                    reader.AssertOffsetRequest(context, request);
-                });
+            request.AssertCanEncodeDecodeRequest(0);
         }
 
         /// <summary>
@@ -294,8 +247,8 @@ namespace KafkaClient.Tests.Protocol
         /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetAPI(AKAListOffset)
         /// </summary>
         [Test]
-        public void OffsetsApiResponse(
-            [Values("test", "a really long name, with spaces and punctuation!")] string topic, 
+        public void OffsetsResponse(
+            [Values("test", "a really long name, with spaces and punctuation!")] string topicName, 
             [Values(1, 10)] int topicsPerRequest, 
             [Values(5)] int totalPartitions, 
             [Values(
@@ -305,38 +258,14 @@ namespace KafkaClient.Tests.Protocol
             )] ErrorResponseCode errorCode, 
             [Values(1, 5)] int offsetsPerPartition)
         {
-            var randomizer = new Randomizer();
-            var clientId = "OffsetsApiResponse";
-            var correlationId = clientId.GetHashCode();
-
-            byte[] data = null;
-            using (var stream = new MemoryStream()) {
-                var writer = new BigEndianBinaryWriter(stream);
-                writer.Write(correlationId);
-
-                writer.Write(topicsPerRequest);
-                for (var t = 0; t < topicsPerRequest; t++) {
-                    writer.Write(topic + t, StringPrefixEncoding.Int16);
-                    writer.Write(1); // partitionsPerTopic
-                    writer.Write(t % totalPartitions);
-                    writer.Write((short)errorCode);
-                    writer.Write(offsetsPerPartition);
-                    for (var o = 0; o < offsetsPerPartition; o++) {
-                        writer.Write((long)randomizer.Next());
-                    }
-                }
-                data = new byte[stream.Position];
-                Buffer.BlockCopy(stream.GetBuffer(), 0, data, 0, data.Length);
+            var topics = new List<OffsetTopic>();
+            for (var t = 0; t < topicsPerRequest; t++) {
+                var partitionId = t % totalPartitions;
+                topics.Add(new OffsetTopic(topicName + t, partitionId, errorCode, offsetsPerPartition.Repeat(() => (long)_randomizer.Next())));
             }
+            var response = new OffsetResponse(topics);
 
-            var context = new RequestContext(clientId.GetHashCode(), 0, clientId);
-            var response = KafkaEncoder.Decode<OffsetResponse>(context, data); // doesn't include the size in the decode
-            data.PrefixWithInt32Length().AssertProtocol(
-                reader =>
-                {
-                    reader.AssertResponseHeader(context);
-                    reader.AssertOffsetResponse(context, response);
-                });
+            response.AssertCanEncodeDecodeResponse(0);
         }
 
         /// <summary>
@@ -346,26 +275,17 @@ namespace KafkaClient.Tests.Protocol
         /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-MetadataAPI
         /// </summary>
         [Test]
-        public void MetadataApiRequest(
+        public void MetadataRequest(
             [Values("test", "a really long name, with spaces and punctuation!")] string topic,
             [Values(0, 1, 10)] int topicsPerRequest)
         {
-            var clientId = "MetadataApiRequest";
-
             var topics = new List<string>();
             for (var t = 0; t < topicsPerRequest; t++) {
                 topics.Add(topic + t);
             }
             var request = new MetadataRequest(topics);
 
-            var context = new RequestContext(clientId.GetHashCode(), 0, clientId);
-            var data = KafkaEncoder.EncodeRequestBytes(context, request);
-
-            data.AssertProtocol(
-                     reader => {
-                         reader.AssertRequestHeader(context, request);
-                         reader.AssertMetadataRequest(context, request);
-                     });
+            request.AssertCanEncodeDecodeRequest(0);
         }
 
         /// <summary>
@@ -389,9 +309,9 @@ namespace KafkaClient.Tests.Protocol
         /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-MetadataAPI
         /// </summary>
         [Test]
-        public void MetadataApiResponse(
+        public void MetadataResponse(
             [Values(1, 15)] int brokersPerRequest,
-            [Values("test", "a really long name, with spaces and punctuation!")] string topic,
+            [Values("test", "a really long name, with spaces and punctuation!")] string topicName,
             [Values(1, 10)] int topicsPerRequest,
             [Values(1, 5)] int partitionsPerTopic,
             [Values(
@@ -399,55 +319,26 @@ namespace KafkaClient.Tests.Protocol
                  ErrorResponseCode.UnknownTopicOrPartition
              )] ErrorResponseCode errorCode)
         {
-            var randomizer = new Randomizer();
-            var clientId = "MetadataApiResponse";
-            var correlationId = clientId.GetHashCode();
-
-            byte[] data = null;
-            using (var stream = new MemoryStream()) {
-                var writer = new BigEndianBinaryWriter(stream);
-                writer.Write(correlationId);
-
-                writer.Write(brokersPerRequest);
-                for (var b = 0; b < brokersPerRequest; b++) {
-                    writer.Write(b);
-                    writer.Write("broker-" + b, StringPrefixEncoding.Int16);
-                    writer.Write(9092 + b);
-                }
-
-                writer.Write(topicsPerRequest);
-                for (var t = 0; t < topicsPerRequest; t++) {
-                    writer.Write((short) errorCode);
-                    writer.Write(topic + t, StringPrefixEncoding.Int16);
-                    writer.Write(partitionsPerTopic);
-                    for (var p = 0; p < partitionsPerTopic; p++) {
-                        writer.Write((short) errorCode);
-                        writer.Write(p);
-                        var leader = randomizer.Next(0, brokersPerRequest - 1);
-                        writer.Write(leader);
-                        var replicas = randomizer.Next(0, brokersPerRequest - 1);
-                        writer.Write(replicas);
-                        for (var r = 0; r < replicas; r++) {
-                            writer.Write(r);
-                        }
-                        var isr = randomizer.Next(0, replicas);
-                        writer.Write(isr);
-                        for (var i = 0; i < isr; i++) {
-                            writer.Write(i);
-                        }
-                    }
-                }
-                data = new byte[stream.Position];
-                Buffer.BlockCopy(stream.GetBuffer(), 0, data, 0, data.Length);
+            var brokers = new List<Broker>();
+            for (var b = 0; b < brokersPerRequest; b++) {
+                brokers.Add(new Broker(b, "broker-" + b, 9092 + b));
             }
+            var topics = new List<MetadataTopic>();
+            for (var t = 0; t < topicsPerRequest; t++) {
+                var partitions = new List<MetadataPartition>();
+                for (var partitionId = 0; partitionId < partitionsPerTopic; partitionId++) {
+                    var leader = _randomizer.Next(0, brokersPerRequest - 1);
+                    var replica = 0;
+                    var replicas = _randomizer.Next(0, brokersPerRequest - 1).Repeat(() => replica++);
+                    var isr = 0;
+                    var isrs = _randomizer.Next(0, replica).Repeat(() => isr++);
+                    partitions.Add(new MetadataPartition(partitionId, leader, errorCode, replicas, isrs));
+                }
+                topics.Add(new MetadataTopic(topicName + t, errorCode, partitions));
+            }
+            var response = new MetadataResponse(brokers, topics);
 
-            var context = new RequestContext(clientId.GetHashCode(), 0, clientId);
-            var response = KafkaEncoder.Decode<MetadataResponse>(context, data); // doesn't include the size in the decode
-            data.PrefixWithInt32Length().AssertProtocol(
-                     reader => {
-                         reader.AssertResponseHeader(context);
-                         reader.AssertMetadataResponse(context, response);
-                     });
+            response.AssertCanEncodeDecodeResponse(0);
         }
 
         /// <summary>
@@ -468,7 +359,7 @@ namespace KafkaClient.Tests.Protocol
         /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
         /// </summary>
         [Test]
-        public void OffsetCommitApiRequest(
+        public void OffsetCommitRequest(
             [Values(0, 1, 2)] short version,
             [Values("group1", "group2")] string groupId,
             [Values(0, 5)] int generation,
@@ -479,34 +370,23 @@ namespace KafkaClient.Tests.Protocol
             [Values(10)] int maxOffsets,
             [Values(null, "something useful for the client")] string metadata)
         {
-            var clientId = "OffsetCommitApiRequest";
-            var randomizer = new Randomizer();
-
             var offsetCommits = new List<OffsetCommit>();
             for (var t = 0; t < topicsPerRequest; t++) {
                 offsetCommits.Add(new OffsetCommit(
                                       topic + t,
                                       t%maxPartitions,
-                                      randomizer.Next(0, int.MaxValue),
+                                      _randomizer.Next(0, int.MaxValue),
                                       metadata,
-                                      retentionTime));
+                                      version == 1 ? retentionTime : (long?)null));
             }
             var request = new OffsetCommitRequest(
                 groupId,
                 offsetCommits,
-                "member" + generation,
-                generation,
-                retentionTime >= 0 ? (TimeSpan?) TimeSpan.FromMilliseconds(retentionTime) : null);
+                version >= 1 ? "member" + generation : null,
+                version >= 1 ? generation : 0,
+                version >= 2 && retentionTime >= 0 ? (TimeSpan?) TimeSpan.FromMilliseconds(retentionTime) : null);
 
-            var context = new RequestContext(clientId.GetHashCode(), version, clientId);
-            var data = KafkaEncoder.EncodeRequestBytes(context, request);
-
-            data.AssertProtocol(
-                     reader =>
-                     {
-                         reader.AssertRequestHeader(context, request);
-                         reader.AssertOffsetCommitRequest(context, request);
-                     });
+            request.AssertCanEncodeDecodeRequest(version);
         }
 
         /// <summary>
@@ -518,8 +398,8 @@ namespace KafkaClient.Tests.Protocol
         /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
         /// </summary>
         [Test]
-        public void OffsetCommitApiResponse(
-            [Values("test", "a really long name, with spaces and punctuation!")] string topic,
+        public void OffsetCommitResponse(
+            [Values("test", "a really long name, with spaces and punctuation!")] string topicName,
             [Values(1, 10)] int topicsPerRequest,
             [Values(1, 5)] int partitionsPerTopic,
             [Values(
@@ -527,34 +407,15 @@ namespace KafkaClient.Tests.Protocol
                  ErrorResponseCode.OffsetMetadataTooLarge
              )] ErrorResponseCode errorCode)
         {
-            var clientId = "OffsetCommitApiResponse";
-            var correlationId = clientId.GetHashCode();
-
-            byte[] data = null;
-            using (var stream = new MemoryStream()) {
-                var writer = new BigEndianBinaryWriter(stream);
-                writer.Write(correlationId);
-
-                writer.Write(topicsPerRequest);
-                for (var t = 0; t < topicsPerRequest; t++) {
-                    writer.Write(topic + t, StringPrefixEncoding.Int16);
-                    writer.Write(partitionsPerTopic);
-                    for (var p = 0; p < partitionsPerTopic; p++) {
-                        writer.Write(p);
-                        writer.Write((short) errorCode);
-                    }
+            var topics = new List<TopicResponse>();
+            for (var t = 0; t < topicsPerRequest; t++) {
+                for (var partitionId = 0; partitionId < partitionsPerTopic; partitionId++) {
+                    topics.Add(new TopicResponse(topicName + t, partitionId, errorCode));
                 }
-                data = new byte[stream.Position];
-                Buffer.BlockCopy(stream.GetBuffer(), 0, data, 0, data.Length);
             }
+            var response = new OffsetCommitResponse(topics);
 
-            var context = new RequestContext(clientId.GetHashCode(), 0, clientId);
-            var response = KafkaEncoder.Decode<OffsetCommitResponse>(context, data); // doesn't include the size in the decode
-            data.PrefixWithInt32Length().AssertProtocol(
-                     reader => {
-                         reader.AssertResponseHeader(context);
-                         reader.AssertOffsetCommitResponse(context, response);
-                     });
+            response.AssertCanEncodeDecodeResponse(0);
         }
 
         /// <summary>
@@ -566,29 +427,19 @@ namespace KafkaClient.Tests.Protocol
         /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
         /// </summary>
         [Test]
-        public void OffsetFetchApiRequest(
+        public void OffsetFetchRequest(
             [Values("group1", "group2")] string groupId,
             [Values("test", "a really long name, with spaces and punctuation!")] string topic,
             [Values(1, 10)] int topicsPerRequest,
             [Values(5)] int maxPartitions)
         {
-            var clientId = "OffsetFetchApiRequest";
-
             var topics = new List<Topic>();
             for (var t = 0; t < topicsPerRequest; t++) {
                 topics.Add(new Topic(topic + t, t % maxPartitions));
             }
             var request = new OffsetFetchRequest(groupId, topics);
 
-            var context = new RequestContext(clientId.GetHashCode(), 0, clientId);
-            var data = KafkaEncoder.EncodeRequestBytes(context, request);
-
-            data.AssertProtocol(
-                     reader =>
-                     {
-                         reader.AssertRequestHeader(context, request);
-                         reader.AssertOffsetFetchRequest(context, request);
-                     });
+            request.AssertCanEncodeDecodeRequest(0);
         }
 
         /// <summary>
@@ -602,8 +453,8 @@ namespace KafkaClient.Tests.Protocol
         /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
         /// </summary>
         [Test]
-        public void OffsetFetchApiResponse(
-            [Values("test", "a really long name, with spaces and punctuation!")] string topic,
+        public void OffsetFetchResponse(
+            [Values("test", "a really long name, with spaces and punctuation!")] string topicName,
             [Values(1, 10)] int topicsPerRequest,
             [Values(1, 5)] int partitionsPerTopic,
             [Values(
@@ -617,38 +468,16 @@ namespace KafkaClient.Tests.Protocol
                  ErrorResponseCode.GroupAuthorizationFailed
              )] ErrorResponseCode errorCode)
         {
-            var clientId = "OffsetFetchApiResponse";
-            var correlationId = clientId.GetHashCode();
-            var randomizer = new Randomizer();
-
-            byte[] data = null;
-            using (var stream = new MemoryStream()) {
-                var writer = new BigEndianBinaryWriter(stream);
-                writer.Write(correlationId);
-
-                writer.Write(topicsPerRequest);
-                for (var t = 0; t < topicsPerRequest; t++) {
-                    writer.Write(topic + t, StringPrefixEncoding.Int16);
-                    writer.Write(partitionsPerTopic);
-                    for (var p = 0; p < partitionsPerTopic; p++) {
-                        writer.Write(p);
-                        var offset = (long)randomizer.Next(int.MinValue, int.MaxValue);
-                        writer.Write(offset);
-                        writer.Write(offset >= 0 ? topic : string.Empty, StringPrefixEncoding.Int16);
-                        writer.Write((short) errorCode);
-                    }
+            var topics = new List<OffsetFetchTopic>();
+            for (var t = 0; t < topicsPerRequest; t++) {
+                for (var partitionId = 0; partitionId < partitionsPerTopic; partitionId++) {
+                    var offset = (long)_randomizer.Next(int.MinValue, int.MaxValue);
+                    topics.Add(new OffsetFetchTopic(topicName + t, partitionId, errorCode, offset, offset >= 0 ? topicName : string.Empty));
                 }
-                data = new byte[stream.Position];
-                Buffer.BlockCopy(stream.GetBuffer(), 0, data, 0, data.Length);
             }
+            var response = new OffsetFetchResponse(topics);
 
-            var context = new RequestContext(clientId.GetHashCode(), 0, clientId);
-            var response = KafkaEncoder.Decode<OffsetFetchResponse>(context, data); // doesn't include the size in the decode
-            data.PrefixWithInt32Length().AssertProtocol(
-                     reader => {
-                         reader.AssertResponseHeader(context);
-                         reader.AssertOffsetFetchResponse(context, response);
-                     });
+            response.AssertCanEncodeDecodeResponse(0);
         }
 
         /// <summary>
@@ -658,21 +487,10 @@ namespace KafkaClient.Tests.Protocol
         /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
         /// </summary>
         [Test]
-        public void GroupCoordinatorApiRequest([Values("group1", "group2")] string groupId)
+        public void GroupCoordinatorRequest([Values("group1", "group2")] string groupId)
         {
-            var clientId = "GroupCoordinatorApiRequest";
-
             var request = new GroupCoordinatorRequest(groupId);
-
-            var context = new RequestContext(clientId.GetHashCode(), 0, clientId);
-            var data = KafkaEncoder.EncodeRequestBytes(context, request);
-
-            data.AssertProtocol(
-                     reader =>
-                     {
-                         reader.AssertRequestHeader(context, request);
-                         reader.AssertGroupCoordinatorRequest(context, request);
-                     });
+            request.AssertCanEncodeDecodeRequest(0);
         }
 
         /// <summary>
@@ -685,7 +503,7 @@ namespace KafkaClient.Tests.Protocol
         /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
         /// </summary>
         [Test]
-        public void GroupCoordinatorApiResponse(
+        public void GroupCoordinatorResponse(
             [Values(
                  ErrorResponseCode.None,
                  ErrorResponseCode.GroupCoordinatorNotAvailable,
@@ -694,29 +512,9 @@ namespace KafkaClient.Tests.Protocol
             [Values(0, 1)] int coordinatorId
             )
         {
-            var clientId = "GroupCoordinatorApiResponse";
-            var correlationId = clientId.GetHashCode();
+            var response = new GroupCoordinatorResponse(errorCode, coordinatorId, "broker-" + coordinatorId, 9092 + coordinatorId);
 
-            byte[] data = null;
-            using (var stream = new MemoryStream()) {
-                var writer = new BigEndianBinaryWriter(stream);
-                writer.Write(correlationId);
-                writer.Write((short)errorCode);
-                writer.Write(coordinatorId);
-                writer.Write("broker-" + coordinatorId, StringPrefixEncoding.Int16);
-                writer.Write(9092 + coordinatorId);
-
-                data = new byte[stream.Position];
-                Buffer.BlockCopy(stream.GetBuffer(), 0, data, 0, data.Length);
-            }
-
-            var context = new RequestContext(clientId.GetHashCode(), 0, clientId);
-            var response = KafkaEncoder.Decode<GroupCoordinatorResponse>(context, data); // doesn't include the size in the decode
-            data.PrefixWithInt32Length().AssertProtocol(
-                     reader => {
-                         reader.AssertResponseHeader(context);
-                         reader.AssertGroupCoordinatorResponse(context, response);
-                     });
+            response.AssertCanEncodeDecodeResponse(0);
         }
 
         /// <summary>
@@ -725,19 +523,10 @@ namespace KafkaClient.Tests.Protocol
         /// From http://kafka.apache.org/protocol.html#protocol_messages
         /// </summary>
         [Test]
-        public void ApiVersionsApiRequest()
+        public void ApiVersionsRequest()
         {
-            var clientId = "ApiVersionsApiRequest";
-
             var request = new ApiVersionsRequest();
-            var context = new RequestContext(clientId.GetHashCode(), 0, clientId);
-            var data = KafkaEncoder.EncodeRequestBytes(context, request);
-
-            data.AssertProtocol(
-                     reader =>
-                     {
-                         reader.AssertRequestHeader(context, request);
-                     });
+            request.AssertCanEncodeDecodeRequest(0);
         }
 
         /// <summary>
@@ -750,47 +539,23 @@ namespace KafkaClient.Tests.Protocol
         /// From http://kafka.apache.org/protocol.html#protocol_messages
         /// </summary>
         [Test]
-        public void ApiVersionsApiResponse(
+        public void ApiVersionsResponse(
             [Values(
                  ErrorResponseCode.None,
                  ErrorResponseCode.BrokerNotAvailable
              )] ErrorResponseCode errorCode
             )
         {
-            var clientId = "ApiVersionsApiResponse";
-            var correlationId = clientId.GetHashCode();
-            var randomizer = new Randomizer();
-
-            byte[] data = null;
-            using (var stream = new MemoryStream()) {
-                var writer = new BigEndianBinaryWriter(stream);
-                writer.Write(correlationId);
-                writer.Write((short)errorCode);
-
-                
-                writer.Write(19);
-                for (short apiKey = 0; apiKey <= 18; apiKey++) {
-                    writer.Write(apiKey);
-                    writer.Write((short)0);
-                    writer.Write((short)randomizer.Next(0, 2));
-                }
-
-                data = new byte[stream.Position];
-                Buffer.BlockCopy(stream.GetBuffer(), 0, data, 0, data.Length);
+            var supported = new List<ApiVersionSupport>();
+            for (short apiKey = 0; apiKey <= 18; apiKey++) {
+                supported.Add(new ApiVersionSupport((ApiKeyRequestType)apiKey, 0, (short)_randomizer.Next(0, 2)));
             }
+            var response = new ApiVersionsResponse(errorCode, supported);
 
-            var context = new RequestContext(clientId.GetHashCode(), 0, clientId);
-            var response = KafkaEncoder.Decode<ApiVersionsResponse>(context, data); // doesn't include the size in the decode
-            data.PrefixWithInt32Length().AssertProtocol(
-                     reader => {
-                         reader.AssertResponseHeader(context);
-                         reader.AssertApiVersionsResponse(context, response);
-                     });
+            response.AssertCanEncodeDecodeResponse(0);
         }
 
-
-
-        private List<Message> GenerateMessages(int count, byte version, int partition = 0)
+        private IEnumerable<Message> GenerateMessages(int count, byte version, int partition = 0)
         {
             var messages = new List<Message>();
             for (var m = 0; m < count; m++) {

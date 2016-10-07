@@ -34,7 +34,7 @@ namespace KafkaClient.Protocol
             if (ReferenceEquals(this, other)) return true;
             return base.Equals(other) 
                 && HighWaterMark == other.HighWaterMark 
-                && Equals(Messages, other.Messages);
+                && Messages.HasEqualElementsInOrder(other.Messages);
         }
 
         public override int GetHashCode()

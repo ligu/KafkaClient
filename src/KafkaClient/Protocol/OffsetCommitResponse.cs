@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -5,7 +6,7 @@ using KafkaClient.Common;
 
 namespace KafkaClient.Protocol
 {
-    public class OffsetCommitResponse : IResponse
+    public class OffsetCommitResponse : IResponse, IEquatable<OffsetCommitResponse>
     {
         public OffsetCommitResponse(IEnumerable<TopicResponse> topics = null)
         {
@@ -16,5 +17,37 @@ namespace KafkaClient.Protocol
         public IImmutableList<ErrorResponseCode> Errors { get; }
 
         public IImmutableList<TopicResponse> Topics { get; }
+
+        /// <inheritdoc />
+        public override bool Equals(object obj)
+        {
+            return Equals(obj as OffsetCommitResponse);
+        }
+
+        /// <inheritdoc />
+        public bool Equals(OffsetCommitResponse other)
+        {
+            if (ReferenceEquals(null, other)) return false;
+            if (ReferenceEquals(this, other)) return true;
+            return Topics.HasEqualElementsInOrder(other.Topics);
+        }
+
+        /// <inheritdoc />
+        public override int GetHashCode()
+        {
+            return Topics?.GetHashCode() ?? 0;
+        }
+
+        /// <inheritdoc />
+        public static bool operator ==(OffsetCommitResponse left, OffsetCommitResponse right)
+        {
+            return Equals(left, right);
+        }
+
+        /// <inheritdoc />
+        public static bool operator !=(OffsetCommitResponse left, OffsetCommitResponse right)
+        {
+            return !Equals(left, right);
+        }
     }
 }
