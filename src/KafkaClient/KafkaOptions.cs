@@ -38,7 +38,7 @@ namespace KafkaClient
         /// <summary>
         /// Initial list of Uris to kafka servers, used to query for metadata from Kafka. More than one is recommended!
         /// </summary>
-        public ImmutableList<Uri> ServerUris { get; }
+        public IImmutableList<Uri> ServerUris { get; }
 
         /// <summary>
         /// Connection backoff and retry settings.

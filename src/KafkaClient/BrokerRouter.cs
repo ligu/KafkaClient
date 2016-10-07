@@ -137,7 +137,7 @@ namespace KafkaClient
         public async Task<IImmutableList<MetadataTopic>> GetTopicMetadataAsync(IEnumerable<string> topicNames, CancellationToken cancellationToken)
         {
             var searchResult = TryGetCachedTopics(topicNames);
-            return searchResult.Missing.IsEmpty 
+            return searchResult.Missing.Count == 0 
                 ? searchResult.Topics 
                 : searchResult.Topics.AddRange(await UpdateTopicMetadataFromServerIfMissingAsync(searchResult.Missing, cancellationToken).ConfigureAwait(false));
         }
@@ -353,8 +353,8 @@ namespace KafkaClient
 
         private class CachedTopicsResult
         {
-            public ImmutableList<MetadataTopic> Topics { get; }
-            public ImmutableList<string> Missing { get; }
+            public IImmutableList<MetadataTopic> Topics { get; }
+            public IImmutableList<string> Missing { get; }
 
             public CachedTopicsResult(IEnumerable<MetadataTopic> topics, IEnumerable<string> missing)
             {

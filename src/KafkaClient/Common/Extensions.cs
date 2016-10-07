@@ -198,12 +198,12 @@ namespace KafkaClient.Common
             return (T)info.GetValue(name, typeof(T));
         }
 
-        public static ImmutableList<T> AddNotNull<T>(this ImmutableList<T> list, T item) where T : class
+        public static IImmutableList<T> AddNotNull<T>(this IImmutableList<T> list, T item) where T : class
         {
             return item != null ? list.Add(item) : list;
         }
 
-        public static ImmutableList<T> AddNotNullRange<T>(this ImmutableList<T> list, IEnumerable<T> items)
+        public static IImmutableList<T> AddNotNullRange<T>(this IImmutableList<T> list, IEnumerable<T> items)
         {
             return items != null ? list.AddRange(items) : list;
         }

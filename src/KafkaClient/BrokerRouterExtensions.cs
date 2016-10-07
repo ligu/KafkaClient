@@ -24,7 +24,7 @@ namespace KafkaClient
         /// Note that because offsets are pulled in descending order, asking for the earliest offset will always return you a single element.
         /// </param>
         /// <param name="cancellationToken"></param>
-        public static async Task<ImmutableList<OffsetTopic>> GetTopicOffsetAsync(this IBrokerRouter brokerRouter, string topicName, int maxOffsets, long offsetTime, CancellationToken cancellationToken)
+        public static async Task<IImmutableList<OffsetTopic>> GetTopicOffsetAsync(this IBrokerRouter brokerRouter, string topicName, int maxOffsets, long offsetTime, CancellationToken cancellationToken)
         {
             var topicMetadata = await brokerRouter.GetTopicMetadataAsync(topicName, cancellationToken).ConfigureAwait(false);
 
@@ -48,7 +48,7 @@ namespace KafkaClient
         /// <param name="brokerRouter">The router which provides the route and metadata.</param>
         /// <param name="topicName">Name of the topic to get offset information from.</param>
         /// <param name="cancellationToken"></param>
-        public static Task<ImmutableList<OffsetTopic>> GetTopicOffsetAsync(this IBrokerRouter brokerRouter, string topicName, CancellationToken cancellationToken)
+        public static Task<IImmutableList<OffsetTopic>> GetTopicOffsetAsync(this IBrokerRouter brokerRouter, string topicName, CancellationToken cancellationToken)
         {
             return brokerRouter.GetTopicOffsetAsync(topicName, Offset.DefaultMaxOffsets, Offset.DefaultTime, cancellationToken);
         }
