@@ -1,6 +1,9 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
+using System.Text;
 using KafkaClient.Connections;
 
 namespace KafkaClient.Protocol
@@ -47,6 +50,11 @@ namespace KafkaClient.Protocol
             return UnixEpoch.AddMilliseconds(milliseconds);
         }
 
+        public static bool IsSuccess(this ErrorResponseCode code)
+        {
+            return code == ErrorResponseCode.None;
+        }
+
         /// <summary>
         /// See http://kafka.apache.org/protocol.html#protocol_error_codes for details
         /// </summary>
@@ -75,5 +83,58 @@ namespace KafkaClient.Protocol
                 || code == ErrorResponseCode.NotCoordinatorForGroup;
         }
 
+        public static string ToFormattedString(this object o)
+        {
+            return new StringBuilder().AppendWithIndent(o, "").ToString();
+        }
+
+        private static StringBuilder AppendWithIndent(this StringBuilder buffer, object o, string indent)
+        {
+            foreach (var property in o.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance).Where(p => p.CanRead && p.GetIndexParameters().Length <= 1)) {
+                buffer.Append($"{indent}{property.Name}: ").AppendValueWithIndent(property.GetValue(o), indent, true);
+            }
+            return buffer;
+        }
+
+        private static StringBuilder AppendValueWithIndent(this StringBuilder buffer, object value, string indent, bool isIndented = false)
+        {
+            if (value == null) {
+                if (!isIndented) {
+                    buffer.Append(indent);
+                }
+                buffer.AppendLine("null");
+                return buffer;
+            }
+
+            var stringValue = value as string;
+            if (stringValue != null) {
+                if (!isIndented) {
+                    buffer.Append(indent);
+                }
+                buffer.AppendLine(stringValue);
+                return buffer;
+            }
+
+            var enumerable = value as IEnumerable;
+            if (enumerable != null) {
+                buffer.AppendLine("[");
+                foreach (var inner in enumerable) {
+                    buffer.AppendValueWithIndent(inner, $"{indent}  ");
+                }
+                buffer.AppendLine($"{indent}]");
+                return buffer;
+            }
+
+            if (value.GetType().IsClass) {
+                buffer.AppendLine();
+                buffer.AppendWithIndent(value, $"{indent}");
+                return buffer;
+            }
+            if (!isIndented) {
+                buffer.Append(indent);
+            }
+            buffer.AppendLine(value.ToString());
+            return buffer;
+        }
     }
 }

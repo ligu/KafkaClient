@@ -107,12 +107,10 @@ namespace KafkaClient.Connections
 
         private async Task SetExceptionToAllPendingTasksAsync(Exception ex)
         {
+            _log.Error(LogEvent.Create(ex, "TcpSocket exception, cancelling all pending tasks"));
             var wrappedException = WrappedException(ex);
-            var cancelledAny = await _sendTaskQueue.TryApplyAsync(p => p.Tcs.TrySetException(wrappedException), new CancellationToken(true));
+            await _sendTaskQueue.TryApplyAsync(p => p.Tcs.TrySetException(wrappedException), new CancellationToken(true));
             await _receiveTaskQueue.TryApplyAsync(p => p.Tcs.TrySetException(wrappedException), new CancellationToken(true));
-            if (cancelledAny) {
-                _log.Error(LogEvent.Create(ex, "TcpSocket received an exception, cancelled all pending tasks"));
-            }
         }
 
         private async Task ProcessNetworkstreamTasks(Stream netStream)
@@ -126,9 +124,10 @@ namespace KafkaClient.Connections
             //Exception need to thrown immediately and not depend on the next task
             var receiveTask = ProcessNetworkstreamTask(netStream, _receiveTaskQueue, ProcessReceiveTaskAsync);
             var sendTask = ProcessNetworkstreamTask(netStream, _sendTaskQueue, ProcessSentTasksAsync);
-            await Task.WhenAny(receiveTask, sendTask).ConfigureAwait(false);
+            var finishedTask = await Task.WhenAny(receiveTask, sendTask).ConfigureAwait(false);
             if (_disposeToken.IsCancellationRequested) return;
 
+            await ThrowTaskExceptionIfFaulted(finishedTask);
             await ThrowTaskExceptionIfFaulted(receiveTask);
             await ThrowTaskExceptionIfFaulted(sendTask);
         }
@@ -188,28 +187,16 @@ namespace KafkaClient.Connections
                     timer.Stop();
                     _configuration.OnReadFailed?.Invoke(Endpoint, receiveTask.ReadSize, timer.Elapsed, ex);
 
+                    Exception exception = null;
                     if (_disposeToken.IsCancellationRequested) {
-                        var exception = new ObjectDisposedException($"Object is disposing (TcpSocket for {Endpoint})");
-                        receiveTask.Tcs.TrySetException(exception);
-                        throw exception;
+                        exception = new ObjectDisposedException($"Object is disposing (TcpSocket for {Endpoint})", ex);
+                    } else if ((_client == null || _client.Connected == false) && !(ex is ConnectionException)) {
+                        exception = new ConnectionException(Endpoint, ex);
                     }
 
-                    if (ex is ConnectionException) {
-                        receiveTask.Tcs.TrySetException(ex);
-                        if (_disposeToken.IsCancellationRequested) return;
-                        throw;
-                    }
-
-                    // if an exception made us lose a connection throw disconnected exception
-                    if (_client == null || _client.Connected == false) {
-                        var exception = new ConnectionException(Endpoint);
-                        receiveTask.Tcs.TrySetException(exception);
-                        throw exception;
-                    }
-
-                    receiveTask.Tcs.TrySetException(ex);
+                    receiveTask.Tcs.TrySetException(exception ?? ex);
                     if (_disposeToken.IsCancellationRequested) return;
-
+                    if (exception != null) throw exception;
                     throw;
                 }
             }
@@ -222,13 +209,13 @@ namespace KafkaClient.Connections
             using (sendTask) {
                 var timer = new Stopwatch();
                 try {
-                    _log.Debug(() => LogEvent.Create($"Sending {sendTask.Payload.Buffer.Length} bytes to {Endpoint} with cId {sendTask.Payload.CorrelationId}"));
+                    _log.Debug(() => LogEvent.Create($"Sending {sendTask.Payload.Buffer.Length} bytes with cId {sendTask.Payload.CorrelationId} to {Endpoint}"));
                     _configuration.OnWriting?.Invoke(Endpoint, sendTask.Payload);
                     timer.Start();
                     await stream.WriteAsync(sendTask.Payload.Buffer, 0, sendTask.Payload.Buffer.Length, _disposeToken.Token);
                     timer.Stop();
                     _configuration.OnWritten?.Invoke(Endpoint, sendTask.Payload, timer.Elapsed);
-                    _log.Debug(() => LogEvent.Create($"Sent {sendTask.Payload.Buffer.Length} bytes to {Endpoint} with cId {sendTask.Payload.CorrelationId}"));
+                    _log.Debug(() => LogEvent.Create($"Sent {sendTask.Payload.Buffer.Length} bytes with cId {sendTask.Payload.CorrelationId} to {Endpoint}"));
                     sendTask.Tcs.TrySetResult(sendTask.Payload);
                 } catch (Exception ex) {
                     var wrappedException = WrappedException(ex);
@@ -242,7 +229,7 @@ namespace KafkaClient.Connections
         private Exception WrappedException(Exception ex)
         {
             if (_disposeToken.IsCancellationRequested) {
-                return new ObjectDisposedException($"Object is disposing (TcpSocket for {Endpoint})");
+                return new ObjectDisposedException($"Object is disposing (TcpSocket for {Endpoint})", ex);
             }
             return new ConnectionException($"Lost connection to {Endpoint}", ex) { Endpoint = Endpoint };
         }
@@ -264,7 +251,7 @@ namespace KafkaClient.Connections
         /// </summary>
         private Task<TcpClient> ReEstablishConnectionAsync()
         {
-            _log.Debug(() => LogEvent.Create($"No connection to {Endpoint}: Attempting to connect..."));
+            _log.Info(() => LogEvent.Create($"No connection to {Endpoint}: Attempting to connect..."));
 
             return _configuration.ConnectionRetry.AttemptAsync(
                 async (attempt, timer) => {
@@ -277,9 +264,9 @@ namespace KafkaClient.Connections
                     }
 
                     await connectTask.ConfigureAwait(false);
-                    if (!client.Connected) return RetryAttempt<TcpClient>.Failed;
+                    if (!client.Connected) return RetryAttempt<TcpClient>.Retry;
 
-                    _log.Debug(() => LogEvent.Create($"Connection established to {Endpoint}"));
+                    _log.Info(() => LogEvent.Create($"Connection established to {Endpoint}"));
                     _configuration.OnConnected?.Invoke(Endpoint, attempt, timer.Elapsed);
                     return new RetryAttempt<TcpClient>(client);
                 },

@@ -94,7 +94,7 @@ namespace KafkaClient
                     });
 
                     if (!shouldRetry) throw request.ExtractExceptions(response, endpoint);
-                    return RetryAttempt<T>.Failed;
+                    return RetryAttempt<T>.Retry;
                 },
                 null, // do nothing on normal retry -- should log?
                 finalAttempt => { throw request.ExtractExceptions(response, endpoint); },
@@ -151,7 +151,7 @@ namespace KafkaClient
                         brokerRouter.Log.Warn(() => LogEvent.Create(result.Message));
                     }
 
-                    return RetryAttempt<MetadataResponse>.Failed;
+                    return RetryAttempt<MetadataResponse>.Retry;
                 },
                 (attempt, retry) => brokerRouter.Log.Warn(() => LogEvent.Create($"Failed metadata request on attempt {attempt}: Will retry in {retry}")),
                 null, // return the failed response above, resulting in a null

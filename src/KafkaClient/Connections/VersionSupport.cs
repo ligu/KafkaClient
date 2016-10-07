@@ -68,9 +68,15 @@ namespace KafkaClient.Connections
 
         private readonly ImmutableDictionary<ApiKeyRequestType, short> _versionSupport;
 
-        public VersionSupport(ImmutableDictionary<ApiKeyRequestType, short> versionSupport, bool isDynamic = false)
+        public VersionSupport(ImmutableDictionary<ApiKeyRequestType, short> versionSupport)
         {
             _versionSupport = versionSupport;
+            IsDynamic = false;
+        }
+
+        public VersionSupport(VersionSupport versionSupport, bool isDynamic)
+        {
+            _versionSupport = versionSupport._versionSupport;
             IsDynamic = isDynamic;
         }
 

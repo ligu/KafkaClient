@@ -170,7 +170,7 @@ namespace KafkaClient
                 var searchResult = TryGetCachedTopics(topicNames, Configuration.CacheExpiration);
                 if (searchResult.Missing.Count == 0) return searchResult.Topics;
 
-                Log.Debug(() => LogEvent.Create($"BrokerRouter refreshing metadata for topics {string.Join(",", searchResult.Missing)}"));
+                Log.Info(() => LogEvent.Create($"BrokerRouter refreshing metadata for topics {string.Join(",", searchResult.Missing)}"));
                 var response = await GetTopicMetadataFromServerAsync(searchResult.Missing, cancellationToken);
                 UpdateConnectionCache(response);
                 UpdateTopicCache(response);
@@ -187,9 +187,9 @@ namespace KafkaClient
             // requests can be made in parallel for different topicName(s).
             using (await _lock.LockAsync(cancellationToken).ConfigureAwait(false)) {
                 if (topicName != null) {
-                    Log.Debug(() => LogEvent.Create($"BrokerRouter refreshing metadata for topic {topicName}"));
+                    Log.Info(() => LogEvent.Create($"BrokerRouter refreshing metadata for topic {topicName}"));
                 } else {
-                    Log.Debug(() => LogEvent.Create("BrokerRouter refreshing metadata for all topics"));
+                    Log.Info(() => LogEvent.Create("BrokerRouter refreshing metadata for all topics"));
                 }
                 var response = await GetTopicMetadataFromServerAsync(new [] { topicName }, cancellationToken);
                 UpdateConnectionCache(response);

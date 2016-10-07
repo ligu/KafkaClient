@@ -16,6 +16,12 @@ namespace KafkaClient.Connections
             Endpoint = endpoint;
         }
 
+        public ConnectionException(Endpoint endpoint, Exception innerException)
+            : base($"Lost connection to {endpoint}", innerException)
+        {
+            Endpoint = endpoint;
+        }
+
         public ConnectionException(string message)
             : base(message)
         {

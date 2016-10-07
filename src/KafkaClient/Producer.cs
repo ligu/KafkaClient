@@ -119,7 +119,7 @@ namespace KafkaClient
                             }
                         }
                     } catch (Exception ex) {
-                        BrokerRouter.Log.Debug(() => LogEvent.Create(ex));
+                        BrokerRouter.Log.Info(() => LogEvent.Create(ex));
                         _batch.ForEach(x => x.Tcs.TrySetException(ex));
                     }
                 }
@@ -251,7 +251,7 @@ namespace KafkaClient
         {
             if (Interlocked.Increment(ref _stopCount) != 1) return false;
 
-            BrokerRouter.Log.Debug(() => LogEvent.Create("Producer stopping"));
+            BrokerRouter.Log.Info(() => LogEvent.Create("Producer stopping"));
             _produceMessageQueue.CompleteAdding(); // block incoming data
             await Task.WhenAny(_batchSendTask, Task.Delay(Configuration.StopTimeout, cancellationToken)).ConfigureAwait(false);
             _stopToken.Cancel();

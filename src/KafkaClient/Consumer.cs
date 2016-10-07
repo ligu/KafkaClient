@@ -51,7 +51,7 @@ namespace KafkaClient
         /// <returns>Blocking enumberable of messages from Kafka.</returns>
         public IEnumerable<Message> Consume(CancellationToken? cancellationToken = null)
         {
-            _options.Log.Debug(() => LogEvent.Create($"Consumer: Beginning consumption of topic/{_options.Topic}"));
+            _options.Log.Info(() => LogEvent.Create($"Consumer: Beginning consumption of topic/{_options.Topic}"));
             EnsurePartitionPollingThreads();
             return _fetchResponseQueue.GetConsumingEnumerable(cancellationToken ?? CancellationToken.None);
         }
@@ -120,7 +120,7 @@ namespace KafkaClient
                 {
                     var bufferSizeHighWatermark = FetchRequest.DefaultBufferSize;
 
-                    _options.Log.Debug(() => LogEvent.Create($"Consumer: Creating polling task for topic/{topic}/parition/{partitionId}"));
+                    _options.Log.Info(() => LogEvent.Create($"Consumer: Creating polling task for topic/{topic}/parition/{partitionId}"));
                     while (_disposeToken.IsCancellationRequested == false)
                     {
                         try
@@ -219,7 +219,7 @@ namespace KafkaClient
                 }
                 finally
                 {
-                    _options.Log.Debug(() => LogEvent.Create($"Consumer disabling polling task for topic/{topic}/partition/{partitionId}"));
+                    _options.Log.Info(() => LogEvent.Create($"Consumer disabling polling task for topic/{topic}/partition/{partitionId}"));
                     Task tempTask;
                     _partitionPollingIndex.TryRemove(partitionId, out tempTask);
                 }

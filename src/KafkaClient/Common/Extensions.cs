@@ -106,6 +106,39 @@ namespace KafkaClient.Common
             Func<int, Stopwatch, Task<RetryAttempt<T>>> action, 
             Action<int, TimeSpan> onRetry, 
             Action<int> onFinal, 
+            Action<Exception> onException, 
+            CancellationToken cancellationToken)
+        {
+            var timer = new Stopwatch();
+            timer.Start();
+            for (var attempt = 0;; attempt++) {
+                cancellationToken.ThrowIfCancellationRequested();
+                try {
+                    var response = await action(attempt, timer).ConfigureAwait(false);
+                    if (response.IsSuccessful) return response.Value;
+
+                    var retryDelay = policy.RetryDelay(attempt, timer.Elapsed);
+                    if (retryDelay.HasValue) {
+                        onRetry?.Invoke(attempt, retryDelay.Value);
+                        await Task.Delay(retryDelay.Value, cancellationToken).ConfigureAwait(false);
+                    } else {
+                        onFinal?.Invoke(attempt);
+                        return response.Value;
+                    }
+                } catch (Exception ex) {
+                    onException?.Invoke(ex);
+                    onFinal?.Invoke(attempt);
+                    return default(T);
+                }
+            }
+        }
+
+
+        public static async Task<T> AttemptAsync<T>(
+            this IRetry policy, 
+            Func<int, Stopwatch, Task<RetryAttempt<T>>> action, 
+            Action<int, TimeSpan> onRetry, 
+            Action<int> onFinal, 
             Action<Exception, int, TimeSpan> onException, 
             Action<Exception, int> onFinalException, 
             CancellationToken cancellationToken)

@@ -34,6 +34,8 @@ namespace KafkaClient.Connections
         private Task _readerTask;
         private int _activeReaderCount;
         private int _correlationIdSeed;
+
+        private readonly AsyncReaderWriterLock _versionSupportLock = new AsyncReaderWriterLock();
         private IVersionSupport _versionSupport;
 
         /// <summary>
@@ -75,7 +77,8 @@ namespace KafkaClient.Connections
             }
             context = new RequestContext(NextCorrelationId(), version, context?.ClientId);
 
-            _log.Debug(() => LogEvent.Create($"Sending {request.ApiKey} request v.{context.ApiVersion.GetValueOrDefault()} cId {context.CorrelationId} to {Endpoint}"));
+            _log.Info(() => LogEvent.Create($"Sending {request.ApiKey} v.{version.GetValueOrDefault()} request cId {context.CorrelationId} to {Endpoint}"));
+            _log.Debug(() => LogEvent.Create($"Request {request.ApiKey}\n{request.ToFormattedString()}"));
             if (!request.ExpectResponse) {
                 await _socket.WriteAsync(KafkaEncoder.Encode(context, request), token).ConfigureAwait(false);
                 return default(T);
@@ -98,34 +101,38 @@ namespace KafkaClient.Connections
                 }
 
                 var response = await asyncRequest.ReceiveTask.Task.ThrowIfCancellationRequested(token).ConfigureAwait(false);
-                _log.Debug(() => LogEvent.Create($"Received {request.ApiKey} response v.{context.ApiVersion.GetValueOrDefault()} cId {context.CorrelationId} ({response.Length} bytes) from {Endpoint}"));
-                return KafkaEncoder.Decode<T>(context, response);
+                _log.Info(() => LogEvent.Create($"Received {request.ApiKey} v.{version.GetValueOrDefault()} response cId {context.CorrelationId} ({response.Length} bytes) from {Endpoint}"));
+                var result = KafkaEncoder.Decode<T>(context, response);
+                _log.Debug(() => LogEvent.Create($"{request.ApiKey} Response\n{result.ToFormattedString()}"));
+                return result;
             }
         }
 
         private async Task<short> GetVersionAsync(ApiKeyRequestType requestType, CancellationToken cancellationToken)
         {
-            if (_configuration.VersionSupport.IsDynamic) {
-                try {
-                    var response = await SendAsync(new ApiVersionsRequest(), cancellationToken, new RequestContext(version: 0));
-                    // TODO: what if it doesn't respond or it's unknown ?
-                    if (response.ErrorCode == ErrorResponseCode.None) {
-                        var supportedVersions = response.SupportedVersions.ToImmutableDictionary(
-                                                       _ => _.ApiKey,
-                                                       _ => _.MaxVersion);
-                        _versionSupport = new VersionSupport(supportedVersions);
-                    }
-                } catch (Exception ex) {
-                    _log.Error(LogEvent.Create(ex));
-                    _versionSupport = _configuration.VersionSupport;
-                }
+            if (!_configuration.VersionSupport.IsDynamic) return _configuration.VersionSupport.GetVersion(requestType).GetValueOrDefault();
+
+            using (await _versionSupportLock.ReaderLockAsync(cancellationToken)) {
+                if (_versionSupport != null) return _versionSupport.GetVersion(requestType).GetValueOrDefault();
             }
-            return _versionSupport
-                .GetVersion(requestType)
-                .GetValueOrDefault(_configuration
-                    .VersionSupport
-                    .GetVersion(requestType)
-                    .GetValueOrDefault());
+            using (await _versionSupportLock.WriterLockAsync(cancellationToken)) {
+                return await _configuration.ConnectionRetry.AttemptAsync(
+                    async (attempt, timer) => {
+                        var response = await SendAsync(new ApiVersionsRequest(), cancellationToken, new RequestContext(version: 0));
+                        if (response.ErrorCode.IsRetryable()) return RetryAttempt<short>.Retry;
+                        if (!response.ErrorCode.IsSuccess()) return RetryAttempt<short>.Abort;
+
+                        var supportedVersions = response.SupportedVersions.ToImmutableDictionary(
+                                                        _ => _.ApiKey,
+                                                        _ => _.MaxVersion);
+                        _versionSupport = new VersionSupport(supportedVersions);
+                        return new RetryAttempt<short>(_versionSupport.GetVersion(requestType).GetValueOrDefault());
+                    },
+                    (attempt, timer) => _log.Debug(() => LogEvent.Create($"Retrying {nameof(GetVersionAsync)} attempt {attempt}")),
+                    attempt => _versionSupport = _configuration.VersionSupport,
+                    exception => _log.Error(LogEvent.Create(exception)),
+                    cancellationToken);
+            }
         }
 
         #region Equals
@@ -184,9 +191,10 @@ namespace KafkaClient.Connections
                             }
 
                             // It is possible for orphaned requests to exist in the _requestsByCorrelation after failure
-                            _log.Debug(() => LogEvent.Create(exception, $"Polling failure on {_socket.Endpoint} attempt {attempt} delay {delay}"));
                             if (attempt == 0) {
-                                _log.Error(LogEvent.Create(exception, $"Polling read thread {_socket?.Endpoint}"));
+                                _log.Error(LogEvent.Create(exception,  $"Polling failure on {_socket.Endpoint} attempt {attempt} delay {delay}"));
+                            } else {
+                                _log.Info(() => LogEvent.Create(exception, $"Polling failure on {_socket.Endpoint} attempt {attempt} delay {delay}"));
                             }
                         },
                         null, // since there is no max attempts/delay
@@ -196,7 +204,7 @@ namespace KafkaClient.Connections
                     _log.Debug(() => LogEvent.Create(ex));
                 } finally {
                     Interlocked.Decrement(ref _activeReaderCount);
-                    _log.Debug(() => LogEvent.Create($"Closed down connection to {_socket.Endpoint}"));
+                    _log.Info(() => LogEvent.Create($"Closed down connection to {_socket.Endpoint}"));
                 }
             });
         }
