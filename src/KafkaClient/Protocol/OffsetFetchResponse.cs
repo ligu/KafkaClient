@@ -13,8 +13,8 @@ namespace KafkaClient.Protocol
             Errors = ImmutableList<ErrorResponseCode>.Empty.AddRange(Topics.Select(t => t.ErrorCode));
         }
 
-        public ImmutableList<ErrorResponseCode> Errors { get; }
+        public IImmutableList<ErrorResponseCode> Errors { get; }
 
-        public ImmutableList<OffsetFetchTopic> Topics { get; }
+        public IImmutableList<OffsetFetchTopic> Topics { get; }
     }
 }

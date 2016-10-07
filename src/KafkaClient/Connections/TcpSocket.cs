@@ -209,13 +209,13 @@ namespace KafkaClient.Connections
             using (sendTask) {
                 var timer = new Stopwatch();
                 try {
-                    _log.Debug(() => LogEvent.Create($"Sending {sendTask.Payload.Buffer.Length} bytes with cId {sendTask.Payload.CorrelationId} to {Endpoint}"));
+                    _log.Debug(() => LogEvent.Create($"Sending {sendTask.Payload.Buffer.Length} bytes with correlation id {sendTask.Payload.CorrelationId} to {Endpoint}"));
                     _configuration.OnWriting?.Invoke(Endpoint, sendTask.Payload);
                     timer.Start();
                     await stream.WriteAsync(sendTask.Payload.Buffer, 0, sendTask.Payload.Buffer.Length, _disposeToken.Token);
                     timer.Stop();
                     _configuration.OnWritten?.Invoke(Endpoint, sendTask.Payload, timer.Elapsed);
-                    _log.Debug(() => LogEvent.Create($"Sent {sendTask.Payload.Buffer.Length} bytes with cId {sendTask.Payload.CorrelationId} to {Endpoint}"));
+                    _log.Debug(() => LogEvent.Create($"Sent {sendTask.Payload.Buffer.Length} bytes with correlation id {sendTask.Payload.CorrelationId} to {Endpoint}"));
                     sendTask.Tcs.TrySetResult(sendTask.Payload);
                 } catch (Exception ex) {
                     var wrappedException = WrappedException(ex);

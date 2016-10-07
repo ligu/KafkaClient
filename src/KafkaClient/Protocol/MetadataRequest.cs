@@ -20,6 +20,6 @@ namespace KafkaClient.Protocol
         /// <summary>
         /// The list of topics to get metadata for.
         /// </summary>
-        public ImmutableList<string> Topics { get; }
+        public IImmutableList<string> Topics { get; }
     }
 }

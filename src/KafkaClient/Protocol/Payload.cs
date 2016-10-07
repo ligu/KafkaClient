@@ -18,6 +18,6 @@ namespace KafkaClient.Protocol
         }
 
         public MessageCodec Codec { get; }
-        public ImmutableList<Message> Messages { get; }
+        public IImmutableList<Message> Messages { get; }
     }
 }

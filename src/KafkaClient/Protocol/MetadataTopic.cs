@@ -17,6 +17,6 @@ namespace KafkaClient.Protocol
 
         public string TopicName { get; }
 
-        public ImmutableList<MetadataPartition> Partitions { get; }
+        public IImmutableList<MetadataPartition> Partitions { get; }
     }
 }

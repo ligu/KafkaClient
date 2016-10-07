@@ -32,7 +32,7 @@ namespace KafkaClient.Tests.Unit
 
                 var response = await producer.SendMessagesAsync(messages, "UnitTest", CancellationToken.None);
 
-                Assert.That(response.Length, Is.EqualTo(2));
+                Assert.That(response.Count, Is.EqualTo(2));
                 Assert.That(routerProxy.BrokerConn0.ProduceRequestCallCount, Is.EqualTo(1));
                 Assert.That(routerProxy.BrokerConn1.ProduceRequestCallCount, Is.EqualTo(1));
             }

@@ -13,7 +13,7 @@ namespace KafkaClient.Protocol
             Offsets = ImmutableList<long>.Empty.AddNotNullRange(offsets);
         }
 
-        public ImmutableList<long> Offsets { get; }
+        public IImmutableList<long> Offsets { get; }
 
         #region Equality
 

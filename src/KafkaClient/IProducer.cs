@@ -1,5 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Protocol;
@@ -17,7 +17,7 @@ namespace KafkaClient
         /// <param name="configuration">The configuration for sending the messages (ie acks, ack Timeout and codec)</param>
         /// <param name="cancellationToken">The token for cancellation</param>
         /// <returns>List of ProduceTopic response from each partition sent to or empty list if acks = 0.</returns>
-        Task<ProduceTopic[]> SendMessagesAsync(IEnumerable<Message> messages, string topicName, int? partition, ISendMessageConfiguration configuration, CancellationToken cancellationToken);
+        Task<ImmutableList<ProduceTopic>> SendMessagesAsync(IEnumerable<Message> messages, string topicName, int? partition, ISendMessageConfiguration configuration, CancellationToken cancellationToken);
 
         /// <summary>
         /// The configuration for various limits and for send defaults

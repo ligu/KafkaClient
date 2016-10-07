@@ -342,7 +342,7 @@ namespace KafkaClient.Tests.Integration
         public async Task ProducerShouldUsePartitionIdInsteadOfMessageKeyToChoosePartition()
         {
             Mock<IPartitionSelector> partitionSelector = new Mock<IPartitionSelector>();
-            partitionSelector.Setup(x => x.Select(It.IsAny<MetadataTopic>(), It.IsAny<byte[]>())).Returns((MetadataTopic y, byte[] y1) => { return y.Partitions.Find(p => p.PartitionId == 1); });
+            partitionSelector.Setup(x => x.Select(It.IsAny<MetadataTopic>(), It.IsAny<byte[]>())).Returns((MetadataTopic y, byte[] y1) => { return y.Partitions.Single(p => p.PartitionId == 1); });
 
             var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri, partitionSelector: partitionSelector.Object));
             var producer = new Producer(router);

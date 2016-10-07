@@ -20,6 +20,6 @@ namespace KafkaClient.Protocol
             Offsets = ImmutableList<Offset>.Empty.AddNotNullRange(offsets);
         }
 
-        public ImmutableList<Offset> Offsets { get; }
+        public IImmutableList<Offset> Offsets { get; }
     }
 }

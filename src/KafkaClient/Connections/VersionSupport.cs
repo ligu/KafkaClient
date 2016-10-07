@@ -66,9 +66,9 @@ namespace KafkaClient.Connections
                 {ApiKeyRequestType.ApiVersions, 0}
             }.ToImmutableDictionary()));
 
-        private readonly ImmutableDictionary<ApiKeyRequestType, short> _versionSupport;
+        private readonly IImmutableDictionary<ApiKeyRequestType, short> _versionSupport;
 
-        public VersionSupport(ImmutableDictionary<ApiKeyRequestType, short> versionSupport)
+        public VersionSupport(IImmutableDictionary<ApiKeyRequestType, short> versionSupport)
         {
             _versionSupport = versionSupport;
             IsDynamic = false;

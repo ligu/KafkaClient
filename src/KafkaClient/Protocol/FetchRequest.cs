@@ -38,6 +38,6 @@ namespace KafkaClient.Protocol
         /// </summary>
         public int MinBytes { get; }
 
-        public ImmutableList<Fetch> Fetches { get; }
+        public IImmutableList<Fetch> Fetches { get; }
     }
 }

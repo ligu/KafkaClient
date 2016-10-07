@@ -13,13 +13,13 @@ namespace KafkaClient.Protocol
             SupportedVersions = ImmutableList<ApiVersionSupport>.Empty.AddNotNullRange(supportedVersions);
         }
 
-        public ImmutableList<ErrorResponseCode> Errors { get; }
+        public IImmutableList<ErrorResponseCode> Errors { get; }
 
         /// <summary>
         /// The error code.
         /// </summary>
         public ErrorResponseCode ErrorCode { get; }
 
-        public ImmutableList<ApiVersionSupport> SupportedVersions { get; }
+        public IImmutableList<ApiVersionSupport> SupportedVersions { get; }
     }
 }

@@ -121,7 +121,7 @@ namespace KafkaClient.Tests.Unit
                     server.DropConnection();
                     await TaskTest.WaitFor(() => disconnected == currentAttempt);
 
-                    Assert.That(mockLog.LogEvents.Count(e => e.Item1 == LogLevel.Debug && e.Item2.Message.StartsWith("Polling failure on")), Is.AtLeast(currentAttempt));
+                    Assert.That(mockLog.LogEvents.Count(e => e.Item1 == LogLevel.Error && e.Item2.Message.StartsWith("Polling failure on")), Is.AtLeast(currentAttempt));
                 }
             }
         }
@@ -149,7 +149,7 @@ namespace KafkaClient.Tests.Unit
                 await TaskTest.WaitFor(() => receivedData);
 
                 //should log a warning and keep going
-                Assert.That(mockLog.LogEvents.Any(e => e.Item1 == LogLevel.Warn && e.Item2.Message == $"Unexpected response from {_endpoint} with cId {correlationId} (not in request queue)."));
+                Assert.That(mockLog.LogEvents.Any(e => e.Item1 == LogLevel.Warn && e.Item2.Message == $"Unexpected response from {_endpoint} with correlation id {correlationId} (not in request queue)."));
             }
         }
 

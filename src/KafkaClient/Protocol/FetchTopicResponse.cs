@@ -19,7 +19,7 @@ namespace KafkaClient.Protocol
         /// </summary>
         public long HighWaterMark { get; }
 
-        public ImmutableList<Message> Messages { get; }
+        public IImmutableList<Message> Messages { get; }
 
         #region Equality
 

@@ -34,7 +34,7 @@ namespace KafkaClient.Tests.Integration
             {
                 var result = await producer.SendMessagesAsync(new[] { new Message(Guid.NewGuid().ToString()) }, IntegrationConfig.TopicName(), CancellationToken.None);
 
-                Assert.That(result.Length, Is.EqualTo(1));
+                Assert.That(result.Count, Is.EqualTo(1));
             }
         }
 
@@ -47,9 +47,9 @@ namespace KafkaClient.Tests.Integration
                 var messages = new[] { new Message("1"), new Message("2"), new Message("3") };
                 var result = await producer.SendMessagesAsync(messages, IntegrationConfig.TopicName(), CancellationToken.None);
 
-                Assert.That(result.Length, Is.EqualTo(messages.Distinct().Count()));
+                Assert.That(result.Count, Is.EqualTo(messages.Distinct().Count()));
 
-                Assert.That(result.Length, Is.EqualTo(messages.Count()));
+                Assert.That(result.Count, Is.EqualTo(messages.Count()));
             }
         }
 

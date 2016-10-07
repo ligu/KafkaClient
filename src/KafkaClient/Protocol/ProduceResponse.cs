@@ -20,9 +20,9 @@ namespace KafkaClient.Protocol
             ThrottleTime = throttleTime;
         }
 
-        public ImmutableList<ErrorResponseCode> Errors { get; }
+        public IImmutableList<ErrorResponseCode> Errors { get; }
 
-        public ImmutableList<ProduceTopic> Topics { get; }
+        public IImmutableList<ProduceTopic> Topics { get; }
 
         /// <summary>
         /// Duration in milliseconds for which the request was throttled due to quota violation. 

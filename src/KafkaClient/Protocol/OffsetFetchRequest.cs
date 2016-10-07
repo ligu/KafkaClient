@@ -25,6 +25,6 @@ namespace KafkaClient.Protocol
 
         public string ConsumerGroup { get; }
 
-        public ImmutableList<Topic> Topics { get; }
+        public IImmutableList<Topic> Topics { get; }
     }
 }

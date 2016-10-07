@@ -35,12 +35,12 @@ namespace KafkaClient.Protocol
         /// <summary>
         /// The set of alive nodes that currently acts as slaves for the leader for this partition.
         /// </summary>
-        public ImmutableList<int> Replicas { get; }
+        public IImmutableList<int> Replicas { get; }
 
         /// <summary>
         /// The set subset of the replicas that are "caught up" to the leader
         /// </summary>
-        public ImmutableList<int> Isrs { get; }
+        public IImmutableList<int> Isrs { get; }
 
         protected bool Equals(MetadataPartition other)
         {

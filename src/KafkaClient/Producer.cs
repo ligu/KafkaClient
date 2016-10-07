@@ -74,13 +74,14 @@ namespace KafkaClient
         }
 
         /// <inheritdoc />
-        public async Task<ProduceTopic[]> SendMessagesAsync(IEnumerable<Message> messages, string topicName, int? partition, ISendMessageConfiguration configuration, CancellationToken cancellationToken)
+        public async Task<ImmutableList<ProduceTopic>> SendMessagesAsync(IEnumerable<Message> messages, string topicName, int? partition, ISendMessageConfiguration configuration, CancellationToken cancellationToken)
         {
             var produceTopicTasks = messages.Select(message => new ProduceTopicTask(topicName, partition, message, configuration ?? Configuration.SendDefaults, cancellationToken)).ToArray();
             Interlocked.Add(ref _sendingMessageCount, produceTopicTasks.Length);
             try {
                 _produceMessageQueue.AddRange(produceTopicTasks, cancellationToken);
-                return await Task.WhenAll(produceTopicTasks.Select(x => x.Tcs.Task)).ConfigureAwait(false);
+                var topics = await Task.WhenAll(produceTopicTasks.Select(x => x.Tcs.Task)).ConfigureAwait(false);
+                return topics.ToImmutableList();
             } catch (InvalidOperationException ex) {
                 throw new ObjectDisposedException("Cannot send messages after Stopped or Disposed", ex);
             } finally {

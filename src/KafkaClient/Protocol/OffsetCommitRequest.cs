@@ -43,6 +43,6 @@ namespace KafkaClient.Protocol
         /// </summary>
         public TimeSpan? OffsetRetention { get; }
 
-        public ImmutableList<OffsetCommit> OffsetCommits { get; }
+        public IImmutableList<OffsetCommit> OffsetCommits { get; }
     }
 }

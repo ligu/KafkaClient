@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -16,7 +17,7 @@ namespace KafkaClient
         /// <param name="topicName">The name of the kafka topic to send the messages to.</param>
         /// <param name="cancellationToken"></param>
         /// <returns>List of ProduceTopic response from each partition sent to or empty list if acks = 0.</returns>
-        public static Task<ProduceTopic[]> SendMessagesAsync(this IProducer producer, IEnumerable<Message> messages, string topicName, CancellationToken cancellationToken)
+        public static Task<ImmutableList<ProduceTopic>> SendMessagesAsync(this IProducer producer, IEnumerable<Message> messages, string topicName, CancellationToken cancellationToken)
         {
             return producer.SendMessagesAsync(messages, topicName, null, null, cancellationToken);
         }
@@ -30,7 +31,7 @@ namespace KafkaClient
         /// <param name="partition">The partition to send messages to</param>
         /// <param name="cancellationToken"></param>
         /// <returns>List of ProduceTopic response from each partition sent to or empty list if acks = 0.</returns>
-        public static Task<ProduceTopic[]> SendMessagesAsync(this IProducer producer, IEnumerable<Message> messages, string topicName, int partition, CancellationToken cancellationToken)
+        public static Task<ImmutableList<ProduceTopic>> SendMessagesAsync(this IProducer producer, IEnumerable<Message> messages, string topicName, int partition, CancellationToken cancellationToken)
         {
             return producer.SendMessagesAsync(messages, topicName, partition, null, cancellationToken);
         }

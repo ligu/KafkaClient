@@ -69,12 +69,12 @@ namespace KafkaClient
         /// use <see cref="GetTopicMetadataAsync(IEnumerable&lt;string&gt;, CancellationToken)"/>.
         /// </remarks>
         /// <exception cref="CachedMetadataException">Thrown if the topic metadata does not exist in the cache.</exception>
-        ImmutableList<MetadataTopic> GetTopicMetadata(IEnumerable<string> topicNames);
+        IImmutableList<MetadataTopic> GetTopicMetadata(IEnumerable<string> topicNames);
 
         /// <summary>
         /// Returns all cached topic metadata.
         /// </summary>
-        ImmutableList<MetadataTopic> GetTopicMetadata();
+        IImmutableList<MetadataTopic> GetTopicMetadata();
 
         /// <summary>
         /// Returns Topic metadata for the topic requested.
@@ -92,7 +92,7 @@ namespace KafkaClient
         /// This method will check the cache first, and for any missing topic metadata it will initiate a call to the kafka 
         /// servers, updating the cache with the resulting metadata.
         /// </remarks>
-        Task<ImmutableList<MetadataTopic>> GetTopicMetadataAsync(IEnumerable<string> topicNames, CancellationToken cancellationToken);
+        Task<IImmutableList<MetadataTopic>> GetTopicMetadataAsync(IEnumerable<string> topicNames, CancellationToken cancellationToken);
 
         /// <summary>
         /// Force a call to the kafka servers to refresh metadata for the given topic.

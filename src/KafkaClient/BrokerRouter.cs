@@ -112,7 +112,7 @@ namespace KafkaClient
         }
 
         /// <inheritdoc />
-        public ImmutableList<MetadataTopic> GetTopicMetadata(IEnumerable<string> topicNames)
+        public IImmutableList<MetadataTopic> GetTopicMetadata(IEnumerable<string> topicNames)
         {
             var topicSearchResult = TryGetCachedTopics(topicNames);
             if (topicSearchResult.Missing.Count > 0) throw new CachedMetadataException($"No metadata defined for topics: {string.Join(",", topicSearchResult.Missing)}");
@@ -121,7 +121,7 @@ namespace KafkaClient
         }
 
         /// <inheritdoc />
-        public ImmutableList<MetadataTopic> GetTopicMetadata()
+        public IImmutableList<MetadataTopic> GetTopicMetadata()
         {
             return ImmutableList<MetadataTopic>.Empty.AddRange(_topicCache.Values.Select(t => t.Item1));
         }
@@ -134,7 +134,7 @@ namespace KafkaClient
         }
 
         /// <inheritdoc />
-        public async Task<ImmutableList<MetadataTopic>> GetTopicMetadataAsync(IEnumerable<string> topicNames, CancellationToken cancellationToken)
+        public async Task<IImmutableList<MetadataTopic>> GetTopicMetadataAsync(IEnumerable<string> topicNames, CancellationToken cancellationToken)
         {
             var searchResult = TryGetCachedTopics(topicNames);
             return searchResult.Missing.IsEmpty 
@@ -162,7 +162,7 @@ namespace KafkaClient
             return topics.Single();
         }
 
-        private async Task<ImmutableList<MetadataTopic>> UpdateTopicMetadataFromServerIfMissingAsync(IEnumerable<string> topicNames, CancellationToken cancellationToken)
+        private async Task<IImmutableList<MetadataTopic>> UpdateTopicMetadataFromServerIfMissingAsync(IEnumerable<string> topicNames, CancellationToken cancellationToken)
         {
             // TODO: more sophisticated locking should be particular to topicName(s) in that multiple 
             // requests can be made in parallel for different topicName(s).

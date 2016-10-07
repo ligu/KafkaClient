@@ -33,6 +33,6 @@ namespace KafkaClient.Protocol
         /// <summary>
         /// Collection of payloads to post to kafka
         /// </summary>
-        public ImmutableList<Payload> Payloads { get; }
+        public IImmutableList<Payload> Payloads { get; }
     }
 }

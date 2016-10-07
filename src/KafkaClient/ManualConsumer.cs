@@ -121,7 +121,7 @@ namespace KafkaClient
             }
 
             // Saving the last consumed offset and Returning the wanted amount
-            _lastMessages = topic?.Messages;
+            _lastMessages = topic?.Messages?.ToImmutableList();
             var messagesToReturn = topic?.Messages?.Take(maxCount);
             return messagesToReturn;
         }
