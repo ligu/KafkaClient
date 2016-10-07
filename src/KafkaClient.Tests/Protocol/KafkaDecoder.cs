@@ -35,6 +35,7 @@ namespace KafkaClient.Tests.Protocol
             if (typeof(T) == typeof(OffsetFetchRequest)) return (T)OffsetFetchRequest(context, payload);
             if (typeof(T) == typeof(GroupCoordinatorRequest)) return (T)GroupCoordinatorRequest(context, payload);
             if (typeof(T) == typeof(ApiVersionsRequest)) return (T)ApiVersionsRequest(context, payload);
+            if (typeof(T) == typeof(StopReplicaRequest)) return (T)StopReplicaRequest(context, payload);
             return default(T);
         }
 
@@ -57,7 +58,8 @@ namespace KafkaClient.Tests.Protocol
                 || TryEncodeResponse(writer, context, response as OffsetCommitResponse)
                 || TryEncodeResponse(writer, context, response as OffsetFetchResponse)
                 || TryEncodeResponse(writer, context, response as GroupCoordinatorResponse)
-                || TryEncodeResponse(writer, context, response as ApiVersionsResponse);
+                || TryEncodeResponse(writer, context, response as ApiVersionsResponse)
+                || TryEncodeResponse(writer, context, response as StopReplicaResponse);
 
                 data = new byte[stream.Position];
                 stream.Position = 0;
@@ -230,6 +232,25 @@ namespace KafkaClient.Tests.Protocol
         {
             using (var stream = ReadHeader(payload)) {
                 return new ApiVersionsRequest();
+            }
+        }
+
+        private static IRequest StopReplicaRequest(IRequestContext context, byte[] payload)
+        {
+            using (var stream = ReadHeader(payload)) {
+                var controllerId = stream.ReadInt32();
+                var controllerEpoch = stream.ReadInt32();
+                var shouldDelete = stream.ReadBoolean();
+
+                var count = stream.ReadInt32();
+                var topics = new List<Topic>();
+                for (var i = 0; i < count; i++) {
+                    var topicName = stream.ReadInt16String();
+                    var partitionId = stream.ReadInt32();
+                    topics.Add(new Topic(topicName, partitionId));
+                }
+
+                return new StopReplicaRequest(controllerId, controllerEpoch, topics, shouldDelete);
             }
         }
         
@@ -426,11 +447,25 @@ namespace KafkaClient.Tests.Protocol
             if (response == null) return false;
 
             writer.Write((short)response.ErrorCode);
-            writer.Write(response.SupportedVersions.Count); // partitionsPerTopic
+            writer.Write(response.SupportedVersions.Count);
             foreach (var versionSupport in response.SupportedVersions) {
                 writer.Write((short)versionSupport.ApiKey);
                 writer.Write(versionSupport.MinVersion);
                 writer.Write(versionSupport.MaxVersion);
+            }
+            return true;
+        }
+
+        private static bool TryEncodeResponse(BigEndianBinaryWriter writer, IRequestContext context, StopReplicaResponse response)
+        {
+            if (response == null) return false;
+
+            writer.Write((short)response.ErrorCode);
+            writer.Write(response.Topics.Count);
+            foreach (var topic in response.Topics) {
+                writer.Write(topic.TopicName, StringPrefixEncoding.Int16);
+                writer.Write(topic.PartitionId);
+                writer.Write((short)topic.ErrorCode);
             }
             return true;
         }

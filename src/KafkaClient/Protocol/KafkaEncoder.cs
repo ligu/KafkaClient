@@ -21,6 +21,7 @@ namespace KafkaClient.Protocol
             if (typeof(T) == typeof(OffsetFetchResponse)) return (T)OffsetFetchResponse(context, payload, hasSize);
             if (typeof(T) == typeof(GroupCoordinatorResponse)) return (T)GroupCoordinatorResponse(context, payload, hasSize);
             if (typeof(T) == typeof(ApiVersionsResponse)) return (T)ApiVersionsResponse(context, payload, hasSize);
+            if (typeof(T) == typeof(StopReplicaResponse)) return (T)StopReplicaResponse(context, payload, hasSize);
             return default(T);
         }
 
@@ -62,6 +63,8 @@ namespace KafkaClient.Protocol
                     return EncodeRequest(context, (GroupCoordinatorRequest) request);
                 case ApiKeyRequestType.ApiVersions:
                     return EncodeRequest(context, (ApiVersionsRequest) request);
+                case ApiKeyRequestType.StopReplica:
+                    return EncodeRequest(context, (StopReplicaRequest) request);
 
                 default:
                     using (var message = EncodeHeader(context, request)) {
@@ -330,6 +333,23 @@ namespace KafkaClient.Protocol
         private static byte[] EncodeRequest(IRequestContext context, ApiVersionsRequest request)
         {
             using (var message = EncodeHeader(context, request)) {
+                return message.Payload();
+            }
+        }
+
+        private static byte[] EncodeRequest(IRequestContext context, StopReplicaRequest request)
+        {
+            using (var message = EncodeHeader(context, request)) {
+                message.Pack(request.ControllerId)
+                    .Pack(request.ControllerEpoch)
+                    .Pack(request.DeletePartitions ? (byte)1 : (byte)0)
+                    .Pack(request.Topics.Count);
+
+                foreach (var topic in request.Topics) {
+                    message.Pack(topic.TopicName, StringPrefixEncoding.Int16)
+                           .Pack(topic.PartitionId);
+                }
+
                 return message.Payload();
             }
         }
@@ -639,6 +659,22 @@ namespace KafkaClient.Protocol
                     apiKeys[i] = new ApiVersionSupport(apiKey, minVersion, maxVersion);
                 }
                 return new ApiVersionsResponse(errorCode, apiKeys);
+            }
+        }        
+
+        private static IResponse StopReplicaResponse(IRequestContext context, byte[] payload, bool hasSize)
+        {
+            using (var stream = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
+                var errorCode = (ErrorResponseCode)stream.ReadInt16();
+
+                var topics = new TopicResponse[stream.ReadInt32()];
+                for (var i = 0; i < topics.Length; i++) {
+                    var topicName = stream.ReadInt16String();
+                    var partitionId = stream.ReadInt32();
+                    var topicErrorCode = (ErrorResponseCode)stream.ReadInt16();
+                    topics[i] = new TopicResponse(topicName, partitionId, topicErrorCode);
+                }
+                return new StopReplicaResponse(errorCode, topics);
             }
         }        
 

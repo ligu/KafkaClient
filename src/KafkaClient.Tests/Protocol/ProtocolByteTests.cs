@@ -554,6 +554,43 @@ namespace KafkaClient.Tests.Protocol
             response.AssertCanEncodeDecodeResponse(0);
         }
 
+        [Test]
+        public void StopReplicaRequest(
+            [Values("test", "a really long name, with spaces and punctuation!")] string topicName, 
+            [Values(1, 10)] int topicsPerRequest, 
+            [Values(1, 5)] int totalPartitions, 
+            [Values(true, false)] bool shouldDelete,
+            [Values(0, 123456, 100000)] int controllerEpoch,
+            [Values(0, 10)] int controllerId)
+        {
+            var topics = new List<Topic>();
+            for (var t = 0; t < topicsPerRequest; t++) {
+                topics.Add(new Topic(topicName + t, t % totalPartitions));
+            }
+            var request = new StopReplicaRequest(controllerId, controllerEpoch, topics, shouldDelete);
+
+            request.AssertCanEncodeDecodeRequest(0);
+        }
+
+        [Test]
+        public void StopReplicaResponse(
+            [Values("test", "a really long name, with spaces and punctuation!")] string topicName, 
+            [Values(1, 10)] int topicsPerRequest, 
+            [Values(1, 5)] int totalPartitions,             
+            [Values(
+                 ErrorResponseCode.None,
+                 ErrorResponseCode.BrokerNotAvailable
+             )] ErrorResponseCode errorCode)
+        {
+            var topics = new List<TopicResponse>();
+            for (var t = 0; t < topicsPerRequest; t++) {
+                topics.Add(new TopicResponse(topicName + t, t % totalPartitions, (ErrorResponseCode)((short)errorCode + totalPartitions)));
+            }
+            var response = new StopReplicaResponse(errorCode, topics);
+
+            response.AssertCanEncodeDecodeResponse(0);
+        }
+
         private IEnumerable<Message> GenerateMessages(int count, byte version, int partition = 0)
         {
             var messages = new List<Message>();
