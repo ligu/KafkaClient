@@ -6,6 +6,14 @@ using KafkaClient.Common;
 
 namespace KafkaClient.Protocol
 {
+    /// <summary>
+    /// OffsetCommitResponse => [TopicName [Partition ErrorCode]]]
+    ///  TopicName => string -- The name of the topic.
+    ///  Partition => int32  -- The id of the partition.
+    ///  ErrorCode => int16  -- The error code for the partition, if any.
+    ///
+    /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
+    /// </summary>
     public class OffsetCommitResponse : IResponse, IEquatable<OffsetCommitResponse>
     {
         public OffsetCommitResponse(IEnumerable<TopicResponse> topics = null)

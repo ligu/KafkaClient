@@ -6,6 +6,25 @@ using KafkaClient.Common;
 
 namespace KafkaClient.Protocol
 {
+    /// <summary>
+    /// ProduceResponse => [TopicName [Partition ErrorCode Offset *Timestamp]] *ThrottleTime
+    ///  *ThrottleTime is only version 1 (0.9.0) and above
+    ///  *Timestamp is only version 2 (0.10.0) and above
+    ///  TopicName => string   -- The topic this response entry corresponds to.
+    ///  Partition => int32    -- The partition this response entry corresponds to.
+    ///  ErrorCode => int16    -- The error from this partition, if any. Errors are given on a per-partition basis because a given partition may be 
+    ///                           unavailable or maintained on a different host, while others may have successfully accepted the produce request.
+    ///  Offset => int64       -- The offset assigned to the first message in the message set appended to this partition.
+    ///  Timestamp => int64    -- If LogAppendTime is used for the topic, this is the timestamp assigned by the broker to the message set. 
+    ///                           All the messages in the message set have the same timestamp.
+    ///                           If CreateTime is used, this field is always -1. The producer can assume the timestamp of the messages in the 
+    ///                           produce request has been accepted by the broker if there is no error code returned.
+    ///                           Unit is milliseconds since beginning of the epoch (midnight Jan 1, 1970 (UTC)).
+    ///  ThrottleTime => int32 -- Duration in milliseconds for which the request was throttled due to quota violation. 
+    ///                           (Zero if the request did not violate any quota).
+    /// 
+    /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-Messagesets
+    /// </summary>
     public class ProduceResponse : IResponse, IEquatable<ProduceResponse>
     {
         public ProduceResponse(ProduceTopic topic, TimeSpan? throttleTime = null)

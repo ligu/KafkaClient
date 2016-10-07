@@ -70,24 +70,6 @@ namespace KafkaClient.Protocol
             }
         }
 
-        /// <summary>
-        /// ProduceRequest => RequiredAcks Timeout [TopicName [Partition MessageSetSize MessageSet]]
-        ///  RequiredAcks => int16   -- This field indicates how many acknowledgements the servers should receive before responding to the request. 
-        ///                             If it is 0 the server will not send any response (this is the only case where the server will not reply to 
-        ///                             a request). If it is 1, the server will wait the data is written to the local log before sending a response. 
-        ///                             If it is -1 the server will block until the message is committed by all in sync replicas before sending a response.
-        ///  Timeout => int32        -- This provides a maximum time in milliseconds the server can await the receipt of the number of acknowledgements 
-        ///                             in RequiredAcks. The timeout is not an exact limit on the request time for a few reasons: (1) it does not include 
-        ///                             network latency, (2) the timer begins at the beginning of the processing of this request so if many requests are 
-        ///                             queued due to server overload that wait time will not be included, (3) we will not terminate a local write so if 
-        ///                             the local write time exceeds this timeout it will not be respected. To get a hard timeout of this type the client 
-        ///                             should use the socket timeout.
-        ///  TopicName => string     -- The topic that data is being published to.
-        ///  Partition => int32      -- The partition that data is being published to.
-        ///  MessageSetSize => int32 -- The size, in bytes, of the message set that follows.
-        /// 
-        /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-Messagesets
-        /// </summary>
         private static byte[] EncodeRequest(IRequestContext context, ProduceRequest request)
         {
             int totalCompressedBytes = 0;
@@ -212,27 +194,6 @@ namespace KafkaClient.Protocol
         /// </summary>
         private const int ReplicaId = -1;
 
-        /// <summary>
-        /// FetchRequest => ReplicaId MaxWaitTime MinBytes [TopicName [Partition FetchOffset MaxBytes]]
-        ///  ReplicaId => int32   -- The replica id indicates the node id of the replica initiating this request. Normal client consumers should always 
-        ///                          specify this as -1 as they have no node id. Other brokers set this to be their own node id. The value -2 is accepted 
-        ///                          to allow a non-broker to issue fetch requests as if it were a replica broker for debugging purposes.
-        ///  MaxWaitTime => int32 -- The max wait time is the maximum amount of time in milliseconds to block waiting if insufficient data is available 
-        ///                          at the time the request is issued.
-        ///  MinBytes => int32    -- This is the minimum number of bytes of messages that must be available to give a response. If the client sets this 
-        ///                          to 0 the server will always respond immediately, however if there is no new data since their last request they will 
-        ///                          just get back empty message sets. If this is set to 1, the server will respond as soon as at least one partition has 
-        ///                          at least 1 byte of data or the specified timeout occurs. By setting higher values in combination with the timeout the 
-        ///                          consumer can tune for throughput and trade a little additional latency for reading only large chunks of data (e.g. 
-        ///                          setting MaxWaitTime to 100 ms and setting MinBytes to 64k would allow the server to wait up to 100ms to try to accumulate 
-        ///                          64k of data before responding).
-        ///  TopicName => string  -- The name of the topic.
-        ///  Partition => int32   -- The id of the partition the fetch is for.
-        ///  FetchOffset => int64 -- The offset to begin this fetch from.
-        ///  MaxBytes => int32    -- The maximum bytes to include in the message set for this partition. This helps bound the size of the response.
-        /// 
-        /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-FetchAPI
-        /// </summary>
         private static byte[] EncodeRequest(IRequestContext context, FetchRequest request)
         {
             using (var message = EncodeHeader(context, request)) {
@@ -260,20 +221,6 @@ namespace KafkaClient.Protocol
             }
         }
 
-        /// <summary>
-        /// OffsetRequest => ReplicaId [TopicName [Partition Time MaxNumberOfOffsets]]
-        ///  ReplicaId => int32   -- The replica id indicates the node id of the replica initiating this request. Normal client consumers should always 
-        ///                          specify this as -1 as they have no node id. Other brokers set this to be their own node id. The value -2 is accepted 
-        ///                          to allow a non-broker to issue fetch requests as if it were a replica broker for debugging purposes.
-        ///  TopicName => string  -- The name of the topic.
-        ///  Partition => int32   -- The id of the partition the fetch is for.
-        ///  Time => int64        -- Used to ask for all messages before a certain time (ms). There are two special values. Specify -1 to receive the 
-        ///                          latest offset (i.e. the offset of the next coming message) and -2 to receive the earliest available offset. Note 
-        ///                          that because offsets are pulled in descending order, asking for the earliest offset will always return you a single element.
-        ///  MaxNumberOfOffsets => int32 
-        /// 
-        /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetAPI(AKAListOffset)
-        /// </summary>
         private static byte[] EncodeRequest(IRequestContext context, OffsetRequest request)
         {
             using (var message = EncodeHeader(context, request)) {
@@ -299,12 +246,6 @@ namespace KafkaClient.Protocol
             }
         }
 
-        /// <summary>
-        /// TopicMetadataRequest => [TopicName]
-        ///  TopicName => string  -- The topics to produce metadata for. If no topics are specified fetch metadata for all topics.
-        ///
-        /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-MetadataAPI
-        /// </summary>
         private static byte[] EncodeRequest(IRequestContext context, MetadataRequest request)
         {
             using (var message = EncodeHeader(context, request)) {
@@ -315,23 +256,6 @@ namespace KafkaClient.Protocol
             }
         }
 
-        /// <summary>
-        /// OffsetCommitRequest => ConsumerGroup *ConsumerGroupGenerationId *MemberId *RetentionTime [TopicName [Partition Offset *TimeStamp Metadata]]
-        /// *ConsumerGroupGenerationId, MemberId is only version 1 (0.8.2) and above
-        /// *TimeStamp is only version 1 (0.8.2)
-        /// *RetentionTime is only version 2 (0.9.0) and above
-        ///  ConsumerGroupId => string          -- The consumer group id.
-        ///  ConsumerGroupGenerationId => int32 -- The generation of the consumer group.
-        ///  MemberId => string                 -- The consumer id assigned by the group coordinator.
-        ///  RetentionTime => int64             -- Time period in ms to retain the offset.
-        ///  TopicName => string                -- The topic to commit.
-        ///  Partition => int32                 -- The partition id.
-        ///  Offset => int64                    -- message offset to be committed.
-        ///  Timestamp => int64                 -- Commit timestamp.
-        ///  Metadata => string                 -- Any associated metadata the client wants to keep
-        ///
-        /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
-        /// </summary>
         private static byte[] EncodeRequest(IRequestContext context, OffsetCommitRequest request)
         {
             using (var message = EncodeHeader(context, request)) {
@@ -371,14 +295,6 @@ namespace KafkaClient.Protocol
             }
         }
 
-        /// <summary>
-        /// OffsetFetchRequest => ConsumerGroup [TopicName [Partition]]
-        ///  ConsumerGroup => string -- The consumer group id.
-        ///  TopicName => string     -- The topic to commit.
-        ///  Partition => int32      -- The partition id.
-        ///
-        /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
-        /// </summary>
         private static byte[] EncodeRequest(IRequestContext context, OffsetFetchRequest request)
         {
             using (var message = EncodeHeader(context, request)) {
@@ -403,12 +319,6 @@ namespace KafkaClient.Protocol
             }
         }
 
-        /// <summary>
-        /// GroupCoordinatorRequest => GroupId
-        ///  GroupId => string -- The consumer group id.
-        ///
-        /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
-        /// </summary>
         private static byte[] EncodeRequest(IRequestContext context, GroupCoordinatorRequest request)
         {
             using (var message = EncodeHeader(context, request)) {
@@ -417,11 +327,6 @@ namespace KafkaClient.Protocol
             }
         }
 
-        /// <summary>
-        /// ApiVersions => 
-        ///
-        /// From http://kafka.apache.org/protocol.html#protocol_messages
-        /// </summary>
         private static byte[] EncodeRequest(IRequestContext context, ApiVersionsRequest request)
         {
             using (var message = EncodeHeader(context, request)) {
@@ -452,25 +357,6 @@ namespace KafkaClient.Protocol
 
         #region Decode
 
-        /// <summary>
-        /// ProduceResponse => [TopicName [Partition ErrorCode Offset *Timestamp]] *ThrottleTime
-        ///  *ThrottleTime is only version 1 (0.9.0) and above
-        ///  *Timestamp is only version 2 (0.10.0) and above
-        ///  TopicName => string   -- The topic this response entry corresponds to.
-        ///  Partition => int32    -- The partition this response entry corresponds to.
-        ///  ErrorCode => int16    -- The error from this partition, if any. Errors are given on a per-partition basis because a given partition may be 
-        ///                           unavailable or maintained on a different host, while others may have successfully accepted the produce request.
-        ///  Offset => int64       -- The offset assigned to the first message in the message set appended to this partition.
-        ///  Timestamp => int64    -- If LogAppendTime is used for the topic, this is the timestamp assigned by the broker to the message set. 
-        ///                           All the messages in the message set have the same timestamp.
-        ///                           If CreateTime is used, this field is always -1. The producer can assume the timestamp of the messages in the 
-        ///                           produce request has been accepted by the broker if there is no error code returned.
-        ///                           Unit is milliseconds since beginning of the epoch (midnight Jan 1, 1970 (UTC)).
-        ///  ThrottleTime => int32 -- Duration in milliseconds for which the request was throttled due to quota violation. 
-        ///                           (Zero if the request did not violate any quota).
-        /// 
-        /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-Messagesets
-        /// </summary>
         private static IResponse ProduceResponse(IRequestContext context, byte[] payload, bool hasSize)
         {
             using (var stream = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
@@ -506,21 +392,6 @@ namespace KafkaClient.Protocol
             }
         }
 
-        /// <summary>
-        /// FetchResponse => *ThrottleTime [TopicName [Partition ErrorCode HighwaterMarkOffset MessageSetSize MessageSet]]
-        ///  *ThrottleTime is only version 1 (0.9.0) and above
-        ///  ThrottleTime => int32        -- Duration in milliseconds for which the request was throttled due to quota violation. (Zero if the request did not 
-        ///                                  violate any quota.)
-        ///  TopicName => string          -- The topic this response entry corresponds to.
-        ///  Partition => int32           -- The partition this response entry corresponds to.
-        ///  ErrorCode => int16           -- The error from this partition, if any. Errors are given on a per-partition basis because a given partition may 
-        ///                                  be unavailable or maintained on a different host, while others may have successfully accepted the produce request.
-        ///  HighwaterMarkOffset => int64 -- The offset at the end of the log for this partition. This can be used by the client to determine how many messages 
-        ///                                  behind the end of the log they are.
-        ///  MessageSetSize => int32      -- The size in bytes of the message set for this partition
-        /// 
-        /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-FetchResponse
-        /// </summary>
         private static IResponse FetchResponse(IRequestContext context, byte[] payload, bool hasSize)
         {
             using (var stream = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
@@ -631,16 +502,6 @@ namespace KafkaClient.Protocol
             }
         }
 
-        /// <summary>
-        /// OffsetResponse => [TopicName [Partition ErrorCode [Offset]]]
-        ///  TopicName => string  -- The name of the topic.
-        ///  Partition => int32   -- The id of the partition the fetch is for.
-        ///  ErrorCode => int16   -- The error from this partition, if any. Errors are given on a per-partition basis because a given partition may 
-        ///                          be unavailable or maintained on a different host, while others may have successfully accepted the produce request.
-        ///  Offset => int64
-        /// 
-        /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetAPI(AKAListOffset)
-        /// </summary>
         private static IResponse OffsetResponse(IRequestContext context, byte[] payload, bool hasSize)
         {
             using (var stream = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
@@ -667,26 +528,6 @@ namespace KafkaClient.Protocol
             }
         }
 
-        /// <summary>
-        /// MetadataResponse => [Broker][TopicMetadata]
-        ///  Broker => NodeId Host Port  (any number of brokers may be returned)
-        ///                               -- The node id, hostname, and port information for a kafka broker
-        ///   NodeId => int32             -- The broker id.
-        ///   Host => string              -- The hostname of the broker.
-        ///   Port => int32               -- The port on which the broker accepts requests.
-        ///  TopicMetadata => TopicErrorCode TopicName [PartitionMetadata]
-        ///   TopicErrorCode => int16     -- The error code for the given topic.
-        ///   TopicName => string         -- The name of the topic.
-        ///  PartitionMetadata => PartitionErrorCode PartitionId Leader Replicas Isr
-        ///   PartitionErrorCode => int16 -- The error code for the partition, if any.
-        ///   PartitionId => int32        -- The id of the partition.
-        ///   Leader => int32             -- The id of the broker acting as leader for this partition.
-        ///                                  If no leader exists because we are in the middle of a leader election this id will be -1.
-        ///   Replicas => [int32]         -- The set of all nodes that host this partition.
-        ///   Isr => [int32]              -- The set of nodes that are in sync with the leader for this partition.
-        ///
-        /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-MetadataAPI
-        /// </summary>
         private static IResponse MetadataResponse(IRequestContext context, byte[] payload, bool hasSize)
         {
             using (var stream = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
@@ -729,14 +570,6 @@ namespace KafkaClient.Protocol
             }
         }
         
-        /// <summary>
-        /// OffsetCommitResponse => [TopicName [Partition ErrorCode]]]
-        ///  TopicName => string -- The name of the topic.
-        ///  Partition => int32  -- The id of the partition.
-        ///  ErrorCode => int16  -- The error code for the partition, if any.
-        ///
-        /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
-        /// </summary>
         private static IResponse OffsetCommitResponse(IRequestContext context, byte[] payload, bool hasSize)
         {
             using (var stream = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
@@ -758,16 +591,6 @@ namespace KafkaClient.Protocol
             }
         }
 
-        /// <summary>
-        /// OffsetFetchResponse => [TopicName [Partition Offset Metadata ErrorCode]]
-        ///  TopicName => string -- The name of the topic.
-        ///  Partition => int32  -- The id of the partition.
-        ///  Offset => int64     -- The offset, or -1 if none exists.
-        ///  Metadata => string  -- The metadata associated with the topic and partition.
-        ///  ErrorCode => int16  -- The error code for the partition, if any.
-        ///
-        /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
-        /// </summary>
         private static IResponse OffsetFetchResponse(IRequestContext context, byte[] payload, bool hasSize)
         {
             using (var stream = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
@@ -791,15 +614,6 @@ namespace KafkaClient.Protocol
             }
         }
         
-        /// <summary>
-        /// GroupCoordinatorResponse => ErrorCode CoordinatorId CoordinatorHost CoordinatorPort
-        ///  ErrorCode => int16        -- The error code.
-        ///  CoordinatorId => int32    -- The broker id.
-        ///  CoordinatorHost => string -- The hostname of the broker.
-        ///  CoordinatorPort => int32  -- The port on which the broker accepts requests.
-        ///
-        /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
-        /// </summary>
         private static IResponse GroupCoordinatorResponse(IRequestContext context, byte[] payload, bool hasSize)
         {
             using (var stream = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
@@ -812,15 +626,6 @@ namespace KafkaClient.Protocol
             }
         }
 
-        /// <summary>
-        /// ApiVersionsResponse => ErrorCode [ApiKey MinVersion MaxVersion]
-        ///  ErrorCode => int16  -- The error code.
-        ///  ApiKey => int16     -- The Api Key.
-        ///  MinVersion => int16 -- The minimum supported version.
-        ///  MaxVersion => int16 -- The maximum supported version.
-        ///
-        /// From http://kafka.apache.org/protocol.html#protocol_messages
-        /// </summary>
         private static IResponse ApiVersionsResponse(IRequestContext context, byte[] payload, bool hasSize)
         {
             using (var stream = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {

@@ -5,6 +5,12 @@ using KafkaClient.Common;
 
 namespace KafkaClient.Protocol
 {
+    /// <summary>
+    /// TopicMetadataRequest => [TopicName]
+    ///  TopicName => string  -- The topics to produce metadata for. If no topics are specified fetch metadata for all topics.
+    ///
+    /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-MetadataAPI
+    /// </summary>
     public class MetadataRequest : Request, IRequest<MetadataResponse>, IEquatable<MetadataRequest>
     {
         public MetadataRequest(string topic)

@@ -98,6 +98,8 @@
     <Compile Include="CacheConfiguration.cs" />
     <Compile Include="ProducerConfiguration.cs" />
     <Compile Include="ProducerExtensions.cs" />
+    <Compile Include="Protocol\StopReplicaRequest.cs" />
+    <Compile Include="Protocol\StopReplicaResponse.cs" />
     <Compile Include="SendMessageConfiguration.cs" />
     <Compile Include="StatisticsTrackerOptions.cs" />
     <Compile Include="Protocol\ApiKeyRequestType.cs" />

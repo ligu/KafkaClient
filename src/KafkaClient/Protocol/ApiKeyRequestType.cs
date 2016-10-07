@@ -9,6 +9,7 @@
         Fetch = 1,
         Offset = 2,
         Metadata = 3,
+        StopReplica = 5,
         OffsetCommit = 8,
         OffsetFetch = 9,
         GroupCoordinator = 10,

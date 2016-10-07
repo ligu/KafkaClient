@@ -6,6 +6,21 @@ using KafkaClient.Common;
 namespace KafkaClient.Protocol
 {
     /// <summary>
+    /// OffsetCommitRequest => ConsumerGroup *ConsumerGroupGenerationId *MemberId *RetentionTime [TopicName [Partition Offset *TimeStamp Metadata]]
+    /// *ConsumerGroupGenerationId, MemberId is only version 1 (0.8.2) and above
+    /// *TimeStamp is only version 1 (0.8.2)
+    /// *RetentionTime is only version 2 (0.9.0) and above
+    ///  ConsumerGroupId => string          -- The consumer group id.
+    ///  ConsumerGroupGenerationId => int32 -- The generation of the consumer group.
+    ///  MemberId => string                 -- The consumer id assigned by the group coordinator.
+    ///  RetentionTime => int64             -- Time period in ms to retain the offset.
+    ///  TopicName => string                -- The topic to commit.
+    ///  Partition => int32                 -- The partition id.
+    ///  Offset => int64                    -- message offset to be committed.
+    ///  Timestamp => int64                 -- Commit timestamp.
+    ///  Metadata => string                 -- Any associated metadata the client wants to keep
+    ///
+    /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
     /// Class that represents the api call to commit a specific set of offsets for a given topic.  The offset is saved under the
     /// arbitrary ConsumerGroup name provided by the call.
     /// </summary>

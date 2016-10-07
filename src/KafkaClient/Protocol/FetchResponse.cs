@@ -6,6 +6,21 @@ using KafkaClient.Common;
 
 namespace KafkaClient.Protocol
 {
+    /// <summary>
+    /// FetchResponse => *ThrottleTime [TopicName [Partition ErrorCode HighwaterMarkOffset MessageSetSize MessageSet]]
+    ///  *ThrottleTime is only version 1 (0.9.0) and above
+    ///  ThrottleTime => int32        -- Duration in milliseconds for which the request was throttled due to quota violation. (Zero if the request did not 
+    ///                                  violate any quota.)
+    ///  TopicName => string          -- The topic this response entry corresponds to.
+    ///  Partition => int32           -- The partition this response entry corresponds to.
+    ///  ErrorCode => int16           -- The error from this partition, if any. Errors are given on a per-partition basis because a given partition may 
+    ///                                  be unavailable or maintained on a different host, while others may have successfully accepted the produce request.
+    ///  HighwaterMarkOffset => int64 -- The offset at the end of the log for this partition. This can be used by the client to determine how many messages 
+    ///                                  behind the end of the log they are.
+    ///  MessageSetSize => int32      -- The size in bytes of the message set for this partition
+    /// 
+    /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-FetchResponse
+    /// </summary>
     public class FetchResponse : IResponse, IEquatable<FetchResponse>
     {
         public FetchResponse(IEnumerable<FetchTopicResponse> topics = null, TimeSpan? throttleTime = null)

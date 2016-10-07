@@ -6,6 +6,12 @@ using KafkaClient.Common;
 namespace KafkaClient.Protocol
 {
     /// <summary>
+    /// OffsetFetchRequest => ConsumerGroup [TopicName [Partition]]
+    ///  ConsumerGroup => string -- The consumer group id.
+    ///  TopicName => string     -- The topic to commit.
+    ///  Partition => int32      -- The partition id.
+    ///
+    /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
     /// Class that represents both the request and the response from a kafka server of requesting a stored offset value
     /// for a given consumer group.  Essentially this part of the api allows a user to save/load a given offset position
     /// under any abritrary name.

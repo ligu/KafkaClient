@@ -5,6 +5,15 @@ using KafkaClient.Common;
 
 namespace KafkaClient.Protocol
 {
+    /// <summary>
+    /// ApiVersionsResponse => ErrorCode [ApiKey MinVersion MaxVersion]
+    ///  ErrorCode => int16  -- The error code.
+    ///  ApiKey => int16     -- The Api Key.
+    ///  MinVersion => int16 -- The minimum supported version.
+    ///  MaxVersion => int16 -- The maximum supported version.
+    ///
+    /// From http://kafka.apache.org/protocol.html#protocol_messages
+    /// </summary>
     public class ApiVersionsResponse : IResponse, IEquatable<ApiVersionsResponse>
     {
         public ApiVersionsResponse(ErrorResponseCode errorCode = ErrorResponseCode.None, IEnumerable<ApiVersionSupport> supportedVersions = null)

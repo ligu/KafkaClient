@@ -3,6 +3,15 @@ using System.Collections.Immutable;
 
 namespace KafkaClient.Protocol
 {
+    /// <summary>
+    /// GroupCoordinatorResponse => ErrorCode CoordinatorId CoordinatorHost CoordinatorPort
+    ///  ErrorCode => int16        -- The error code.
+    ///  CoordinatorId => int32    -- The broker id.
+    ///  CoordinatorHost => string -- The hostname of the broker.
+    ///  CoordinatorPort => int32  -- The port on which the broker accepts requests.
+    ///
+    /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
+    /// </summary>
     public class GroupCoordinatorResponse : Broker, IResponse, IEquatable<GroupCoordinatorResponse>
     {
         public GroupCoordinatorResponse(ErrorResponseCode errorCode, int coordinatorId, string host, int port)
