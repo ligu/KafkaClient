@@ -18,19 +18,19 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class OffsetFetchRequest : Request, IRequest<OffsetFetchResponse>, IEquatable<OffsetFetchRequest>
     {
-        public OffsetFetchRequest(string consumerGroup, params Topic[] topics) 
-            : this(consumerGroup, (IEnumerable<Topic>)topics)
+        public OffsetFetchRequest(string groupId, params Topic[] topics) 
+            : this(groupId, (IEnumerable<Topic>)topics)
         {
         }
 
-        public OffsetFetchRequest(string consumerGroup, IEnumerable<Topic> topics) 
+        public OffsetFetchRequest(string groupId, IEnumerable<Topic> topics) 
             : base(ApiKeyRequestType.OffsetFetch)
         {
-            ConsumerGroup = consumerGroup;
+            GroupId = groupId;
             Topics = ImmutableList<Topic>.Empty.AddNotNullRange(topics);
         }
 
-        public string ConsumerGroup { get; }
+        public string GroupId { get; }
 
         public IImmutableList<Topic> Topics { get; }
 
@@ -45,7 +45,7 @@ namespace KafkaClient.Protocol
         {
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
-            return string.Equals(ConsumerGroup, other.ConsumerGroup) 
+            return string.Equals(GroupId, other.GroupId) 
                 && Topics.HasEqualElementsInOrder(other.Topics);
         }
 
@@ -53,7 +53,7 @@ namespace KafkaClient.Protocol
         public override int GetHashCode()
         {
             unchecked {
-                return ((ConsumerGroup?.GetHashCode() ?? 0)*397) ^ (Topics?.GetHashCode() ?? 0);
+                return ((GroupId?.GetHashCode() ?? 0)*397) ^ (Topics?.GetHashCode() ?? 0);
             }
         }
 

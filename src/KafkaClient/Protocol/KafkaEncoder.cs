@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using KafkaClient.Common;
 using KafkaClient.Connections;
+using KafkaClient.Protocol.Types;
 
 namespace KafkaClient.Protocol
 {
@@ -187,6 +188,18 @@ namespace KafkaClient.Protocol
             }
         }
 
+        public static byte[] EncodeMetadata(ConsumerGroupProtocol groupProtocol)
+        {
+            using (var stream = new MessagePacker()) {
+                stream.Pack(groupProtocol.Version)
+                      .Pack(groupProtocol.Subscription.Count);
+                foreach (var topicName in groupProtocol.Subscription) {
+                    stream.Pack(topicName, StringPrefixEncoding.Int16);
+                }
+                return stream.Pack(groupProtocol.UserData).Payload();
+            }
+        }
+
         /// <summary>
         /// From Documentation:
         /// The replica id indicates the node id of the replica initiating this request. Normal client consumers should always specify this as -1 as they have no node id.
@@ -262,7 +275,7 @@ namespace KafkaClient.Protocol
         private static byte[] EncodeRequest(IRequestContext context, OffsetCommitRequest request)
         {
             using (var message = EncodeHeader(context, request)) {
-                message.Pack(request.ConsumerGroup, StringPrefixEncoding.Int16);
+                message.Pack(request.GroupId, StringPrefixEncoding.Int16);
                 if (context.ApiVersion >= 1) {
                     message.Pack(request.GenerationId)
                             .Pack(request.MemberId, StringPrefixEncoding.Int16);
@@ -303,7 +316,7 @@ namespace KafkaClient.Protocol
             using (var message = EncodeHeader(context, request)) {
                 var topicGroups = request.Topics.GroupBy(x => x.TopicName).ToList();
 
-                message.Pack(request.ConsumerGroup, StringPrefixEncoding.Int16)
+                message.Pack(request.GroupId, StringPrefixEncoding.Int16)
                         .Pack(topicGroups.Count);
 
                 foreach (var topicGroup in topicGroups) {
@@ -325,7 +338,7 @@ namespace KafkaClient.Protocol
         private static byte[] EncodeRequest(IRequestContext context, GroupCoordinatorRequest request)
         {
             using (var message = EncodeHeader(context, request)) {
-                message.Pack(request.ConsumerGroup, StringPrefixEncoding.Int16);
+                message.Pack(request.GroupId, StringPrefixEncoding.Int16);
                 return message.Payload();
             }
         }

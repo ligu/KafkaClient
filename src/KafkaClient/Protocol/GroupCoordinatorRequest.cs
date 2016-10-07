@@ -12,13 +12,13 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class GroupCoordinatorRequest : Request, IRequest<GroupCoordinatorResponse>, IEquatable<GroupCoordinatorRequest>
     {
-        public GroupCoordinatorRequest(string consumerGroup) 
+        public GroupCoordinatorRequest(string groupId) 
             : base(ApiKeyRequestType.GroupCoordinator)
         {
-            ConsumerGroup = consumerGroup;
+            GroupId = groupId;
         }
 
-        public string ConsumerGroup { get; }
+        public string GroupId { get; }
 
         /// <inheritdoc />
         public override bool Equals(object obj)
@@ -31,13 +31,13 @@ namespace KafkaClient.Protocol
         {
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
-            return string.Equals(ConsumerGroup, other.ConsumerGroup);
+            return string.Equals(GroupId, other.GroupId);
         }
 
         /// <inheritdoc />
         public override int GetHashCode()
         {
-            return ConsumerGroup?.GetHashCode() ?? 0;
+            return GroupId?.GetHashCode() ?? 0;
         }
 
         /// <inheritdoc />

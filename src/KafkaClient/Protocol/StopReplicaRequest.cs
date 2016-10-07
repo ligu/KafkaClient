@@ -12,6 +12,8 @@ namespace KafkaClient.Protocol
     ///   delete_partitions => INT8 -- Boolean which indicates if replica's partitions must be deleted.
     ///   topic => STRING           -- Topic name.
     ///   partition => INT32        -- Topic partition id.
+    /// 
+    /// see http://kafka.apache.org/protocol.html#protocol_messages for details
     /// </summary>
     public class StopReplicaRequest : Request, IRequest<StopReplicaResponse>, IEquatable<StopReplicaRequest>
     {

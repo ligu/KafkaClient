@@ -12,6 +12,8 @@ namespace KafkaClient.Protocol
     ///   topic => STRING     -- Topic name.
     ///   partition => INT32  -- Topic partition id.
     ///   error_code => INT16 -- Error code.
+    /// 
+    /// see http://kafka.apache.org/protocol.html#protocol_messages for details
     /// </summary>
     public class StopReplicaResponse : IResponse, IEquatable<StopReplicaResponse>
     {
