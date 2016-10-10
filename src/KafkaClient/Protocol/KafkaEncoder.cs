@@ -14,15 +14,22 @@ namespace KafkaClient.Protocol
     {
         public static T Decode<T>(IRequestContext context, byte[] payload, bool hasSize = false) where T : class, IResponse
         {
-            if (typeof(T) == typeof(FetchResponse)) return (T)FetchResponse(context, payload, hasSize);
-            if (typeof(T) == typeof(MetadataResponse)) return (T)MetadataResponse(context, payload, hasSize);
             if (typeof(T) == typeof(ProduceResponse)) return (T)ProduceResponse(context, payload, hasSize);
+            if (typeof(T) == typeof(FetchResponse)) return (T)FetchResponse(context, payload, hasSize);
             if (typeof(T) == typeof(OffsetResponse)) return (T)OffsetResponse(context, payload, hasSize);
+            if (typeof(T) == typeof(MetadataResponse)) return (T)MetadataResponse(context, payload, hasSize);
+            if (typeof(T) == typeof(StopReplicaResponse)) return (T)StopReplicaResponse(context, payload, hasSize);
             if (typeof(T) == typeof(OffsetCommitResponse)) return (T)OffsetCommitResponse(context, payload, hasSize);
             if (typeof(T) == typeof(OffsetFetchResponse)) return (T)OffsetFetchResponse(context, payload, hasSize);
             if (typeof(T) == typeof(GroupCoordinatorResponse)) return (T)GroupCoordinatorResponse(context, payload, hasSize);
+            if (typeof(T) == typeof(JoinGroupResponse)) return (T)JoinGroupResponse(context, payload, hasSize);
+            if (typeof(T) == typeof(HeartbeatResponse)) return (T)HeartbeatResponse(context, payload, hasSize);
+            if (typeof(T) == typeof(LeaveGroupResponse)) return (T)LeaveGroupResponse(context, payload, hasSize);
+            if (typeof(T) == typeof(SyncGroupResponse)) return (T)SyncGroupResponse(context, payload, hasSize);
+            if (typeof(T) == typeof(DescribeGroupsResponse)) return (T)DescribeGroupsResponse(context, payload, hasSize);
+            if (typeof(T) == typeof(ListGroupsResponse)) return (T)ListGroupsResponse(context, payload, hasSize);
+            if (typeof(T) == typeof(SaslHandshakeResponse)) return (T)SaslHandshakeResponse(context, payload, hasSize);
             if (typeof(T) == typeof(ApiVersionsResponse)) return (T)ApiVersionsResponse(context, payload, hasSize);
-            if (typeof(T) == typeof(StopReplicaResponse)) return (T)StopReplicaResponse(context, payload, hasSize);
             return default(T);
         }
 
@@ -48,75 +55,43 @@ namespace KafkaClient.Protocol
         public static byte[] EncodeRequestBytes(IRequestContext context, IRequest request)
         {
             switch (request.ApiKey) {
-                case ApiKeyRequestType.Fetch:
-                    return EncodeRequest(context, (FetchRequest) request);
                 case ApiKeyRequestType.Produce:
                     return EncodeRequest(context, (ProduceRequest) request);
-                case ApiKeyRequestType.Metadata:
-                    return EncodeRequest(context, (MetadataRequest) request);
+                case ApiKeyRequestType.Fetch:
+                    return EncodeRequest(context, (FetchRequest) request);
                 case ApiKeyRequestType.Offset:
                     return EncodeRequest(context, (OffsetRequest) request);
-                case ApiKeyRequestType.OffsetFetch:
-                    return EncodeRequest(context, (OffsetFetchRequest) request);
-                case ApiKeyRequestType.OffsetCommit:
-                    return EncodeRequest(context, (OffsetCommitRequest) request);
-                case ApiKeyRequestType.GroupCoordinator:
-                    return EncodeRequest(context, (GroupCoordinatorRequest) request);
-                case ApiKeyRequestType.ApiVersions:
-                    return EncodeRequest(context, (ApiVersionsRequest) request);
+                case ApiKeyRequestType.Metadata:
+                    return EncodeRequest(context, (MetadataRequest) request);
                 case ApiKeyRequestType.StopReplica:
                     return EncodeRequest(context, (StopReplicaRequest) request);
+                case ApiKeyRequestType.OffsetCommit:
+                    return EncodeRequest(context, (OffsetCommitRequest) request);
+                case ApiKeyRequestType.OffsetFetch:
+                    return EncodeRequest(context, (OffsetFetchRequest) request);
+                case ApiKeyRequestType.GroupCoordinator:
+                    return EncodeRequest(context, (GroupCoordinatorRequest) request);
+                case ApiKeyRequestType.JoinGroup:
+                    return EncodeRequest(context, (JoinGroupRequest) request);
+                case ApiKeyRequestType.Heartbeat:
+                    return EncodeRequest(context, (HeartbeatRequest) request);
+                case ApiKeyRequestType.LeaveGroup:
+                    return EncodeRequest(context, (LeaveGroupRequest) request);
+                case ApiKeyRequestType.SyncGroup:
+                    return EncodeRequest(context, (SyncGroupRequest) request);
+                case ApiKeyRequestType.DescribeGroups:
+                    return EncodeRequest(context, (DescribeGroupsRequest) request);
+                case ApiKeyRequestType.ListGroups:
+                    return EncodeRequest(context, (ListGroupsRequest) request);
+                case ApiKeyRequestType.SaslHandshake:
+                    return EncodeRequest(context, (SaslHandshakeRequest) request);
+                case ApiKeyRequestType.ApiVersions:
+                    return EncodeRequest(context, (ApiVersionsRequest) request);
 
                 default:
                     using (var message = EncodeHeader(context, request)) {
                         return message.Payload();
                     }
-            }
-        }
-
-        private static byte[] EncodeRequest(IRequestContext context, ProduceRequest request)
-        {
-            int totalCompressedBytes = 0;
-            var groupedPayloads = (from p in request.Payloads
-                                   group p by new
-                                   {
-                                       p.TopicName,
-                                       p.PartitionId,
-                                       p.Codec
-                                   } into tpc
-                                   select tpc).ToList();
-
-            using (var message = EncodeHeader(context, request)) {
-                message.Pack(request.Acks)
-                        .Pack((int)request.Timeout.TotalMilliseconds)
-                        .Pack(groupedPayloads.Count);
-
-                foreach (var groupedPayload in groupedPayloads) {
-                    var payloads = groupedPayload.ToList();
-                    message.Pack(groupedPayload.Key.TopicName, StringPrefixEncoding.Int16)
-                            .Pack(payloads.Count) // shouldn't this be 1?
-                            .Pack(groupedPayload.Key.PartitionId);
-
-                    switch (groupedPayload.Key.Codec)
-                    {
-                        case MessageCodec.CodecNone:
-                            message.Pack(EncodeMessageSet(payloads.SelectMany(x => x.Messages)));
-                            break;
-
-                        case MessageCodec.CodecGzip:
-                            var compressedBytes = CreateGzipCompressedMessage(payloads.SelectMany(x => x.Messages));
-                            Interlocked.Add(ref totalCompressedBytes, compressedBytes.CompressedAmount);
-                            message.Pack(EncodeMessageSet(new[] { compressedBytes.CompressedMessage }));
-                            break;
-
-                        default:
-                            throw new NotSupportedException($"Codec type of {groupedPayload.Key.Codec} is not supported.");
-                    }
-                }
-
-                var bytes = message.Payload();
-                StatisticsTracker.RecordProduceRequest(request.Payloads.Sum(x => x.Messages.Count), bytes.Length, totalCompressedBytes);
-                return bytes;
             }
         }
 
@@ -210,6 +185,52 @@ namespace KafkaClient.Protocol
         /// </summary>
         private const int ReplicaId = -1;
 
+        private static byte[] EncodeRequest(IRequestContext context, ProduceRequest request)
+        {
+            var totalCompressedBytes = 0;
+            var groupedPayloads = (from p in request.Payloads
+                                   group p by new
+                                   {
+                                       p.TopicName,
+                                       p.PartitionId,
+                                       p.Codec
+                                   } into tpc
+                                   select tpc).ToList();
+
+            using (var message = EncodeHeader(context, request)) {
+                message.Pack(request.Acks)
+                        .Pack((int)request.Timeout.TotalMilliseconds)
+                        .Pack(groupedPayloads.Count);
+
+                foreach (var groupedPayload in groupedPayloads) {
+                    var payloads = groupedPayload.ToList();
+                    message.Pack(groupedPayload.Key.TopicName, StringPrefixEncoding.Int16)
+                            .Pack(payloads.Count) // shouldn't this be 1?
+                            .Pack(groupedPayload.Key.PartitionId);
+
+                    switch (groupedPayload.Key.Codec)
+                    {
+                        case MessageCodec.CodecNone:
+                            message.Pack(EncodeMessageSet(payloads.SelectMany(x => x.Messages)));
+                            break;
+
+                        case MessageCodec.CodecGzip:
+                            var compressedBytes = CreateGzipCompressedMessage(payloads.SelectMany(x => x.Messages));
+                            Interlocked.Add(ref totalCompressedBytes, compressedBytes.CompressedAmount);
+                            message.Pack(EncodeMessageSet(new[] { compressedBytes.CompressedMessage }));
+                            break;
+
+                        default:
+                            throw new NotSupportedException($"Codec type of {groupedPayload.Key.Codec} is not supported.");
+                    }
+                }
+
+                var bytes = message.Payload();
+                StatisticsTracker.RecordProduceRequest(request.Payloads.Sum(x => x.Messages.Count), bytes.Length, totalCompressedBytes);
+                return bytes;
+            }
+        }
+
         private static byte[] EncodeRequest(IRequestContext context, FetchRequest request)
         {
             using (var message = EncodeHeader(context, request)) {
@@ -267,6 +288,23 @@ namespace KafkaClient.Protocol
             using (var message = EncodeHeader(context, request)) {
                 message.Pack(request.Topics.Count)
                         .Pack(request.Topics, StringPrefixEncoding.Int16);
+
+                return message.Payload();
+            }
+        }
+
+        private static byte[] EncodeRequest(IRequestContext context, StopReplicaRequest request)
+        {
+            using (var message = EncodeHeader(context, request)) {
+                message.Pack(request.ControllerId)
+                    .Pack(request.ControllerEpoch)
+                    .Pack(request.DeletePartitions ? (byte)1 : (byte)0)
+                    .Pack(request.Topics.Count);
+
+                foreach (var topic in request.Topics) {
+                    message.Pack(topic.TopicName, StringPrefixEncoding.Int16)
+                           .Pack(topic.PartitionId);
+                }
 
                 return message.Payload();
             }
@@ -343,26 +381,94 @@ namespace KafkaClient.Protocol
             }
         }
 
-        private static byte[] EncodeRequest(IRequestContext context, ApiVersionsRequest request)
+        private static byte[] EncodeRequest(IRequestContext context, JoinGroupRequest request)
+        {
+            using (var message = EncodeHeader(context, request)) {
+                message.Pack(request.GroupId, StringPrefixEncoding.Int16)
+                    .Pack((int)request.SessionTimeout.TotalMilliseconds)
+                    .Pack(request.MemberId, StringPrefixEncoding.Int16)
+                    .Pack(request.ProtocolType, StringPrefixEncoding.Int16)
+                    .Pack(request.GroupProtocols.Count);
+
+                foreach (var protocol in request.GroupProtocols) {
+                    message.Pack(protocol.Name, StringPrefixEncoding.Int16)
+                           .Pack(protocol.Metadata);
+                }
+
+                return message.Payload();
+            }
+        }
+
+        private static byte[] EncodeRequest(IRequestContext context, HeartbeatRequest request)
+        {
+            using (var message = EncodeHeader(context, request)) {
+                message.Pack(request.GroupId, StringPrefixEncoding.Int16)
+                    .Pack(request.GenerationId)
+                    .Pack(request.MemberId, StringPrefixEncoding.Int16);
+
+                return message.Payload();
+            }
+        }
+
+        private static byte[] EncodeRequest(IRequestContext context, LeaveGroupRequest request)
+        {
+            using (var message = EncodeHeader(context, request)) {
+                message.Pack(request.GroupId, StringPrefixEncoding.Int16)
+                    .Pack(request.MemberId, StringPrefixEncoding.Int16);
+
+                return message.Payload();
+            }
+        }
+
+        private static byte[] EncodeRequest(IRequestContext context, SyncGroupRequest request)
+        {
+            using (var message = EncodeHeader(context, request)) {
+                message.Pack(request.GroupId, StringPrefixEncoding.Int16)
+                    .Pack(request.GenerationId)
+                    .Pack(request.MemberId, StringPrefixEncoding.Int16)
+                    .Pack(request.GroupAssignments.Count);
+
+                foreach (var assignment in request.GroupAssignments) {
+                    message.Pack(assignment.MemberId, StringPrefixEncoding.Int16)
+                           .Pack(assignment.MemberAssignment);
+                }
+
+                return message.Payload();
+            }
+        }
+
+        private static byte[] EncodeRequest(IRequestContext context, DescribeGroupsRequest request)
+        {
+            using (var message = EncodeHeader(context, request)) {
+                message.Pack(request.GroupIds.Count);
+
+                foreach (var groupId in request.GroupIds) {
+                    message.Pack(groupId, StringPrefixEncoding.Int16);
+                }
+
+                return message.Payload();
+            }
+        }
+
+        private static byte[] EncodeRequest(IRequestContext context, ListGroupsRequest request)
         {
             using (var message = EncodeHeader(context, request)) {
                 return message.Payload();
             }
         }
 
-        private static byte[] EncodeRequest(IRequestContext context, StopReplicaRequest request)
+        private static byte[] EncodeRequest(IRequestContext context, SaslHandshakeRequest request)
         {
             using (var message = EncodeHeader(context, request)) {
-                message.Pack(request.ControllerId)
-                    .Pack(request.ControllerEpoch)
-                    .Pack(request.DeletePartitions ? (byte)1 : (byte)0)
-                    .Pack(request.Topics.Count);
+                message.Pack(request.Mechanism, StringPrefixEncoding.Int16);
 
-                foreach (var topic in request.Topics) {
-                    message.Pack(topic.TopicName, StringPrefixEncoding.Int16)
-                           .Pack(topic.PartitionId);
-                }
+                return message.Payload();
+            }
+        }
 
+        private static byte[] EncodeRequest(IRequestContext context, ApiVersionsRequest request)
+        {
+            using (var message = EncodeHeader(context, request)) {
                 return message.Payload();
             }
         }
@@ -389,68 +495,6 @@ namespace KafkaClient.Protocol
         #endregion
 
         #region Decode
-
-        private static IResponse ProduceResponse(IRequestContext context, byte[] payload, bool hasSize)
-        {
-            using (var stream = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
-                TimeSpan? throttleTime = null;
-
-                var topics = new List<ProduceTopic>();
-                var topicCount = stream.ReadInt32();
-                for (int i = 0; i < topicCount; i++) {
-                    var topicName = stream.ReadInt16String();
-
-                    var partitionCount = stream.ReadInt32();
-                    for (int j = 0; j < partitionCount; j++) {
-                        var partitionId = stream.ReadInt32();
-                        var errorCode = (ErrorResponseCode) stream.ReadInt16();
-                        var offset = stream.ReadInt64();
-                        DateTime? timestamp = null;
-
-                        if (context.ApiVersion >= 2) {
-                            var milliseconds = stream.ReadInt64();
-                            if (milliseconds >= 0) {
-                                timestamp = milliseconds.FromUnixEpochMilliseconds();
-                            }
-                        }
-
-                        topics.Add(new ProduceTopic(topicName, partitionId, errorCode, offset, timestamp));
-                    }
-                }
-
-                if (context.ApiVersion >= 1) {
-                    throttleTime = TimeSpan.FromMilliseconds(stream.ReadInt32());
-                }
-                return new ProduceResponse(topics, throttleTime);
-            }
-        }
-
-        private static IResponse FetchResponse(IRequestContext context, byte[] payload, bool hasSize)
-        {
-            using (var stream = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
-                TimeSpan? throttleTime = null;
-
-                if (context.ApiVersion >= 1) {
-                    throttleTime = TimeSpan.FromMilliseconds(stream.ReadInt32());
-                }
-
-                var topics = new List<FetchTopicResponse>();
-                var topicCount = stream.ReadInt32();
-                for (int t = 0; t < topicCount; t++) {
-                    var topicName = stream.ReadInt16String();
-
-                    var partitionCount = stream.ReadInt32();
-                    for (int p = 0; p < partitionCount; p++) {
-                        var partitionId = stream.ReadInt32();
-                        var errorCode = (ErrorResponseCode) stream.ReadInt16();
-                        var highWaterMarkOffset = stream.ReadInt64();
-                        var messages = DecodeMessageSet(stream.ReadIntPrefixedBytes(), partitionId).ToList();
-                        topics.Add(new FetchTopicResponse(topicName, partitionId, highWaterMarkOffset, errorCode, messages));
-                    }
-                }
-                return new FetchResponse(topics, throttleTime);
-            }
-        }
 
         /// <summary>
         /// Decode a byte[] that represents a collection of messages.
@@ -501,8 +545,7 @@ namespace KafkaClient.Protocol
             using (var stream = new BigEndianBinaryReader(payload, 4))
             {
                 var crcHash = BitConverter.ToUInt32(stream.CrcHash(), 0);
-                if (crc != crcHash)
-                    throw new CrcValidationException("Buffer did not match CRC validation.") { Crc = crc, CalculatedCrc = crcHash };
+                if (crc != crcHash) throw new CrcValidationException("Buffer did not match CRC validation.") { Crc = crc, CalculatedCrc = crcHash };
 
                 var messageVersion = stream.ReadByte();
                 var attribute = stream.ReadByte();
@@ -535,23 +578,84 @@ namespace KafkaClient.Protocol
             }
         }
 
+        private static IResponse ProduceResponse(IRequestContext context, byte[] payload, bool hasSize)
+        {
+            using (var stream = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
+                TimeSpan? throttleTime = null;
+
+                var topics = new List<ProduceTopic>();
+                var topicCount = stream.ReadInt32();
+                for (var i = 0; i < topicCount; i++) {
+                    var topicName = stream.ReadInt16String();
+
+                    var partitionCount = stream.ReadInt32();
+                    for (var j = 0; j < partitionCount; j++) {
+                        var partitionId = stream.ReadInt32();
+                        var errorCode = (ErrorResponseCode) stream.ReadInt16();
+                        var offset = stream.ReadInt64();
+                        DateTime? timestamp = null;
+
+                        if (context.ApiVersion >= 2) {
+                            var milliseconds = stream.ReadInt64();
+                            if (milliseconds >= 0) {
+                                timestamp = milliseconds.FromUnixEpochMilliseconds();
+                            }
+                        }
+
+                        topics.Add(new ProduceTopic(topicName, partitionId, errorCode, offset, timestamp));
+                    }
+                }
+
+                if (context.ApiVersion >= 1) {
+                    throttleTime = TimeSpan.FromMilliseconds(stream.ReadInt32());
+                }
+                return new ProduceResponse(topics, throttleTime);
+            }
+        }
+
+        private static IResponse FetchResponse(IRequestContext context, byte[] payload, bool hasSize)
+        {
+            using (var stream = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
+                TimeSpan? throttleTime = null;
+
+                if (context.ApiVersion >= 1) {
+                    throttleTime = TimeSpan.FromMilliseconds(stream.ReadInt32());
+                }
+
+                var topics = new List<FetchTopicResponse>();
+                var topicCount = stream.ReadInt32();
+                for (var t = 0; t < topicCount; t++) {
+                    var topicName = stream.ReadInt16String();
+
+                    var partitionCount = stream.ReadInt32();
+                    for (var p = 0; p < partitionCount; p++) {
+                        var partitionId = stream.ReadInt32();
+                        var errorCode = (ErrorResponseCode) stream.ReadInt16();
+                        var highWaterMarkOffset = stream.ReadInt64();
+                        var messages = DecodeMessageSet(stream.ReadIntPrefixedBytes(), partitionId).ToList();
+                        topics.Add(new FetchTopicResponse(topicName, partitionId, highWaterMarkOffset, errorCode, messages));
+                    }
+                }
+                return new FetchResponse(topics, throttleTime);
+            }
+        }
+
         private static IResponse OffsetResponse(IRequestContext context, byte[] payload, bool hasSize)
         {
             using (var stream = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
                 var topics = new List<OffsetTopic>();
                 var topicCount = stream.ReadInt32();
-                for (int t = 0; t < topicCount; t++) {
+                for (var t = 0; t < topicCount; t++) {
                     var topicName = stream.ReadInt16String();
 
                     var partitionCount = stream.ReadInt32();
-                    for (int p = 0; p < partitionCount; p++) {
+                    for (var p = 0; p < partitionCount; p++) {
                         var partitionId = stream.ReadInt32();
                         var errorCode = (ErrorResponseCode) stream.ReadInt16();
 
-                        var offsets = new List<long>();
-                        var offsetCount = stream.ReadInt32();
-                        for (int o = 0; o < offsetCount; o++) {
-                            offsets.Add(stream.ReadInt64());
+                        var offsets = new long[stream.ReadInt32()];
+                        for (var o = 0; o < offsets.Length; o++) {
+                            offsets[o] = stream.ReadInt64();
                         }
 
                         topics.Add(new OffsetTopic(topicName, partitionId, errorCode, offsets));
@@ -564,25 +668,22 @@ namespace KafkaClient.Protocol
         private static IResponse MetadataResponse(IRequestContext context, byte[] payload, bool hasSize)
         {
             using (var stream = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
-                var brokers = new List<Broker>();
-                var brokerCount = stream.ReadInt32();
-                for (var b = 0; b < brokerCount; b++) {
+                var brokers = new Broker[stream.ReadInt32()];
+                for (var b = 0; b < brokers.Length; b++) {
                     var brokerId = stream.ReadInt32();
                     var host = stream.ReadInt16String();
                     var port = stream.ReadInt32();
 
-                    brokers.Add(new Broker(brokerId, host, port));
+                    brokers[b] = new Broker(brokerId, host, port);
                 }
 
-                var topics = new List<MetadataTopic>();
-                var topicCount = stream.ReadInt32();
-                for (var t = 0; t < topicCount; t++) {
+                var topics = new MetadataTopic[stream.ReadInt32()];
+                for (var t = 0; t < topics.Length; t++) {
                     var topicError = (ErrorResponseCode) stream.ReadInt16();
                     var topicName = stream.ReadInt16String();
 
-                    var partitions = new List<MetadataPartition>();
-                    var partitionCount = stream.ReadInt32();
-                    for (var p = 0; p < partitionCount; p++) {
+                    var partitions = new MetadataPartition[stream.ReadInt32()];
+                    for (var p = 0; p < partitions.Length; p++) {
                         var partitionError = (ErrorResponseCode) stream.ReadInt16();
                         var partitionId = stream.ReadInt32();
                         var leaderId = stream.ReadInt32();
@@ -593,13 +694,29 @@ namespace KafkaClient.Protocol
                         var isrCount = stream.ReadInt32();
                         var isrs = isrCount.Repeat(stream.ReadInt32).ToArray();
 
-                        partitions.Add(new MetadataPartition(partitionId, leaderId, partitionError, replicas, isrs));
+                        partitions[p] = new MetadataPartition(partitionId, leaderId, partitionError, replicas, isrs);
 
                     }
-                    topics.Add(new MetadataTopic(topicName, topicError, partitions));
+                    topics[t] = new MetadataTopic(topicName, topicError, partitions);
                 }
 
                 return new MetadataResponse(brokers, topics);
+            }
+        }
+
+        private static IResponse StopReplicaResponse(IRequestContext context, byte[] payload, bool hasSize)
+        {
+            using (var stream = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
+                var errorCode = (ErrorResponseCode)stream.ReadInt16();
+
+                var topics = new TopicResponse[stream.ReadInt32()];
+                for (var i = 0; i < topics.Length; i++) {
+                    var topicName = stream.ReadInt16String();
+                    var partitionId = stream.ReadInt32();
+                    var topicErrorCode = (ErrorResponseCode)stream.ReadInt16();
+                    topics[i] = new TopicResponse(topicName, partitionId, topicErrorCode);
+                }
+                return new StopReplicaResponse(errorCode, topics);
             }
         }
         
@@ -608,11 +725,11 @@ namespace KafkaClient.Protocol
             using (var stream = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
                 var topics = new List<TopicResponse>();
                 var topicCount = stream.ReadInt32();
-                for (int t = 0; t < topicCount; t++) {
+                for (var t = 0; t < topicCount; t++) {
                     var topicName = stream.ReadInt16String();
 
                     var partitionCount = stream.ReadInt32();
-                    for (int p = 0; p < partitionCount; p++) {
+                    for (var p = 0; p < partitionCount; p++) {
                         var partitionId = stream.ReadInt32();
                         var errorCode = (ErrorResponseCode) stream.ReadInt16();
 
@@ -629,11 +746,11 @@ namespace KafkaClient.Protocol
             using (var stream = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
                 var topics = new List<OffsetFetchTopic>();
                 var topicCount = stream.ReadInt32();
-                for (int t = 0; t < topicCount; t++) {
+                for (var t = 0; t < topicCount; t++) {
                     var topicName = stream.ReadInt16String();
 
                     var partitionCount = stream.ReadInt32();
-                    for (int p = 0; p < partitionCount; p++) {
+                    for (var p = 0; p < partitionCount; p++) {
                         var partitionId = stream.ReadInt32();
                         var offset = stream.ReadInt64();
                         var metadata = stream.ReadInt16String();
@@ -659,6 +776,108 @@ namespace KafkaClient.Protocol
             }
         }
 
+        private static IResponse JoinGroupResponse(IRequestContext context, byte[] payload, bool hasSize)
+        {
+            using (var stream = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
+                var errorCode = (ErrorResponseCode)stream.ReadInt16();
+                var generationId = stream.ReadInt32();
+                var groupProtocol = stream.ReadInt16String();
+                var leaderId = stream.ReadInt16String();
+                var memberId = stream.ReadInt16String();
+
+                var members = new GroupMember[stream.ReadInt32()];
+                for (var m = 0; m < members.Length; m++) {
+                    var id = stream.ReadInt16String();
+                    var metadata = stream.ReadIntPrefixedBytes();
+                    members[m] = new GroupMember(id, metadata);
+                }
+
+                return new JoinGroupResponse(errorCode, generationId, groupProtocol, leaderId, memberId, members);
+            }
+        }
+
+        private static IResponse HeartbeatResponse(IRequestContext context, byte[] payload, bool hasSize)
+        {
+            using (var stream = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
+                var errorCode = (ErrorResponseCode)stream.ReadInt16();
+
+                return new HeartbeatResponse(errorCode);
+            }
+        }
+
+        private static IResponse LeaveGroupResponse(IRequestContext context, byte[] payload, bool hasSize)
+        {
+            using (var stream = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
+                var errorCode = (ErrorResponseCode)stream.ReadInt16();
+
+                return new LeaveGroupResponse(errorCode);
+            }
+        }
+
+        private static IResponse SyncGroupResponse(IRequestContext context, byte[] payload, bool hasSize)
+        {
+            using (var stream = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
+                var errorCode = (ErrorResponseCode)stream.ReadInt16();
+                var memberAssignment = stream.ReadIntPrefixedBytes();
+
+                return new SyncGroupResponse(errorCode, memberAssignment);
+            }
+        }
+
+        private static IResponse DescribeGroupsResponse(IRequestContext context, byte[] payload, bool hasSize)
+        {
+            using (var stream = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
+                var groups = new DescribeGroup[stream.ReadInt32()];
+                for (var g = 0; g < groups.Length; g++) {
+                    var errorCode = (ErrorResponseCode)stream.ReadInt16();
+                    var groupId = stream.ReadInt16String();
+                    var state = stream.ReadInt16String();
+                    var protocolType = stream.ReadInt16String();
+                    var protocol = stream.ReadInt16String();
+                    var members = new DescribeGroupMember[stream.ReadInt32()];
+                    for (var m = 0; m < members.Length; m++) {
+                        var memberId = stream.ReadInt16String();
+                        var clientId = stream.ReadInt16String();
+                        var clientHost = stream.ReadInt16String();
+                        var memberMetadata = stream.ReadIntPrefixedBytes();
+                        var memberAssignment = stream.ReadIntPrefixedBytes();
+                        members[m] = new DescribeGroupMember(memberId, clientId, clientHost, memberMetadata, memberAssignment);
+                    }
+                    groups[g] = new DescribeGroup(errorCode, groupId, state, protocolType, protocol, members);
+                }
+
+                return new DescribeGroupsResponse(groups);
+            }
+        }
+
+        private static IResponse ListGroupsResponse(IRequestContext context, byte[] payload, bool hasSize)
+        {
+            using (var stream = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
+                var errorCode = (ErrorResponseCode)stream.ReadInt16();
+                var groups = new ListGroup[stream.ReadInt32()];
+                for (var g = 0; g < groups.Length; g++) {
+                    var groupId = stream.ReadInt16String();
+                    var protocolType = stream.ReadInt16String();
+                    groups[g] = new ListGroup(groupId, protocolType);
+                }
+
+                return new ListGroupsResponse(errorCode, groups);
+            }
+        }
+
+        private static IResponse SaslHandshakeResponse(IRequestContext context, byte[] payload, bool hasSize)
+        {
+            using (var stream = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
+                var errorCode = (ErrorResponseCode)stream.ReadInt16();
+                var enabledMechanisms = new string[stream.ReadInt32()];
+                for (var m = 0; m < enabledMechanisms.Length; m++) {
+                    enabledMechanisms[m] = stream.ReadInt16String();
+                }
+
+                return new SaslHandshakeResponse(errorCode, enabledMechanisms);
+            }
+        }
+
         private static IResponse ApiVersionsResponse(IRequestContext context, byte[] payload, bool hasSize)
         {
             using (var stream = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
@@ -672,22 +891,6 @@ namespace KafkaClient.Protocol
                     apiKeys[i] = new ApiVersionSupport(apiKey, minVersion, maxVersion);
                 }
                 return new ApiVersionsResponse(errorCode, apiKeys);
-            }
-        }        
-
-        private static IResponse StopReplicaResponse(IRequestContext context, byte[] payload, bool hasSize)
-        {
-            using (var stream = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
-                var errorCode = (ErrorResponseCode)stream.ReadInt16();
-
-                var topics = new TopicResponse[stream.ReadInt32()];
-                for (var i = 0; i < topics.Length; i++) {
-                    var topicName = stream.ReadInt16String();
-                    var partitionId = stream.ReadInt32();
-                    var topicErrorCode = (ErrorResponseCode)stream.ReadInt16();
-                    topics[i] = new TopicResponse(topicName, partitionId, topicErrorCode);
-                }
-                return new StopReplicaResponse(errorCode, topics);
             }
         }        
 

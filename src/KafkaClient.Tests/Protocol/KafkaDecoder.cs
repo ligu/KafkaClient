@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using KafkaClient.Common;
 using KafkaClient.Protocol;
+using KafkaClient.Protocol.Types;
 
 namespace KafkaClient.Tests.Protocol
 {
@@ -27,15 +28,22 @@ namespace KafkaClient.Tests.Protocol
 
         public static T Decode<T>(IRequestContext context, byte[] payload) where T : class, IRequest
         {
-            if (typeof(T) == typeof(FetchRequest)) return (T)FetchRequest(context, payload);
-            if (typeof(T) == typeof(MetadataRequest)) return (T)MetadataRequest(context, payload);
             if (typeof(T) == typeof(ProduceRequest)) return (T)ProduceRequest(context, payload);
+            if (typeof(T) == typeof(FetchRequest)) return (T)FetchRequest(context, payload);
             if (typeof(T) == typeof(OffsetRequest)) return (T)OffsetRequest(context, payload);
+            if (typeof(T) == typeof(MetadataRequest)) return (T)MetadataRequest(context, payload);
+            if (typeof(T) == typeof(StopReplicaRequest)) return (T)StopReplicaRequest(context, payload);
             if (typeof(T) == typeof(OffsetCommitRequest)) return (T)OffsetCommitRequest(context, payload);
             if (typeof(T) == typeof(OffsetFetchRequest)) return (T)OffsetFetchRequest(context, payload);
             if (typeof(T) == typeof(GroupCoordinatorRequest)) return (T)GroupCoordinatorRequest(context, payload);
+            if (typeof(T) == typeof(JoinGroupRequest)) return (T)JoinGroupRequest(context, payload);
+            if (typeof(T) == typeof(HeartbeatRequest)) return (T)HeartbeatRequest(context, payload);
+            if (typeof(T) == typeof(LeaveGroupRequest)) return (T)LeaveGroupRequest(context, payload);
+            if (typeof(T) == typeof(SyncGroupRequest)) return (T)SyncGroupRequest(context, payload);
+            if (typeof(T) == typeof(DescribeGroupsRequest)) return (T)DescribeGroupsRequest(context, payload);
+            if (typeof(T) == typeof(ListGroupsRequest)) return (T)ListGroupsRequest(context, payload);
+            if (typeof(T) == typeof(SaslHandshakeRequest)) return (T)SaslHandshakeRequest(context, payload);
             if (typeof(T) == typeof(ApiVersionsRequest)) return (T)ApiVersionsRequest(context, payload);
-            if (typeof(T) == typeof(StopReplicaRequest)) return (T)StopReplicaRequest(context, payload);
             return default(T);
         }
 
@@ -51,15 +59,23 @@ namespace KafkaClient.Tests.Protocol
                 //  correlation_id => INT32  -- The user-supplied value passed in with the request
                 writer.Write(context.CorrelationId);
 
-                var isEncoded = TryEncodeResponse(writer, context, response as FetchResponse)
-                || TryEncodeResponse(writer, context, response as MetadataResponse)
-                || TryEncodeResponse(writer, context, response as ProduceResponse)
+                var isEncoded = 
+                   TryEncodeResponse(writer, context, response as ProduceResponse)
+                || TryEncodeResponse(writer, context, response as FetchResponse)
                 || TryEncodeResponse(writer, context, response as OffsetResponse)
+                || TryEncodeResponse(writer, context, response as MetadataResponse)
+                || TryEncodeResponse(writer, context, response as StopReplicaResponse)
                 || TryEncodeResponse(writer, context, response as OffsetCommitResponse)
                 || TryEncodeResponse(writer, context, response as OffsetFetchResponse)
                 || TryEncodeResponse(writer, context, response as GroupCoordinatorResponse)
-                || TryEncodeResponse(writer, context, response as ApiVersionsResponse)
-                || TryEncodeResponse(writer, context, response as StopReplicaResponse);
+                || TryEncodeResponse(writer, context, response as JoinGroupResponse)
+                || TryEncodeResponse(writer, context, response as HeartbeatResponse)
+                || TryEncodeResponse(writer, context, response as LeaveGroupResponse)
+                || TryEncodeResponse(writer, context, response as SyncGroupResponse)
+                || TryEncodeResponse(writer, context, response as DescribeGroupsResponse)
+                || TryEncodeResponse(writer, context, response as ListGroupsResponse)
+                || TryEncodeResponse(writer, context, response as SaslHandshakeResponse)
+                || TryEncodeResponse(writer, context, response as ApiVersionsResponse);
 
                 data = new byte[stream.Position];
                 stream.Position = 0;
@@ -145,14 +161,30 @@ namespace KafkaClient.Tests.Protocol
         private static IRequest MetadataRequest(IRequestContext context, byte[] data)
         {
             using (var stream = ReadHeader(data)) {
-                var topicNames = new List<string>();
-                var count = stream.ReadInt32();
-                for (var t = 0; t < count; t++) {
-                    var topicName = stream.ReadInt16String();
-                    topicNames.Add(topicName);
+                var topicNames = new string[stream.ReadInt32()];
+                for (var t = 0; t < topicNames.Length; t++) {
+                    topicNames[t] = stream.ReadInt16String();
                 }
 
                 return new MetadataRequest(topicNames);
+            }
+        }
+
+        private static IRequest StopReplicaRequest(IRequestContext context, byte[] payload)
+        {
+            using (var stream = ReadHeader(payload)) {
+                var controllerId = stream.ReadInt32();
+                var controllerEpoch = stream.ReadInt32();
+                var shouldDelete = stream.ReadBoolean();
+
+                var topics = new Topic[stream.ReadInt32()];
+                for (var t = 0; t < topics.Length; t++) {
+                    var topicName = stream.ReadInt16String();
+                    var partitionId = stream.ReadInt32();
+                    topics[t] = new Topic(topicName, partitionId);
+                }
+
+                return new StopReplicaRequest(controllerId, controllerEpoch, topics, shouldDelete);
             }
         }
         
@@ -228,29 +260,96 @@ namespace KafkaClient.Tests.Protocol
             }
         }
 
+        private static IRequest JoinGroupRequest(IRequestContext context, byte[] payload)
+        {
+            using (var stream = ReadHeader(payload)) {
+                var groupId = stream.ReadInt16String();
+                var sessionTimeout = TimeSpan.FromMilliseconds(stream.ReadInt32());
+                var memberId = stream.ReadInt16String();
+                var protocolType = stream.ReadInt16String();
+                var groupProtocols = new GroupProtocol[stream.ReadInt32()];
+
+                for (var g = 0; g < groupProtocols.Length; g++) {
+                    var protocolName = stream.ReadInt16String();
+                    var metadata = stream.ReadIntPrefixedBytes();
+                    groupProtocols[g] = new GroupProtocol(protocolName, metadata);
+                }
+
+                return new JoinGroupRequest(groupId, sessionTimeout, memberId, protocolType, groupProtocols);
+            }
+        }
+
+        private static IRequest HeartbeatRequest(IRequestContext context, byte[] payload)
+        {
+            using (var stream = ReadHeader(payload)) {
+                var groupId = stream.ReadInt16String();
+                var generationId = stream.ReadInt32();
+                var memberId = stream.ReadInt16String();
+
+                return new HeartbeatRequest(groupId, generationId, memberId);
+            }
+        }
+
+        private static IRequest LeaveGroupRequest(IRequestContext context, byte[] payload)
+        {
+            using (var stream = ReadHeader(payload)) {
+                var groupId = stream.ReadInt16String();
+                var memberId = stream.ReadInt16String();
+
+                return new LeaveGroupRequest(groupId, memberId);
+            }
+        }
+
+        private static IRequest SyncGroupRequest(IRequestContext context, byte[] payload)
+        {
+            using (var stream = ReadHeader(payload)) {
+                var groupId = stream.ReadInt16String();
+                var generationId = stream.ReadInt32();
+                var memberId = stream.ReadInt16String();
+
+                var groupAssignments = new SyncGroupAssignment[stream.ReadInt32()];
+                for (var a = 0; a < groupAssignments.Length; a++) {
+                    var groupMemberId = stream.ReadInt16String();
+                    var assignment = stream.ReadIntPrefixedBytes();
+
+                    groupAssignments[a] = new SyncGroupAssignment(groupMemberId, assignment);
+                }
+
+                return new SyncGroupRequest(groupId, generationId, memberId, groupAssignments);
+            }
+        }
+
+        private static IRequest DescribeGroupsRequest(IRequestContext context, byte[] payload)
+        {
+            using (var stream = ReadHeader(payload)) {
+                var groupIds = new string[stream.ReadInt32()];
+                for (var i = 0; i < groupIds.Length; i++) {
+                    groupIds[i] = stream.ReadInt16String();
+                }
+
+                return new DescribeGroupsRequest(groupIds);
+            }
+        }
+
+        private static IRequest ListGroupsRequest(IRequestContext context, byte[] payload)
+        {
+            using (var stream = ReadHeader(payload)) {
+                return new ListGroupsRequest();
+            }
+        }
+
+        private static IRequest SaslHandshakeRequest(IRequestContext context, byte[] payload)
+        {
+            using (var stream = ReadHeader(payload)) {
+                var mechanism = stream.ReadInt16String();
+                return new SaslHandshakeRequest(mechanism);
+            }
+        }
+
         private static IRequest ApiVersionsRequest(IRequestContext context, byte[] payload)
         {
             using (var stream = ReadHeader(payload)) {
                 return new ApiVersionsRequest();
-            }
-        }
-
-        private static IRequest StopReplicaRequest(IRequestContext context, byte[] payload)
-        {
-            using (var stream = ReadHeader(payload)) {
-                var controllerId = stream.ReadInt32();
-                var controllerEpoch = stream.ReadInt32();
-                var shouldDelete = stream.ReadBoolean();
-
-                var count = stream.ReadInt32();
-                var topics = new List<Topic>();
-                for (var i = 0; i < count; i++) {
-                    var topicName = stream.ReadInt16String();
-                    var partitionId = stream.ReadInt32();
-                    topics.Add(new Topic(topicName, partitionId));
-                }
-
-                return new StopReplicaRequest(controllerId, controllerEpoch, topics, shouldDelete);
             }
         }
         
@@ -392,6 +491,20 @@ namespace KafkaClient.Tests.Protocol
             }
             return true;
         }
+
+        private static bool TryEncodeResponse(BigEndianBinaryWriter writer, IRequestContext context, StopReplicaResponse response)
+        {
+            if (response == null) return false;
+
+            writer.Write((short)response.ErrorCode);
+            writer.Write(response.Topics.Count);
+            foreach (var topic in response.Topics) {
+                writer.Write(topic.TopicName, StringPrefixEncoding.Int16);
+                writer.Write(topic.PartitionId);
+                writer.Write((short)topic.ErrorCode);
+            }
+            return true;
+        }
         
         private static bool TryEncodeResponse(BigEndianBinaryWriter writer, IRequestContext context, OffsetCommitResponse response)
         {
@@ -442,6 +555,97 @@ namespace KafkaClient.Tests.Protocol
             return true;
         }
 
+        private static bool TryEncodeResponse(BigEndianBinaryWriter writer, IRequestContext context, JoinGroupResponse response)
+        {
+            if (response == null) return false;
+
+            writer.Write((short)response.ErrorCode);
+            writer.Write(response.GenerationId);
+            writer.Write(response.GroupProtocol, StringPrefixEncoding.Int16);
+            writer.Write(response.LeaderId, StringPrefixEncoding.Int16);
+            writer.Write(response.MemberId, StringPrefixEncoding.Int16);
+            writer.Write(response.Members.Count);
+            foreach (var member in response.Members) {
+                writer.Write(member.MemberId, StringPrefixEncoding.Int16);
+                writer.Write(member.Metadata, StringPrefixEncoding.Int32);
+            }
+            return true;
+        }
+
+        private static bool TryEncodeResponse(BigEndianBinaryWriter writer, IRequestContext context, HeartbeatResponse response)
+        {
+            if (response == null) return false;
+
+            writer.Write((short)response.ErrorCode);
+            return true;
+        }
+
+        private static bool TryEncodeResponse(BigEndianBinaryWriter writer, IRequestContext context, LeaveGroupResponse response)
+        {
+            if (response == null) return false;
+
+            writer.Write((short)response.ErrorCode);
+            return true;
+        }
+
+        private static bool TryEncodeResponse(BigEndianBinaryWriter writer, IRequestContext context, SyncGroupResponse response)
+        {
+            if (response == null) return false;
+
+            writer.Write((short)response.ErrorCode);
+            writer.Write(response.MemberAssignment, StringPrefixEncoding.Int32);
+            return true;
+        }
+
+        private static bool TryEncodeResponse(BigEndianBinaryWriter writer, IRequestContext context, DescribeGroupsResponse response)
+        {
+            if (response == null) return false;
+
+            writer.Write(response.Groups.Count);
+            foreach (var group in response.Groups) {
+                writer.Write((short)group.ErrorCode);
+                writer.Write(group.GroupId, StringPrefixEncoding.Int16);
+                writer.Write(group.State, StringPrefixEncoding.Int16);
+                writer.Write(group.ProtocolType, StringPrefixEncoding.Int16);
+                writer.Write(group.Protocol, StringPrefixEncoding.Int16);
+
+                writer.Write(group.Members.Count);
+                foreach (var member in group.Members) {
+                    writer.Write(member.MemberId, StringPrefixEncoding.Int16);
+                    writer.Write(member.ClientId, StringPrefixEncoding.Int16);
+                    writer.Write(member.ClientHost, StringPrefixEncoding.Int16);
+                    writer.Write(member.MemberMetadata, StringPrefixEncoding.Int32);
+                    writer.Write(member.MemberAssignment, StringPrefixEncoding.Int32);
+                }
+            }
+            return true;
+        }
+
+        private static bool TryEncodeResponse(BigEndianBinaryWriter writer, IRequestContext context, ListGroupsResponse response)
+        {
+            if (response == null) return false;
+
+            writer.Write((short)response.ErrorCode);
+            writer.Write(response.Groups.Count);
+            foreach (var group in response.Groups) {
+                writer.Write(group.GroupId, StringPrefixEncoding.Int16);
+                writer.Write(group.ProtocolType, StringPrefixEncoding.Int16);
+            }
+            return true;
+        }
+
+        private static bool TryEncodeResponse(BigEndianBinaryWriter writer, IRequestContext context, SaslHandshakeResponse response)
+        {
+            if (response == null) return false;
+
+            writer.Write((short)response.ErrorCode);
+            writer.Write(response.EnabledMechanisms.Count);
+            foreach (var mechanism in response.EnabledMechanisms) {
+                writer.Write(mechanism, StringPrefixEncoding.Int16);
+            }
+            return true;
+        }
+
         private static bool TryEncodeResponse(BigEndianBinaryWriter writer, IRequestContext context, ApiVersionsResponse response)
         {
             if (response == null) return false;
@@ -452,20 +656,6 @@ namespace KafkaClient.Tests.Protocol
                 writer.Write((short)versionSupport.ApiKey);
                 writer.Write(versionSupport.MinVersion);
                 writer.Write(versionSupport.MaxVersion);
-            }
-            return true;
-        }
-
-        private static bool TryEncodeResponse(BigEndianBinaryWriter writer, IRequestContext context, StopReplicaResponse response)
-        {
-            if (response == null) return false;
-
-            writer.Write((short)response.ErrorCode);
-            writer.Write(response.Topics.Count);
-            foreach (var topic in response.Topics) {
-                writer.Write(topic.TopicName, StringPrefixEncoding.Int16);
-                writer.Write(topic.PartitionId);
-                writer.Write((short)topic.ErrorCode);
             }
             return true;
         }

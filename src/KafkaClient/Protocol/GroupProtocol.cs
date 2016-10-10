@@ -1,13 +1,14 @@
 namespace KafkaClient.Protocol
 {
-    public abstract class GroupProtocol
+    public class GroupProtocol
     {
-        protected GroupProtocol(string name)
+        public GroupProtocol(string name, byte[] metadata)
         {
             Name = name;
+            Metadata = metadata;
         }
 
         public string Name { get; }
-        public abstract byte[] Metadata { get; }
+        public byte[] Metadata { get; }
     }
 }

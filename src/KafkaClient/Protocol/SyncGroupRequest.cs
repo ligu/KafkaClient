@@ -20,7 +20,7 @@ namespace KafkaClient.Protocol
     public class SyncGroupRequest : GroupRequest, IRequest<SyncGroupResponse>, IEquatable<SyncGroupRequest>
     {
         /// <inheritdoc />
-        public SyncGroupRequest(string groupId, string memberId, int generationId, IEnumerable<SyncGroupAssignment> groupAssignments) 
+        public SyncGroupRequest(string groupId, int generationId, string memberId, IEnumerable<SyncGroupAssignment> groupAssignments) 
             : base(ApiKeyRequestType.SyncGroup, groupId, memberId, generationId)
         {
             GroupAssignments = ImmutableList<SyncGroupAssignment>.Empty.AddNotNullRange(groupAssignments);
@@ -62,17 +62,5 @@ namespace KafkaClient.Protocol
         {
             return !Equals(left, right);
         }
-    }
-
-    public class SyncGroupAssignment
-    {
-        public SyncGroupAssignment(string memberId, byte[] memberAssignment)
-        {
-            MemberId = memberId;
-            MemberAssignment = memberAssignment;
-        }
-
-        public string MemberId { get; }
-        public byte[] MemberAssignment { get; }
     }
 }

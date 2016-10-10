@@ -11,16 +11,16 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class HeartbeatResponse : IResponse, IEquatable<HeartbeatResponse>
     {
-        public HeartbeatResponse(ErrorResponseCode error)
+        public HeartbeatResponse(ErrorResponseCode errorCode)
         {
-            Error = error;
-            Errors = ImmutableList<ErrorResponseCode>.Empty.Add(Error);
+            ErrorCode = errorCode;
+            Errors = ImmutableList<ErrorResponseCode>.Empty.Add(ErrorCode);
         }
 
         /// <inheritdoc />
         public IImmutableList<ErrorResponseCode> Errors { get; }
 
-        public ErrorResponseCode Error { get; }
+        public ErrorResponseCode ErrorCode { get; }
 
         /// <inheritdoc />
         public override bool Equals(object obj)
@@ -33,13 +33,13 @@ namespace KafkaClient.Protocol
         {
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
-            return Error == other.Error;
+            return ErrorCode == other.ErrorCode;
         }
 
         /// <inheritdoc />
         public override int GetHashCode()
         {
-            return (int) Error;
+            return (int) ErrorCode;
         }
 
         /// <inheritdoc />

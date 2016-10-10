@@ -105,6 +105,9 @@
     <Compile Include="Protocol\ListGroup.cs" />
     <Compile Include="Protocol\ListGroupsRequest.cs" />
     <Compile Include="Protocol\ListGroupsResponse.cs" />
+    <Compile Include="Protocol\SaslHandshakeRequest.cs" />
+    <Compile Include="Protocol\SaslHandshakeResponse.cs" />
+    <Compile Include="Protocol\SyncGroupAssignment.cs" />
     <Compile Include="Protocol\Types\ConsumerGroupProtocol.cs" />
     <Compile Include="Protocol\GroupMember.cs" />
     <Compile Include="Protocol\GroupProtocol.cs" />

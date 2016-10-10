@@ -30,7 +30,7 @@ namespace KafkaClient.Protocol.Types
         private static readonly byte[] Empty = {};
 
         /// <inheritdoc />
-        public ConsumerGroupProtocol(string name, short version = 0, IEnumerable<string> topicNames = null, byte[] userData = null) : base(name)
+        public ConsumerGroupProtocol(string name, short version = 0, IEnumerable<string> topicNames = null, byte[] userData = null) : base(name, userData)
         {
             Version = version;
             Subscription = ImmutableList<string>.Empty.AddNotNullRange(topicNames);
@@ -46,8 +46,8 @@ namespace KafkaClient.Protocol.Types
 
         public byte[] UserData { get; }
 
-        /// <inheritdoc />
-        public override byte[] Metadata => KafkaEncoder.EncodeMetadata(this);
+        ///// <inheritdoc />
+        //public override byte[] Metadata => KafkaEncoder.EncodeMetadata(this);
     }
 
     /// <summary>
