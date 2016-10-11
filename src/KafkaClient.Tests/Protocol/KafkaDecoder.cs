@@ -269,9 +269,13 @@ namespace KafkaClient.Tests.Protocol
                 var protocolType = stream.ReadString();
                 var groupProtocols = new GroupProtocol[stream.ReadInt32()];
 
+                IProtocolTypeEncoder encoder;
+                if (!context.Encoders.TryGetValue(protocolType, out encoder)) {
+                    encoder = new ProtocolTypeEncoder();
+                }
                 for (var g = 0; g < groupProtocols.Length; g++) {
                     var protocolName = stream.ReadString();
-                    var metadata = stream.ReadBytes();
+                    var metadata = encoder.DecodeMetadata(stream.ReadBytes());
                     groupProtocols[g] = new GroupProtocol(protocolName, metadata);
                 }
 

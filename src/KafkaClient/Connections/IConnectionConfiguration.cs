@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Immutable;
 using KafkaClient.Common;
 
 namespace KafkaClient.Connections
@@ -33,6 +34,11 @@ namespace KafkaClient.Connections
         /// The maximum time to wait for requests.
         /// </summary>
         TimeSpan RequestTimeout { get; }
+
+        /// <summary>
+        /// Custom Encoding support for different protocol types
+        /// </summary>
+        IImmutableDictionary<string, Protocol.Types.IProtocolTypeEncoder> Encoders { get; }
 
         /// <summary>
         /// Triggered when the tcp socket is disconnected.

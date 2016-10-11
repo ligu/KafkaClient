@@ -1,3 +1,6 @@
+using System.Collections.Immutable;
+using KafkaClient.Protocol.Types;
+
 namespace KafkaClient.Protocol
 {
     public interface IRequestContext
@@ -16,5 +19,10 @@ namespace KafkaClient.Protocol
         /// This is a numeric version number for the api request. It allows the server to properly interpret the request as the protocol evolves. Responses will always be in the format corresponding to the request version.
         /// </summary>
         short? ApiVersion { get; }
+
+        /// <summary>
+        /// Custom Encoding support for different protocol types
+        /// </summary>
+        IImmutableDictionary<string, IProtocolTypeEncoder> Encoders { get; }
     }
 }

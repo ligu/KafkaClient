@@ -378,9 +378,13 @@ namespace KafkaClient.Protocol
                     .Pack(request.ProtocolType)
                     .Pack(request.GroupProtocols.Count);
 
+                IProtocolTypeEncoder encoder;
+                if (!context.Encoders.TryGetValue(request.ProtocolType, out encoder)) {
+                    encoder = new ProtocolTypeEncoder();
+                }
                 foreach (var protocol in request.GroupProtocols) {
                     message.Pack(protocol.Name)
-                           .Pack(protocol.Metadata);
+                           .Pack(encoder.EncodeMetadata(protocol.Metadata));
                 }
 
                 return message.ToBytes();
@@ -777,6 +781,7 @@ namespace KafkaClient.Protocol
                 for (var m = 0; m < members.Length; m++) {
                     var id = stream.ReadString();
                     var metadata = stream.ReadBytes();
+                    // TODO: is id the same as protocol name??
                     members[m] = new GroupMember(id, metadata);
                 }
 

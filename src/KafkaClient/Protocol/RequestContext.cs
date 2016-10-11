@@ -1,12 +1,16 @@
+using System.Collections.Immutable;
+using KafkaClient.Protocol.Types;
+
 namespace KafkaClient.Protocol
 {
     public class RequestContext : IRequestContext
     {
-        public RequestContext(int? correlationId = null, short? version = null, string clientId = null)
+        public RequestContext(int? correlationId = null, short? version = null, string clientId = null, IImmutableDictionary<string, IProtocolTypeEncoder> encoders = null)
         {
             CorrelationId = correlationId.GetValueOrDefault(1);
             ApiVersion = version;
             ClientId = clientId ?? "Kafka-Net";
+            Encoders = encoders ?? ImmutableDictionary<string, IProtocolTypeEncoder>.Empty;
         }
 
         /// <summary>
@@ -26,5 +30,8 @@ namespace KafkaClient.Protocol
         /// be in the format corresponding to the request version.
         /// </summary>
         public short? ApiVersion { get; }
+
+        /// <inheritdoc />
+        public IImmutableDictionary<string, IProtocolTypeEncoder> Encoders { get; }
     }
 }

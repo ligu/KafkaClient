@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using KafkaClient.Common;
 using KafkaClient.Protocol;
+using KafkaClient.Protocol.Types;
 using NUnit.Framework;
 
 namespace KafkaClient.Tests.Protocol
@@ -603,7 +604,7 @@ namespace KafkaClient.Tests.Protocol
             for (var p = 0; p < protocolsPerRequest; p++) {
                 var bytes = new byte[protocolsPerRequest*100];
                 _randomizer.NextBytes(bytes);
-                protocols.Add(new GroupProtocol(protocolType + p, bytes));
+                protocols.Add(new GroupProtocol(protocolType + p, new ByteMember(bytes)));
             }
             var request = new JoinGroupRequest(groupId, TimeSpan.FromMilliseconds(sessionTimeout), memberId, protocolType, protocols);
 

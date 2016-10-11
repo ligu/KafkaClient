@@ -8,7 +8,6 @@ using System.Threading.Tasks;
 using KafkaClient.Common;
 using KafkaClient.Protocol;
 using Nito.AsyncEx;
-using Nito.AsyncEx.Synchronous;
 
 namespace KafkaClient.Connections
 {
@@ -75,7 +74,7 @@ namespace KafkaClient.Connections
             if (!version.HasValue) {
                 version = await GetVersionAsync(request.ApiKey, token);
             }
-            context = new RequestContext(NextCorrelationId(), version, context?.ClientId);
+            context = new RequestContext(NextCorrelationId(), version, context?.ClientId, context?.Encoders ?? _configuration.Encoders);
 
             _log.Info(() => LogEvent.Create($"Sending {request.ApiKey} (v {version.GetValueOrDefault()}) request with correlation id {context.CorrelationId} to {Endpoint}"));
             _log.Debug(() => LogEvent.Create($"Request {request.ApiKey}\n{request.ToFormattedString()}"));

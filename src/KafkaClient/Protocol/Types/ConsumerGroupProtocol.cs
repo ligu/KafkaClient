@@ -23,14 +23,11 @@ namespace KafkaClient.Protocol.Types
     /// 
     /// Kafka Connect uses the "connect" protocol type and its protocol details are internal to the Connect implementation.
     /// </summary>
-    public class ConsumerGroupProtocol : GroupProtocol
+    public class ConsumerGroupProtocolMetadata : IMemberMetadata
     {
-        public const string ProtocolType = "consumer";
-
         private static readonly byte[] Empty = {};
 
-        /// <inheritdoc />
-        public ConsumerGroupProtocol(string name, short version = 0, IEnumerable<string> topicNames = null, byte[] userData = null) : base(name, userData)
+        public ConsumerGroupProtocolMetadata(short version = 0, IEnumerable<string> topicNames = null, byte[] userData = null)
         {
             Version = version;
             Subscription = ImmutableList<string>.Empty.AddNotNullRange(topicNames);
@@ -45,44 +42,5 @@ namespace KafkaClient.Protocol.Types
         public IImmutableList<string> Subscription { get; }
 
         public byte[] UserData { get; }
-
-        ///// <inheritdoc />
-        //public override byte[] Metadata => KafkaEncoder.EncodeMetadata(this);
-    }
-
-    /// <summary>
-    ///  The format of the MemberAssignment field for consumer groups is included below:
-    /// MemberAssignment => Version PartitionAssignment
-    ///   Version => int16
-    ///   PartitionAssignment => [Topic [Partition]]
-    ///     Topic => string
-    ///     Partition => int32
-    ///   UserData => bytes
-    /// All client implementations using the "consumer" protocol type should support this schema.
-    /// 
-    /// from https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol
-    /// </summary>
-    public class ConsumerGroupMemberAssignment
-    {
-        public ConsumerGroupMemberAssignment(short version, IEnumerable<PartitionAssignment> partitionAssignments)
-        {
-            Version = version;
-            PartitionAssignments = ImmutableList<PartitionAssignment>.Empty.AddNotNullRange(partitionAssignments);
-        }
-
-        public short Version { get; }
-        public IImmutableList<PartitionAssignment> PartitionAssignments { get; }
-    }
-
-    public class PartitionAssignment
-    {
-        public PartitionAssignment(string topicName, IEnumerable<int> partitionIds)
-        {
-            TopicName = topicName;
-            PartitionIds = ImmutableList<int>.Empty.AddNotNullRange(partitionIds);
-        }
-
-        public string TopicName { get; }
-        public IImmutableList<int> PartitionIds { get; }
     }
 }

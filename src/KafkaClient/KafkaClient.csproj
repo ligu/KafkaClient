@@ -101,12 +101,15 @@
     <Compile Include="Protocol\DescribeGroupMember.cs" />
     <Compile Include="Protocol\DescribeGroupsRequest.cs" />
     <Compile Include="Protocol\DescribeGroupsResponse.cs" />
+    <Compile Include="Protocol\GroupData.cs" />
     <Compile Include="Protocol\ListGroup.cs" />
     <Compile Include="Protocol\ListGroupsRequest.cs" />
     <Compile Include="Protocol\ListGroupsResponse.cs" />
     <Compile Include="Protocol\SaslHandshakeRequest.cs" />
     <Compile Include="Protocol\SaslHandshakeResponse.cs" />
     <Compile Include="Protocol\SyncGroupAssignment.cs" />
+    <Compile Include="Protocol\Types\ByteMember.cs" />
+    <Compile Include="Protocol\Types\ConsumerGroupMemberAssignment.cs" />
     <Compile Include="Protocol\Types\ConsumerGroupProtocol.cs" />
     <Compile Include="Protocol\GroupMember.cs" />
     <Compile Include="Protocol\GroupProtocol.cs" />
@@ -122,6 +125,11 @@
     <Compile Include="Protocol\StopReplicaResponse.cs" />
     <Compile Include="Protocol\SyncGroupRequest.cs" />
     <Compile Include="Protocol\SyncGroupResponse.cs" />
+    <Compile Include="Protocol\Types\IMemberAssignment.cs" />
+    <Compile Include="Protocol\Types\IMemberMetadata.cs" />
+    <Compile Include="Protocol\Types\IProtocolTypeEncoder.cs" />
+    <Compile Include="Protocol\Types\PartitionAssignment.cs" />
+    <Compile Include="Protocol\Types\ProtocolTypeEncoder.cs" />
     <Compile Include="SendMessageConfiguration.cs" />
     <Compile Include="StatisticsTrackerOptions.cs" />
     <Compile Include="Protocol\ApiKeyRequestType.cs" />
