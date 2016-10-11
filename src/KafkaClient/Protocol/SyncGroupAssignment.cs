@@ -1,14 +1,13 @@
 namespace KafkaClient.Protocol
 {
-    public class SyncGroupAssignment
+    public class SyncGroupAssignment : GroupData
     {
         public SyncGroupAssignment(string memberId, byte[] memberAssignment)
+            : base(memberId, memberAssignment)
         {
-            MemberId = memberId;
-            MemberAssignment = memberAssignment;
         }
 
-        public string MemberId { get; }
-        public byte[] MemberAssignment { get; }
+        public string MemberId => Id;
+        public byte[] MemberAssignment => Data;
     }
 }

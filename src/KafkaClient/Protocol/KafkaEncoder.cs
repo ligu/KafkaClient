@@ -52,7 +52,7 @@ namespace KafkaClient.Protocol
 
         #region Encode
 
-        public static byte[] EncodeRequestBytes(IRequestContext context, IRequest request)
+        internal static byte[] EncodeRequestBytes(IRequestContext context, IRequest request)
         {
             switch (request.ApiKey) {
                 case ApiKeyRequestType.Produce:
@@ -160,18 +160,6 @@ namespace KafkaClient.Protocol
                 return stream.Pack(message.Key)
                       .Pack(message.Value)
                       .ToBytesCrc();
-            }
-        }
-
-        public static byte[] EncodeMetadata(ConsumerGroupProtocol groupProtocol)
-        {
-            using (var stream = new MessagePacker()) {
-                stream.Pack(groupProtocol.Version)
-                      .Pack(groupProtocol.Subscription.Count);
-                foreach (var topicName in groupProtocol.Subscription) {
-                    stream.Pack(topicName);
-                }
-                return stream.Pack(groupProtocol.UserData).ToBytes();
             }
         }
 
