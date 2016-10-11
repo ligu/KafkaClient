@@ -109,8 +109,9 @@
     <Compile Include="Protocol\SaslHandshakeResponse.cs" />
     <Compile Include="Protocol\SyncGroupAssignment.cs" />
     <Compile Include="Protocol\Types\ByteMember.cs" />
-    <Compile Include="Protocol\Types\ConsumerGroupMemberAssignment.cs" />
-    <Compile Include="Protocol\Types\ConsumerGroupProtocol.cs" />
+    <Compile Include="Protocol\Types\ConsumerEncoder.cs" />
+    <Compile Include="Protocol\Types\ConsumerMemberAssignment.cs" />
+    <Compile Include="Protocol\Types\ConsumerProtocolMetadata.cs" />
     <Compile Include="Protocol\GroupMember.cs" />
     <Compile Include="Protocol\GroupProtocol.cs" />
     <Compile Include="Protocol\GroupRequest.cs" />
@@ -128,7 +129,6 @@
     <Compile Include="Protocol\Types\IMemberAssignment.cs" />
     <Compile Include="Protocol\Types\IMemberMetadata.cs" />
     <Compile Include="Protocol\Types\IProtocolTypeEncoder.cs" />
-    <Compile Include="Protocol\Types\PartitionAssignment.cs" />
     <Compile Include="Protocol\Types\ProtocolTypeEncoder.cs" />
     <Compile Include="SendMessageConfiguration.cs" />
     <Compile Include="StatisticsTrackerOptions.cs" />

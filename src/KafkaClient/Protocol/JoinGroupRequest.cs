@@ -11,10 +11,10 @@ namespace KafkaClient.Protocol
     ///   group_id => STRING           -- The group id.
     ///   session_timeout => INT32     -- The coordinator considers the consumer dead if it receives no heartbeat after this timeout in ms.
     ///   member_id => STRING          -- The assigned consumer id or an empty string for a new consumer.
-    ///   protocol_type => STRING      -- Unique name for class of protocols implemented by group <see cref="ConsumerGroupProtocol.ProtocolType"/>
+    ///   protocol_type => STRING      -- Unique name for class of protocols implemented by group (ie "consumer")
     ///   GroupProtocols => [ProtocolName ProtocolMetadata]
-    ///     protocol_name => STRING    -- <see cref="ConsumerGroupProtocol.Name"/>
-    ///     protocol_metadata => BYTES -- <see cref="ConsumerGroupProtocol"/>
+    ///     protocol_name => STRING    -- ie AssignmentStrategy for "consumer" type
+    ///     protocol_metadata => BYTES -- <see cref="ConsumerProtocolMetadata"/>
     /// 
     /// see http://kafka.apache.org/protocol.html#protocol_messages for details
     /// 

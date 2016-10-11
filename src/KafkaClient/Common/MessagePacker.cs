@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
+using System.Linq;
 
 namespace KafkaClient.Common
 {
@@ -51,12 +53,18 @@ namespace KafkaClient.Common
             return this;
         }
 
-        public MessagePacker Pack(IEnumerable<string> values)
+        public MessagePacker Pack(IEnumerable<string> values, bool includePrefix = false)
         {
+            if (includePrefix) {
+                var valuesList = values.ToList();
+                _stream.Write(valuesList.Count);
+                Pack(valuesList);
+                return this;
+            }
+
             foreach (var item in values) {
                 _stream.Write(item);
             }
-
             return this;
         }
 

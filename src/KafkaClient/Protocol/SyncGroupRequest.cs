@@ -14,7 +14,6 @@ namespace KafkaClient.Protocol
     ///     MemberId => string
     ///     MemberAssignment => bytes
     /// 
-    /// 
     /// see http://kafka.apache.org/protocol.html#protocol_messages
     /// </summary>
     public class SyncGroupRequest : GroupRequest, IRequest<SyncGroupResponse>, IEquatable<SyncGroupRequest>

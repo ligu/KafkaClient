@@ -274,8 +274,7 @@ namespace KafkaClient.Protocol
         private static byte[] EncodeRequest(IRequestContext context, MetadataRequest request)
         {
             using (var message = EncodeHeader(context, request)) {
-                message.Pack(request.Topics.Count)
-                        .Pack(request.Topics);
+                message.Pack(request.Topics, true);
 
                 return message.ToBytes();
             }
