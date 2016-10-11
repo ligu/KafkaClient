@@ -258,7 +258,7 @@ namespace KafkaClient.Tests.Connections
 
         private static byte[] CreateCorrelationMessage(int id)
         {
-            return new MessagePacker().Pack(id).ToBytes();
+            return new KafkaWriter().Write(id).ToBytes();
         }
     }
 }

@@ -1,63 +1,62 @@
-using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
 namespace KafkaClient.Common
 {
-    public class MessagePacker : IDisposable
+    public class KafkaWriter : IKafkaWriter
     {
         private const int IntegerByteSize = 4;
         private readonly BigEndianBinaryWriter _stream;
 
-        public MessagePacker()
+        public KafkaWriter()
         {
             _stream = new BigEndianBinaryWriter(new MemoryStream());
-            Pack(IntegerByteSize); //pre-allocate space for buffer length
+            Write(IntegerByteSize); //pre-allocate space for buffer length
         }
 
-        public MessagePacker Pack(byte value)
+        public IKafkaWriter Write(byte value)
         {
             _stream.Write(value);
             return this;
         }
 
-        public MessagePacker Pack(int value)
+        public IKafkaWriter Write(int value)
         {
             _stream.Write(value);
             return this;
         }
 
-        public MessagePacker Pack(short value)
+        public IKafkaWriter Write(short value)
         {
             _stream.Write(value);
             return this;
         }
 
-        public MessagePacker Pack(long value)
+        public IKafkaWriter Write(long value)
         {
             _stream.Write(value);
             return this;
         }
 
-        public MessagePacker Pack(byte[] values, bool includePrefix = true)
+        public IKafkaWriter Write(byte[] values, bool includePrefix = true)
         {
             _stream.Write(values, includePrefix);
             return this;
         }
 
-        public MessagePacker Pack(string value)
+        public IKafkaWriter Write(string value)
         {
             _stream.Write(value);
             return this;
         }
 
-        public MessagePacker Pack(IEnumerable<string> values, bool includePrefix = false)
+        public IKafkaWriter Write(IEnumerable<string> values, bool includePrefix = false)
         {
             if (includePrefix) {
                 var valuesList = values.ToList();
                 _stream.Write(valuesList.Count);
-                Pack(valuesList);
+                Write(valuesList);
                 return this;
             }
 
@@ -71,7 +70,7 @@ namespace KafkaClient.Common
         {
             var buffer = new byte[_stream.BaseStream.Length];
             _stream.BaseStream.Position = 0;
-            Pack((int)(_stream.BaseStream.Length - IntegerByteSize));
+            Write((int)(_stream.BaseStream.Length - IntegerByteSize));
             _stream.BaseStream.Position = 0;
             _stream.BaseStream.Read(buffer, 0, (int)_stream.BaseStream.Length);
             return buffer;

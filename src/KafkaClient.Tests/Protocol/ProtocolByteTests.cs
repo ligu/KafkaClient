@@ -634,6 +634,51 @@ namespace KafkaClient.Tests.Protocol
             request.AssertCanEncodeDecodeResponse(0);
         }
 
+        [Test]
+        public void JoinConsumerGroupRequest(
+            [Values("test", "a groupId")] string groupId, 
+            [Values(1, 20000)] int sessionTimeout,
+            [Values("", "an existing member")] string memberId, 
+            [Values("consumer", "other")] string protocolType, 
+            [Values(1, 10)] int protocolsPerRequest)
+        {
+            var encoder = new ConsumerEncoder();
+            var protocols = new List<GroupProtocol>();
+            for (var p = 0; p < protocolsPerRequest; p++) {
+                var userData = new byte[protocolsPerRequest*100];
+                _randomizer.NextBytes(userData);
+                var metadata = new ConsumerProtocolMetadata(0, new []{ groupId, memberId, protocolType }, userData);
+                protocols.Add(new GroupProtocol(protocolType + p, metadata));
+            }
+            var request = new JoinGroupRequest(groupId, TimeSpan.FromMilliseconds(sessionTimeout), memberId, protocolType, protocols);
+
+            request.AssertCanEncodeDecodeRequest(0, encoder);
+        }
+
+        [Test]
+        public void JoinConsumerGroupResponse(
+            [Values(
+                 ErrorResponseCode.None,
+                 ErrorResponseCode.OffsetMetadataTooLarge
+             )] ErrorResponseCode errorCode,
+            [Values(0, 1, 20000)] int generationId,
+            [Values("consumer", "other")] string protocol, 
+            [Values("test", "a groupId")] string leaderId, 
+            [Values("", "an existing member")] string memberId, 
+            [Values(1, 10)] int memberCount)
+        {
+            var encoder = new ConsumerEncoder();
+            var members = new List<GroupMember>();
+            for (var m = 0; m < memberCount; m++) {
+                var userData = new byte[memberCount*100];
+                _randomizer.NextBytes(userData);
+                var metadata = new ConsumerProtocolMetadata(0, new []{ protocol, memberId, leaderId }, userData);
+                members.Add(new GroupMember(memberId + m, metadata));
+            }
+            var request = new JoinGroupResponse(errorCode, generationId, protocol, leaderId, memberId, members);
+
+            request.AssertCanEncodeDecodeResponse(0, encoder);
+        }
 
         private IEnumerable<Message> GenerateMessages(int count, byte version, int partition = 0)
         {

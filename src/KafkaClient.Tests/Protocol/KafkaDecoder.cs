@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using KafkaClient.Common;
 using KafkaClient.Protocol;
-using KafkaClient.Protocol.Types;
 
 namespace KafkaClient.Tests.Protocol
 {
@@ -18,12 +17,13 @@ namespace KafkaClient.Tests.Protocol
             }            
         }
 
-        public static T Decode<T>(byte[] payload) where T : class, IRequest
+        public static T Decode<T>(byte[] payload, IRequestContext context = null) where T : class, IRequest
         {
-            IRequestContext context;
+            var protocolType = context?.ProtocolType;
+            var encoders = context?.Encoders;
             using (ReadHeader(payload, out context)) { }
 
-            return Decode<T>(context, payload);
+            return Decode<T>(new RequestContext(context.CorrelationId, context.ApiVersion, context.ClientId, encoders, protocolType), payload);
         }
 
         public static T Decode<T>(IRequestContext context, byte[] payload) where T : class, IRequest
@@ -269,10 +269,7 @@ namespace KafkaClient.Tests.Protocol
                 var protocolType = stream.ReadString();
                 var groupProtocols = new GroupProtocol[stream.ReadInt32()];
 
-                IProtocolTypeEncoder encoder;
-                if (!context.Encoders.TryGetValue(protocolType, out encoder)) {
-                    encoder = new ProtocolTypeEncoder();
-                }
+                var encoder = context.GetEncoder(protocolType);
                 for (var g = 0; g < groupProtocols.Length; g++) {
                     var protocolName = stream.ReadString();
                     var metadata = encoder.DecodeMetadata(stream.ReadBytes());
@@ -574,7 +571,7 @@ namespace KafkaClient.Tests.Protocol
             var encoder = context.GetEncoder(response.GroupProtocol);
             foreach (var member in response.Members) {
                 writer.Write(member.MemberId);
-                writer.Write(encoder.EncodeMetadata(member.Metadata), true);
+                writer.Write(encoder.EncodeMetadata(member.Metadata), false);
             }
             return true;
         }

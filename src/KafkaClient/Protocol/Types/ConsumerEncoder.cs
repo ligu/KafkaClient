@@ -50,13 +50,10 @@ namespace KafkaClient.Protocol.Types
         /// <inheritdoc />
         protected override byte[] EncodeMetadata(ConsumerProtocolMetadata metadata)
         {
-            using (var packer = new MessagePacker()) {
-                packer.Pack(metadata.Version)
-                      .Pack(metadata.Subscriptions.Count);
-                foreach (var subscription in metadata.Subscriptions) {
-                    packer.Pack(subscription);
-                }
-                packer.Pack(metadata.UserData);
+            using (var packer = new KafkaWriter()) {
+                packer.Write(metadata.Version)
+                      .Write(metadata.Subscriptions, true)
+                      .Write(metadata.UserData);
 
                 return packer.ToBytes();
             }
@@ -65,19 +62,19 @@ namespace KafkaClient.Protocol.Types
         /// <inheritdoc />
         protected override byte[] EncodeAssignment(ConsumerMemberAssignment assignment)
         {
-            using (var packer = new MessagePacker()) {
+            using (var packer = new KafkaWriter()) {
                 var topicGroups = assignment.PartitionAssignments.GroupBy(x => x.TopicName).ToList();
 
-                packer.Pack(assignment.Version)
-                      .Pack(topicGroups.Count);
+                packer.Write(assignment.Version)
+                      .Write(topicGroups.Count);
 
                 foreach (var topicGroup in topicGroups) {
                     var partitions = topicGroup.ToList();
-                    packer.Pack(topicGroup.Key)
-                          .Pack(partitions.Count);
+                    packer.Write(topicGroup.Key)
+                          .Write(partitions.Count);
 
                     foreach (var partition in partitions) {
-                        packer.Pack(partition.PartitionId);
+                        packer.Write(partition.PartitionId);
                     }
                 }
 

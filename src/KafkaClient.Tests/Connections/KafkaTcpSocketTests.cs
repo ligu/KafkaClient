@@ -307,9 +307,9 @@ namespace KafkaClient.Tests.Connections
                 const string secondMessage = "testmessage";
                 var bytes = Encoding.UTF8.GetBytes(secondMessage);
 
-                var payload = new MessagePacker()
-                    .Pack(firstMessage)
-                    .Pack(bytes, false);
+                var payload = new KafkaWriter()
+                    .Write(firstMessage)
+                    .Write(bytes, false);
 
                 //send the combined payload
                 var send = server.SendDataAsync(payload.ToBytesNoLength());
@@ -419,7 +419,7 @@ namespace KafkaClient.Tests.Connections
                 var messages = new[] { "test1", "test2", "test3", "test4" };
                 var expectedLength = "test1".Length;
 
-                var payload = new MessagePacker().Pack(messages);
+                var payload = new KafkaWriter().Write(messages);
 
                 var socket = new TcpSocket(_fakeServerUrl, log: new TraceLog(LogLevel.Warn));
 
