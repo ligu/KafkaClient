@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using KafkaClient.Common;
@@ -27,7 +28,7 @@ namespace KafkaClient.Protocol
     /// coordinator will send an error code indicating that the member needs to rejoin. If the member does not rejoin before a rebalance 
     /// completes, then it will have an old generationId, which will cause ILLEGAL_GENERATION errors when included in new requests.
     /// </summary>
-    public class JoinGroupResponse : IResponse
+    public class JoinGroupResponse : IResponse, IEquatable<JoinGroupResponse>
     {
         public JoinGroupResponse(ErrorResponseCode errorCode, int generationId, string groupProtocol, string leaderId, string memberId, IEnumerable<GroupMember> members)
         {
@@ -67,5 +68,49 @@ namespace KafkaClient.Protocol
 
         public IImmutableList<GroupMember> Members { get; }
 
+        /// <inheritdoc />
+        public override bool Equals(object obj)
+        {
+            return Equals(obj as JoinGroupResponse);
+        }
+
+        /// <inheritdoc />
+        public bool Equals(JoinGroupResponse other)
+        {
+            if (ReferenceEquals(null, other)) return false;
+            if (ReferenceEquals(this, other)) return true;
+            return ErrorCode == other.ErrorCode 
+                && GenerationId == other.GenerationId 
+                && string.Equals(GroupProtocol, other.GroupProtocol) 
+                && string.Equals(LeaderId, other.LeaderId) 
+                && string.Equals(MemberId, other.MemberId) 
+                && Members.HasEqualElementsInOrder(other.Members);
+        }
+
+        /// <inheritdoc />
+        public override int GetHashCode()
+        {
+            unchecked {
+                var hashCode = (int) ErrorCode;
+                hashCode = (hashCode*397) ^ GenerationId;
+                hashCode = (hashCode*397) ^ (GroupProtocol?.GetHashCode() ?? 0);
+                hashCode = (hashCode*397) ^ (LeaderId?.GetHashCode() ?? 0);
+                hashCode = (hashCode*397) ^ (MemberId?.GetHashCode() ?? 0);
+                hashCode = (hashCode*397) ^ (Members?.GetHashCode() ?? 0);
+                return hashCode;
+            }
+        }
+
+        /// <inheritdoc />
+        public static bool operator ==(JoinGroupResponse left, JoinGroupResponse right)
+        {
+            return Equals(left, right);
+        }
+
+        /// <inheritdoc />
+        public static bool operator !=(JoinGroupResponse left, JoinGroupResponse right)
+        {
+            return !Equals(left, right);
+        }
     }
 }

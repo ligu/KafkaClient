@@ -12,6 +12,7 @@ namespace KafkaClient.Protocol
     ///   session_timeout => INT32     -- The coordinator considers the consumer dead if it receives no heartbeat after this timeout in ms.
     ///   member_id => STRING          -- The assigned consumer id or an empty string for a new consumer.
     ///   protocol_type => STRING      -- Unique name for class of protocols implemented by group <see cref="ConsumerGroupProtocol.ProtocolType"/>
+    ///   GroupProtocols => [ProtocolName ProtocolMetadata]
     ///     protocol_name => STRING    -- <see cref="ConsumerGroupProtocol.Name"/>
     ///     protocol_metadata => BYTES -- <see cref="ConsumerGroupProtocol"/>
     /// 
@@ -37,7 +38,7 @@ namespace KafkaClient.Protocol
     /// version and the old version of the protocol. Once all members have upgraded, the coordinator will choose whichever protocol is listed 
     /// first in the GroupProtocols array.
     /// </summary>
-    public class JoinGroupRequest : Request, IRequest<JoinGroupResponse>, IGroupMember
+    public class JoinGroupRequest : Request, IRequest<JoinGroupResponse>, IGroupMember, IEquatable<JoinGroupRequest>
     {
         public JoinGroupRequest(string groupId, TimeSpan sessionTimeout, string memberId, string protocolType, IEnumerable<GroupProtocol> groupProtocols, TimeSpan? rebalanceTimeout = null) 
             : base(ApiKeyRequestType.JoinGroup)
@@ -60,5 +61,52 @@ namespace KafkaClient.Protocol
 
         /// <inheritdoc />
         public string MemberId { get; }
+
+        /// <inheritdoc />
+        public override bool Equals(object obj)
+        {
+            return Equals(obj as JoinGroupRequest);
+        }
+
+        /// <inheritdoc />
+        public bool Equals(JoinGroupRequest other)
+        {
+            if (ReferenceEquals(null, other)) return false;
+            if (ReferenceEquals(this, other)) return true;
+            return base.Equals(other) 
+                && SessionTimeout.Equals(other.SessionTimeout) 
+                && RebalanceTimeout.Equals(other.RebalanceTimeout) 
+                && string.Equals(ProtocolType, other.ProtocolType)
+                && string.Equals(GroupId, other.GroupId) 
+                && string.Equals(MemberId, other.MemberId)
+                && GroupProtocols.HasEqualElementsInOrder(other.GroupProtocols);
+        }
+
+        /// <inheritdoc />
+        public override int GetHashCode()
+        {
+            unchecked {
+                int hashCode = base.GetHashCode();
+                hashCode = (hashCode*397) ^ SessionTimeout.GetHashCode();
+                hashCode = (hashCode*397) ^ RebalanceTimeout.GetHashCode();
+                hashCode = (hashCode*397) ^ (ProtocolType?.GetHashCode() ?? 0);
+                hashCode = (hashCode*397) ^ (GroupProtocols?.GetHashCode() ?? 0);
+                hashCode = (hashCode*397) ^ (GroupId?.GetHashCode() ?? 0);
+                hashCode = (hashCode*397) ^ (MemberId?.GetHashCode() ?? 0);
+                return hashCode;
+            }
+        }
+
+        /// <inheritdoc />
+        public static bool operator ==(JoinGroupRequest left, JoinGroupRequest right)
+        {
+            return Equals(left, right);
+        }
+
+        /// <inheritdoc />
+        public static bool operator !=(JoinGroupRequest left, JoinGroupRequest right)
+        {
+            return !Equals(left, right);
+        }
     }
 }

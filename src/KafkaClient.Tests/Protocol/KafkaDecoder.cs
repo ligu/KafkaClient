@@ -567,7 +567,7 @@ namespace KafkaClient.Tests.Protocol
             writer.Write(response.Members.Count);
             foreach (var member in response.Members) {
                 writer.Write(member.MemberId);
-                writer.Write(member.Metadata);
+                writer.Write(member.Metadata, true);
             }
             return true;
         }
