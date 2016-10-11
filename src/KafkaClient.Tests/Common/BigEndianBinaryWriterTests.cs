@@ -148,37 +148,19 @@ namespace KafkaClient.Tests.Common
             Assert.That(expectedBytes, Is.EqualTo(actualBytes));
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
-        [ExpectedException(typeof(NotSupportedException))]
-        public void StringNotSupportedTest()
-        {
-            // arrange
-            var memoryStream = new MemoryStream();
-            var binaryWriter = new BigEndianBinaryWriter(memoryStream);
-            binaryWriter.Write("test");
-        }
-
         [Theory]
-        [TestCase("0000", new Byte[] { 0x00, 0x04, 0x30, 0x30, 0x30, 0x30 }, StringPrefixEncoding.Int16)]
-        [TestCase("0000", new Byte[] { 0x00, 0x00, 0x00, 0x04, 0x30, 0x30, 0x30, 0x30 }, StringPrefixEncoding.Int32)]
-        [TestCase("0000", new Byte[] { 0x30, 0x30, 0x30, 0x30 }, StringPrefixEncoding.None)]
-        [TestCase("€€€€", new Byte[] { 0x00, 0x04, 0xE2, 0x82, 0xAC, 0xE2, 0x82, 0xAC, 0xE2, 0x82, 0xAC, 0xE2, 0x82, 0xAC }, StringPrefixEncoding.Int16)]
-        [TestCase("€€€€", new Byte[] { 0x00, 0x00, 0x00, 0x04, 0xE2, 0x82, 0xAC, 0xE2, 0x82, 0xAC, 0xE2, 0x82, 0xAC, 0xE2, 0x82, 0xAC }, StringPrefixEncoding.Int32)]
-        [TestCase("€€€€", new Byte[] { 0xE2, 0x82, 0xAC, 0xE2, 0x82, 0xAC, 0xE2, 0x82, 0xAC, 0xE2, 0x82, 0xAC }, StringPrefixEncoding.None)]
-        [TestCase("", new Byte[] { }, StringPrefixEncoding.None)]
-        [TestCase("", new Byte[] { 0x00, 0x00 }, StringPrefixEncoding.Int16)]
-        [TestCase("", new Byte[] { 0x00, 0x00, 0x00, 0x00 }, StringPrefixEncoding.Int32)]
-        [TestCase(null, new Byte[] { 0xFF, 0xFF, 0xFF, 0xFF }, StringPrefixEncoding.None)]
-        [TestCase(null, new Byte[] { 0xFF, 0xFF }, StringPrefixEncoding.Int16)]
-        [TestCase(null, new Byte[] { 0xFF, 0xFF, 0xFF, 0xFF }, StringPrefixEncoding.Int32)]
-        public void StringTests(String value, Byte[] expectedBytes, StringPrefixEncoding encoding)
+        [TestCase("0000", new Byte[] { 0x00, 0x04, 0x30, 0x30, 0x30, 0x30 })]
+        [TestCase("€€€€", new Byte[] { 0x00, 0x0C, 0xE2, 0x82, 0xAC, 0xE2, 0x82, 0xAC, 0xE2, 0x82, 0xAC, 0xE2, 0x82, 0xAC })]
+        [TestCase("", new Byte[] { 0x00, 0x00 })]
+        [TestCase(null, new Byte[] { 0xFF, 0xFF })]
+        public void StringTests(String value, Byte[] expectedBytes)
         {
             // arrange
             var memoryStream = new MemoryStream();
             var binaryWriter = new BigEndianBinaryWriter(memoryStream);
 
             // act
-            binaryWriter.Write(value, encoding);
+            binaryWriter.Write(value);
 
             // assert
             var actualBytes = memoryStream.ToArray();

@@ -96,12 +96,12 @@ namespace KafkaClient.Tests.Protocol
                 var payloads = new List<Payload>();
                 var payloadCount = stream.ReadInt32();
                 for (var i = 0; i < payloadCount; i++) {
-                    var topicName = stream.ReadInt16String();
+                    var topicName = stream.ReadString();
 
                     var partitionCount = stream.ReadInt32();
                     for (var j = 0; j < partitionCount; j++) {
                         var partitionId = stream.ReadInt32();
-                        var messages = KafkaEncoder.DecodeMessageSet(stream.ReadIntPrefixedBytes(), partitionId).ToList();
+                        var messages = KafkaEncoder.DecodeMessageSet(stream.ReadBytes(), partitionId).ToList();
 
                         payloads.Add(new Payload(topicName, partitionId, messages));
                     }
@@ -120,7 +120,7 @@ namespace KafkaClient.Tests.Protocol
                 var fetches = new List<Fetch>();
                 var payloadCount = stream.ReadInt32();
                 for (var i = 0; i < payloadCount; i++) {
-                    var topicName = stream.ReadInt16String();
+                    var topicName = stream.ReadString();
 
                     var partitionCount = stream.ReadInt32();
                     for (var j = 0; j < partitionCount; j++) {
@@ -143,7 +143,7 @@ namespace KafkaClient.Tests.Protocol
                 var offsets = new List<Offset>();
                 var offsetCount = stream.ReadInt32();
                 for (var i = 0; i < offsetCount; i++) {
-                    var topicName = stream.ReadInt16String();
+                    var topicName = stream.ReadString();
 
                     var partitionCount = stream.ReadInt32();
                     for (var j = 0; j < partitionCount; j++) {
@@ -163,7 +163,7 @@ namespace KafkaClient.Tests.Protocol
             using (var stream = ReadHeader(data)) {
                 var topicNames = new string[stream.ReadInt32()];
                 for (var t = 0; t < topicNames.Length; t++) {
-                    topicNames[t] = stream.ReadInt16String();
+                    topicNames[t] = stream.ReadString();
                 }
 
                 return new MetadataRequest(topicNames);
@@ -179,7 +179,7 @@ namespace KafkaClient.Tests.Protocol
 
                 var topics = new Topic[stream.ReadInt32()];
                 for (var t = 0; t < topics.Length; t++) {
-                    var topicName = stream.ReadInt16String();
+                    var topicName = stream.ReadString();
                     var partitionId = stream.ReadInt32();
                     topics[t] = new Topic(topicName, partitionId);
                 }
@@ -191,12 +191,12 @@ namespace KafkaClient.Tests.Protocol
         private static IRequest OffsetCommitRequest(IRequestContext context, byte[] payload)
         {
             using (var stream = ReadHeader(payload)) {
-                var consumerGroup = stream.ReadInt16String();
+                var consumerGroup = stream.ReadString();
                 var generationId = 0;
                 string memberId = null; 
                 if (context.ApiVersion >= 1) {
                     generationId = stream.ReadInt32();
-                    memberId = stream.ReadInt16String();
+                    memberId = stream.ReadString();
                 }
                 TimeSpan? offsetRetention = null;
                 if (context.ApiVersion >= 2) {
@@ -209,7 +209,7 @@ namespace KafkaClient.Tests.Protocol
                 var offsetCommits = new List<OffsetCommit>();
                 var count = stream.ReadInt32();
                 for (var o = 0; o < count; o++) {
-                    var topicName = stream.ReadInt16String();
+                    var topicName = stream.ReadString();
 
                     var partitionCount = stream.ReadInt32();
                     for (var p = 0; p < partitionCount; p++) {
@@ -219,7 +219,7 @@ namespace KafkaClient.Tests.Protocol
                         if (context.ApiVersion == 1) {
                             timestamp = stream.ReadInt64();
                         }
-                        var metadata = stream.ReadInt16String();
+                        var metadata = stream.ReadString();
 
                         offsetCommits.Add(new OffsetCommit(topicName, partitionId, offset, metadata, timestamp));
                     }
@@ -232,12 +232,12 @@ namespace KafkaClient.Tests.Protocol
         private static IRequest OffsetFetchRequest(IRequestContext context, byte[] payload)
         {
             using (var stream = ReadHeader(payload)) {
-                var consumerGroup = stream.ReadInt16String();
+                var consumerGroup = stream.ReadString();
 
                 var topics = new List<Topic>();
                 var count = stream.ReadInt32();
                 for (var t = 0; t < count; t++) {
-                    var topicName = stream.ReadInt16String();
+                    var topicName = stream.ReadString();
 
                     var partitionCount = stream.ReadInt32();
                     for (var p = 0; p < partitionCount; p++) {
@@ -254,7 +254,7 @@ namespace KafkaClient.Tests.Protocol
         private static IRequest GroupCoordinatorRequest(IRequestContext context, byte[] payload)
         {
             using (var stream = ReadHeader(payload)) {
-                var groupId = stream.ReadInt16String();
+                var groupId = stream.ReadString();
 
                 return new GroupCoordinatorRequest(groupId);
             }
@@ -263,15 +263,15 @@ namespace KafkaClient.Tests.Protocol
         private static IRequest JoinGroupRequest(IRequestContext context, byte[] payload)
         {
             using (var stream = ReadHeader(payload)) {
-                var groupId = stream.ReadInt16String();
+                var groupId = stream.ReadString();
                 var sessionTimeout = TimeSpan.FromMilliseconds(stream.ReadInt32());
-                var memberId = stream.ReadInt16String();
-                var protocolType = stream.ReadInt16String();
+                var memberId = stream.ReadString();
+                var protocolType = stream.ReadString();
                 var groupProtocols = new GroupProtocol[stream.ReadInt32()];
 
                 for (var g = 0; g < groupProtocols.Length; g++) {
-                    var protocolName = stream.ReadInt16String();
-                    var metadata = stream.ReadIntPrefixedBytes();
+                    var protocolName = stream.ReadString();
+                    var metadata = stream.ReadBytes();
                     groupProtocols[g] = new GroupProtocol(protocolName, metadata);
                 }
 
@@ -282,9 +282,9 @@ namespace KafkaClient.Tests.Protocol
         private static IRequest HeartbeatRequest(IRequestContext context, byte[] payload)
         {
             using (var stream = ReadHeader(payload)) {
-                var groupId = stream.ReadInt16String();
+                var groupId = stream.ReadString();
                 var generationId = stream.ReadInt32();
-                var memberId = stream.ReadInt16String();
+                var memberId = stream.ReadString();
 
                 return new HeartbeatRequest(groupId, generationId, memberId);
             }
@@ -293,8 +293,8 @@ namespace KafkaClient.Tests.Protocol
         private static IRequest LeaveGroupRequest(IRequestContext context, byte[] payload)
         {
             using (var stream = ReadHeader(payload)) {
-                var groupId = stream.ReadInt16String();
-                var memberId = stream.ReadInt16String();
+                var groupId = stream.ReadString();
+                var memberId = stream.ReadString();
 
                 return new LeaveGroupRequest(groupId, memberId);
             }
@@ -303,14 +303,14 @@ namespace KafkaClient.Tests.Protocol
         private static IRequest SyncGroupRequest(IRequestContext context, byte[] payload)
         {
             using (var stream = ReadHeader(payload)) {
-                var groupId = stream.ReadInt16String();
+                var groupId = stream.ReadString();
                 var generationId = stream.ReadInt32();
-                var memberId = stream.ReadInt16String();
+                var memberId = stream.ReadString();
 
                 var groupAssignments = new SyncGroupAssignment[stream.ReadInt32()];
                 for (var a = 0; a < groupAssignments.Length; a++) {
-                    var groupMemberId = stream.ReadInt16String();
-                    var assignment = stream.ReadIntPrefixedBytes();
+                    var groupMemberId = stream.ReadString();
+                    var assignment = stream.ReadBytes();
 
                     groupAssignments[a] = new SyncGroupAssignment(groupMemberId, assignment);
                 }
@@ -324,7 +324,7 @@ namespace KafkaClient.Tests.Protocol
             using (var stream = ReadHeader(payload)) {
                 var groupIds = new string[stream.ReadInt32()];
                 for (var i = 0; i < groupIds.Length; i++) {
-                    groupIds[i] = stream.ReadInt16String();
+                    groupIds[i] = stream.ReadString();
                 }
 
                 return new DescribeGroupsRequest(groupIds);
@@ -341,7 +341,7 @@ namespace KafkaClient.Tests.Protocol
         private static IRequest SaslHandshakeRequest(IRequestContext context, byte[] payload)
         {
             using (var stream = ReadHeader(payload)) {
-                var mechanism = stream.ReadInt16String();
+                var mechanism = stream.ReadString();
                 return new SaslHandshakeRequest(mechanism);
             }
         }
@@ -366,7 +366,7 @@ namespace KafkaClient.Tests.Protocol
                 var apiKey = (ApiKeyRequestType) stream.ReadInt16();
                 var version = stream.ReadInt16();
                 var correlationId = stream.ReadInt32();
-                var clientId = stream.ReadInt16String();
+                var clientId = stream.ReadString();
 
                 context = new RequestContext(correlationId, version, clientId);
             } catch {
@@ -388,7 +388,7 @@ namespace KafkaClient.Tests.Protocol
             var groupedTopics = response.Topics.GroupBy(t => t.TopicName).ToList();
             writer.Write(groupedTopics.Count);
             foreach (var topic in groupedTopics) {
-                writer.Write(topic.Key, StringPrefixEncoding.Int16);
+                writer.Write(topic.Key);
                 var partitions = topic.ToList();
 
                 writer.Write(partitions.Count); // partitionsPerTopic
@@ -417,7 +417,7 @@ namespace KafkaClient.Tests.Protocol
             var groupedTopics = response.Topics.GroupBy(t => t.TopicName).ToList();
             writer.Write(groupedTopics.Count);
             foreach (var topic in groupedTopics) {
-                writer.Write(topic.Key, StringPrefixEncoding.Int16);
+                writer.Write(topic.Key);
                 var partitions = topic.ToList();
 
                 writer.Write(partitions.Count); // partitionsPerTopic
@@ -441,7 +441,7 @@ namespace KafkaClient.Tests.Protocol
             var groupedTopics = response.Topics.GroupBy(t => t.TopicName).ToList();
             writer.Write(groupedTopics.Count);
             foreach (var topic in groupedTopics) {
-                writer.Write(topic.Key, StringPrefixEncoding.Int16);
+                writer.Write(topic.Key);
                 var partitions = topic.ToList();
 
                 writer.Write(partitions.Count); // partitionsPerTopic
@@ -464,7 +464,7 @@ namespace KafkaClient.Tests.Protocol
             writer.Write(response.Brokers.Count);
             foreach (var broker in response.Brokers) {
                 writer.Write(broker.BrokerId);
-                writer.Write(broker.Host, StringPrefixEncoding.Int16);
+                writer.Write(broker.Host);
                 writer.Write(broker.Port);
             }
 
@@ -472,7 +472,7 @@ namespace KafkaClient.Tests.Protocol
             writer.Write(groupedTopics.Count);
             foreach (var topic in groupedTopics) {
                 writer.Write((short)topic.Key.ErrorCode);
-                writer.Write(topic.Key.TopicName, StringPrefixEncoding.Int16);
+                writer.Write(topic.Key.TopicName);
                 var partitions = topic.SelectMany(_ => _.Partitions).ToList();
                 writer.Write(partitions.Count); // partitionsPerTopic
                 foreach (var partition in partitions) {
@@ -499,7 +499,7 @@ namespace KafkaClient.Tests.Protocol
             writer.Write((short)response.ErrorCode);
             writer.Write(response.Topics.Count);
             foreach (var topic in response.Topics) {
-                writer.Write(topic.TopicName, StringPrefixEncoding.Int16);
+                writer.Write(topic.TopicName);
                 writer.Write(topic.PartitionId);
                 writer.Write((short)topic.ErrorCode);
             }
@@ -513,7 +513,7 @@ namespace KafkaClient.Tests.Protocol
             var groupedTopics = response.Topics.GroupBy(t => t.TopicName).ToList();
             writer.Write(groupedTopics.Count);
             foreach (var topic in groupedTopics) {
-                writer.Write(topic.Key, StringPrefixEncoding.Int16);
+                writer.Write(topic.Key);
                 var partitions = topic.ToList();
                 writer.Write(partitions.Count); // partitionsPerTopic
                 foreach (var partition in partitions) {
@@ -531,13 +531,13 @@ namespace KafkaClient.Tests.Protocol
             var groupedTopics = response.Topics.GroupBy(t => t.TopicName).ToList();
             writer.Write(groupedTopics.Count);
             foreach (var topic in groupedTopics) {
-                writer.Write(topic.Key, StringPrefixEncoding.Int16);
+                writer.Write(topic.Key);
                 var partitions = topic.ToList();
                 writer.Write(partitions.Count); // partitionsPerTopic
                 foreach (var partition in partitions) {
                     writer.Write(partition.PartitionId);
                     writer.Write(partition.Offset);
-                    writer.Write(partition.MetaData, StringPrefixEncoding.Int16);
+                    writer.Write(partition.MetaData);
                     writer.Write((short)partition.ErrorCode);
                 }
             }
@@ -550,7 +550,7 @@ namespace KafkaClient.Tests.Protocol
 
             writer.Write((short)response.ErrorCode);
             writer.Write(response.BrokerId);
-            writer.Write(response.Host, StringPrefixEncoding.Int16);
+            writer.Write(response.Host);
             writer.Write(response.Port);
             return true;
         }
@@ -561,13 +561,13 @@ namespace KafkaClient.Tests.Protocol
 
             writer.Write((short)response.ErrorCode);
             writer.Write(response.GenerationId);
-            writer.Write(response.GroupProtocol, StringPrefixEncoding.Int16);
-            writer.Write(response.LeaderId, StringPrefixEncoding.Int16);
-            writer.Write(response.MemberId, StringPrefixEncoding.Int16);
+            writer.Write(response.GroupProtocol);
+            writer.Write(response.LeaderId);
+            writer.Write(response.MemberId);
             writer.Write(response.Members.Count);
             foreach (var member in response.Members) {
-                writer.Write(member.MemberId, StringPrefixEncoding.Int16);
-                writer.Write(member.Metadata, StringPrefixEncoding.Int32);
+                writer.Write(member.MemberId);
+                writer.Write(member.Metadata);
             }
             return true;
         }
@@ -593,7 +593,7 @@ namespace KafkaClient.Tests.Protocol
             if (response == null) return false;
 
             writer.Write((short)response.ErrorCode);
-            writer.Write(response.MemberAssignment, StringPrefixEncoding.Int32);
+            writer.Write(response.MemberAssignment);
             return true;
         }
 
@@ -604,18 +604,18 @@ namespace KafkaClient.Tests.Protocol
             writer.Write(response.Groups.Count);
             foreach (var group in response.Groups) {
                 writer.Write((short)group.ErrorCode);
-                writer.Write(group.GroupId, StringPrefixEncoding.Int16);
-                writer.Write(group.State, StringPrefixEncoding.Int16);
-                writer.Write(group.ProtocolType, StringPrefixEncoding.Int16);
-                writer.Write(group.Protocol, StringPrefixEncoding.Int16);
+                writer.Write(@group.GroupId);
+                writer.Write(@group.State);
+                writer.Write(@group.ProtocolType);
+                writer.Write(@group.Protocol);
 
                 writer.Write(group.Members.Count);
                 foreach (var member in group.Members) {
-                    writer.Write(member.MemberId, StringPrefixEncoding.Int16);
-                    writer.Write(member.ClientId, StringPrefixEncoding.Int16);
-                    writer.Write(member.ClientHost, StringPrefixEncoding.Int16);
-                    writer.Write(member.MemberMetadata, StringPrefixEncoding.Int32);
-                    writer.Write(member.MemberAssignment, StringPrefixEncoding.Int32);
+                    writer.Write(member.MemberId);
+                    writer.Write(member.ClientId);
+                    writer.Write(member.ClientHost);
+                    writer.Write(member.MemberMetadata);
+                    writer.Write(member.MemberAssignment);
                 }
             }
             return true;
@@ -628,8 +628,8 @@ namespace KafkaClient.Tests.Protocol
             writer.Write((short)response.ErrorCode);
             writer.Write(response.Groups.Count);
             foreach (var group in response.Groups) {
-                writer.Write(group.GroupId, StringPrefixEncoding.Int16);
-                writer.Write(group.ProtocolType, StringPrefixEncoding.Int16);
+                writer.Write(@group.GroupId);
+                writer.Write(@group.ProtocolType);
             }
             return true;
         }
@@ -641,7 +641,7 @@ namespace KafkaClient.Tests.Protocol
             writer.Write((short)response.ErrorCode);
             writer.Write(response.EnabledMechanisms.Count);
             foreach (var mechanism in response.EnabledMechanisms) {
-                writer.Write(mechanism, StringPrefixEncoding.Int16);
+                writer.Write(mechanism);
             }
             return true;
         }

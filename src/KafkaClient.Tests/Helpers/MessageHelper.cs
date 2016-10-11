@@ -15,7 +15,7 @@ namespace KafkaClient.Tests.Helpers
             return new MessagePacker()
                 .Pack(offset)
                 .Pack(message)
-                .PayloadNoLength();
+                .ToBytesNoLength();
         }
 
         public static byte[] CreateMetadataResponse(int correlationId, string topic)

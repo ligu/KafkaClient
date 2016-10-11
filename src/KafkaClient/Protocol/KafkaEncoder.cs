@@ -90,7 +90,7 @@ namespace KafkaClient.Protocol
 
                 default:
                     using (var message = EncodeHeader(context, request)) {
-                        return message.Payload();
+                        return message.ToBytes();
                     }
             }
         }
@@ -136,7 +136,7 @@ namespace KafkaClient.Protocol
                         .Pack(EncodeMessage(message));
                 }
 
-                return stream.PayloadNoLength();
+                return stream.ToBytesNoLength();
             }
         }
 
@@ -159,7 +159,7 @@ namespace KafkaClient.Protocol
                 }
                 return stream.Pack(message.Key)
                       .Pack(message.Value)
-                      .CrcPayload();
+                      .ToBytesCrc();
             }
         }
 
@@ -169,9 +169,9 @@ namespace KafkaClient.Protocol
                 stream.Pack(groupProtocol.Version)
                       .Pack(groupProtocol.Subscription.Count);
                 foreach (var topicName in groupProtocol.Subscription) {
-                    stream.Pack(topicName, StringPrefixEncoding.Int16);
+                    stream.Pack(topicName);
                 }
-                return stream.Pack(groupProtocol.UserData).Payload();
+                return stream.Pack(groupProtocol.UserData).ToBytes();
             }
         }
 
@@ -204,7 +204,7 @@ namespace KafkaClient.Protocol
 
                 foreach (var groupedPayload in groupedPayloads) {
                     var payloads = groupedPayload.ToList();
-                    message.Pack(groupedPayload.Key.TopicName, StringPrefixEncoding.Int16)
+                    message.Pack(groupedPayload.Key.TopicName)
                             .Pack(payloads.Count) // shouldn't this be 1?
                             .Pack(groupedPayload.Key.PartitionId);
 
@@ -225,7 +225,7 @@ namespace KafkaClient.Protocol
                     }
                 }
 
-                var bytes = message.Payload();
+                var bytes = message.ToBytes();
                 StatisticsTracker.RecordProduceRequest(request.Payloads.Sum(x => x.Messages.Count), bytes.Length, totalCompressedBytes);
                 return bytes;
             }
@@ -242,7 +242,7 @@ namespace KafkaClient.Protocol
 
                 foreach (var topicGroup in topicGroups) {
                     var partitions = topicGroup.GroupBy(x => x.PartitionId).ToList();
-                    message.Pack(topicGroup.Key, StringPrefixEncoding.Int16)
+                    message.Pack(topicGroup.Key)
                             .Pack(partitions.Count);
 
                     foreach (var partition in partitions) {
@@ -254,7 +254,7 @@ namespace KafkaClient.Protocol
                     }
                 }
 
-                return message.Payload();
+                return message.ToBytes();
             }
         }
 
@@ -267,7 +267,7 @@ namespace KafkaClient.Protocol
 
                 foreach (var topicGroup in topicGroups) {
                     var partitions = topicGroup.GroupBy(x => x.PartitionId).ToList();
-                    message.Pack(topicGroup.Key, StringPrefixEncoding.Int16)
+                    message.Pack(topicGroup.Key)
                             .Pack(partitions.Count);
 
                     foreach (var partition in partitions) {
@@ -279,7 +279,7 @@ namespace KafkaClient.Protocol
                     }
                 }
 
-                return message.Payload();
+                return message.ToBytes();
             }
         }
 
@@ -287,9 +287,9 @@ namespace KafkaClient.Protocol
         {
             using (var message = EncodeHeader(context, request)) {
                 message.Pack(request.Topics.Count)
-                        .Pack(request.Topics, StringPrefixEncoding.Int16);
+                        .Pack(request.Topics);
 
-                return message.Payload();
+                return message.ToBytes();
             }
         }
 
@@ -302,21 +302,21 @@ namespace KafkaClient.Protocol
                     .Pack(request.Topics.Count);
 
                 foreach (var topic in request.Topics) {
-                    message.Pack(topic.TopicName, StringPrefixEncoding.Int16)
+                    message.Pack(topic.TopicName)
                            .Pack(topic.PartitionId);
                 }
 
-                return message.Payload();
+                return message.ToBytes();
             }
         }
 
         private static byte[] EncodeRequest(IRequestContext context, OffsetCommitRequest request)
         {
             using (var message = EncodeHeader(context, request)) {
-                message.Pack(request.GroupId, StringPrefixEncoding.Int16);
+                message.Pack(request.GroupId);
                 if (context.ApiVersion >= 1) {
                     message.Pack(request.GenerationId)
-                            .Pack(request.MemberId, StringPrefixEncoding.Int16);
+                            .Pack(request.MemberId);
                 }
                 if (context.ApiVersion >= 2) {
                     if (request.OffsetRetention.HasValue) {
@@ -331,7 +331,7 @@ namespace KafkaClient.Protocol
 
                 foreach (var topicGroup in topicGroups) {
                     var partitions = topicGroup.GroupBy(x => x.PartitionId).ToList();
-                    message.Pack(topicGroup.Key, StringPrefixEncoding.Int16)
+                    message.Pack(topicGroup.Key)
                             .Pack(partitions.Count);
 
                     foreach (var partition in partitions) {
@@ -341,11 +341,11 @@ namespace KafkaClient.Protocol
                             if (context.ApiVersion == 1) {
                                 message.Pack(commit.TimeStamp.GetValueOrDefault(-1));
                             }
-                            message.Pack(commit.Metadata, StringPrefixEncoding.Int16);
+                            message.Pack(commit.Metadata);
                         }
                     }
                 }
-                return message.Payload();
+                return message.ToBytes();
             }
         }
 
@@ -354,12 +354,12 @@ namespace KafkaClient.Protocol
             using (var message = EncodeHeader(context, request)) {
                 var topicGroups = request.Topics.GroupBy(x => x.TopicName).ToList();
 
-                message.Pack(request.GroupId, StringPrefixEncoding.Int16)
+                message.Pack(request.GroupId)
                         .Pack(topicGroups.Count);
 
                 foreach (var topicGroup in topicGroups) {
                     var partitions = topicGroup.GroupBy(x => x.PartitionId).ToList();
-                    message.Pack(topicGroup.Key, StringPrefixEncoding.Int16)
+                    message.Pack(topicGroup.Key)
                             .Pack(partitions.Count);
 
                     foreach (var partition in partitions) {
@@ -369,71 +369,71 @@ namespace KafkaClient.Protocol
                     }
                 }
 
-                return message.Payload();
+                return message.ToBytes();
             }
         }
 
         private static byte[] EncodeRequest(IRequestContext context, GroupCoordinatorRequest request)
         {
             using (var message = EncodeHeader(context, request)) {
-                message.Pack(request.GroupId, StringPrefixEncoding.Int16);
-                return message.Payload();
+                message.Pack(request.GroupId);
+                return message.ToBytes();
             }
         }
 
         private static byte[] EncodeRequest(IRequestContext context, JoinGroupRequest request)
         {
             using (var message = EncodeHeader(context, request)) {
-                message.Pack(request.GroupId, StringPrefixEncoding.Int16)
+                message.Pack(request.GroupId)
                     .Pack((int)request.SessionTimeout.TotalMilliseconds)
-                    .Pack(request.MemberId, StringPrefixEncoding.Int16)
-                    .Pack(request.ProtocolType, StringPrefixEncoding.Int16)
+                    .Pack(request.MemberId)
+                    .Pack(request.ProtocolType)
                     .Pack(request.GroupProtocols.Count);
 
                 foreach (var protocol in request.GroupProtocols) {
-                    message.Pack(protocol.Name, StringPrefixEncoding.Int16)
+                    message.Pack(protocol.Name)
                            .Pack(protocol.Metadata);
                 }
 
-                return message.Payload();
+                return message.ToBytes();
             }
         }
 
         private static byte[] EncodeRequest(IRequestContext context, HeartbeatRequest request)
         {
             using (var message = EncodeHeader(context, request)) {
-                message.Pack(request.GroupId, StringPrefixEncoding.Int16)
+                message.Pack(request.GroupId)
                     .Pack(request.GenerationId)
-                    .Pack(request.MemberId, StringPrefixEncoding.Int16);
+                    .Pack(request.MemberId);
 
-                return message.Payload();
+                return message.ToBytes();
             }
         }
 
         private static byte[] EncodeRequest(IRequestContext context, LeaveGroupRequest request)
         {
             using (var message = EncodeHeader(context, request)) {
-                message.Pack(request.GroupId, StringPrefixEncoding.Int16)
-                    .Pack(request.MemberId, StringPrefixEncoding.Int16);
+                message.Pack(request.GroupId)
+                    .Pack(request.MemberId);
 
-                return message.Payload();
+                return message.ToBytes();
             }
         }
 
         private static byte[] EncodeRequest(IRequestContext context, SyncGroupRequest request)
         {
             using (var message = EncodeHeader(context, request)) {
-                message.Pack(request.GroupId, StringPrefixEncoding.Int16)
+                message.Pack(request.GroupId)
                     .Pack(request.GenerationId)
-                    .Pack(request.MemberId, StringPrefixEncoding.Int16)
+                    .Pack(request.MemberId)
                     .Pack(request.GroupAssignments.Count);
 
                 foreach (var assignment in request.GroupAssignments) {
-                    message.Pack(assignment.MemberId, StringPrefixEncoding.Int16)
+                    message.Pack(assignment.MemberId)
                            .Pack(assignment.MemberAssignment);
                 }
 
-                return message.Payload();
+                return message.ToBytes();
             }
         }
 
@@ -443,33 +443,33 @@ namespace KafkaClient.Protocol
                 message.Pack(request.GroupIds.Count);
 
                 foreach (var groupId in request.GroupIds) {
-                    message.Pack(groupId, StringPrefixEncoding.Int16);
+                    message.Pack(groupId);
                 }
 
-                return message.Payload();
+                return message.ToBytes();
             }
         }
 
         private static byte[] EncodeRequest(IRequestContext context, ListGroupsRequest request)
         {
             using (var message = EncodeHeader(context, request)) {
-                return message.Payload();
+                return message.ToBytes();
             }
         }
 
         private static byte[] EncodeRequest(IRequestContext context, SaslHandshakeRequest request)
         {
             using (var message = EncodeHeader(context, request)) {
-                message.Pack(request.Mechanism, StringPrefixEncoding.Int16);
+                message.Pack(request.Mechanism);
 
-                return message.Payload();
+                return message.ToBytes();
             }
         }
 
         private static byte[] EncodeRequest(IRequestContext context, ApiVersionsRequest request)
         {
             using (var message = EncodeHeader(context, request)) {
-                return message.Payload();
+                return message.ToBytes();
             }
         }
 
@@ -489,7 +489,7 @@ namespace KafkaClient.Protocol
                 .Pack((short)request.ApiKey)
                  .Pack(context.ApiVersion.GetValueOrDefault())
                  .Pack(context.CorrelationId)
-                 .Pack(context.ClientId, StringPrefixEncoding.Int16);
+                 .Pack(context.ClientId);
         }
 
         #endregion
@@ -556,17 +556,17 @@ namespace KafkaClient.Protocol
                         timestamp = milliseconds.FromUnixEpochMilliseconds();
                     }
                 }
-                var key = stream.ReadIntPrefixedBytes();
+                var key = stream.ReadBytes();
 
                 var codec = (MessageCodec)(MessageAttributeCodeMask & attribute);
                 switch (codec)
                 {
                     case MessageCodec.CodecNone:
-                        yield return new Message(stream.ReadIntPrefixedBytes(), attribute, offset, partitionId, messageVersion, key, timestamp);
+                        yield return new Message(stream.ReadBytes(), attribute, offset, partitionId, messageVersion, key, timestamp);
                         break;
 
                     case MessageCodec.CodecGzip:
-                        var gZipData = stream.ReadIntPrefixedBytes();
+                        var gZipData = stream.ReadBytes();
                         foreach (var m in DecodeMessageSet(Compression.Unzip(gZipData), partitionId)) {
                             yield return m;
                         }
@@ -586,7 +586,7 @@ namespace KafkaClient.Protocol
                 var topics = new List<ProduceTopic>();
                 var topicCount = stream.ReadInt32();
                 for (var i = 0; i < topicCount; i++) {
-                    var topicName = stream.ReadInt16String();
+                    var topicName = stream.ReadString();
 
                     var partitionCount = stream.ReadInt32();
                     for (var j = 0; j < partitionCount; j++) {
@@ -625,14 +625,14 @@ namespace KafkaClient.Protocol
                 var topics = new List<FetchTopicResponse>();
                 var topicCount = stream.ReadInt32();
                 for (var t = 0; t < topicCount; t++) {
-                    var topicName = stream.ReadInt16String();
+                    var topicName = stream.ReadString();
 
                     var partitionCount = stream.ReadInt32();
                     for (var p = 0; p < partitionCount; p++) {
                         var partitionId = stream.ReadInt32();
                         var errorCode = (ErrorResponseCode) stream.ReadInt16();
                         var highWaterMarkOffset = stream.ReadInt64();
-                        var messages = DecodeMessageSet(stream.ReadIntPrefixedBytes(), partitionId).ToList();
+                        var messages = DecodeMessageSet(stream.ReadBytes(), partitionId).ToList();
                         topics.Add(new FetchTopicResponse(topicName, partitionId, highWaterMarkOffset, errorCode, messages));
                     }
                 }
@@ -646,7 +646,7 @@ namespace KafkaClient.Protocol
                 var topics = new List<OffsetTopic>();
                 var topicCount = stream.ReadInt32();
                 for (var t = 0; t < topicCount; t++) {
-                    var topicName = stream.ReadInt16String();
+                    var topicName = stream.ReadString();
 
                     var partitionCount = stream.ReadInt32();
                     for (var p = 0; p < partitionCount; p++) {
@@ -671,7 +671,7 @@ namespace KafkaClient.Protocol
                 var brokers = new Broker[stream.ReadInt32()];
                 for (var b = 0; b < brokers.Length; b++) {
                     var brokerId = stream.ReadInt32();
-                    var host = stream.ReadInt16String();
+                    var host = stream.ReadString();
                     var port = stream.ReadInt32();
 
                     brokers[b] = new Broker(brokerId, host, port);
@@ -680,7 +680,7 @@ namespace KafkaClient.Protocol
                 var topics = new MetadataTopic[stream.ReadInt32()];
                 for (var t = 0; t < topics.Length; t++) {
                     var topicError = (ErrorResponseCode) stream.ReadInt16();
-                    var topicName = stream.ReadInt16String();
+                    var topicName = stream.ReadString();
 
                     var partitions = new MetadataPartition[stream.ReadInt32()];
                     for (var p = 0; p < partitions.Length; p++) {
@@ -711,7 +711,7 @@ namespace KafkaClient.Protocol
 
                 var topics = new TopicResponse[stream.ReadInt32()];
                 for (var i = 0; i < topics.Length; i++) {
-                    var topicName = stream.ReadInt16String();
+                    var topicName = stream.ReadString();
                     var partitionId = stream.ReadInt32();
                     var topicErrorCode = (ErrorResponseCode)stream.ReadInt16();
                     topics[i] = new TopicResponse(topicName, partitionId, topicErrorCode);
@@ -726,7 +726,7 @@ namespace KafkaClient.Protocol
                 var topics = new List<TopicResponse>();
                 var topicCount = stream.ReadInt32();
                 for (var t = 0; t < topicCount; t++) {
-                    var topicName = stream.ReadInt16String();
+                    var topicName = stream.ReadString();
 
                     var partitionCount = stream.ReadInt32();
                     for (var p = 0; p < partitionCount; p++) {
@@ -747,13 +747,13 @@ namespace KafkaClient.Protocol
                 var topics = new List<OffsetFetchTopic>();
                 var topicCount = stream.ReadInt32();
                 for (var t = 0; t < topicCount; t++) {
-                    var topicName = stream.ReadInt16String();
+                    var topicName = stream.ReadString();
 
                     var partitionCount = stream.ReadInt32();
                     for (var p = 0; p < partitionCount; p++) {
                         var partitionId = stream.ReadInt32();
                         var offset = stream.ReadInt64();
-                        var metadata = stream.ReadInt16String();
+                        var metadata = stream.ReadString();
                         var errorCode = (ErrorResponseCode) stream.ReadInt16();
 
                         topics.Add(new OffsetFetchTopic(topicName, partitionId, errorCode, offset, metadata));
@@ -769,7 +769,7 @@ namespace KafkaClient.Protocol
             using (var stream = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
                 var errorCode = (ErrorResponseCode)stream.ReadInt16();
                 var coordinatorId = stream.ReadInt32();
-                var coordinatorHost = stream.ReadInt16String();
+                var coordinatorHost = stream.ReadString();
                 var coordinatorPort = stream.ReadInt32();
 
                 return new GroupCoordinatorResponse(errorCode, coordinatorId, coordinatorHost, coordinatorPort);
@@ -781,14 +781,14 @@ namespace KafkaClient.Protocol
             using (var stream = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
                 var errorCode = (ErrorResponseCode)stream.ReadInt16();
                 var generationId = stream.ReadInt32();
-                var groupProtocol = stream.ReadInt16String();
-                var leaderId = stream.ReadInt16String();
-                var memberId = stream.ReadInt16String();
+                var groupProtocol = stream.ReadString();
+                var leaderId = stream.ReadString();
+                var memberId = stream.ReadString();
 
                 var members = new GroupMember[stream.ReadInt32()];
                 for (var m = 0; m < members.Length; m++) {
-                    var id = stream.ReadInt16String();
-                    var metadata = stream.ReadIntPrefixedBytes();
+                    var id = stream.ReadString();
+                    var metadata = stream.ReadBytes();
                     members[m] = new GroupMember(id, metadata);
                 }
 
@@ -818,7 +818,7 @@ namespace KafkaClient.Protocol
         {
             using (var stream = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
                 var errorCode = (ErrorResponseCode)stream.ReadInt16();
-                var memberAssignment = stream.ReadIntPrefixedBytes();
+                var memberAssignment = stream.ReadBytes();
 
                 return new SyncGroupResponse(errorCode, memberAssignment);
             }
@@ -830,17 +830,17 @@ namespace KafkaClient.Protocol
                 var groups = new DescribeGroup[stream.ReadInt32()];
                 for (var g = 0; g < groups.Length; g++) {
                     var errorCode = (ErrorResponseCode)stream.ReadInt16();
-                    var groupId = stream.ReadInt16String();
-                    var state = stream.ReadInt16String();
-                    var protocolType = stream.ReadInt16String();
-                    var protocol = stream.ReadInt16String();
+                    var groupId = stream.ReadString();
+                    var state = stream.ReadString();
+                    var protocolType = stream.ReadString();
+                    var protocol = stream.ReadString();
                     var members = new DescribeGroupMember[stream.ReadInt32()];
                     for (var m = 0; m < members.Length; m++) {
-                        var memberId = stream.ReadInt16String();
-                        var clientId = stream.ReadInt16String();
-                        var clientHost = stream.ReadInt16String();
-                        var memberMetadata = stream.ReadIntPrefixedBytes();
-                        var memberAssignment = stream.ReadIntPrefixedBytes();
+                        var memberId = stream.ReadString();
+                        var clientId = stream.ReadString();
+                        var clientHost = stream.ReadString();
+                        var memberMetadata = stream.ReadBytes();
+                        var memberAssignment = stream.ReadBytes();
                         members[m] = new DescribeGroupMember(memberId, clientId, clientHost, memberMetadata, memberAssignment);
                     }
                     groups[g] = new DescribeGroup(errorCode, groupId, state, protocolType, protocol, members);
@@ -856,8 +856,8 @@ namespace KafkaClient.Protocol
                 var errorCode = (ErrorResponseCode)stream.ReadInt16();
                 var groups = new ListGroup[stream.ReadInt32()];
                 for (var g = 0; g < groups.Length; g++) {
-                    var groupId = stream.ReadInt16String();
-                    var protocolType = stream.ReadInt16String();
+                    var groupId = stream.ReadString();
+                    var protocolType = stream.ReadString();
                     groups[g] = new ListGroup(groupId, protocolType);
                 }
 
@@ -871,7 +871,7 @@ namespace KafkaClient.Protocol
                 var errorCode = (ErrorResponseCode)stream.ReadInt16();
                 var enabledMechanisms = new string[stream.ReadInt32()];
                 for (var m = 0; m < enabledMechanisms.Length; m++) {
-                    enabledMechanisms[m] = stream.ReadInt16String();
+                    enabledMechanisms[m] = stream.ReadString();
                 }
 
                 return new SaslHandshakeResponse(errorCode, enabledMechanisms);

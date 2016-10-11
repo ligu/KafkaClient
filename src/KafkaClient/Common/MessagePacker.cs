@@ -21,47 +21,46 @@ namespace KafkaClient.Common
             return this;
         }
 
-        public MessagePacker Pack(int ints)
+        public MessagePacker Pack(int value)
         {
-            _stream.Write(ints);
+            _stream.Write(value);
             return this;
         }
 
-        public MessagePacker Pack(short ints)
+        public MessagePacker Pack(short value)
         {
-            _stream.Write(ints);
+            _stream.Write(value);
             return this;
         }
 
-        public MessagePacker Pack(long ints)
+        public MessagePacker Pack(long value)
         {
-            _stream.Write(ints);
+            _stream.Write(value);
             return this;
         }
 
-        public MessagePacker Pack(byte[] buffer, StringPrefixEncoding encoding = StringPrefixEncoding.Int32)
+        public MessagePacker Pack(byte[] values)
         {
-            _stream.Write(buffer, encoding);
+            _stream.Write(values, StringPrefixEncoding.Int32);
             return this;
         }
 
-        public MessagePacker Pack(string data, StringPrefixEncoding encoding = StringPrefixEncoding.Int32)
+        public MessagePacker Pack(string value)
         {
-            _stream.Write(data, encoding);
+            _stream.Write(value);
             return this;
         }
 
-        public MessagePacker Pack(IEnumerable<string> data, StringPrefixEncoding encoding = StringPrefixEncoding.Int32)
+        public MessagePacker Pack(IEnumerable<string> values)
         {
-            foreach (var item in data)
-            {
-                _stream.Write(item, encoding);
+            foreach (var item in values) {
+                _stream.Write(item);
             }
 
             return this;
         }
 
-        public byte[] Payload()
+        public byte[] ToBytes()
         {
             var buffer = new byte[_stream.BaseStream.Length];
             _stream.BaseStream.Position = 0;
@@ -71,7 +70,7 @@ namespace KafkaClient.Common
             return buffer;
         }
 
-        public byte[] PayloadNoLength()
+        public byte[] ToBytesNoLength()
         {
             var payloadLength = _stream.BaseStream.Length - IntegerByteSize;
             var buffer = new byte[payloadLength];
@@ -80,7 +79,7 @@ namespace KafkaClient.Common
             return buffer;
         }
 
-        public byte[] CrcPayload()
+        public byte[] ToBytesCrc()
         {
             var buffer = new byte[_stream.BaseStream.Length];
 

@@ -308,10 +308,10 @@ namespace KafkaClient.Tests.Connections
 
                 var payload = new MessagePacker()
                     .Pack(firstMessage)
-                    .Pack(secondMessage, StringPrefixEncoding.None);
+                    .Pack(secondMessage);
 
                 //send the combined payload
-                var send = server.SendDataAsync(payload.PayloadNoLength());
+                var send = server.SendDataAsync(payload.ToBytesNoLength());
 
                 var firstResponse = test.ReadAsync(4, CancellationToken.None).Result.ToInt32();
                 Assert.That(firstResponse, Is.EqualTo(firstMessage));
@@ -424,7 +424,7 @@ namespace KafkaClient.Tests.Connections
 
                 var tasks = messages.Select(x => socket.ReadAsync(x.Length, CancellationToken.None)).ToArray();
 
-                var send = server.SendDataAsync(payload.Payload());
+                var send = server.SendDataAsync(payload.ToBytes());
 
                 Task.WaitAll(tasks);
 

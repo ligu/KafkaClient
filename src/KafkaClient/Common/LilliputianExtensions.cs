@@ -18,24 +18,6 @@ namespace KafkaClient.Common
                          .ToArray();
         }
 
-        public static byte[] ToInt16SizedBytes(this string value)
-        {
-            if (string.IsNullOrEmpty(value)) return (-1).ToBytes();
-
-            return ((short) value.Length).ToBytes()
-                                          .Concat(value.ToBytes())
-                                          .ToArray();
-        }
-
-        public static byte[] ToInt32PrefixedBytes(this byte[] value)
-        {
-            if (value == null) return (-1).ToBytes();
-
-            return value.Length.ToBytes()
-                         .Concat(value)
-                         .ToArray();
-        }
-
         public static string ToUtf8String(this byte[] value)
         {
             if (value == null) return string.Empty;

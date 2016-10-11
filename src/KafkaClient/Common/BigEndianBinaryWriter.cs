@@ -16,7 +16,9 @@ namespace KafkaClient.Common
     /// <remarks>
     /// BigEndianBinaryWriter code provided by Zoltu
     /// https://github.com/Zoltu/Zoltu.EndianAwareBinaryReaderWriter
+    /// 
     /// The code was modified to implement Kafka specific byte handling.
+    /// Specifically where STRINGS are 16bit prefixed and BYTE[] are 32bit prefixed
     /// </remarks>
     public class BigEndianBinaryWriter : BinaryWriter
     {
@@ -47,7 +49,7 @@ namespace KafkaClient.Common
                 if (BitConverter.IsLittleEndian)
                     Array.Reverse(bytes);
 
-                Write(bytes);
+                base.Write(bytes);
             }
         }
 
@@ -99,56 +101,31 @@ namespace KafkaClient.Common
             WriteBigEndian(bytes);
         }
 
-        public override void Write(string value)
-        {
-            throw new NotSupportedException("Kafka requires specific string length prefix encoding.");
-        }
-
         public void Write(byte[] value, StringPrefixEncoding encoding)
         {
             if (value == null) {
-                Write(-1);
+                if (encoding != StringPrefixEncoding.None) {
+                    Write(-1);
+                }
                 return;
             }
 
-            switch (encoding) {
-                case StringPrefixEncoding.Int16:
-                    Write((short)value.Length);
-                    break;
-
-                case StringPrefixEncoding.Int32:
-                    Write(value.Length);
-                    break;
+            if (encoding != StringPrefixEncoding.None) {
+                Write(value.Length);
             }
-
-            Write(value);
+            base.Write(value);
         }
 
-        public void Write(string value, StringPrefixEncoding encoding)
+        public override void Write(string value)
         {
             if (value == null) {
-                switch (encoding) {
-                    case StringPrefixEncoding.Int16:
-                        Write((short)-1);
-                        return;
-
-                    default:
-                        Write(-1);
-                        return;
-                }
+                Write((short)-1);
+                return;
             }
 
-            switch (encoding) {
-                case StringPrefixEncoding.Int16:
-                    Write((short)value.Length);
-                    break;
-
-                case StringPrefixEncoding.Int32:
-                    Write(value.Length);
-                    break;
-            }
-
-            Write(Encoding.UTF8.GetBytes(value));
+            var bytes = Encoding.UTF8.GetBytes(value); 
+            Write((short)bytes.Length);
+            base.Write(bytes);
         }
 
         private void WriteBigEndian(byte[] bytes)
@@ -159,7 +136,7 @@ namespace KafkaClient.Common
                 Array.Reverse(bytes);
             }
 
-            Write(bytes);
+            base.Write(bytes);
         }
     }
 }

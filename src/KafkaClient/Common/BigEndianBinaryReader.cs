@@ -18,6 +18,7 @@ namespace KafkaClient.Common
     /// https://github.com/Zoltu/Zoltu.EndianAwareBinaryReaderWriter
     ///
     /// The code was modified to provide Kafka specific logic and helper functions.
+    /// Specifically where STRINGS are 16bit prefixed and BYTE[] are 32bit prefixed
     /// </remarks>
     public class BigEndianBinaryReader : BinaryReader
     {
@@ -110,33 +111,14 @@ namespace KafkaClient.Common
             return EndianAwareRead(8, BitConverter.ToUInt64);
         }
 
+        public override string ReadString()
+        {
+            var size = ReadInt16();
+            if (size == KafkaNullSize) return null;
+            return Encoding.UTF8.GetString(RawRead(size));
+        }
+
         public byte[] ReadBytes()
-        {
-            return ReadIntPrefixedBytes();
-        }
-
-        public string ReadInt16String()
-        {
-            var size = ReadInt16();
-            if (size == KafkaNullSize) return null;
-            return Encoding.UTF8.GetString(RawRead(size));
-        }
-
-        public string ReadIntString()
-        {
-            var size = ReadInt32();
-            if (size == KafkaNullSize) return null;
-            return Encoding.UTF8.GetString(RawRead(size));
-        }
-
-        public byte[] ReadInt16PrefixedBytes()
-        {
-            var size = ReadInt16();
-            if (size == KafkaNullSize) { return null; }
-            return RawRead(size);
-        }
-
-        public byte[] ReadIntPrefixedBytes()
         {
             var size = ReadInt32();
             if (size == KafkaNullSize) { return null; }
