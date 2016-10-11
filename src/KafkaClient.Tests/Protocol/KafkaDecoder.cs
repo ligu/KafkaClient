@@ -311,10 +311,11 @@ namespace KafkaClient.Tests.Protocol
                 var generationId = stream.ReadInt32();
                 var memberId = stream.ReadString();
 
+                var encoder = context.GetEncoder();
                 var groupAssignments = new SyncGroupAssignment[stream.ReadInt32()];
                 for (var a = 0; a < groupAssignments.Length; a++) {
                     var groupMemberId = stream.ReadString();
-                    var assignment = stream.ReadBytes();
+                    var assignment = encoder.DecodeAssignment(stream.ReadBytes());
 
                     groupAssignments[a] = new SyncGroupAssignment(groupMemberId, assignment);
                 }
@@ -569,9 +570,11 @@ namespace KafkaClient.Tests.Protocol
             writer.Write(response.LeaderId);
             writer.Write(response.MemberId);
             writer.Write(response.Members.Count);
+
+            var encoder = context.GetEncoder(response.GroupProtocol);
             foreach (var member in response.Members) {
                 writer.Write(member.MemberId);
-                writer.Write(member.Metadata, true);
+                writer.Write(encoder.EncodeMetadata(member.Metadata), true);
             }
             return true;
         }
@@ -597,7 +600,8 @@ namespace KafkaClient.Tests.Protocol
             if (response == null) return false;
 
             writer.Write((short)response.ErrorCode);
-            writer.Write(response.MemberAssignment);
+            var encoder = context.GetEncoder();
+            writer.Write(encoder.EncodeAssignment(response.MemberAssignment));
             return true;
         }
 
@@ -608,18 +612,19 @@ namespace KafkaClient.Tests.Protocol
             writer.Write(response.Groups.Count);
             foreach (var group in response.Groups) {
                 writer.Write((short)group.ErrorCode);
-                writer.Write(@group.GroupId);
-                writer.Write(@group.State);
-                writer.Write(@group.ProtocolType);
-                writer.Write(@group.Protocol);
+                writer.Write(group.GroupId);
+                writer.Write(group.State);
+                writer.Write(group.ProtocolType);
+                writer.Write(group.Protocol);
 
+                var encoder = context.GetEncoder(group.ProtocolType);
                 writer.Write(group.Members.Count);
                 foreach (var member in group.Members) {
                     writer.Write(member.MemberId);
                     writer.Write(member.ClientId);
                     writer.Write(member.ClientHost);
-                    writer.Write(member.MemberMetadata);
-                    writer.Write(member.MemberAssignment);
+                    writer.Write(encoder.EncodeMetadata(member.MemberMetadata));
+                    writer.Write(encoder.EncodeAssignment(member.MemberAssignment));
                 }
             }
             return true;
@@ -632,8 +637,8 @@ namespace KafkaClient.Tests.Protocol
             writer.Write((short)response.ErrorCode);
             writer.Write(response.Groups.Count);
             foreach (var group in response.Groups) {
-                writer.Write(@group.GroupId);
-                writer.Write(@group.ProtocolType);
+                writer.Write(group.GroupId);
+                writer.Write(group.ProtocolType);
             }
             return true;
         }

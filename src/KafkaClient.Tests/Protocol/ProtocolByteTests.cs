@@ -627,7 +627,7 @@ namespace KafkaClient.Tests.Protocol
             for (var m = 0; m < memberCount; m++) {
                 var bytes = new byte[memberCount*100];
                 _randomizer.NextBytes(bytes);
-                members.Add(new GroupMember(memberId + m, bytes));
+                members.Add(new GroupMember(memberId + m, new ByteMember(bytes)));
             }
             var request = new JoinGroupResponse(errorCode, generationId, protocol, leaderId, memberId, members);
 

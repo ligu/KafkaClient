@@ -377,10 +377,7 @@ namespace KafkaClient.Protocol
                     .Pack(request.ProtocolType)
                     .Pack(request.GroupProtocols.Count);
 
-                IProtocolTypeEncoder encoder;
-                if (!context.Encoders.TryGetValue(request.ProtocolType, out encoder)) {
-                    encoder = new ProtocolTypeEncoder();
-                }
+                var encoder = context.GetEncoder(request.ProtocolType);
                 foreach (var protocol in request.GroupProtocols) {
                     message.Pack(protocol.Name)
                            .Pack(encoder.EncodeMetadata(protocol.Metadata));
@@ -419,9 +416,10 @@ namespace KafkaClient.Protocol
                     .Pack(request.MemberId)
                     .Pack(request.GroupAssignments.Count);
 
+                var encoder = context.GetEncoder();
                 foreach (var assignment in request.GroupAssignments) {
                     message.Pack(assignment.MemberId)
-                           .Pack(assignment.MemberAssignment);
+                           .Pack(encoder.EncodeAssignment(assignment.MemberAssignment));
                 }
 
                 return message.ToBytes();
@@ -776,11 +774,11 @@ namespace KafkaClient.Protocol
                 var leaderId = stream.ReadString();
                 var memberId = stream.ReadString();
 
+                var encoder = context.GetEncoder(groupProtocol);
                 var members = new GroupMember[stream.ReadInt32()];
                 for (var m = 0; m < members.Length; m++) {
                     var id = stream.ReadString();
-                    var metadata = stream.ReadBytes();
-                    // TODO: is id the same as protocol name??
+                    var metadata = encoder.DecodeMetadata(stream.ReadBytes());
                     members[m] = new GroupMember(id, metadata);
                 }
 
@@ -810,8 +808,9 @@ namespace KafkaClient.Protocol
         {
             using (var stream = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
                 var errorCode = (ErrorResponseCode)stream.ReadInt16();
-                var memberAssignment = stream.ReadBytes();
 
+                var encoder = context.GetEncoder();
+                var memberAssignment = encoder.DecodeAssignment(stream.ReadBytes());
                 return new SyncGroupResponse(errorCode, memberAssignment);
             }
         }
@@ -826,13 +825,15 @@ namespace KafkaClient.Protocol
                     var state = stream.ReadString();
                     var protocolType = stream.ReadString();
                     var protocol = stream.ReadString();
+
+                    var encoder = context.GetEncoder(protocolType);
                     var members = new DescribeGroupMember[stream.ReadInt32()];
                     for (var m = 0; m < members.Length; m++) {
                         var memberId = stream.ReadString();
                         var clientId = stream.ReadString();
                         var clientHost = stream.ReadString();
-                        var memberMetadata = stream.ReadBytes();
-                        var memberAssignment = stream.ReadBytes();
+                        var memberMetadata = encoder.DecodeMetadata(stream.ReadBytes());
+                        var memberAssignment = encoder.DecodeAssignment(stream.ReadBytes());
                         members[m] = new DescribeGroupMember(memberId, clientId, clientHost, memberMetadata, memberAssignment);
                     }
                     groups[g] = new DescribeGroup(errorCode, groupId, state, protocolType, protocol, members);

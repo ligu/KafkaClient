@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using KafkaClient.Connections;
+using KafkaClient.Protocol.Types;
 
 namespace KafkaClient.Protocol
 {
@@ -140,6 +141,15 @@ namespace KafkaClient.Protocol
             }
             buffer.AppendLine(value.ToString());
             return buffer;
+        }
+
+        public static IProtocolTypeEncoder GetEncoder(this IRequestContext context, string protocolType = null)
+        {
+            var type = protocolType ?? context.ProtocolType;
+            IProtocolTypeEncoder encoder;
+            if (context.Encoders.TryGetValue(type, out encoder) && encoder != null) return encoder;
+
+            return new ProtocolTypeEncoder();
         }
     }
 }

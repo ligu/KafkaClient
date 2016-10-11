@@ -101,7 +101,6 @@
     <Compile Include="Protocol\DescribeGroupMember.cs" />
     <Compile Include="Protocol\DescribeGroupsRequest.cs" />
     <Compile Include="Protocol\DescribeGroupsResponse.cs" />
-    <Compile Include="Protocol\GroupData.cs" />
     <Compile Include="Protocol\ListGroup.cs" />
     <Compile Include="Protocol\ListGroupsRequest.cs" />
     <Compile Include="Protocol\ListGroupsResponse.cs" />

@@ -4,11 +4,15 @@ namespace KafkaClient.Protocol
 {
     public abstract class Request : IRequest, IEquatable<Request>
     {
-        protected Request(ApiKeyRequestType apiKey, bool expectResponse = true)
+        protected Request(ApiKeyRequestType apiKey, bool expectResponse = true, string protocolType = null)
         {
             ApiKey = apiKey;
             ExpectResponse = expectResponse;
+            ProtocolType = protocolType;
         }
+
+        /// <inheritdoc />
+        public string ProtocolType { get; }
 
         /// <summary>
         /// Enum identifying the specific type of request message being represented.
@@ -31,14 +35,17 @@ namespace KafkaClient.Protocol
         {
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
-            return ApiKey == other.ApiKey && ExpectResponse == other.ExpectResponse;
+            return ApiKey == other.ApiKey 
+                && string.Equals(ProtocolType, other.ProtocolType);
         }
 
         /// <inheritdoc />
         public override int GetHashCode()
         {
             unchecked {
-                return ((int) ApiKey*397) ^ ExpectResponse.GetHashCode();
+                var hashCode = (int)ApiKey;
+                hashCode = (hashCode*397) ^ (ProtocolType?.GetHashCode() ?? 0);
+                return hashCode;
             }
         }
 

@@ -41,19 +41,17 @@ namespace KafkaClient.Protocol
     public class JoinGroupRequest : Request, IRequest<JoinGroupResponse>, IGroupMember, IEquatable<JoinGroupRequest>
     {
         public JoinGroupRequest(string groupId, TimeSpan sessionTimeout, string memberId, string protocolType, IEnumerable<GroupProtocol> groupProtocols, TimeSpan? rebalanceTimeout = null) 
-            : base(ApiKeyRequestType.JoinGroup)
+            : base(ApiKeyRequestType.JoinGroup, protocolType: protocolType)
         {
             GroupId = groupId;
             SessionTimeout = sessionTimeout;
             RebalanceTimeout = rebalanceTimeout ?? SessionTimeout;
             MemberId = memberId;
-            ProtocolType = protocolType;
             GroupProtocols = ImmutableList<GroupProtocol>.Empty.AddNotNullRange(groupProtocols);
         }
 
         public TimeSpan SessionTimeout { get; }
         public TimeSpan RebalanceTimeout { get; }
-        public string ProtocolType { get; }
 
         public IImmutableList<GroupProtocol> GroupProtocols { get; }
         /// <inheritdoc />
@@ -76,7 +74,6 @@ namespace KafkaClient.Protocol
             return base.Equals(other) 
                 && SessionTimeout.Equals(other.SessionTimeout) 
                 && RebalanceTimeout.Equals(other.RebalanceTimeout) 
-                && string.Equals(ProtocolType, other.ProtocolType)
                 && string.Equals(GroupId, other.GroupId) 
                 && string.Equals(MemberId, other.MemberId)
                 && GroupProtocols.HasEqualElementsInOrder(other.GroupProtocols);
@@ -89,7 +86,6 @@ namespace KafkaClient.Protocol
                 int hashCode = base.GetHashCode();
                 hashCode = (hashCode*397) ^ SessionTimeout.GetHashCode();
                 hashCode = (hashCode*397) ^ RebalanceTimeout.GetHashCode();
-                hashCode = (hashCode*397) ^ (ProtocolType?.GetHashCode() ?? 0);
                 hashCode = (hashCode*397) ^ (GroupProtocols?.GetHashCode() ?? 0);
                 hashCode = (hashCode*397) ^ (GroupId?.GetHashCode() ?? 0);
                 hashCode = (hashCode*397) ^ (MemberId?.GetHashCode() ?? 0);

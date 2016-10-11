@@ -1,11 +1,12 @@
 using System;
 using KafkaClient.Common;
+using KafkaClient.Protocol.Types;
 
 namespace KafkaClient.Protocol
 {
     public class DescribeGroupMember : IEquatable<DescribeGroupMember>
     {
-        public DescribeGroupMember(string memberId, string clientId, string clientHost, byte[] memberMetadata, byte[] memberAssignment)
+        public DescribeGroupMember(string memberId, string clientId, string clientHost, IMemberMetadata memberMetadata, IMemberAssignment memberAssignment)
         {
             MemberId = memberId;
             ClientId = clientId;
@@ -32,12 +33,12 @@ namespace KafkaClient.Protocol
         /// <summary>
         /// The metadata corresponding to the current group protocol in use (will only be present if the group is stable).
         /// </summary>
-        public byte[] MemberMetadata { get; }
+        public IMemberMetadata MemberMetadata { get; }
 
         /// <summary>
         /// The current assignment provided by the group leader (will only be present if the group is stable).
         /// </summary>
-        public byte[] MemberAssignment { get; }
+        public IMemberAssignment MemberAssignment { get; }
 
         /// <inheritdoc />
         public override bool Equals(object obj)
@@ -53,8 +54,8 @@ namespace KafkaClient.Protocol
             return string.Equals(MemberId, other.MemberId) 
                    && string.Equals(ClientId, other.ClientId) 
                    && string.Equals(ClientHost, other.ClientHost) 
-                   && MemberMetadata.HasEqualElementsInOrder(other.MemberMetadata) 
-                   && MemberAssignment.HasEqualElementsInOrder(other.MemberMetadata);
+                   && Equals(MemberMetadata, other.MemberMetadata) 
+                   && Equals(MemberAssignment, other.MemberMetadata);
         }
 
         /// <inheritdoc />

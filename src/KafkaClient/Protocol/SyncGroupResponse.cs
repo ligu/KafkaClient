@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Immutable;
 using KafkaClient.Common;
+using KafkaClient.Protocol.Types;
 
 namespace KafkaClient.Protocol
 {
@@ -13,7 +14,7 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class SyncGroupResponse : IResponse, IEquatable<SyncGroupResponse>
     {
-        public SyncGroupResponse(ErrorResponseCode errorCode, byte[] memberAssignment)
+        public SyncGroupResponse(ErrorResponseCode errorCode, IMemberAssignment memberAssignment)
         {
             ErrorCode = errorCode;
             Errors = ImmutableList<ErrorResponseCode>.Empty.Add(ErrorCode);
@@ -24,7 +25,7 @@ namespace KafkaClient.Protocol
         public IImmutableList<ErrorResponseCode> Errors { get; }
 
         public ErrorResponseCode ErrorCode { get; }
-        public byte[] MemberAssignment { get; }
+        public IMemberAssignment MemberAssignment { get; }
 
         /// <inheritdoc />
         public override bool Equals(object obj)
@@ -38,7 +39,7 @@ namespace KafkaClient.Protocol
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
             return ErrorCode == other.ErrorCode 
-                && MemberAssignment.HasEqualElementsInOrder(other.MemberAssignment);
+                && Equals(MemberAssignment, other.MemberAssignment);
         }
 
         /// <inheritdoc />

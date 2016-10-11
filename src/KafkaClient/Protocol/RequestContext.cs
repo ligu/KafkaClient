@@ -5,12 +5,13 @@ namespace KafkaClient.Protocol
 {
     public class RequestContext : IRequestContext
     {
-        public RequestContext(int? correlationId = null, short? version = null, string clientId = null, IImmutableDictionary<string, IProtocolTypeEncoder> encoders = null)
+        public RequestContext(int? correlationId = null, short? version = null, string clientId = null, IImmutableDictionary<string, IProtocolTypeEncoder> encoders = null, string protocolType = null)
         {
             CorrelationId = correlationId.GetValueOrDefault(1);
             ApiVersion = version;
             ClientId = clientId ?? "Kafka-Net";
             Encoders = encoders ?? ImmutableDictionary<string, IProtocolTypeEncoder>.Empty;
+            ProtocolType = protocolType;
         }
 
         /// <summary>
@@ -33,5 +34,8 @@ namespace KafkaClient.Protocol
 
         /// <inheritdoc />
         public IImmutableDictionary<string, IProtocolTypeEncoder> Encoders { get; }
+
+        /// <inheritdoc />
+        public string ProtocolType { get; }
     }
 }
