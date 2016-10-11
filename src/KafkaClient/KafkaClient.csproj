@@ -71,7 +71,6 @@
     <Compile Include="Common\LogLevel.cs" />
     <Compile Include="Common\RetryAttempt.cs" />
     <Compile Include="Common\ScheduledTimerStatus.cs" />
-    <Compile Include="Common\StringPrefixEncoding.cs" />
     <Compile Include="Common\TaskExtensions.cs" />
     <Compile Include="Common\BackoffRetry.cs" />
     <Compile Include="Common\DelayedRetry.cs" />

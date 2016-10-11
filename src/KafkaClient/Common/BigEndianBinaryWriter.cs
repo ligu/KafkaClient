@@ -101,16 +101,16 @@ namespace KafkaClient.Common
             WriteBigEndian(bytes);
         }
 
-        public void Write(byte[] value, StringPrefixEncoding encoding)
+        public void Write(byte[] value, bool includePrefix)
         {
             if (value == null) {
-                if (encoding != StringPrefixEncoding.None) {
+                if (includePrefix) {
                     Write(-1);
                 }
                 return;
             }
 
-            if (encoding != StringPrefixEncoding.None) {
+            if (includePrefix) {
                 Write(value.Length);
             }
             base.Write(value);

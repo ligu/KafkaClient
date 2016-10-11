@@ -39,9 +39,9 @@ namespace KafkaClient.Common
             return this;
         }
 
-        public MessagePacker Pack(byte[] values)
+        public MessagePacker Pack(byte[] values, bool includePrefix = true)
         {
-            _stream.Write(values, StringPrefixEncoding.Int32);
+            _stream.Write(values, includePrefix);
             return this;
         }
 

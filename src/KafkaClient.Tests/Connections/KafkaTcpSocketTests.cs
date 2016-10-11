@@ -305,10 +305,11 @@ namespace KafkaClient.Tests.Connections
             {
                 const int firstMessage = 99;
                 const string secondMessage = "testmessage";
+                var bytes = Encoding.UTF8.GetBytes(secondMessage);
 
                 var payload = new MessagePacker()
                     .Pack(firstMessage)
-                    .Pack(secondMessage);
+                    .Pack(bytes, false);
 
                 //send the combined payload
                 var send = server.SendDataAsync(payload.ToBytesNoLength());
