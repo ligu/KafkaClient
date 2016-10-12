@@ -10,11 +10,9 @@ namespace KafkaClient.Tests.Helpers
 
         public static byte[] CreateMessage(long offset, byte[] key, byte[] payload, byte magicByte = 0, byte attributes = 0)
         {
-            var message = KafkaEncoder.EncodeMessage(new Message(payload, attributes, version: magicByte, key: key));
-
             return new KafkaWriter()
                 .Write(offset)
-                .Write(message)
+                .Write(new Message(payload, attributes, version: magicByte, key: key))
                 .ToBytesNoLength();
         }
 

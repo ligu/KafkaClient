@@ -40,9 +40,9 @@ namespace KafkaClient.Common
             return this;
         }
 
-        public IKafkaWriter Write(byte[] values, bool includePrefix = true)
+        public IKafkaWriter Write(byte[] values, bool includeLength = true)
         {
-            _stream.Write(values, includePrefix);
+            _stream.Write(values, includeLength);
             return this;
         }
 
@@ -52,9 +52,9 @@ namespace KafkaClient.Common
             return this;
         }
 
-        public IKafkaWriter Write(IEnumerable<string> values, bool includePrefix = false)
+        public IKafkaWriter Write(IEnumerable<string> values, bool includeLength = false)
         {
-            if (includePrefix) {
+            if (includeLength) {
                 var valuesList = values.ToList();
                 _stream.Write(valuesList.Count);
                 Write(valuesList);
@@ -78,12 +78,6 @@ namespace KafkaClient.Common
             return ToBytes(IntegerByteSize);
         }
 
-        public byte[] ToBytesCrc()
-        {
-            WriteCrc(0);
-            return ToBytes(0);
-        }
-
         private byte[] ToBytes(int offset)
         {
             var length = _stream.BaseStream.Length - offset;
@@ -96,7 +90,8 @@ namespace KafkaClient.Common
         private void WriteLength(int offset)
         {
             _stream.BaseStream.Position = offset;
-            Write((int)(_stream.BaseStream.Length - (offset + IntegerByteSize)));
+            var length = _stream.BaseStream.Length - (offset + IntegerByteSize); 
+            Write((int)length);
         }
 
         private void WriteCrc(int offset)

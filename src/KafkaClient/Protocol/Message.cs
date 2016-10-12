@@ -13,7 +13,7 @@ namespace KafkaClient.Protocol
             Offset = offset;
             PartitionId = partitionId;
             MessageVersion = version;
-            Attribute = attribute;
+            Attribute = (byte)(attribute & AttributeMask);
             Key = key;
             Value = value;
             Timestamp = timestamp;
@@ -54,6 +54,11 @@ namespace KafkaClient.Protocol
         /// All other bits should be set to 0.
         /// </summary>
         public byte Attribute { get; }
+
+        /// <summary>
+        ///  The lowest 2 bits contain the compression codec used for the message. The other bits should be set to 0.
+        /// </summary>
+        public const byte AttributeMask = 0x3;
 
         /// <summary>
         /// Key value used for routing message to partitions.

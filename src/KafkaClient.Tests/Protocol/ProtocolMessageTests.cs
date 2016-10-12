@@ -19,9 +19,12 @@ namespace KafkaClient.Tests.Protocol
         {
             var testMessage = new Message(value: "kafka test message.", key: "test");
 
-            var encoded = KafkaEncoder.EncodeMessage(testMessage);
-            encoded[0] += 1;
-            var result = KafkaEncoder.DecodeMessage(0, encoded).First();
+            using (var writer = new KafkaWriter()) {
+                writer.Write(testMessage, false);
+                var encoded = writer.ToBytesNoLength();
+                encoded[0] += 1;
+                var result = KafkaEncoder.DecodeMessage(0, encoded).First();
+            }
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
@@ -33,11 +36,14 @@ namespace KafkaClient.Tests.Protocol
         {
             var testMessage = new Message(key: key, value: value);
 
-            var encoded = KafkaEncoder.EncodeMessage(testMessage);
-            var result = KafkaEncoder.DecodeMessage(0, encoded).First();
+            using (var writer = new KafkaWriter()) {
+                writer.Write(testMessage, false);
+                var encoded = writer.ToBytesNoLength();
+                var result = KafkaEncoder.DecodeMessage(0, encoded).First();
 
-            Assert.That(testMessage.Key, Is.EqualTo(result.Key));
-            Assert.That(testMessage.Value, Is.EqualTo(result.Value));
+                Assert.That(testMessage.Key, Is.EqualTo(result.Key));
+                Assert.That(testMessage.Value, Is.EqualTo(result.Value));
+            }
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
@@ -58,9 +64,11 @@ namespace KafkaClient.Tests.Protocol
                     new Message("2", "1")
                 };
 
-            var result = KafkaEncoder.EncodeMessageSet(messages);
-
-            Assert.That(expected, Is.EqualTo(result));
+            using (var writer = new KafkaWriter()) {
+                writer.Write(messages, false);
+                var result = writer.ToBytesNoLength();
+                Assert.That(expected, Is.EqualTo(result));
+            }
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]

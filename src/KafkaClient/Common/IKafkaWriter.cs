@@ -10,14 +10,13 @@ namespace KafkaClient.Common
         IKafkaWriter Write(long value);
 
         IKafkaWriter Write(byte value);
-        IKafkaWriter Write(byte[] values, bool includePrefix = true);
+        IKafkaWriter Write(byte[] values, bool includeLength = true);
 
         IKafkaWriter Write(string value);
-        IKafkaWriter Write(IEnumerable<string> values, bool includePrefix = false);
+        IKafkaWriter Write(IEnumerable<string> values, bool includeLength = false);
 
         byte[] ToBytes();
         byte[] ToBytesNoLength();
-        byte[] ToBytesCrc();
 
         IDisposable MarkForLength();
         IDisposable MarkForCrc();

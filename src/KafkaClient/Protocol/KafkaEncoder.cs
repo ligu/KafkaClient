@@ -102,98 +102,65 @@ namespace KafkaClient.Protocol
 
         private static CompressedMessageResult CreateGzipCompressedMessage(IEnumerable<Message> messages)
         {
-            var messageSet = EncodeMessageSet(messages);
-            var gZipBytes = Compression.Zip(messageSet);
+            using (var writer = new KafkaWriter()) {
+                writer.Write(messages, false);
+                var messageSet = writer.ToBytesNoLength();
+                var gZipBytes = Compression.Zip(messageSet);
 
-            var compressedMessage = new Message(gZipBytes, (byte)(0x00 | (MessageAttributeCodeMask & (byte)MessageCodec.CodecGzip)));
+                var compressedMessage = new Message(gZipBytes, (byte)MessageCodec.CodecGzip);
 
-            return new CompressedMessageResult {
-                CompressedAmount = messageSet.Length - compressedMessage.Value.Length,
-                CompressedMessage = compressedMessage
-            };
+                return new CompressedMessageResult {
+                    CompressedAmount = messageSet.Length - compressedMessage.Value.Length,
+                    CompressedMessage = compressedMessage
+                };
+            }
         }
-
-        /// <summary>
-        ///  The lowest 2 bits contain the compression codec used for the message. The other bits should be set to 0.
-        /// </summary>
-        public static byte MessageAttributeCodeMask = 0x03;
 
         private const int MessageHeaderSize = 12;
 
-        private const long InitialMessageOffset = 0;
-
         /// <summary>
-        /// Encodes a collection of messages into one byte[].  Encoded in order of list.
-        /// </summary>
-        /// <param name="messages">The collection of messages to encode together.</param>
-        /// <returns>Encoded byte[] representing the collection of messages.</returns>
-        public static byte[] EncodeMessageSet(IEnumerable<Message> messages)
-        {
-            using (var writer = new KafkaWriter()) {
-                foreach (var message in messages) {
-                    writer.Write(InitialMessageOffset)
-                          .Write(message);
-                }
-                return writer.ToBytesNoLength();
-            }
-        }
-
-        /// <summary>
-        /// Encodes a collection of messages into one byte[].  Encoded in order of list.
+        /// Encodes a collection of messages, in order.
         /// </summary>
         /// <param name="writer">The writer</param>
         /// <param name="messages">The collection of messages to encode together.</param>
-        /// <returns>Encoded byte[] representing the collection of messages.</returns>
-        public static void Write(this IKafkaWriter writer, IEnumerable<Message> messages)
+        /// <param name="includeLength">Whether to include the length at the start</param>
+        public static IKafkaWriter Write(this IKafkaWriter writer, IEnumerable<Message> messages, bool includeLength = true)
         {
-            using (writer.MarkForLength()) {
+            using (includeLength ? writer.MarkForLength() : Disposable.None) {
+                var offset = 0L;
                 foreach (var message in messages) {
-                    writer.Write(InitialMessageOffset)
-                          .Write(message);
+                    writer.Write(offset) // TODO: should this be incremented? offset++?
+                            .Write(message);
                 }
             }
+            return writer;
         }
 
         /// <summary>
-        /// Encodes a message object to byte[]
+        /// Encodes a message object
         /// </summary>
+        /// <param name="writer">The writer</param>
         /// <param name="message">Message data to encode.</param>
+        /// <param name="includeLength">Whether to include the length at the start</param>
         /// <returns>Encoded byte[] representation of the message object.</returns>
         /// <remarks>
         /// Format:
         /// Crc (Int32), MagicByte (Byte), Attribute (Byte), Key (Byte[]), Value (Byte[])
         /// </remarks>
-        public static byte[] EncodeMessage(Message message)
+        public static IKafkaWriter Write(this IKafkaWriter writer, Message message, bool includeLength = true)
         {
-            using (var writer = new KafkaWriter()) {
-                writer.Write(message);
-                return writer.ToBytesNoLength();
-            }
-        }
-
-        /// <summary>
-        /// Encodes a message object to byte[]
-        /// </summary>
-        /// <param name="writer">The writer</param>
-        /// <param name="message">Message data to encode.</param>
-        /// <returns>Encoded byte[] representation of the message object.</returns>
-        /// <remarks>
-        /// Format:
-        /// Crc (Int32), MagicByte (Byte), Attribute (Byte), Key (Byte[]), Value (Byte[])
-        /// </remarks>
-        public static void Write(this IKafkaWriter writer, Message message)
-        {
-            using (writer.MarkForLength()) {
+            using (includeLength ? writer.MarkForLength() : Disposable.None) {
                 using (writer.MarkForCrc()) {
                     writer.Write(message.MessageVersion)
-                          .Write(message.Attribute);
+                           .Write(message.Attribute);
                     if (message.MessageVersion >= 1) {
                         writer.Write(message.Timestamp.GetValueOrDefault(DateTime.UtcNow).ToUnixEpochMilliseconds());
                     }
                     writer.Write(message.Key)
-                          .Write(message.Value);
+                           .Write(message.Value);
                 }
             }
+            return writer;
         }
 
         /// <summary>
@@ -579,7 +546,7 @@ namespace KafkaClient.Protocol
                 }
                 var key = reader.ReadBytes();
 
-                var codec = (MessageCodec)(MessageAttributeCodeMask & attribute);
+                var codec = (MessageCodec)(Message.AttributeMask & attribute);
                 switch (codec)
                 {
                     case MessageCodec.CodecNone:
