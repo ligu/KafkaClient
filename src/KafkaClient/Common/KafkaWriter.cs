@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -68,39 +69,67 @@ namespace KafkaClient.Common
 
         public byte[] ToBytes()
         {
-            var buffer = new byte[_stream.BaseStream.Length];
-            _stream.BaseStream.Position = 0;
-            Write((int)(_stream.BaseStream.Length - IntegerByteSize));
-            _stream.BaseStream.Position = 0;
-            _stream.BaseStream.Read(buffer, 0, (int)_stream.BaseStream.Length);
-            return buffer;
+            WriteLength(0);
+            return ToBytes(0);
         }
 
         public byte[] ToBytesNoLength()
         {
-            var payloadLength = _stream.BaseStream.Length - IntegerByteSize;
-            var buffer = new byte[payloadLength];
-            _stream.BaseStream.Position = IntegerByteSize;
-            _stream.BaseStream.Read(buffer, 0, (int)payloadLength);
-            return buffer;
+            return ToBytes(IntegerByteSize);
         }
 
         public byte[] ToBytesCrc()
         {
-            var buffer = new byte[_stream.BaseStream.Length];
+            WriteCrc(0);
+            return ToBytes(0);
+        }
 
-            //copy the payload over
-            _stream.BaseStream.Position = 0;
-            _stream.BaseStream.Read(buffer, 0, (int)_stream.BaseStream.Length);
-
-            //calculate the crc
-            var crc = Crc32Provider.ComputeHash(buffer, IntegerByteSize, buffer.Length);
-            buffer[0] = crc[0];
-            buffer[1] = crc[1];
-            buffer[2] = crc[2];
-            buffer[3] = crc[3];
-
+        private byte[] ToBytes(int offset)
+        {
+            var length = _stream.BaseStream.Length - offset;
+            var buffer = new byte[length];
+            _stream.BaseStream.Position = offset;
+            _stream.BaseStream.Read(buffer, 0, (int)length);
             return buffer;
+        }
+
+        private void WriteLength(int offset)
+        {
+            _stream.BaseStream.Position = offset;
+            Write((int)(_stream.BaseStream.Length - (offset + IntegerByteSize)));
+        }
+
+        private void WriteCrc(int offset)
+        {
+            _stream.BaseStream.Position = offset + IntegerByteSize;
+
+            var crc = Crc32Provider.ComputeHash(_stream.BaseStream.ToEnumerable());
+            _stream.BaseStream.Position = offset;
+            _stream.Write(crc);            
+        }
+
+        public IDisposable MarkForLength()
+        {
+            var markerPosition = (int)_stream.BaseStream.Position;
+            Write(IntegerByteSize); //pre-allocate space for marker
+
+            return new Disposable(
+                () => {
+                    WriteLength(markerPosition);
+                    _stream.BaseStream.Seek(0, SeekOrigin.End);
+                });
+        }
+
+        public IDisposable MarkForCrc()
+        {
+            var markerPosition = (int)_stream.BaseStream.Position;
+            Write(IntegerByteSize); //pre-allocate space for marker
+
+            return new Disposable(
+                () => {
+                    WriteCrc(markerPosition);
+                    _stream.BaseStream.Seek(0, SeekOrigin.End);
+                });
         }
 
         public void Dispose()

@@ -4,6 +4,9 @@
 // Originally published at http://damieng.com/blog/2006/08/08/calculating_crc32_in_c_and_net
 
 using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 
 namespace KafkaClient.Common
 {
@@ -23,6 +26,11 @@ namespace KafkaClient.Common
             PolynomialTable = InitializeTable(DefaultPolynomial);
         }
 
+        public static uint Compute(IEnumerable<byte> buffer)
+        {
+            return ~CalculateHash(buffer);
+        }
+
         public static uint Compute(byte[] buffer)
         {
             return ~CalculateHash(buffer, 0, buffer.Length);
@@ -31,6 +39,11 @@ namespace KafkaClient.Common
         public static uint Compute(byte[] buffer, int offset, int length)
         {
             return ~CalculateHash(buffer, offset, length);
+        }
+
+        public static byte[] ComputeHash(IEnumerable<byte> buffer)
+        {
+            return UInt32ToBigEndianBytes(Compute(buffer));
         }
 
         public static byte[] ComputeHash(byte[] buffer)
@@ -68,6 +81,11 @@ namespace KafkaClient.Common
                 crc = (crc >> 8) ^ PolynomialTable[buffer[i] ^ crc & 0xff];
             }
             return crc;
+        }
+
+        private static uint CalculateHash(IEnumerable<byte> buffer)
+        {
+            return buffer.Aggregate(DefaultSeed, (crc, value) => (crc >> 8) ^ PolynomialTable[value ^ crc & 0xff]);
         }
 
         private static byte[] UInt32ToBigEndianBytes(uint uint32)

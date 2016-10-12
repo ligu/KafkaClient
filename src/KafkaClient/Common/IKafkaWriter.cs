@@ -18,5 +18,8 @@ namespace KafkaClient.Common
         byte[] ToBytes();
         byte[] ToBytesNoLength();
         byte[] ToBytesCrc();
+
+        IDisposable MarkForLength();
+        IDisposable MarkForCrc();
     }
 }

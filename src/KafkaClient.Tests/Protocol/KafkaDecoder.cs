@@ -425,10 +425,8 @@ namespace KafkaClient.Tests.Protocol
                 foreach (var partition in partitions) {
                     writer.Write(partition.PartitionId)
                         .Write(partition.ErrorCode)
-                        .Write(partition.HighWaterMark);
-
-                    var messageSet = KafkaEncoder.EncodeMessageSet(partition.Messages);
-                    writer.Write(messageSet, true);
+                        .Write(partition.HighWaterMark)
+                        .Write(partition.Messages);
                 }
             }
             return true;

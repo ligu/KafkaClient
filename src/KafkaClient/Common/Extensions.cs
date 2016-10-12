@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Runtime.Serialization;
@@ -206,6 +207,14 @@ namespace KafkaClient.Common
         public static IImmutableList<T> AddNotNullRange<T>(this IImmutableList<T> list, IEnumerable<T> items)
         {
             return items != null ? list.AddRange(items) : list;
+        }
+
+        public static IEnumerable<byte> ToEnumerable(this Stream stream)
+        {
+            if (stream == null) yield break;
+
+            int value;
+            while (-1 != (value = stream.ReadByte())) yield return (byte)value;
         }
     }
 }

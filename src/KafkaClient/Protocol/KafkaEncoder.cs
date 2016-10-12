@@ -132,10 +132,25 @@ namespace KafkaClient.Protocol
             using (var writer = new KafkaWriter()) {
                 foreach (var message in messages) {
                     writer.Write(InitialMessageOffset)
-                        .Write(EncodeMessage(message));
+                          .Write(message);
                 }
-
                 return writer.ToBytesNoLength();
+            }
+        }
+
+        /// <summary>
+        /// Encodes a collection of messages into one byte[].  Encoded in order of list.
+        /// </summary>
+        /// <param name="writer">The writer</param>
+        /// <param name="messages">The collection of messages to encode together.</param>
+        /// <returns>Encoded byte[] representing the collection of messages.</returns>
+        public static void Write(this IKafkaWriter writer, IEnumerable<Message> messages)
+        {
+            using (writer.MarkForLength()) {
+                foreach (var message in messages) {
+                    writer.Write(InitialMessageOffset)
+                          .Write(message);
+                }
             }
         }
 
@@ -151,14 +166,33 @@ namespace KafkaClient.Protocol
         public static byte[] EncodeMessage(Message message)
         {
             using (var writer = new KafkaWriter()) {
-                writer.Write(message.MessageVersion)
-                      .Write(message.Attribute);
-                if (message.MessageVersion >= 1) {
-                    writer.Write(message.Timestamp.GetValueOrDefault(DateTime.UtcNow).ToUnixEpochMilliseconds());
+                writer.Write(message);
+                return writer.ToBytesNoLength();
+            }
+        }
+
+        /// <summary>
+        /// Encodes a message object to byte[]
+        /// </summary>
+        /// <param name="writer">The writer</param>
+        /// <param name="message">Message data to encode.</param>
+        /// <returns>Encoded byte[] representation of the message object.</returns>
+        /// <remarks>
+        /// Format:
+        /// Crc (Int32), MagicByte (Byte), Attribute (Byte), Key (Byte[]), Value (Byte[])
+        /// </remarks>
+        public static void Write(this IKafkaWriter writer, Message message)
+        {
+            using (writer.MarkForLength()) {
+                using (writer.MarkForCrc()) {
+                    writer.Write(message.MessageVersion)
+                          .Write(message.Attribute);
+                    if (message.MessageVersion >= 1) {
+                        writer.Write(message.Timestamp.GetValueOrDefault(DateTime.UtcNow).ToUnixEpochMilliseconds());
+                    }
+                    writer.Write(message.Key)
+                          .Write(message.Value);
                 }
-                return writer.Write(message.Key)
-                      .Write(message.Value)
-                      .ToBytesCrc();
             }
         }
 
@@ -198,13 +232,13 @@ namespace KafkaClient.Protocol
                     switch (groupedPayload.Key.Codec)
                     {
                         case MessageCodec.CodecNone:
-                            writer.Write(EncodeMessageSet(payloads.SelectMany(x => x.Messages)));
+                            writer.Write(payloads.SelectMany(x => x.Messages));
                             break;
 
                         case MessageCodec.CodecGzip:
                             var compressedBytes = CreateGzipCompressedMessage(payloads.SelectMany(x => x.Messages));
                             Interlocked.Add(ref totalCompressedBytes, compressedBytes.CompressedAmount);
-                            writer.Write(EncodeMessageSet(new[] { compressedBytes.CompressedMessage }));
+                            writer.Write(new[] { compressedBytes.CompressedMessage });
                             break;
 
                         default:
