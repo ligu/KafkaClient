@@ -25,7 +25,6 @@ namespace KafkaClient.Tests
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
-        [Ignore]
         public async Task EnsureGzipCompressedMessageCanSend()
         {
             var topicName = IntegrationConfig.TopicName();
@@ -58,8 +57,9 @@ namespace KafkaClient.Tests
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
-        public async Task EnsureGzipCanDecompressMessageFromKafka([Values(3)]int numberOfMessages)
+        public async Task EnsureGzipCanDecompressMessageFromKafka()
         {
+            var numberOfMessages = 3;
             var topicName = IntegrationConfig.TopicName();
             var router = new BrokerRouter(_options);
             using (var producer = new Producer(router, new ProducerConfiguration(batchSize: numberOfMessages))) {

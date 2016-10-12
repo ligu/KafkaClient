@@ -98,50 +98,55 @@ namespace KafkaClient.Protocol
         private static StringBuilder AppendWithIndent(this StringBuilder buffer, object o, string indent)
         {
             foreach (var property in o.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance).Where(p => p.CanRead && p.GetIndexParameters().Length <= 1)) {
-                buffer.Append($"{indent}{property.Name}: ").AppendValueWithIndent(property.GetValue(o), indent, true);
+                buffer.Append($"{indent}{property.Name}: ").AppendValueWithIndent(property.GetValue(o), indent);
+                buffer.AppendLine();
             }
             return buffer;
         }
 
-        private static StringBuilder AppendValueWithIndent(this StringBuilder buffer, object value, string indent, bool isIndented = false)
+        /// <summary>
+        /// Enumerables should be surrounded by [] and end with a newline
+        /// Strings should be surrounded by ""
+        /// Nulls are explicit null
+        /// Classes are indented, with properties on a new line
+        /// Everything else is separated by a single space
+        /// </summary>
+        private static bool AppendValueWithIndent(this StringBuilder buffer, object value, string indent, bool isInline = true)
         {
             if (value == null) {
-                if (!isIndented) {
-                    buffer.Append(indent);
-                }
-                buffer.AppendLine("null");
-                return buffer;
+                buffer.Append("null ");
+                return false;
             }
 
             var stringValue = value as string;
             if (stringValue != null) {
-                if (!isIndented) {
-                    buffer.Append(indent);
-                }
-                buffer.AppendLine(stringValue);
-                return buffer;
+                buffer.Append($"\"{stringValue}\" ");
+                return false;
             }
 
             var enumerable = value as IEnumerable;
             if (enumerable != null) {
-                buffer.AppendLine("[");
+                buffer.Append("[ ");
+                var requiresNewLine = false;
                 foreach (var inner in enumerable) {
-                    buffer.AppendValueWithIndent(inner, $"{indent}  ");
+                    if (requiresNewLine) {
+                        buffer.AppendLine();
+                    }
+                    requiresNewLine = buffer.AppendValueWithIndent(inner, $"{indent}  ", !requiresNewLine) || requiresNewLine;
                 }
-                buffer.AppendLine($"{indent}]");
-                return buffer;
+                buffer.Append("]");
+                return false;
             }
 
             if (value.GetType().IsClass) {
-                buffer.AppendLine();
+                if (isInline) {
+                    buffer.AppendLine();
+                }
                 buffer.AppendWithIndent(value, $"{indent}");
-                return buffer;
+                return true;
             }
-            if (!isIndented) {
-                buffer.Append(indent);
-            }
-            buffer.AppendLine(value.ToString());
-            return buffer;
+            buffer.Append(value).Append(" ");
+            return false;
         }
 
         public static IProtocolTypeEncoder GetEncoder(this IRequestContext context, string protocolType = null)

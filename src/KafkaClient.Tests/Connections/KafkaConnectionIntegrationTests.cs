@@ -49,10 +49,10 @@ namespace KafkaClient.Tests.Connections
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
-        public void EnsureMultipleAsyncRequestsCanReadResponses()
+        public async Task EnsureMultipleAsyncRequestsCanReadResponses()
         {
             var requests = new List<Task<MetadataResponse>>();
-            var singleResult = _conn.SendAsync(new MetadataRequest(IntegrationConfig.TopicName()), CancellationToken.None).Result;
+            var singleResult = await _conn.SendAsync(new MetadataRequest(IntegrationConfig.TopicName()), CancellationToken.None);
             Assert.That(singleResult.Topics.Count, Is.GreaterThan(0));
             Assert.That(singleResult.Topics.First().Partitions.Count, Is.GreaterThan(0));
 
@@ -60,24 +60,27 @@ namespace KafkaClient.Tests.Connections
             {
                 requests.Add(_conn.SendAsync(new MetadataRequest(), CancellationToken.None));
             }
+            await Task.WhenAll(requests);
 
             var results = requests.Select(x => x.Result).ToList();
             Assert.That(results.Count, Is.EqualTo(20));
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
-        public void EnsureDifferentTypesOfResponsesCanBeReadAsync()
+        public async Task EnsureDifferentTypesOfResponsesCanBeReadAsync()
         {
             //just ensure the topic exists for this test
-            var ensureTopic = _conn.SendAsync(new MetadataRequest(IntegrationConfig.TopicName()), CancellationToken.None).Result;
+            var ensureTopic = await _conn.SendAsync(new MetadataRequest(IntegrationConfig.TopicName()), CancellationToken.None);
 
             Assert.That(ensureTopic.Topics.Count, Is.EqualTo(1));
             Assert.That(ensureTopic.Topics.First().TopicName == IntegrationConfig.TopicName(), Is.True, "ProduceRequest did not return expected topic.");
 
             var result1 = _conn.SendAsync(RequestFactory.CreateProduceRequest(IntegrationConfig.TopicName(), "test"), CancellationToken.None);
-            var result2 = _conn.SendAsync(new MetadataRequest(), CancellationToken.None);
+            var result2 = _conn.SendAsync(new MetadataRequest(IntegrationConfig.TopicName()), CancellationToken.None);
             var result3 = _conn.SendAsync(RequestFactory.CreateOffsetRequest(IntegrationConfig.TopicName()), CancellationToken.None);
             var result4 = _conn.SendAsync(RequestFactory.CreateFetchRequest(IntegrationConfig.TopicName(), 0), CancellationToken.None);
+
+            await Task.WhenAll(result1, result2, result3, result4);
 
             Assert.That(result1.Result.Topics.Count, Is.EqualTo(1));
             Assert.That(result1.Result.Topics.First().TopicName == IntegrationConfig.TopicName(), Is.True, "ProduceRequest did not return expected topic.");

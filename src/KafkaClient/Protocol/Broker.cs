@@ -16,7 +16,6 @@ namespace KafkaClient.Protocol
         public string Host { get; }
         public int Port { get; }
         public string Rack { get; }
-        public Uri Address => new Uri($"http://{Host}:{Port}");
 
         #region Equality
 

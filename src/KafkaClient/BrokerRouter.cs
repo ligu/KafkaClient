@@ -302,7 +302,7 @@ namespace KafkaClient
             var connectionsToDispose = ImmutableList<IConnection>.Empty;
             try {
                 foreach (var broker in metadata.Brokers) {
-                    var endpoint = _connectionFactory.Resolve(broker.Address, Log);
+                    var endpoint = _connectionFactory.Resolve(new Uri($"http://{broker.Host}:{broker.Port}"), Log);
 
                     IConnection connection;
                     if (brokerConnections.TryGetValue(broker.BrokerId, out connection)) {
