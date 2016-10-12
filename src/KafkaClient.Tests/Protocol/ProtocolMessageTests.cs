@@ -96,14 +96,12 @@ namespace KafkaClient.Tests.Protocol
             var offset = (Int64)0;
             var message = new Byte[] { };
             var messageSize = message.Length + 1;
-            var memoryStream = new MemoryStream();
-            using (var binaryWriter = new BigEndianBinaryWriter(memoryStream)) {
-                binaryWriter.Write(offset);
-                binaryWriter.Write(messageSize);
-                binaryWriter.Write(message);
-                var payloadBytes = memoryStream.ToArray();
-
-                using (var reader = new BigEndianBinaryReader(payloadBytes)) {
+            using (var writer = new KafkaWriter()) {
+                writer.Write(offset)
+                       .Write(messageSize)
+                       .Write(message);
+                var bytes = writer.ToBytes();
+                using (var reader = new BigEndianBinaryReader(bytes)) {
                     // act/assert
                     Assert.Throws<BufferUnderRunException>(() => reader.ReadMessages());
                 }

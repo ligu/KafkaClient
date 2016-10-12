@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using KafkaClient.Common;
@@ -494,7 +495,7 @@ namespace KafkaClient.Protocol
         public static IImmutableList<Message> ReadMessages(this IKafkaReader reader, int partitionId = 0)
         {
             var expectedLength = reader.ReadInt32();
-            if (!reader.Available(expectedLength)) throw new BufferUnderRunException($"Message set is {expectedLength} but not that much is available");
+            if (!reader.Available(expectedLength)) throw new BufferUnderRunException($"Message set size of {expectedLength} is not fully available.");
 
             var messages = ImmutableList<Message>.Empty;
             var finalPosition = reader.Position + expectedLength;
@@ -505,14 +506,14 @@ namespace KafkaClient.Protocol
                 var offset = reader.ReadInt64();
                 var messageSize = reader.ReadInt32();
 
-                // if messagessize is greater than the total payload, our max buffer is insufficient.
-                if (reader.Length - MessageHeaderSize < messageSize)
-                    throw new BufferUnderRunException(MessageHeaderSize, messageSize, reader.Length);
-
-                //if the stream does not have enough left in the payload, we got only a partial message
+                // if the stream does not have enough left in the payload, we got only a partial message
                 if (reader.Available(messageSize) == false) break;
 
-                messages = messages.AddRange(reader.ReadMessage(messageSize, offset, partitionId));
+                try {
+                    messages = messages.AddRange(reader.ReadMessage(messageSize, offset, partitionId));
+                } catch (EndOfStreamException ex) {
+                    throw new BufferUnderRunException($"Message size of {messageSize} is not available.", ex);
+                }
             }
             return messages;
         }
