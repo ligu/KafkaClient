@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Immutable;
-using KafkaClient.Common;
 using KafkaClient.Protocol.Types;
 
 namespace KafkaClient.Protocol

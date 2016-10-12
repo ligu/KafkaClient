@@ -629,9 +629,9 @@ namespace KafkaClient.Tests.Protocol
                 _randomizer.NextBytes(bytes);
                 members.Add(new GroupMember(memberId + m, new ByteMember(bytes)));
             }
-            var request = new JoinGroupResponse(errorCode, generationId, protocol, leaderId, memberId, members);
+            var response = new JoinGroupResponse(errorCode, generationId, protocol, leaderId, memberId, members);
 
-            request.AssertCanEncodeDecodeResponse(0);
+            response.AssertCanEncodeDecodeResponse(0);
         }
 
         [Test]
@@ -675,11 +675,144 @@ namespace KafkaClient.Tests.Protocol
                 var metadata = new ConsumerProtocolMetadata(0, new []{ protocol, memberId, leaderId }, userData);
                 members.Add(new GroupMember(memberId + m, metadata));
             }
-            var request = new JoinGroupResponse(errorCode, generationId, protocol, leaderId, memberId, members);
+            var response = new JoinGroupResponse(errorCode, generationId, protocol, leaderId, memberId, members);
 
-            request.AssertCanEncodeDecodeResponse(0, encoder);
+            response.AssertCanEncodeDecodeResponse(0, encoder);
         }
 
+        [Test]
+        public void HeartbeatRequest(
+            [Values("test", "a groupId")] string groupId, 
+            [Values(0, 1, 20000)] int generationId,
+            [Values("", "an existing member")] string memberId)
+        {
+            var request = new HeartbeatRequest(groupId, generationId, memberId);
+
+            request.AssertCanEncodeDecodeRequest(0);
+        }
+
+        [Test]
+        public void HeartbeatResponse(
+            [Values(
+                 ErrorResponseCode.None,
+                 ErrorResponseCode.OffsetMetadataTooLarge
+             )] ErrorResponseCode errorCode)
+        {
+            var response = new HeartbeatResponse(errorCode);
+
+            response.AssertCanEncodeDecodeResponse(0);
+        }
+
+        [Test]
+        public void LeaveGroupRequest(
+            [Values("test", "a groupId")] string groupId, 
+            [Values("", "an existing member")] string memberId)
+        {
+            var request = new LeaveGroupRequest(groupId, memberId);
+
+            request.AssertCanEncodeDecodeRequest(0);
+        }
+
+        [Test]
+        public void LeaveGroupResponse(
+            [Values(
+                 ErrorResponseCode.None,
+                 ErrorResponseCode.OffsetMetadataTooLarge
+             )] ErrorResponseCode errorCode)
+        {
+            var response = new LeaveGroupResponse(errorCode);
+
+            response.AssertCanEncodeDecodeResponse(0);
+        }
+
+        [Test]
+        public void SyncGroupRequest(
+            [Values("test", "a groupId")] string groupId, 
+            [Values(0, 1, 20000)] int generationId,
+            [Values("", "an existing member")] string memberId, 
+            [Values("consumer", "other")] string protocolType, 
+            [Values(1, 10)] int assignmentsPerRequest)
+        {
+            var assignments = new List<SyncGroupAssignment>();
+            for (var a = 0; a < assignmentsPerRequest; a++) {
+                var bytes = new byte[assignmentsPerRequest*100];
+                _randomizer.NextBytes(bytes);
+                assignments.Add(new SyncGroupAssignment(protocolType + a, new ByteMember(bytes)));
+            }
+            var request = new SyncGroupRequest(groupId, generationId, memberId, assignments);
+
+            request.AssertCanEncodeDecodeRequest(0);
+        }
+
+        [Test]
+        public void SyncGroupResponse(
+            [Values(
+                 ErrorResponseCode.None,
+                 ErrorResponseCode.OffsetMetadataTooLarge
+             )] ErrorResponseCode errorCode)
+        {
+            var bytes = new byte[1000];
+            _randomizer.NextBytes(bytes);
+            var response = new SyncGroupResponse(errorCode, new ByteMember(bytes));
+
+            response.AssertCanEncodeDecodeResponse(0);
+        }
+
+        [Test]
+        public void SyncConsumerGroupRequest(
+            [Values("test", "a groupId")] string groupId, 
+            [Values(0, 1, 20000)] int generationId,
+            [Values("", "an existing member")] string memberId, 
+            [Values("consumer")] string protocolType, 
+            [Values(1, 10)] int assignmentsPerRequest)
+        {
+            var encoder = new ConsumerEncoder();
+            var assignments = new List<SyncGroupAssignment>();
+            for (var a = 0; a < assignmentsPerRequest; a++) {
+                var topics = new List<Topic>();
+                for (var t = 0; t < assignmentsPerRequest; t++) {
+                    topics.Add(new Topic(groupId + t, t));
+                }
+                var assignment = new ConsumerMemberAssignment(0, topics);
+                assignments.Add(new SyncGroupAssignment(protocolType + a, assignment));
+            }
+            var request = new SyncGroupRequest(groupId, generationId, memberId, assignments);
+
+            request.AssertCanEncodeDecodeRequest(0, encoder);
+        }
+
+        [Test]
+        public void SyncConsumerGroupResponse(
+            [Values(
+                 ErrorResponseCode.None,
+                 ErrorResponseCode.OffsetMetadataTooLarge
+             )] ErrorResponseCode errorCode,
+            [Values(1, 10)] int memberCount)
+        {
+            var encoder = new ConsumerEncoder();
+            var topics = new List<Topic>();
+            for (var t = 0; t < memberCount; t++) {
+                topics.Add(new Topic("topic foo" + t, t));
+            }
+            var assignment = new ConsumerMemberAssignment(0, topics);
+            var response = new SyncGroupResponse(errorCode, assignment);
+
+            response.AssertCanEncodeDecodeResponse(0, encoder);
+        }
+
+        [Test]
+        public void DescribeGroupsRequest(
+            [Values("test", "a groupId")] string groupId, 
+            [Range(1, 10)] int count)
+        {
+            var groups = new string[count];
+            for (var g = 0; g < count; g++) {
+                groups[g] = groupId + g;
+            }
+            var request = new DescribeGroupsRequest(groups);
+
+            request.AssertCanEncodeDecodeRequest(0);
+        }
         private IEnumerable<Message> GenerateMessages(int count, byte version, int partition = 0)
         {
             var messages = new List<Message>();
