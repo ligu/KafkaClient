@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using KafkaClient.Common;
 using KafkaClient.Protocol;
 using KafkaClient.Protocol.Types;
@@ -813,6 +814,74 @@ namespace KafkaClient.Tests.Protocol
 
             request.AssertCanEncodeDecodeRequest(0);
         }
+
+        [Test]
+        public void DescribeGroupsResponse(
+            [Values(
+                 ErrorResponseCode.None,
+                 ErrorResponseCode.OffsetMetadataTooLarge
+             )] ErrorResponseCode errorCode,
+            [Values("test", "a groupId")] string groupId, 
+            [Range(2, 3)] int count,
+            [Values(DescribeGroup.States.Stable, DescribeGroup.States.Dead)] string state, 
+            [Values("consumer", "unknown")] string protocolType,
+            [Values("good", "bad", "ugly")] string protocol)
+        {
+            var groups = new DescribeGroup[count];
+            for (var g = 0; g < count; g++) {
+                var members = new List<DescribeGroupMember>();
+                for (var m = 0; m < count; m++) {
+                    var metadata = new byte[count*100];
+                    var assignment = new byte[count*10];
+                    _randomizer.NextBytes(metadata);
+                    _randomizer.NextBytes(assignment);
+
+                    members.Add(new DescribeGroupMember("member" + m, "client" + m, "host-" + m, new ByteMember(metadata), new ByteMember(assignment)));
+                }
+                groups[g] = new DescribeGroup(errorCode, groupId + g, state, protocolType, protocol, members);
+            }
+            var response = new DescribeGroupsResponse(groups);
+
+            response.AssertCanEncodeDecodeResponse(0);
+        }
+
+        [Test]
+        public void DescribeConsumerGroupsResponse(
+            [Values(
+                 ErrorResponseCode.None,
+                 ErrorResponseCode.OffsetMetadataTooLarge
+             )] ErrorResponseCode errorCode,
+            [Values("test", "a groupId")] string groupId, 
+            [Range(2, 3)] int count,
+            [Values(DescribeGroup.States.Stable, DescribeGroup.States.AwaitingSync)] string state, 
+            [Values("consumer")] string protocolType,
+            [Values("good", "bad", "ugly")] string protocol)
+        {
+            var encoder = new ConsumerEncoder();
+            var groups = new DescribeGroup[count];
+            for (var g = 0; g < count; g++) {
+                var members = new List<DescribeGroupMember>();
+                for (var m = 0; m < count; m++) {
+                    var memberId = "member" + m;
+                    var userData = new byte[count*100];
+                    _randomizer.NextBytes(userData);
+                    var metadata = new ConsumerProtocolMetadata(0, new []{ protocol, memberId, memberId }, userData);
+
+                    var topics = new List<Topic>();
+                    for (var t = 0; t < count; t++) {
+                        topics.Add(new Topic("topic foo" + t, t));
+                    }
+                    var assignment = new ConsumerMemberAssignment(0, topics);
+
+                    members.Add(new DescribeGroupMember(memberId, "client" + m, "host-" + m, metadata, assignment));
+                }
+                groups[g] = new DescribeGroup(errorCode, groupId + g, state, protocolType, protocol, members);
+            }
+            var response = new DescribeGroupsResponse(groups);
+
+            response.AssertCanEncodeDecodeResponse(0, encoder);
+        }
+
         private IEnumerable<Message> GenerateMessages(int count, byte version, int partition = 0)
         {
             var messages = new List<Message>();

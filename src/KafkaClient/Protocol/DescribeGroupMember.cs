@@ -1,5 +1,4 @@
 using System;
-using KafkaClient.Common;
 using KafkaClient.Protocol.Types;
 
 namespace KafkaClient.Protocol
@@ -55,7 +54,7 @@ namespace KafkaClient.Protocol
                    && string.Equals(ClientId, other.ClientId) 
                    && string.Equals(ClientHost, other.ClientHost) 
                    && Equals(MemberMetadata, other.MemberMetadata) 
-                   && Equals(MemberAssignment, other.MemberMetadata);
+                   && Equals(MemberAssignment, other.MemberAssignment);
         }
 
         /// <inheritdoc />
