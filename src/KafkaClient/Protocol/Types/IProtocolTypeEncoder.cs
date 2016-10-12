@@ -1,13 +1,15 @@
+using KafkaClient.Common;
+
 namespace KafkaClient.Protocol.Types
 {
     public interface IProtocolTypeEncoder
     {
         string Type { get; }
 
-        byte[] EncodeMetadata(IMemberMetadata metadata);
-        byte[] EncodeAssignment(IMemberAssignment assignment);
+        void EncodeMetadata(IKafkaWriter writer, IMemberMetadata value);
+        void EncodeAssignment(IKafkaWriter writer, IMemberAssignment value);
 
-        IMemberMetadata DecodeMetadata(byte[] bytes);
-        IMemberAssignment DecodeAssignment(byte[] bytes);
+        IMemberMetadata DecodeMetadata(IKafkaReader reader);
+        IMemberAssignment DecodeAssignment(IKafkaReader reader);
     }
 }

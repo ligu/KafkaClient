@@ -1,3 +1,5 @@
+using KafkaClient.Common;
+
 namespace KafkaClient.Protocol.Types
 {
     public abstract class ProtocolTypeEncoder<TMetadata, TAssignment> : IProtocolTypeEncoder
@@ -13,25 +15,25 @@ namespace KafkaClient.Protocol.Types
         public string Type { get; }
 
         /// <inheritdoc />
-        public byte[] EncodeMetadata(IMemberMetadata metadata)
+        public void EncodeMetadata(IKafkaWriter writer, IMemberMetadata value)
         {
-            return EncodeMetadata((TMetadata)metadata);
+            EncodeMetadata(writer, (TMetadata) value);
         }
 
         /// <inheritdoc />
-        public byte[] EncodeAssignment(IMemberAssignment assignment)
+        public void EncodeAssignment(IKafkaWriter writer, IMemberAssignment value)
         {
-            return EncodeAssignment((TAssignment)assignment);
+            EncodeAssignment(writer, (TAssignment) value);
         }
 
         /// <inheritdoc />
-        public abstract IMemberMetadata DecodeMetadata(byte[] bytes);
+        public abstract IMemberMetadata DecodeMetadata(IKafkaReader reader);
 
         /// <inheritdoc />
-        public abstract IMemberAssignment DecodeAssignment(byte[] bytes);
+        public abstract IMemberAssignment DecodeAssignment(IKafkaReader reader);
 
-        protected abstract byte[] EncodeMetadata(TMetadata metadata);
-        protected abstract byte[] EncodeAssignment(TAssignment assignment);
+        protected abstract void EncodeMetadata(IKafkaWriter writer, TMetadata value);
+        protected abstract void EncodeAssignment(IKafkaWriter writer, TAssignment value);
     }
 
     public class ProtocolTypeEncoder : ProtocolTypeEncoder<ByteMember, ByteMember>
@@ -42,27 +44,27 @@ namespace KafkaClient.Protocol.Types
         }
 
         /// <inheritdoc />
-        public override IMemberMetadata DecodeMetadata(byte[] bytes)
+        public override IMemberMetadata DecodeMetadata(IKafkaReader reader)
         {
-            return new ByteMember(bytes);
+            return new ByteMember(reader.ReadBytes());
         }
 
         /// <inheritdoc />
-        public override IMemberAssignment DecodeAssignment(byte[] bytes)
+        public override IMemberAssignment DecodeAssignment(IKafkaReader reader)
         {
-            return new ByteMember(bytes);
+            return new ByteMember(reader.ReadBytes());
         }
 
         /// <inheritdoc />
-        protected override byte[] EncodeMetadata(ByteMember metadata)
+        protected override void EncodeMetadata(IKafkaWriter writer, ByteMember value)
         {
-            return metadata.Bytes;
+            writer.Write(value.Bytes);
         }
 
         /// <inheritdoc />
-        protected override byte[] EncodeAssignment(ByteMember assignment)
+        protected override void EncodeAssignment(IKafkaWriter writer, ByteMember value)
         {
-            return assignment.Bytes;
+            writer.Write(value.Bytes);
         }
     }
 }

@@ -20,7 +20,7 @@ namespace KafkaClient.Common
     /// The code was modified to provide Kafka specific logic and helper functions.
     /// Specifically where STRINGS are 16bit prefixed and BYTE[] are 32bit prefixed
     /// </remarks>
-    public class BigEndianBinaryReader : BinaryReader
+    public class BigEndianBinaryReader : BinaryReader, IKafkaReader
     {
         private const int KafkaNullSize = -1;
 

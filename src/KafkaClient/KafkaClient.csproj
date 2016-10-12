@@ -62,6 +62,7 @@
     <Compile Include="Common\BigEndianBinaryReader.cs" />
     <Compile Include="Common\BigEndianBinaryWriter.cs" />
     <Compile Include="Common\Disposable.cs" />
+    <Compile Include="Common\IKafkaReader.cs" />
     <Compile Include="Common\IKafkaWriter.cs" />
     <Compile Include="Common\IScheduledTimer.cs" />
     <Compile Include="Common\LogEvent.cs" />

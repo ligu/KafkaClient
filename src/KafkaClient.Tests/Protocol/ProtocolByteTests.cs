@@ -639,7 +639,7 @@ namespace KafkaClient.Tests.Protocol
             [Values("test", "a groupId")] string groupId, 
             [Values(1, 20000)] int sessionTimeout,
             [Values("", "an existing member")] string memberId, 
-            [Values("consumer", "other")] string protocolType, 
+            [Values("consumer")] string protocolType, 
             [Values(1, 10)] int protocolsPerRequest)
         {
             var encoder = new ConsumerEncoder();
@@ -662,7 +662,7 @@ namespace KafkaClient.Tests.Protocol
                  ErrorResponseCode.OffsetMetadataTooLarge
              )] ErrorResponseCode errorCode,
             [Values(0, 1, 20000)] int generationId,
-            [Values("consumer", "other")] string protocol, 
+            [Values("consumer")] string protocol, 
             [Values("test", "a groupId")] string leaderId, 
             [Values("", "an existing member")] string memberId, 
             [Values(1, 10)] int memberCount)

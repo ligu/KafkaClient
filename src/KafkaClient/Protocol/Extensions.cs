@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using KafkaClient.Common;
 using KafkaClient.Connections;
 using KafkaClient.Protocol.Types;
 
@@ -147,9 +148,31 @@ namespace KafkaClient.Protocol
         {
             var type = protocolType ?? context.ProtocolType;
             IProtocolTypeEncoder encoder;
-            if (context.Encoders.TryGetValue(type, out encoder) && encoder != null) return encoder;
+            if (type != null && context.Encoders.TryGetValue(type, out encoder) && encoder != null) return encoder;
 
             return new ProtocolTypeEncoder();
+        }
+
+        public static IKafkaWriter Write(this IKafkaWriter writer, IMemberMetadata metadata, IProtocolTypeEncoder encoder)
+        {
+            encoder.EncodeMetadata(writer, metadata);
+            return writer;
+        }
+
+        public static IKafkaWriter Write(this IKafkaWriter writer, IMemberAssignment assignment, IProtocolTypeEncoder encoder)
+        {
+            encoder.EncodeAssignment(writer, assignment);
+            return writer;
+        }
+
+        public static IKafkaWriter Write(this IKafkaWriter writer, ErrorResponseCode errorCode)
+        {
+            return writer.Write((short)errorCode);
+        }
+
+        public static ErrorResponseCode ReadErrorCode(this IKafkaReader reader)
+        {
+            return (ErrorResponseCode) reader.ReadInt16();
         }
     }
 }

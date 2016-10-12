@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using KafkaClient.Common;
@@ -13,72 +12,60 @@ namespace KafkaClient.Protocol.Types
         }
 
         /// <inheritdoc />
-        public override IMemberMetadata DecodeMetadata(byte[] bytes)
+        public override IMemberMetadata DecodeMetadata(IKafkaReader reader)
         {
-            using (var stream = new BigEndianBinaryReader(bytes)) {
-                var version = stream.ReadInt16();
-                var topicNames = new string[stream.ReadInt32()];
-                for (var t = 0; t < topicNames.Length; t++) {
-                    topicNames[t] = stream.ReadString();
-                }
-                var userData = stream.ReadBytes();
-                return new ConsumerProtocolMetadata(version, topicNames, userData);
+            var version = reader.ReadInt16();
+            var topicNames = new string[reader.ReadInt32()];
+            for (var t = 0; t < topicNames.Length; t++) {
+                topicNames[t] = reader.ReadString();
             }
+            var userData = reader.ReadBytes();
+            return new ConsumerProtocolMetadata(version, topicNames, userData);
         }
 
         /// <inheritdoc />
-        public override IMemberAssignment DecodeAssignment(byte[] bytes)
+        public override IMemberAssignment DecodeAssignment(IKafkaReader reader)
         {
-            using (var stream = new BigEndianBinaryReader(bytes)) {
-                var version = stream.ReadInt16();
+            var version = reader.ReadInt16();
 
-                var topics = new List<Topic>();
-                var topicCount = stream.ReadInt32();
-                for (var t = 0; t < topicCount; t++) {
-                    var topicName = stream.ReadString();
+            var topics = new List<Topic>();
+            var topicCount = reader.ReadInt32();
+            for (var t = 0; t < topicCount; t++) {
+                var topicName = reader.ReadString();
 
-                    var partitionCount = stream.ReadInt32();
-                    for (var p = 0; p < partitionCount; p++) {
-                        var partitionId = stream.ReadInt32();
-                        topics.Add(new Topic(topicName, partitionId));
-                    }
+                var partitionCount = reader.ReadInt32();
+                for (var p = 0; p < partitionCount; p++) {
+                    var partitionId = reader.ReadInt32();
+                    topics.Add(new Topic(topicName, partitionId));
                 }
-                return new ConsumerMemberAssignment(version, topics);
             }
+            return new ConsumerMemberAssignment(version, topics);
         }
 
         /// <inheritdoc />
-        protected override byte[] EncodeMetadata(ConsumerProtocolMetadata metadata)
+        protected override void EncodeMetadata(IKafkaWriter writer, ConsumerProtocolMetadata value)
         {
-            using (var packer = new KafkaWriter()) {
-                packer.Write(metadata.Version)
-                      .Write(metadata.Subscriptions, true)
-                      .Write(metadata.UserData);
-
-                return packer.ToBytes();
-            }
+            writer.Write(value.Version)
+                  .Write(value.Subscriptions, true)
+                  .Write(value.UserData);
         }
 
         /// <inheritdoc />
-        protected override byte[] EncodeAssignment(ConsumerMemberAssignment assignment)
+        protected override void EncodeAssignment(IKafkaWriter writer, ConsumerMemberAssignment value)
         {
-            using (var packer = new KafkaWriter()) {
-                var topicGroups = assignment.PartitionAssignments.GroupBy(x => x.TopicName).ToList();
+            var topicGroups = value.PartitionAssignments.GroupBy(x => x.TopicName).ToList();
 
-                packer.Write(assignment.Version)
-                      .Write(topicGroups.Count);
+            writer.Write(value.Version)
+                    .Write(topicGroups.Count);
 
-                foreach (var topicGroup in topicGroups) {
-                    var partitions = topicGroup.ToList();
-                    packer.Write(topicGroup.Key)
-                          .Write(partitions.Count);
+            foreach (var topicGroup in topicGroups) {
+                var partitions = topicGroup.ToList();
+                writer.Write(topicGroup.Key)
+                        .Write(partitions.Count);
 
-                    foreach (var partition in partitions) {
-                        packer.Write(partition.PartitionId);
-                    }
+                foreach (var partition in partitions) {
+                    writer.Write(partition.PartitionId);
                 }
-
-                return packer.ToBytes();
             }
         }
     }
