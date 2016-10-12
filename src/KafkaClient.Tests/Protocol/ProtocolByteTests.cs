@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using KafkaClient.Common;
 using KafkaClient.Protocol;
 using KafkaClient.Protocol.Types;
@@ -881,6 +882,56 @@ namespace KafkaClient.Tests.Protocol
 
             response.AssertCanEncodeDecodeResponse(0, encoder);
         }
+
+        [Test]
+        public void ListGroupsRequest()
+        {
+            var request = new ListGroupsRequest();
+            request.AssertCanEncodeDecodeRequest(0);
+        }
+
+        [Test]
+        public void ListGroupsResponse(
+            [Values(
+                 ErrorResponseCode.None,
+                 ErrorResponseCode.OffsetMetadataTooLarge
+             )] ErrorResponseCode errorCode,
+            [Values("test", "a groupId")] string groupId, 
+            [Range(2, 3)] int count,
+            [Values("consumer")] string protocolType)
+        {
+            var groups = new ListGroup[count];
+            for (var g = 0; g < count; g++) {
+                groups[g] = new ListGroup(groupId + g, protocolType);
+            }
+            var response = new ListGroupsResponse(errorCode, groups);
+
+            response.AssertCanEncodeDecodeResponse(0);
+        }
+
+        [Test]
+        public void SaslHandshakeRequest(
+            [Values("EXTERNAL", "ANONYMOUS", "PLAIN", "OTP", "SKEY", "CRAM-MD5", "DIGEST-MD5", "SCRAM", "NTLM", "GSSAPI", "OAUTHBEARER")] string mechanism)
+        {
+            var request = new SaslHandshakeRequest(mechanism);
+
+            request.AssertCanEncodeDecodeRequest(0);
+        }
+
+        [Test]
+        public void SaslHandshakeResponse(
+            [Values(
+                 ErrorResponseCode.None,
+                 ErrorResponseCode.OffsetMetadataTooLarge
+             )] ErrorResponseCode errorCode,
+            [Range(1, 11)] int count)
+        {
+            var mechanisms = new[] { "EXTERNAL", "ANONYMOUS", "PLAIN", "OTP", "SKEY", "CRAM-MD5", "DIGEST-MD5", "SCRAM", "NTLM", "GSSAPI", "OAUTHBEARER" };
+            var response = new SaslHandshakeResponse(errorCode, mechanisms.Take(count));
+
+            response.AssertCanEncodeDecodeResponse(0);
+        }
+
 
         private IEnumerable<Message> GenerateMessages(int count, byte version, int partition = 0)
         {
