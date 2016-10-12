@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
@@ -487,82 +488,76 @@ namespace KafkaClient.Protocol
         /// <summary>
         /// Decode a byte[] that represents a collection of messages.
         /// </summary>
-        /// <param name="messageSet">The byte[] encode as a message set from kafka.</param>
+        /// <param name="reader">The reader</param>
         /// <param name="partitionId">The partitionId messages are being read from.</param>
         /// <returns>Enumerable representing stream of messages decoded from byte[]</returns>
-        public static IEnumerable<Message> DecodeMessageSet(byte[] messageSet, int partitionId = 0)
+        public static IImmutableList<Message> ReadMessages(this IKafkaReader reader, int partitionId = 0)
         {
-            using (var reader = new BigEndianBinaryReader(messageSet))
-            {
-                while (reader.HasData)
-                {
-                    //this checks that we have at least the minimum amount of data to retrieve a header
-                    if (reader.Available(MessageHeaderSize) == false)
-                        yield break;
+            var expectedLength = reader.ReadInt32();
+            if (!reader.Available(expectedLength)) throw new BufferUnderRunException($"Message set is {expectedLength} but not that much is available");
 
-                    var offset = reader.ReadInt64();
-                    var messageSize = reader.ReadInt32();
+            var messages = ImmutableList<Message>.Empty;
+            var finalPosition = reader.Position + expectedLength;
+            while (reader.Position < finalPosition) {
+                // this checks that we have at least the minimum amount of data to retrieve a header
+                if (reader.Available(MessageHeaderSize) == false) break;
 
-                    //if messagessize is greater than the total payload, our max buffer is insufficient.
-                    if (reader.Length - MessageHeaderSize < messageSize)
-                        throw new BufferUnderRunException(MessageHeaderSize, messageSize, reader.Length);
+                var offset = reader.ReadInt64();
+                var messageSize = reader.ReadInt32();
 
-                    //if the stream does not have enough left in the payload, we got only a partial message
-                    if (reader.Available(messageSize) == false)
-                        yield break;
+                // if messagessize is greater than the total payload, our max buffer is insufficient.
+                if (reader.Length - MessageHeaderSize < messageSize)
+                    throw new BufferUnderRunException(MessageHeaderSize, messageSize, reader.Length);
 
-                    foreach (var message in DecodeMessage(offset, reader.RawRead(messageSize), partitionId))
-                    {
-                        yield return message;
-                    }
-                }
+                //if the stream does not have enough left in the payload, we got only a partial message
+                if (reader.Available(messageSize) == false) break;
+
+                messages = messages.AddRange(reader.ReadMessage(messageSize, offset, partitionId));
             }
+            return messages;
         }
 
         /// <summary>
         /// Decode messages from a payload and assign it a given kafka offset.
         /// </summary>
+        /// <param name="reader">The reader</param>
+        /// <param name="messageSize">The size of the message, for Crc Hash calculation</param>
         /// <param name="offset">The offset represting the log entry from kafka of this message.</param>
         /// <param name="partitionId">The partition being read</param>
-        /// <param name="payload">The byte[] encode as a message from kafka.</param>
         /// <returns>Enumerable representing stream of messages decoded from byte[].</returns>
         /// <remarks>The return type is an Enumerable as the message could be a compressed message set.</remarks>
-        public static IEnumerable<Message> DecodeMessage(long offset, byte[] payload, int partitionId = 0)
+        public static IImmutableList<Message> ReadMessage(this IKafkaReader reader, int messageSize, long offset, int partitionId = 0)
         {
-            var crc = BitConverter.ToUInt32(payload.Take(4).ToArray(), 0);
-            using (var reader = new BigEndianBinaryReader(payload, 4))
+            var crc = BitConverter.ToUInt32(reader.RawRead(4), 0);
+            var crcHash = BitConverter.ToUInt32(reader.CrcHash(messageSize - 4), 0);
+            if (crc != crcHash) throw new CrcValidationException("Buffer did not match CRC validation.") { Crc = crc, CalculatedCrc = crcHash };
+
+            var messageVersion = reader.ReadByte();
+            var attribute = reader.ReadByte();
+            DateTime? timestamp = null;
+            if (messageVersion >= 1) {
+                var milliseconds = reader.ReadInt64();
+                if (milliseconds >= 0) {
+                    timestamp = milliseconds.FromUnixEpochMilliseconds();
+                }
+            }
+            var key = reader.ReadBytes();
+            var value = reader.ReadBytes();
+
+            var codec = (MessageCodec)(Message.AttributeMask & attribute);
+            switch (codec)
             {
-                var crcHash = BitConverter.ToUInt32(reader.CrcHash(), 0);
-                if (crc != crcHash) throw new CrcValidationException("Buffer did not match CRC validation.") { Crc = crc, CalculatedCrc = crcHash };
+                case MessageCodec.CodecNone:
+                    return ImmutableList<Message>.Empty.Add(new Message(value, attribute, offset, partitionId, messageVersion, key, timestamp));
 
-                var messageVersion = reader.ReadByte();
-                var attribute = reader.ReadByte();
-                DateTime? timestamp = null;
-                if (messageVersion >= 1) {
-                    var milliseconds = reader.ReadInt64();
-                    if (milliseconds >= 0) {
-                        timestamp = milliseconds.FromUnixEpochMilliseconds();
+                case MessageCodec.CodecGzip:
+                    var gZipData = value;
+                    using (var gzipReader = new BigEndianBinaryReader(gZipData)) {
+                        return gzipReader.ReadMessages(partitionId);
                     }
-                }
-                var key = reader.ReadBytes();
 
-                var codec = (MessageCodec)(Message.AttributeMask & attribute);
-                switch (codec)
-                {
-                    case MessageCodec.CodecNone:
-                        yield return new Message(reader.ReadBytes(), attribute, offset, partitionId, messageVersion, key, timestamp);
-                        break;
-
-                    case MessageCodec.CodecGzip:
-                        var gZipData = reader.ReadBytes();
-                        foreach (var m in DecodeMessageSet(Compression.Unzip(gZipData), partitionId)) {
-                            yield return m;
-                        }
-                        break;
-
-                    default:
-                        throw new NotSupportedException($"Codec type of {codec} is not supported.");
-                }
+                default:
+                    throw new NotSupportedException($"Codec type of {codec} is not supported.");
             }
         }
 
@@ -620,7 +615,8 @@ namespace KafkaClient.Protocol
                         var partitionId = reader.ReadInt32();
                         var errorCode = (ErrorResponseCode) reader.ReadInt16();
                         var highWaterMarkOffset = reader.ReadInt64();
-                        var messages = DecodeMessageSet(reader.ReadBytes(), partitionId).ToList();
+                        var messages = reader.ReadMessages(partitionId);
+
                         topics.Add(new FetchTopicResponse(topicName, partitionId, highWaterMarkOffset, errorCode, messages));
                     }
                 }

@@ -133,12 +133,16 @@ namespace KafkaClient.Common
             return buffer;
         }
 
-        public byte[] CrcHash()
+        public byte[] CrcHash(int? size = null)
         {
             var currentPosition = BaseStream.Position;
             try {
-                BaseStream.Position = 0;
-                return Crc32Provider.ComputeHash(ReadToEnd());
+                if (size.HasValue) {
+                    return Crc32Provider.ComputeHash(RawRead(size.Value));
+                } else {
+                    BaseStream.Position = 0;
+                    return Crc32Provider.ComputeHash(ReadToEnd());
+                }
             } finally {
                 BaseStream.Position = currentPosition;
             }

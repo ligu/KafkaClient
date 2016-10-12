@@ -97,7 +97,7 @@ namespace KafkaClient.Tests.Protocol
                     var partitionCount = reader.ReadInt32();
                     for (var j = 0; j < partitionCount; j++) {
                         var partitionId = reader.ReadInt32();
-                        var messages = KafkaEncoder.DecodeMessageSet(reader.ReadBytes(), partitionId).ToList();
+                        var messages = reader.ReadMessages(partitionId);
 
                         payloads.Add(new Payload(topicName, partitionId, messages));
                     }

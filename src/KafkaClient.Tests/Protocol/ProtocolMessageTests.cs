@@ -23,7 +23,9 @@ namespace KafkaClient.Tests.Protocol
                 writer.Write(testMessage, false);
                 var encoded = writer.ToBytesNoLength();
                 encoded[0] += 1;
-                var result = KafkaEncoder.DecodeMessage(0, encoded).First();
+                using (var reader = new BigEndianBinaryReader(encoded)) {
+                    var result = reader.ReadMessage(encoded.Length, 0).First();
+                }
             }
         }
 
@@ -39,10 +41,12 @@ namespace KafkaClient.Tests.Protocol
             using (var writer = new KafkaWriter()) {
                 writer.Write(testMessage, false);
                 var encoded = writer.ToBytesNoLength();
-                var result = KafkaEncoder.DecodeMessage(0, encoded).First();
+                using (var reader = new BigEndianBinaryReader(encoded)) {
+                    var result = reader.ReadMessage(encoded.Length, 0).First();
 
-                Assert.That(testMessage.Key, Is.EqualTo(result.Key));
-                Assert.That(testMessage.Value, Is.EqualTo(result.Value));
+                    Assert.That(testMessage.Key, Is.EqualTo(result.Key));
+                    Assert.That(testMessage.Value, Is.EqualTo(result.Value));
+                }
             }
         }
 
@@ -74,13 +78,15 @@ namespace KafkaClient.Tests.Protocol
         [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void DecodeMessageSetShouldHandleResponseWithMaxBufferSizeHit()
         {
-            //This message set has a truncated message bytes at the end of it
-            var result = KafkaEncoder.DecodeMessageSet(MessageHelper.FetchResponseMaxBytesOverflow).ToList();
+            using (var reader = new BigEndianBinaryReader(MessageHelper.FetchResponseMaxBytesOverflow)) {
+                //This message set has a truncated message bytes at the end of it
+                var result = reader.ReadMessages();
 
-            var message = Encoding.UTF8.GetString(result.First().Value);
+                var message = Encoding.UTF8.GetString(result.First().Value);
 
-            Assert.That(message, Is.EqualTo("test"));
-            Assert.That(result.Count, Is.EqualTo(529));
+                Assert.That(message, Is.EqualTo("test"));
+                Assert.That(result.Count, Is.EqualTo(529));
+            }
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
@@ -91,14 +97,17 @@ namespace KafkaClient.Tests.Protocol
             var message = new Byte[] { };
             var messageSize = message.Length + 1;
             var memoryStream = new MemoryStream();
-            var binaryWriter = new BigEndianBinaryWriter(memoryStream);
-            binaryWriter.Write(offset);
-            binaryWriter.Write(messageSize);
-            binaryWriter.Write(message);
-            var payloadBytes = memoryStream.ToArray();
+            using (var binaryWriter = new BigEndianBinaryWriter(memoryStream)) {
+                binaryWriter.Write(offset);
+                binaryWriter.Write(messageSize);
+                binaryWriter.Write(message);
+                var payloadBytes = memoryStream.ToArray();
 
-            // act/assert
-            Assert.Throws<BufferUnderRunException>(() => KafkaEncoder.DecodeMessageSet(payloadBytes).ToList());
+                using (var reader = new BigEndianBinaryReader(payloadBytes)) {
+                    // act/assert
+                    Assert.Throws<BufferUnderRunException>(() => reader.ReadMessages());
+                }
+            }
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
@@ -109,12 +118,14 @@ namespace KafkaClient.Tests.Protocol
             var payload = MessageHelper.CreateMessage(0, new Byte[] { 0 }, expectedPayloadBytes);
 
             // act/assert
-            var messages = KafkaEncoder.DecodeMessageSet(payload).ToList();
-            var actualPayload = messages.First().Value;
+            using (var reader = new BigEndianBinaryReader(payload)) {
+                var messages = reader.ReadMessages();
+                var actualPayload = messages.First().Value;
 
-            // assert
-            var expectedPayload = new Byte[] { 1, 2, 3, 4 };
-            CollectionAssert.AreEqual(expectedPayload, actualPayload);
+                // assert
+                var expectedPayload = new Byte[] { 1, 2, 3, 4 };
+                CollectionAssert.AreEqual(expectedPayload, actualPayload);
+            }
         }
     }
 }
