@@ -7,16 +7,18 @@ namespace KafkaClient.Protocol
 {
     public class MetadataTopic : IEquatable<MetadataTopic>
     {
-        public MetadataTopic(string topicName, ErrorResponseCode errorCode = ErrorResponseCode.None, IEnumerable<MetadataPartition> partitions = null)
+        public MetadataTopic(string topicName, ErrorResponseCode errorCode = ErrorResponseCode.None, IEnumerable<MetadataPartition> partitions = null, bool? isInternal = null)
         {
             ErrorCode = errorCode;
             TopicName = topicName;
+            IsInternal = isInternal;
             Partitions = ImmutableList<MetadataPartition>.Empty.AddNotNullRange(partitions);
         }
 
         public ErrorResponseCode ErrorCode { get; }
 
         public string TopicName { get; }
+        public bool? IsInternal { get; }
 
         public IImmutableList<MetadataPartition> Partitions { get; }
 
@@ -33,6 +35,7 @@ namespace KafkaClient.Protocol
             if (ReferenceEquals(this, other)) return true;
             return ErrorCode == other.ErrorCode 
                 && string.Equals(TopicName, other.TopicName) 
+                && IsInternal == other.IsInternal
                 && Partitions.HasEqualElementsInOrder(other.Partitions);
         }
 
@@ -42,6 +45,7 @@ namespace KafkaClient.Protocol
             unchecked {
                 var hashCode = (int) ErrorCode;
                 hashCode = (hashCode*397) ^ (TopicName?.GetHashCode() ?? 0);
+                hashCode = (hashCode*397) ^ (IsInternal?.GetHashCode() ?? 0);
                 hashCode = (hashCode*397) ^ (Partitions?.GetHashCode() ?? 0);
                 return hashCode;
             }

@@ -5,6 +5,7 @@ namespace KafkaClient.Common
 {
     public interface IKafkaWriter : IDisposable
     {
+        IKafkaWriter Write(bool value);
         IKafkaWriter Write(short value);
         IKafkaWriter Write(int value);
         IKafkaWriter Write(long value);

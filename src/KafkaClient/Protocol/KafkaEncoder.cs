@@ -658,14 +658,27 @@ namespace KafkaClient.Protocol
                     var brokerId = reader.ReadInt32();
                     var host = reader.ReadString();
                     var port = reader.ReadInt32();
+                    string rack = null;
+                    if (context.ApiVersion >= 1) {
+                        rack = reader.ReadString();
+                    }
 
-                    brokers[b] = new Broker(brokerId, host, port);
+                    brokers[b] = new Broker(brokerId, host, port, rack);
+                }
+
+                int? controllerId = null;
+                if (context.ApiVersion >= 1) {
+                    controllerId = reader.ReadInt32();
                 }
 
                 var topics = new MetadataTopic[reader.ReadInt32()];
                 for (var t = 0; t < topics.Length; t++) {
                     var topicError = (ErrorResponseCode) reader.ReadInt16();
                     var topicName = reader.ReadString();
+                    bool? isInternal = null;
+                    if (context.ApiVersion >= 1) {
+                        isInternal = reader.ReadBoolean();
+                    }
 
                     var partitions = new MetadataPartition[reader.ReadInt32()];
                     for (var p = 0; p < partitions.Length; p++) {
@@ -682,10 +695,10 @@ namespace KafkaClient.Protocol
                         partitions[p] = new MetadataPartition(partitionId, leaderId, partitionError, replicas, isrs);
 
                     }
-                    topics[t] = new MetadataTopic(topicName, topicError, partitions);
+                    topics[t] = new MetadataTopic(topicName, topicError, partitions, isInternal);
                 }
 
-                return new MetadataResponse(brokers, topics);
+                return new MetadataResponse(brokers, topics, controllerId);
             }
         }
 

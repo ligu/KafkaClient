@@ -7,15 +7,19 @@ using KafkaClient.Common;
 namespace KafkaClient.Protocol
 {
     /// <summary>
-    /// MetadataResponse => [Broker][TopicMetadata]
-    ///  Broker => NodeId Host Port  (any number of brokers may be returned)
+    /// MetadataResponse => [Broker] *ControllerId [TopicMetadata]
+    /// *ControllerId, Rack, IsInternal is only version 1 (0.10.0) and above
+    ///  Broker => NodeId Host Port *Rack  (any number of brokers may be returned)
     ///                               -- The node id, hostname, and port information for a kafka broker
     ///   NodeId => int32             -- The broker id.
     ///   Host => string              -- The hostname of the broker.
     ///   Port => int32               -- The port on which the broker accepts requests.
-    ///  TopicMetadata => TopicErrorCode TopicName [PartitionMetadata]
+    ///   Rack => string              -- The rack of the broker.
+    ///  ControllerId => int32        -- The broker id of the controller broker
+    ///  TopicMetadata => TopicErrorCode TopicName *IsInternal [PartitionMetadata]
     ///   TopicErrorCode => int16     -- The error code for the given topic.
     ///   TopicName => string         -- The name of the topic.
+    ///   IsInternal => boolean       -- Indicates if the topic is considered a Kafka internal topic
     ///  PartitionMetadata => PartitionErrorCode PartitionId Leader Replicas Isr
     ///   PartitionErrorCode => int16 -- The error code for the partition, if any.
     ///   PartitionId => int32        -- The id of the partition.
@@ -28,16 +32,18 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class MetadataResponse : IResponse, IEquatable<MetadataResponse>
     {
-        public MetadataResponse(IEnumerable<Broker> brokers = null, IEnumerable<MetadataTopic> topics = null)
+        public MetadataResponse(IEnumerable<Broker> brokers = null, IEnumerable<MetadataTopic> topics = null, int? controllerId = null)
         {
             Brokers = ImmutableList<Broker>.Empty.AddNotNullRange(brokers);
             Topics = ImmutableList<MetadataTopic>.Empty.AddNotNullRange(topics);
+            ControllerId = controllerId;
             Errors = ImmutableList<ErrorResponseCode>.Empty.AddRange(Topics.Select(t => t.ErrorCode));
         }
 
         public IImmutableList<ErrorResponseCode> Errors { get; }
 
         public IImmutableList<Broker> Brokers { get; }
+        public int? ControllerId { get; }
         public IImmutableList<MetadataTopic> Topics { get; }
 
         /// <inheritdoc />
@@ -52,6 +58,7 @@ namespace KafkaClient.Protocol
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
             return Brokers.HasEqualElementsInOrder(other.Brokers) 
+                && ControllerId == other.ControllerId
                 && Topics.HasEqualElementsInOrder(other.Topics);
         }
 
@@ -59,7 +66,10 @@ namespace KafkaClient.Protocol
         public override int GetHashCode()
         {
             unchecked {
-                return ((Brokers?.GetHashCode() ?? 0)*397) ^ (Topics?.GetHashCode() ?? 0);
+                var hashCode = Brokers?.GetHashCode() ?? 0;
+                hashCode = (hashCode*397) ^ (ControllerId?.GetHashCode() ?? 0);
+                hashCode = (hashCode*397) ^ (Topics?.GetHashCode() ?? 0);
+                return hashCode;
             }
         }
 

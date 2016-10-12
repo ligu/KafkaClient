@@ -464,16 +464,26 @@ namespace KafkaClient.Tests.Protocol
                 writer.Write(broker.BrokerId)
                     .Write(broker.Host)
                     .Write(broker.Port);
+                if (context.ApiVersion >= 1) {
+                    writer.Write(broker.Rack);
+                }
             }
 
-            var groupedTopics = response.Topics.GroupBy(t => new { t.TopicName, t.ErrorCode }).ToList();
+            if (context.ApiVersion >= 1) {
+                writer.Write(response.ControllerId.GetValueOrDefault());
+            }
+
+            var groupedTopics = response.Topics.GroupBy(t => new { t.TopicName, t.ErrorCode, t.IsInternal }).ToList();
             writer.Write(groupedTopics.Count);
             foreach (var topic in groupedTopics) {
                 var partitions = topic.SelectMany(_ => _.Partitions).ToList();
 
                 writer.Write(topic.Key.ErrorCode)
-                    .Write(topic.Key.TopicName)
-                    .Write(partitions.Count); // partitionsPerTopic
+                    .Write(topic.Key.TopicName);
+                if (context.ApiVersion >= 1) {
+                    writer.Write(topic.Key.IsInternal.GetValueOrDefault());
+                }
+                writer.Write(partitions.Count); // partitionsPerTopic
                 foreach (var partition in partitions) {
                     writer.Write(partition.ErrorCode)
                         .Write(partition.PartitionId)

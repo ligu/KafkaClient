@@ -290,28 +290,9 @@ namespace KafkaClient.Tests.Protocol
             request.AssertCanEncodeDecodeRequest(0);
         }
 
-        /// <summary>
-        /// MetadataResponse => [Broker][TopicMetadata]
-        ///  Broker => NodeId Host Port  (any number of brokers may be returned)
-        ///                               -- The node id, hostname, and port information for a kafka broker
-        ///   NodeId => int32             -- The broker id.
-        ///   Host => string              -- The hostname of the broker.
-        ///   Port => int32               -- The port on which the broker accepts requests.
-        ///  TopicMetadata => TopicErrorCode TopicName [PartitionMetadata]
-        ///   TopicErrorCode => int16     -- The error code for the given topic.
-        ///   TopicName => string         -- The name of the topic.
-        ///  PartitionMetadata => PartitionErrorCode PartitionId Leader Replicas Isr
-        ///   PartitionErrorCode => int16 -- The error code for the partition, if any.
-        ///   PartitionId => int32        -- The id of the partition.
-        ///   Leader => int32             -- The id of the broker acting as leader for this partition.
-        ///                                  If no leader exists because we are in the middle of a leader election this id will be -1.
-        ///   Replicas => [int32]         -- The set of all nodes that host this partition.
-        ///   Isr => [int32]              -- The set of nodes that are in sync with the leader for this partition.
-        ///
-        /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-MetadataAPI
-        /// </summary>
         [Test]
         public void MetadataResponse(
+            [Values(0, 1)] short version,
             [Values(1, 15)] int brokersPerRequest,
             [Values("test", "a really long name, with spaces and punctuation!")] string topicName,
             [Values(1, 10)] int topicsPerRequest,
@@ -323,7 +304,11 @@ namespace KafkaClient.Tests.Protocol
         {
             var brokers = new List<Broker>();
             for (var b = 0; b < brokersPerRequest; b++) {
-                brokers.Add(new Broker(b, "broker-" + b, 9092 + b));
+                string rack = null;
+                if (version >= 1) {
+                    rack = "Rack" + b;
+                }
+                brokers.Add(new Broker(b, "broker-" + b, 9092 + b, rack));
             }
             var topics = new List<MetadataTopic>();
             for (var t = 0; t < topicsPerRequest; t++) {
@@ -336,11 +321,11 @@ namespace KafkaClient.Tests.Protocol
                     var isrs = _randomizer.Next(0, replica).Repeat(() => isr++);
                     partitions.Add(new MetadataPartition(partitionId, leader, errorCode, replicas, isrs));
                 }
-                topics.Add(new MetadataTopic(topicName + t, errorCode, partitions));
+                topics.Add(new MetadataTopic(topicName + t, errorCode, partitions, version >= 1 ? topicsPerRequest%2 == 0 : (bool?)null));
             }
-            var response = new MetadataResponse(brokers, topics);
+            var response = new MetadataResponse(brokers, topics, version >= 1 ? brokersPerRequest : (int?)null);
 
-            response.AssertCanEncodeDecodeResponse(0);
+            response.AssertCanEncodeDecodeResponse(version);
         }
 
         /// <summary>

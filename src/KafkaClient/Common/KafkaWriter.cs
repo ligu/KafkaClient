@@ -16,6 +16,12 @@ namespace KafkaClient.Common
             Write(IntegerByteSize); //pre-allocate space for buffer length
         }
 
+        public IKafkaWriter Write(bool value)
+        {
+            _stream.Write(value);
+            return this;
+        }
+
         public IKafkaWriter Write(byte value)
         {
             _stream.Write(value);
