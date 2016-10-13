@@ -30,11 +30,12 @@ namespace KafkaClient
 
             // send the offset request to each partition leader
             var sendRequests = topicMetadata.Partitions
-                .GroupBy(x => x.PartitionId)
-                .Select(p => {
-                    var partitionId = p.Key;
+                .GroupBy(x => x.LeaderId)
+                .Select(partitions => {
+                    var partitionId = partitions.Select(_ => _.PartitionId).First();
                     var route = brokerRouter.GetBrokerRoute(topicName, partitionId);
-                    var request = new OffsetRequest(new Offset(topicName, partitionId, offsetTime, maxOffsets));
+
+                    var request = new OffsetRequest(partitions.Select(_ => new Offset(topicName, _.PartitionId, offsetTime, maxOffsets)));
                     return route.Connection.SendAsync(request, cancellationToken);
                 }).ToArray();
 

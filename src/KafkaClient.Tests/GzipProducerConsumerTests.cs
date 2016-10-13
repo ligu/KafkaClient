@@ -28,7 +28,7 @@ namespace KafkaClient.Tests
         public async Task EnsureGzipCompressedMessageCanSend()
         {
             var topicName = IntegrationConfig.TopicName();
-            IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(IntegrationConfig.Highlight("start EnsureGzipCompressedMessageCanSend")));
+            IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(">> Start EnsureGzipCompressedMessageCanSend"));
             using (var conn = GetKafkaConnection())
             {
                 conn.SendAsync(new MetadataRequest(topicName), CancellationToken.None)
@@ -37,9 +37,9 @@ namespace KafkaClient.Tests
 
             using (var router = new BrokerRouter(_options))
             {
-                IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(IntegrationConfig.Highlight("start RefreshMissingTopicMetadataAsync")));
+                IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(">> Start RefreshMissingTopicMetadataAsync"));
                 await router.GetTopicMetadataAsync(topicName, CancellationToken.None);
-                IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(IntegrationConfig.Highlight("end RefreshMissingTopicMetadataAsync")));
+                IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(">> End RefreshMissingTopicMetadataAsync"));
                 var conn = router.GetBrokerRoute(topicName, 0);
 
                 var request = new ProduceRequest(new Payload(topicName, 0, new [] {
@@ -47,13 +47,13 @@ namespace KafkaClient.Tests
                                     new Message("1", "1"),
                                     new Message("2", "1")
                                 }, MessageCodec.CodecGzip));
-                IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(IntegrationConfig.Highlight("start SendAsync")));
+                IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(">> start SendAsync"));
                 var response = conn.Connection.SendAsync(request, CancellationToken.None).Result;
                 IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create("end SendAsync"));
                 Assert.That(response.Errors.Any(e => e != ErrorResponseCode.None), Is.False);
                 IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create("start dispose"));
             }
-            IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(IntegrationConfig.Highlight("end EnsureGzipCompressedMessageCanSend")));
+            IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(">> End EnsureGzipCompressedMessageCanSend"));
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
@@ -74,7 +74,7 @@ namespace KafkaClient.Tests
                     }
                     await producer.SendMessagesAsync(messages, topicName, 0, new SendMessageConfiguration(codec: MessageCodec.CodecGzip), CancellationToken.None);
 
-                    var results = consumer.Consume(new CancellationTokenSource(TimeSpan.FromMinutes(1)).Token).Take(messages.Count).ToList();
+                    var results = consumer.Consume(new CancellationTokenSource(TimeSpan.FromSeconds(15)).Token).Take(messages.Count).ToList();
                     for (var i = 0; i < messages.Count; i++)
                     {
                         Assert.That(results[i].Value.ToUtf8String(), Is.EqualTo(i.ToString()));

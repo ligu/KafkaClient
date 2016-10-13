@@ -134,6 +134,9 @@ namespace KafkaClient.Protocol
                     }
                     requiresNewLine = buffer.AppendValueWithIndent(inner, $"{indent}  ", !requiresNewLine) || requiresNewLine;
                 }
+                if (requiresNewLine) {
+                    buffer.Append(indent);
+                }
                 buffer.Append("]");
                 return false;
             }
