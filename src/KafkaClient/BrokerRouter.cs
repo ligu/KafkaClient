@@ -130,7 +130,7 @@ namespace KafkaClient
         public async Task<MetadataTopic> GetTopicMetadataAsync(string topicName, CancellationToken cancellationToken)
         {
             return TryGetCachedTopic(topicName) 
-                ?? await UpdateTopicMetadataFromServerIfMissingAsync(topicName, cancellationToken).ConfigureAwait(false);
+                ?? await UpdateTopicMetadataFromServerAsync(topicName, true, cancellationToken).ConfigureAwait(false);
         }
 
         /// <inheritdoc />
@@ -139,61 +139,59 @@ namespace KafkaClient
             var searchResult = TryGetCachedTopics(topicNames);
             return searchResult.Missing.Count == 0 
                 ? searchResult.Topics 
-                : searchResult.Topics.AddRange(await UpdateTopicMetadataFromServerIfMissingAsync(searchResult.Missing, cancellationToken).ConfigureAwait(false));
+                : searchResult.Topics.AddRange(await UpdateTopicMetadataFromServerAsync(searchResult.Missing, false, cancellationToken).ConfigureAwait(false));
         }
 
         /// <inheritdoc />
         public Task RefreshTopicMetadataAsync(string topicName, bool ignoreCacheExpiry, CancellationToken cancellationToken)
         {
-            return ignoreCacheExpiry 
-                ? UpdateTopicMetadataFromServerAsync(topicName, cancellationToken)
-                : UpdateTopicMetadataFromServerIfMissingAsync(topicName, cancellationToken);
+            return UpdateTopicMetadataFromServerAsync(topicName, ignoreCacheExpiry, cancellationToken);
+        }
+
+        /// <inheritdoc />
+        public Task RefreshTopicMetadataAsync(IEnumerable<string> topicNames, bool ignoreCacheExpiry, CancellationToken cancellationToken)
+        {
+            return UpdateTopicMetadataFromServerAsync(topicNames, ignoreCacheExpiry, cancellationToken);
         }
 
         /// <inheritdoc />
         public Task RefreshTopicMetadataAsync(CancellationToken cancellationToken)
         {
-            return UpdateTopicMetadataFromServerAsync(null, cancellationToken);
+            return UpdateTopicMetadataFromServerAsync((IEnumerable<string>) null, true, cancellationToken);
         }
 
-        private async Task<MetadataTopic> UpdateTopicMetadataFromServerIfMissingAsync(string topicName, CancellationToken cancellationToken)
+        private async Task<MetadataTopic> UpdateTopicMetadataFromServerAsync(string topicName, bool ignoreCache, CancellationToken cancellationToken)
         {
-            var topics = await UpdateTopicMetadataFromServerIfMissingAsync(new [] { topicName }, cancellationToken).ConfigureAwait(false);
+            var topics = await UpdateTopicMetadataFromServerAsync(new [] { topicName }, ignoreCache, cancellationToken).ConfigureAwait(false);
             return topics.Single();
         }
 
-        private async Task<IImmutableList<MetadataTopic>> UpdateTopicMetadataFromServerIfMissingAsync(IEnumerable<string> topicNames, CancellationToken cancellationToken)
+        private async Task<IImmutableList<MetadataTopic>> UpdateTopicMetadataFromServerAsync(IEnumerable<string> topicNames, bool ignoreCache, CancellationToken cancellationToken)
         {
             // TODO: more sophisticated locking should be particular to topicName(s) in that multiple 
             // requests can be made in parallel for different topicName(s).
             using (await _lock.LockAsync(cancellationToken).ConfigureAwait(false)) {
-                var searchResult = TryGetCachedTopics(topicNames, Configuration.CacheExpiration);
-                if (searchResult.Missing.Count == 0) return searchResult.Topics;
+                var searchResult = new CachedTopicsResult(missing: topicNames);
+                if (!ignoreCache) {
+                    searchResult = TryGetCachedTopics(searchResult.Missing, Configuration.CacheExpiration);
+                    if (searchResult.Missing.Count == 0) return searchResult.Topics;
+                }
 
-                Log.Info(() => LogEvent.Create($"BrokerRouter refreshing metadata for topics {string.Join(",", searchResult.Missing)}"));
-                var response = await GetTopicMetadataFromServerAsync(searchResult.Missing, cancellationToken);
+                MetadataResponse response;
+                if (ignoreCache && topicNames == null) {
+                    Log.Info(() => LogEvent.Create("BrokerRouter refreshing metadata for all topics"));
+                    response = await GetTopicMetadataFromServerAsync(null, cancellationToken);
+                } else {
+                    Log.Info(() => LogEvent.Create($"BrokerRouter refreshing metadata for topics {string.Join(",", searchResult.Missing)}"));
+                    response = await GetTopicMetadataFromServerAsync(searchResult.Missing, cancellationToken);
+                }
+
                 UpdateConnectionCache(response);
                 UpdateTopicCache(response);
 
                 // since the above may take some time to complete, it's necessary to hold on to the topics we found before
                 // just in case they expired between when we searched for them and now.
                 return searchResult.Topics.AddNotNullRange(response?.Topics);
-            }
-        }
-
-        private async Task UpdateTopicMetadataFromServerAsync(string topicName, CancellationToken cancellationToken)
-        {
-            // TODO: more sophisticated locking should be particular to topicName(s) in that multiple 
-            // requests can be made in parallel for different topicName(s).
-            using (await _lock.LockAsync(cancellationToken).ConfigureAwait(false)) {
-                if (topicName != null) {
-                    Log.Info(() => LogEvent.Create($"BrokerRouter refreshing metadata for topic {topicName}"));
-                } else {
-                    Log.Info(() => LogEvent.Create("BrokerRouter refreshing metadata for all topics"));
-                }
-                var response = await GetTopicMetadataFromServerAsync(new [] { topicName }, cancellationToken);
-                UpdateConnectionCache(response);
-                UpdateTopicCache(response);
             }
         }
 
@@ -356,7 +354,7 @@ namespace KafkaClient
             public IImmutableList<MetadataTopic> Topics { get; }
             public IImmutableList<string> Missing { get; }
 
-            public CachedTopicsResult(IEnumerable<MetadataTopic> topics, IEnumerable<string> missing)
+            public CachedTopicsResult(IEnumerable<MetadataTopic> topics = null, IEnumerable<string> missing = null)
             {
                 Topics = ImmutableList<MetadataTopic>.Empty.AddNotNullRange(topics);
                 Missing = ImmutableList<string>.Empty.AddNotNullRange(missing);

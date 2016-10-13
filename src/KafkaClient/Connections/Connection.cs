@@ -77,7 +77,7 @@ namespace KafkaClient.Connections
             context = new RequestContext(NextCorrelationId(), version, context?.ClientId, context?.Encoders ?? _configuration.Encoders, context?.ProtocolType ?? request.ProtocolType);
 
             _log.Info(() => LogEvent.Create($"Sending {request.ApiKey} (v {version.GetValueOrDefault()}) request with correlation id {context.CorrelationId} to {Endpoint}"));
-            _log.Debug(() => LogEvent.Create($"Request {request.ApiKey}\n{request.ToFormattedString()}"));
+            _log.Debug(() => LogEvent.Create($"Request {request.ApiKey} with correlation id {context.CorrelationId} to {Endpoint}\n{request.ToFormattedString()}"));
             if (!request.ExpectResponse) {
                 await _socket.WriteAsync(KafkaEncoder.Encode(context, request), token).ConfigureAwait(false);
                 return default(T);
@@ -102,7 +102,7 @@ namespace KafkaClient.Connections
                 var response = await asyncRequest.ReceiveTask.Task.ThrowIfCancellationRequested(token).ConfigureAwait(false);
                 _log.Info(() => LogEvent.Create($"Received {request.ApiKey} (v {version.GetValueOrDefault()}) response with correlation id {context.CorrelationId} ({response.Length} bytes) from {Endpoint}"));
                 var result = KafkaEncoder.Decode<T>(context, response);
-                _log.Debug(() => LogEvent.Create($"{request.ApiKey} Response\n{result.ToFormattedString()}"));
+                _log.Debug(() => LogEvent.Create($"{request.ApiKey} Response with correlation id {context.CorrelationId} from {Endpoint}\n{result.ToFormattedString()}"));
                 return result;
             }
         }
