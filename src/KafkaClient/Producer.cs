@@ -154,7 +154,7 @@ namespace KafkaClient
             return batch;
         }
 
-        private async Task SendBatchWithCodecAsync(IReadOnlyCollection<ProduceTopicTask> produceTasks, MessageCodec codec, CancellationToken cancellationToken)
+        private async Task SendBatchWithCodecAsync(IImmutableList<ProduceTopicTask> produceTasks, MessageCodec codec, CancellationToken cancellationToken)
         {
             await BrokerRouter.GetTopicMetadataAsync(produceTasks.Select(m => m.TopicName), cancellationToken).ConfigureAwait(false);
 

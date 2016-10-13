@@ -25,16 +25,6 @@ namespace KafkaClient.Tests.Helpers
 
         public static ILog AllLog = new TraceLog();
 
-        public static string Highlight(string message)
-        {
-            return $"**************************{message}**************************";
-        }
-
-        public static string Highlight(string message, params object[] args)
-        {
-            return $"**************************{string.Format(message, args)}**************************";
-        }
-
         public static Uri IntegrationUri
         {
             get

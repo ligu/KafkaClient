@@ -122,14 +122,14 @@ namespace KafkaClient.Tests
         {
             using (var router = new BrokerRouter(_options))
             {
-                var conn = router.GetBrokerRoute(IntegrationConfig.TopicName());
+                var conn = await router.GetBrokerRouteAsync(IntegrationConfig.TopicName(), 0, CancellationToken.None);
 
                 var request = new GroupCoordinatorRequest(IntegrationConfig.ConsumerName());
 
                 var response = await conn.Connection.SendAsync(request, CancellationToken.None);
 
                 Assert.That(response, Is.Not.Null);
-                Assert.That(response.ErrorCode, Is.EqualTo((int)ErrorResponseCode.None));
+                Assert.That(response.ErrorCode, Is.EqualTo(ErrorResponseCode.None));
             }
         }
     }

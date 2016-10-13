@@ -14,6 +14,7 @@ namespace KafkaClient
             ICacheConfiguration cacheConfiguration = null,
             IConnectionFactory connectionFactory = null,
             IPartitionSelector partitionSelector = null,
+            IProducerConfiguration producerConfiguration = null, 
             ILog log = null)
         {
             ServerUris = ImmutableList<Uri>.Empty.AddNotNullRange(kafkaServerUris);
@@ -21,6 +22,7 @@ namespace KafkaClient
             ConnectionConfiguration = connectionConfiguration ?? new ConnectionConfiguration();
             ConnectionFactory = connectionFactory ?? new ConnectionFactory();
             PartitionSelector = partitionSelector ?? new PartitionSelector();
+            ProducerConfiguration = producerConfiguration ?? new ProducerConfiguration();
             Log = log ?? TraceLog.Log;
         }
 
@@ -30,8 +32,9 @@ namespace KafkaClient
             ICacheConfiguration cacheConfiguration = null,
             IConnectionFactory connectionFactory = null,
             IPartitionSelector partitionSelector = null,
+            IProducerConfiguration producerConfiguration = null, 
             ILog log = null)
-            : this (ImmutableList<Uri>.Empty.AddNotNull(kafkaServerUri), connectionConfiguration, cacheConfiguration, connectionFactory, partitionSelector, log)
+            : this (ImmutableList<Uri>.Empty.AddNotNull(kafkaServerUri), connectionConfiguration, cacheConfiguration, connectionFactory, partitionSelector, producerConfiguration, log)
         {
         }
 
@@ -59,6 +62,11 @@ namespace KafkaClient
         /// Selector function for routing messages to partitions. Default is key/hash and round robin.
         /// </summary>
         public IPartitionSelector PartitionSelector { get; }
+
+        /// <summary>
+        /// BatchSize and delay settings.
+        /// </summary>
+        public IProducerConfiguration ProducerConfiguration { get; }
 
         /// <summary>
         /// Log object to record operational messages.

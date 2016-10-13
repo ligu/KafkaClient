@@ -177,7 +177,7 @@ namespace KafkaClient
 
                 // since the above may take some time to complete, it's necessary to hold on to the topics we found before
                 // just in case they expired between when we searched for them and now.
-                return response.Topics.AddRange(searchResult.Topics);
+                return searchResult.Topics.AddNotNullRange(response?.Topics);
             }
         }
 
