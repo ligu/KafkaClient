@@ -13,8 +13,8 @@ namespace KafkaClient.Tests
     [Category("Integration")]
     internal class ManualTesting
     {
-        private readonly KafkaOptions _options = new KafkaOptions(new []{ new Uri("http://S1.com:9092"), new Uri("http://S2.com:9092"), new Uri("http://S3.com:9092") }, log: new TraceLog(LogLevel.Warn));
-        public readonly  TraceLog _log = new TraceLog(LogLevel.Debug);
+        private readonly KafkaOptions _options = new KafkaOptions(new []{ new Uri("http://S1.com:9092"), new Uri("http://S2.com:9092"), new Uri("http://S3.com:9092") }, log: new ConsoleLog(LogLevel.Warn));
+        public readonly ILog Log = new ConsoleLog(LogLevel.Debug);
 
         /// <summary>
         /// These tests are for manual run. You need to stop the partition leader and then start it again and let it became the leader.        
@@ -60,7 +60,7 @@ namespace KafkaClient.Tests
                 var blockingEnumerableOfMessage = consumer.Consume();
                 foreach (var message in blockingEnumerableOfMessage)
                 {
-                    _log.Info(() => LogEvent.Create($"Offset{message.Offset}"));
+                    Log.Info(() => LogEvent.Create($"Offset{message.Offset}"));
                 }
             }
         }
@@ -79,7 +79,7 @@ namespace KafkaClient.Tests
                     }
                     catch (Exception ex)
                     {
-                        _log.Info(() => LogEvent.Create(ex, "can't send:"));
+                        Log.Info(() => LogEvent.Create(ex, "can't send:"));
                     }
                 }
             });
@@ -97,7 +97,7 @@ namespace KafkaClient.Tests
                     {
                         foreach (var message in messages)
                         {
-                            _log.Info(() => LogEvent.Create($"Offset{message.Offset}"));
+                            Log.Info(() => LogEvent.Create($"Offset{message.Offset}"));
                         }
                         offset = messages.Max(x => x.Offset) + 1;
                     }
@@ -108,7 +108,7 @@ namespace KafkaClient.Tests
                 }
                 catch (Exception ex)
                 {
-                    _log.Info(() => LogEvent.Create(ex, "can't read:"));
+                    Log.Info(() => LogEvent.Create(ex, "can't read:"));
                 }
             }
         }

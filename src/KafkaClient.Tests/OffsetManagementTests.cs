@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using KafkaClient.Common;
 using KafkaClient.Protocol;
 using KafkaClient.Tests.Helpers;
 using NUnit.Framework;
@@ -12,7 +13,7 @@ namespace KafkaClient.Tests
     [Category("Integration")]
     public class OffsetManagementTests
     {
-        private readonly KafkaOptions _options = new KafkaOptions(IntegrationConfig.IntegrationUri);
+        private readonly KafkaOptions _options = new KafkaOptions(IntegrationConfig.IntegrationUri, log: new ConsoleLog());
 
         [SetUp]
         public void Setup()
@@ -36,7 +37,7 @@ namespace KafkaClient.Tests
             var topic = response.Topics.FirstOrDefault();
 
             Assert.That(topic, Is.Not.Null);
-            Assert.That(topic.ErrorCode, Is.EqualTo((int)ErrorResponseCode.None));
+            Assert.That(topic.ErrorCode, Is.EqualTo(ErrorResponseCode.None));
             Assert.That(topic.Offset, Is.EqualTo(-1));
             router.Dispose();
         }

@@ -11,7 +11,7 @@ namespace KafkaClient.Tests.Connections
     [TestFixture]
     public class KafkaEndpointTests
     {
-        private readonly ILog _log = new TraceLog(LogLevel.Warn);
+        private readonly ILog _log = new ConsoleLog(LogLevel.Warn);
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void EnsureEndpointCanBeResulved()

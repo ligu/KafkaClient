@@ -76,10 +76,11 @@ namespace KafkaClient.Connections
             }
             context = new RequestContext(NextCorrelationId(), version, context?.ClientId, context?.Encoders ?? _configuration.Encoders, context?.ProtocolType ?? request.ProtocolType);
 
-            _log.Info(() => LogEvent.Create($"Sending {request.ApiKey} (v {version.GetValueOrDefault()}) request with correlation id {context.CorrelationId} to {Endpoint}"));
+            var payload = KafkaEncoder.Encode(context, request);
+            _log.Info(() => LogEvent.Create($"Sending {request.ApiKey} (v {version.GetValueOrDefault()}) request with correlation id {context.CorrelationId} ({payload.Buffer.Length} bytes) to {Endpoint}"));
             _log.Debug(() => LogEvent.Create($"Request {request.ApiKey} with correlation id {context.CorrelationId} to {Endpoint}\n{request.ToFormattedString()}"));
             if (!request.ExpectResponse) {
-                await _socket.WriteAsync(KafkaEncoder.Encode(context, request), token).ConfigureAwait(false);
+                await _socket.WriteAsync(payload, token).ConfigureAwait(false);
                 return default(T);
             }
 
@@ -89,7 +90,7 @@ namespace KafkaClient.Connections
                     ExceptionDispatchInfo exceptionDispatchInfo = null;
 
                     try {
-                        await _socket.WriteAsync(KafkaEncoder.Encode(context, request), token).ConfigureAwait(false);
+                        await _socket.WriteAsync(payload, token).ConfigureAwait(false);
                     } catch (Exception ex) {
                         exceptionDispatchInfo = ExceptionDispatchInfo.Capture(ex);
                     }

@@ -21,9 +21,9 @@ namespace KafkaClient.Tests.Helpers
 
         // Some of the tests measured performance.my log is too slow so i change the log level to
         // only critical message
-        public static ILog NoDebugLog = new TraceLog(LogLevel.Info);
+        public static ILog NoDebugLog = new ConsoleLog(LogLevel.Info);
 
-        public static ILog AllLog = new TraceLog();
+        public static ILog AllLog = new ConsoleLog();
 
         public static Uri IntegrationUri
         {

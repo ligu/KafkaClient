@@ -24,7 +24,7 @@ namespace KafkaClient.Tests.Connections
         private const int FakeServerPort = 8999;
         private readonly Endpoint _fakeServerUrl;
         private readonly Endpoint _badServerUrl;
-        private readonly ILog _log = new TraceLog(LogLevel.Info);
+        private readonly ILog _log = new ConsoleLog(LogLevel.Info);
 
         public KafkaTcpSocketTests()
         {
@@ -369,7 +369,7 @@ namespace KafkaClient.Tests.Connections
         [Test, Repeat(IntegrationConfig.TestAttempts)]
         public async Task ShouldReconnectAfterLosingConnectionAndBeAbleToStartNewRead()
         {
-            var log = new TraceLog();
+            var log = new ConsoleLog();
             using (var server = new FakeTcpServer(log, FakeServerPort))
             {
                 var disconnects = 0;
@@ -420,7 +420,7 @@ namespace KafkaClient.Tests.Connections
 
                 var payload = new KafkaWriter().Write(messages);
 
-                var socket = new TcpSocket(_fakeServerUrl, log: new TraceLog(LogLevel.Warn));
+                var socket = new TcpSocket(_fakeServerUrl, log: new ConsoleLog(LogLevel.Warn));
 
                 var tasks = messages.Select(x => socket.ReadAsync(x.Length, CancellationToken.None)).ToArray();
 
@@ -443,7 +443,7 @@ namespace KafkaClient.Tests.Connections
         public async Task WriteAsyncShouldSendData()
         {
             using (var server = new FakeTcpServer(_log, FakeServerPort))
-            using (var test = new TcpSocket(_fakeServerUrl, log: new TraceLog(LogLevel.Warn)))
+            using (var test = new TcpSocket(_fakeServerUrl, log: new ConsoleLog(LogLevel.Warn)))
             {
                 const int testData = 99;
                 int result = 0;
@@ -542,7 +542,7 @@ namespace KafkaClient.Tests.Connections
             var write = new ConcurrentBag<int>();
             int percent = 0;
             using (var server = new FakeTcpServer(_log, FakeServerPort))
-            using (var test = new TcpSocket(_fakeServerUrl, log: new TraceLog(LogLevel.Warn)))
+            using (var test = new TcpSocket(_fakeServerUrl, log: new ConsoleLog(LogLevel.Warn)))
             {
                 int numberOfWrite = 10000;
                 server.OnBytesReceived += data =>

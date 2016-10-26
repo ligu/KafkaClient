@@ -16,7 +16,7 @@ namespace KafkaClient.Tests.Fakes
 
         public FakeConnection(Uri address)
         {
-            Endpoint = new ConnectionFactory().Resolve(address, new TraceLog());
+            Endpoint = new ConnectionFactory().Resolve(address, new ConsoleLog());
         }
 
         public long MetadataRequestCallCount; // { get; set; }

@@ -14,7 +14,7 @@ namespace KafkaClient.Tests.Connections
     public class FakeTcpServerTests
     {
         private readonly Uri _fakeServerUrl;
-        private readonly ILog _ilog = new TraceLog(LogLevel.Warn);
+        private readonly ILog _ilog = new ConsoleLog(LogLevel.Warn);
 
         public FakeTcpServerTests()
         {

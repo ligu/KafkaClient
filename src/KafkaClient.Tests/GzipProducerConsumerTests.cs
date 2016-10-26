@@ -15,7 +15,7 @@ namespace KafkaClient.Tests
     [Category("Integration")]
     public class GzipProducerConsumerTests
     {
-        private readonly KafkaOptions _options = new KafkaOptions(IntegrationConfig.IntegrationUri);
+        private readonly KafkaOptions _options = new KafkaOptions(IntegrationConfig.IntegrationUri, log: new ConsoleLog());
 
         private Connection GetKafkaConnection()
         {

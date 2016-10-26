@@ -17,13 +17,13 @@ namespace KafkaClient.Tests.Connections
     [TestFixture]
     public class KafkaConnectionTests
     {
-        private readonly TraceLog _log;
+        private readonly ILog _log;
         private readonly Endpoint _endpoint;
         private MoqMockingKernel _kernel;
 
         public KafkaConnectionTests()
         {
-            _log = new TraceLog();
+            _log = new ConsoleLog();
             _endpoint = new ConnectionFactory().Resolve(new Uri("http://localhost:8999"), _log);
         }
 
@@ -105,8 +105,8 @@ namespace KafkaClient.Tests.Connections
                     Interlocked.Increment(ref connected);
                 });
 
-            using (var server = new FakeTcpServer(new TraceLog(), 8999))
-            using (var socket = new TcpSocket(_endpoint, config, log: new TraceLog()))
+            using (var server = new FakeTcpServer(new ConsoleLog(), 8999))
+            using (var socket = new TcpSocket(_endpoint, config, log: new ConsoleLog()))
             using (new Connection(socket, config, log: mockLog))
             {
                 for (var connectionAttempt = 1; connectionAttempt < 4; connectionAttempt++)

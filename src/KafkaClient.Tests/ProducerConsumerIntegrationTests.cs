@@ -218,7 +218,10 @@ namespace KafkaClient.Tests
             TimeSpan maxTimeToRun = TimeSpan.FromMilliseconds(timeoutInMs);
             var doneSend = Task.WhenAll(sendList.ToArray());
             await Task.WhenAny(doneSend, Task.Delay(maxTimeToRun));
-            Assert.IsTrue(doneSend.IsCompleted, "not done to send in time");
+            if (!doneSend.IsCompleted) {
+                var completed = sendList.Count(t => t.IsCompleted);
+                Assert.Fail($"Only finished sending {completed} of {numberOfMessage} in {timeoutInMs} ms.");
+            }
 
             IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create($">> done send ,time Milliseconds:{stopwatch.ElapsedMilliseconds}"));
             stopwatch.Restart();
