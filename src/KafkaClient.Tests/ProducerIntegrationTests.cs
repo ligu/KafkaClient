@@ -27,7 +27,7 @@ namespace KafkaClient.Tests
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
-        public async void SendAsyncShouldGetOneResultForMessage()
+        public async Task SendAsyncShouldGetOneResultForMessage()
         {
             using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri)))
             using (var producer = new Producer(router))
@@ -39,7 +39,7 @@ namespace KafkaClient.Tests
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
-        public async void SendAsyncShouldGetAResultForEachPartitionSentTo()
+        public async Task SendAsyncShouldGetAResultForEachPartitionSentTo()
         {
             using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri)))
             using (var producer = new Producer(router))
@@ -54,7 +54,7 @@ namespace KafkaClient.Tests
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
-        public async void SendAsyncShouldGetOneResultForEachPartitionThroughBatching()
+        public async Task SendAsyncShouldGetOneResultForEachPartitionThroughBatching()
         {
             using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri)))
             using (var producer = new Producer(router))

@@ -401,7 +401,7 @@ namespace KafkaClient.Tests
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
-        public async void ConsumerShouldMoveToNextAvailableOffsetWhenQueryingForNextMessage()
+        public async Task ConsumerShouldMoveToNextAvailableOffsetWhenQueryingForNextMessage()
         {
             const int expectedCount = 1000;
             var options = new KafkaOptions(IntegrationConfig.IntegrationUri);
