@@ -149,8 +149,8 @@ namespace KafkaClient.Tests.Connections
 
                 await TaskTest.WaitFor(() => receivedData);
 
-                //should log a warning and keep going
-                Assert.That(mockLog.LogEvents.Any(e => e.Item1 == LogLevel.Warn && e.Item2.Message == $"Unexpected response from {_endpoint} with correlation id {correlationId} (not in request queue)."));
+                // shortly after receivedData, but still after
+                await TaskTest.WaitFor(() => mockLog.LogEvents.Any(e => e.Item1 == LogLevel.Warn && e.Item2.Message == $"Unexpected response from {_endpoint} with correlation id {correlationId} (not in request queue)."));
             }
         }
 
