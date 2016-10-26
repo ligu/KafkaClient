@@ -11,6 +11,7 @@ using KafkaClient.Tests.Helpers;
 using Moq;
 using Ninject.MockingKernel.Moq;
 using NUnit.Framework;
+#pragma warning disable 1998
 
 namespace KafkaClient.Tests
 {

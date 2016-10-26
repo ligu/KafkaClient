@@ -43,7 +43,7 @@ namespace KafkaClient.Tests
             router.GetTopicOffsetAsync(BrokerRouterProxy.TestTopic, 2,  -1, CancellationToken.None).ContinueWith(t =>
             {
                 Assert.That(t.IsFaulted, Is.True);
-                Assert.That(t.Exception.Flatten().ToString(), Is.StringContaining("test 99"));
+                Assert.That(t.Exception.Flatten().ToString(), Does.Contain("test 99"));
             }).Wait();
         }
 

@@ -7,6 +7,8 @@ using KafkaClient.Connections;
 using KafkaClient.Protocol;
 using KafkaClient.Tests.Helpers;
 using NUnit.Framework;
+using NUnit.Framework.Constraints;
+#pragma warning disable 1998
 
 namespace KafkaClient.Tests
 {
@@ -152,7 +154,6 @@ namespace KafkaClient.Tests
         }
 
         [Test]
-       [ExpectedException(typeof(FetchOutOfRangeException), ExpectedMessage = "Kafka returned OffsetOutOfRange for Fetch request", MatchType = MessageMatch.StartsWith)]
         public async Task FetchMessagesOffsetBiggerThanLastOffsetInQueueTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
@@ -162,12 +163,11 @@ namespace KafkaClient.Tests
 
             var offset = await consumer.FetchLastOffsetAsync(CancellationToken.None);
 
-            // Now let's consume throw KafkaServerException
-            await consumer.FetchMessagesAsync(5, offset + 1, CancellationToken.None);
+            Assert.ThrowsAsync(Is.InstanceOf<FetchOutOfRangeException>().With.Message.StartsWith("Kafka returned OffsetOutOfRange for Fetch request"), 
+                async () => await consumer.FetchMessagesAsync(5, offset + 1, CancellationToken.None));
         }
 
         [Test]
-        [ExpectedException(typeof(ArgumentOutOfRangeException))]
         public async Task FetchMessagesInvalidOffsetTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
@@ -178,11 +178,10 @@ namespace KafkaClient.Tests
             var offset = -1;
 
             // Now let's consume
-            await consumer.FetchMessagesAsync(5, offset, CancellationToken.None);
+            Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await consumer.FetchMessagesAsync(5, offset, CancellationToken.None));
         }
 
         [Test]
-        [ExpectedException(typeof(RequestException))]
         public async Task FetchMessagesTopicDoesntExist()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
@@ -195,13 +194,10 @@ namespace KafkaClient.Tests
             var offset = 0;
 
             // Now let's consume
-            var result = (await consumer.FetchMessagesAsync(5, offset, CancellationToken.None)).ToList();
-
-            Assert.AreEqual(0, result.Count);
+            Assert.ThrowsAsync<RequestException>(async () => await consumer.FetchMessagesAsync(5, offset, CancellationToken.None));
         }
 
         [Test]
-        [ExpectedException(typeof(CachedMetadataException))]
         public async Task FetchMessagesPartitionDoesntExist()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
@@ -213,11 +209,10 @@ namespace KafkaClient.Tests
 
             var offset = 0;
 
-            await consumer.FetchMessagesAsync(5, offset, CancellationToken.None);
+            Assert.ThrowsAsync<CachedMetadataException>(async () => await consumer.FetchMessagesAsync(5, offset, CancellationToken.None));
         }
 
         [Test]
-        [ExpectedException(typeof(BufferUnderRunException))]
         public async Task FetchMessagesBufferUnderRunTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
@@ -237,13 +232,10 @@ namespace KafkaClient.Tests
             await producer.SendMessagesAsync(messages, topic, _partitionId, new SendMessageConfiguration(ackTimeout: TimeSpan.FromSeconds(3)), CancellationToken.None);
 
             // Now let's consume
-            var result = (await consumer.FetchMessagesAsync(5, offset, CancellationToken.None)).ToList();
-
-            CheckMessages(messages.Take(5).ToList(), result);
+            Assert.ThrowsAsync<BufferUnderRunException>(async () => await consumer.FetchMessagesAsync(5, offset, CancellationToken.None));
         }
 
         [Test]
-        [ExpectedException(typeof(RequestException))]
         public async Task FetchOffsetConsumerGroupDoesntExistTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
@@ -253,11 +245,10 @@ namespace KafkaClient.Tests
 
             ManualConsumer consumer = new ManualConsumer(partitionId, IntegrationConfig.TopicName(), brokerRouter, "TestClient", DefaultMaxMessageSetSize);
 
-            await consumer.FetchOffsetAsync(consumerGroup, CancellationToken.None);
+            Assert.ThrowsAsync<RequestException>(async () => await consumer.FetchOffsetAsync(consumerGroup, CancellationToken.None));
         }
 
         [Test]
-        [ExpectedException(typeof(CachedMetadataException))]
         public async Task FetchOffsetPartitionDoesntExistTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
@@ -267,11 +258,10 @@ namespace KafkaClient.Tests
 
             ManualConsumer consumer = new ManualConsumer(partitionId, IntegrationConfig.TopicName(), brokerRouter, "TestClient", DefaultMaxMessageSetSize);
 
-            await consumer.FetchOffsetAsync(consumerGroup, CancellationToken.None);
+            Assert.ThrowsAsync<CachedMetadataException>(async () => await consumer.FetchOffsetAsync(consumerGroup, CancellationToken.None));
         }
 
         [Test]
-        [ExpectedException(typeof(RequestException))]
         public async Task FetchOffsetTopicDoesntExistTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
@@ -282,7 +272,7 @@ namespace KafkaClient.Tests
 
             ManualConsumer consumer = new ManualConsumer(_partitionId, topic, brokerRouter, "TestClient", DefaultMaxMessageSetSize);
 
-            await consumer.FetchOffsetAsync(consumerGroup, CancellationToken.None);
+            Assert.ThrowsAsync<RequestException>(async () => await consumer.FetchOffsetAsync(consumerGroup, CancellationToken.None));
         }
 
         [Test]
@@ -304,8 +294,7 @@ namespace KafkaClient.Tests
         }
 
         [Test]
-        [ExpectedException(typeof(ArgumentNullException))]
-        public async Task FetchOffsetConsumerGroupIsNullTest()
+        public async Task FetchOffsetConsumerGroupArgumentNull([Values(null, "")] string group)
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
             var brokerRouter = new BrokerRouter(_kafkaUri, new ConnectionFactory(), _config);
@@ -317,24 +306,7 @@ namespace KafkaClient.Tests
             var offest = 5;
 
             await consumer.UpdateOrCreateOffsetAsync(consumerGroup, offest, CancellationToken.None);
-            await consumer.FetchOffsetAsync(null, CancellationToken.None);
-        }
-
-        [Test]
-        [ExpectedException(typeof(ArgumentNullException))]
-        public async Task FetchOffsetConsumerGroupIsEmptyTest()
-        {
-            // Creating a broker router and a protocol gateway for the producer and consumer
-            var brokerRouter = new BrokerRouter(_kafkaUri, new ConnectionFactory(), _config);
-            var partitionId = 0;
-            var consumerGroup = IntegrationConfig.ConsumerName();
-
-            ManualConsumer consumer = new ManualConsumer(partitionId, IntegrationConfig.TopicName(), brokerRouter, "TestClient", DefaultMaxMessageSetSize);
-
-            var offest = 5;
-
-            await consumer.UpdateOrCreateOffsetAsync(consumerGroup, offest, CancellationToken.None);
-            await consumer.FetchOffsetAsync(string.Empty, CancellationToken.None);
+            Assert.ThrowsAsync<ArgumentNullException>(async () => await consumer.FetchOffsetAsync(group, CancellationToken.None));
         }
 
         [Test]
@@ -380,7 +352,6 @@ namespace KafkaClient.Tests
         }
 
         [Test]
-        [ExpectedException(typeof(CachedMetadataException))]
         public async Task UpdateOrCreateOffsetPartitionDoesntExistTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
@@ -392,7 +363,7 @@ namespace KafkaClient.Tests
 
             var offest = 5;
 
-            await consumer.UpdateOrCreateOffsetAsync(consumerGroup, offest, CancellationToken.None);
+            Assert.ThrowsAsync<CachedMetadataException>(async () => await consumer.UpdateOrCreateOffsetAsync(consumerGroup, offest, CancellationToken.None));
         }
 
         [Test]
@@ -413,8 +384,7 @@ namespace KafkaClient.Tests
         }
 
         [Test]
-        [ExpectedException(typeof(ArgumentNullException))]
-        public async Task UpdateOrCreateOffsetConsumerGroupNullTest()
+        public async Task UpdateOrCreateOffsetConsumerGroupArgumentNull([Values(null, "")] string group)
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
             var brokerRouter = new BrokerRouter(_kafkaUri, new ConnectionFactory(), _config);
@@ -425,27 +395,10 @@ namespace KafkaClient.Tests
 
             var offest = 5;
 
-            await consumer.UpdateOrCreateOffsetAsync(null, offest, CancellationToken.None);
+            Assert.ThrowsAsync<ArgumentNullException>(async () => await consumer.UpdateOrCreateOffsetAsync(group, offest, CancellationToken.None));
         }
 
         [Test]
-        [ExpectedException(typeof(ArgumentNullException))]
-        public async Task UpdateOrCreateOffsetConsumerGroupEmptyTest()
-        {
-            // Creating a broker router and a protocol gateway for the producer and consumer
-            var brokerRouter = new BrokerRouter(_kafkaUri, new ConnectionFactory(), _config);
-            var partitionId = 0;
-            var topic = IntegrationConfig.TopicName();
-
-            ManualConsumer consumer = new ManualConsumer(partitionId, topic, brokerRouter, "TestClient", DefaultMaxMessageSetSize);
-
-            var offest = 5;
-
-            await consumer.UpdateOrCreateOffsetAsync(string.Empty, offest, CancellationToken.None);
-        }
-
-        [Test]
-        [ExpectedException(typeof(ArgumentOutOfRangeException))]
         public async Task UpdateOrCreateOffsetNegativeOffsetTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
@@ -458,7 +411,7 @@ namespace KafkaClient.Tests
 
             var offest = -5;
 
-            await consumer.UpdateOrCreateOffsetAsync(consumerGroup, offest, CancellationToken.None);
+            Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await consumer.UpdateOrCreateOffsetAsync(consumerGroup, offest, CancellationToken.None));
         }
 
         [Test]
@@ -477,7 +430,6 @@ namespace KafkaClient.Tests
         }
 
         [Test]
-        [ExpectedException(typeof(CachedMetadataException))]
         public async Task FetchLastOffsetPartitionDoesntExistTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
@@ -487,11 +439,10 @@ namespace KafkaClient.Tests
 
             ManualConsumer consumer = new ManualConsumer(partitionId, topic, brokerRouter, "TestClient", DefaultMaxMessageSetSize * 2);
 
-            await consumer.FetchLastOffsetAsync(CancellationToken.None);
+            Assert.ThrowsAsync<CachedMetadataException>(async () => await consumer.FetchLastOffsetAsync(CancellationToken.None));
         }
 
         [Test]
-        [ExpectedException(typeof(RequestException))]
         public async Task FetchLastOffsetTopicDoesntExistTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
@@ -501,9 +452,7 @@ namespace KafkaClient.Tests
 
             ManualConsumer consumer = new ManualConsumer(_partitionId, topic, brokerRouter, "TestClient", DefaultMaxMessageSetSize * 2);
 
-            var res = await consumer.FetchLastOffsetAsync(CancellationToken.None);
-
-            Assert.AreEqual(0, res);
+            Assert.ThrowsAsync<RequestException>(async () => await consumer.FetchLastOffsetAsync(CancellationToken.None));
         }
 
         private void CheckMessages(List<Message> expected, List<Message> actual)

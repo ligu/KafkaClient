@@ -9,6 +9,7 @@ using KafkaClient.Tests.Helpers;
 using Moq;
 using NSubstitute;
 using NUnit.Framework;
+#pragma warning disable 1998
 
 namespace KafkaClient.Tests
 {

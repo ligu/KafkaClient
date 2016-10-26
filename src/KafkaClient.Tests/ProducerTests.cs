@@ -9,6 +9,7 @@ using KafkaClient.Tests.Fakes;
 using KafkaClient.Tests.Helpers;
 using NSubstitute;
 using NUnit.Framework;
+#pragma warning disable 1998
 
 namespace KafkaClient.Tests
 {
@@ -315,10 +316,8 @@ namespace KafkaClient.Tests
             //with max buffer set below the batch size, this should cause the producer to block until batch delay time.
             var routerProxy = new FakeBrokerRouter();
             var semaphore = new SemaphoreSlim(0);
-#pragma warning disable 1998
             routerProxy.BrokerConn0.ProduceResponseFunction = async () => { semaphore.Wait(); return new ProduceResponse(); };
             routerProxy.BrokerConn1.ProduceResponseFunction = async () => { semaphore.Wait(); return new ProduceResponse(); };
-#pragma warning restore 1998
 
             var producer = new Producer(routerProxy.Create(), new ProducerConfiguration(1, 1, TimeSpan.FromMilliseconds(500)));
             using (producer)

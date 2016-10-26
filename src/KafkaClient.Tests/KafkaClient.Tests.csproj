@@ -87,6 +87,7 @@
     <Compile Include="Helpers\TaskTest.cs" />
     <Compile Include="GzipProducerConsumerTests.cs" />
     <Compile Include="KafkaMetadataGetAsyncUnitTests.cs" />
+    <Compile Include="ManualConsumerTests.cs" />
     <Compile Include="ManualTesting.cs" />
     <Compile Include="OffsetManagementTests.cs" />
     <Compile Include="ProducerConsumerIntegrationTests.cs" />

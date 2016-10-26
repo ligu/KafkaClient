@@ -10,6 +10,7 @@ using KafkaClient.Connections;
 using KafkaClient.Tests.Fakes;
 using KafkaClient.Tests.Helpers;
 using NUnit.Framework;
+#pragma warning disable 1998
 
 namespace KafkaClient.Tests.Connections
 {
