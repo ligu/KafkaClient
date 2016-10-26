@@ -54,7 +54,6 @@ namespace KafkaClient.Tests
             Assert.That(routerProxy.BrokerConn0.FetchRequestCallCount, Is.EqualTo(2));
         }
         
-        [ExpectedException(typeof(FormatException))]
         [Test, Repeat(IntegrationConfig.TestAttempts)]
         public async Task ShouldThrowFormatExceptionWhenTopicIsInvalid()
         {
@@ -62,7 +61,8 @@ namespace KafkaClient.Tests
             var router = routerProxy.Create();
             string invalidTopic = " ";
             var fetchRequest = new FetchRequest();
-            await router.SendAsync(fetchRequest, invalidTopic, 0, CancellationToken.None);
+            Assert.ThrowsAsync<FormatException>(async () => await router.SendAsync(fetchRequest, invalidTopic, 0, CancellationToken.None));
+
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
@@ -106,7 +106,6 @@ namespace KafkaClient.Tests
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
-        [ExpectedException(typeof(RequestException))]
         [TestCase(ErrorResponseCode.InvalidFetchSize)]
         [TestCase(ErrorResponseCode.MessageTooLarge)]
         [TestCase(ErrorResponseCode.OffsetMetadataTooLarge)]
@@ -123,7 +122,7 @@ namespace KafkaClient.Tests
 
             routerProxy.BrokerConn0.FetchResponseFunction = FailedInFirstMessageError(code, routerProxy._cacheExpiration);
             routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers;
-            await router.SendAsync(new FetchRequest(), BrokerRouterProxy.TestTopic, _partitionId, CancellationToken.None);
+            Assert.ThrowsAsync<RequestException>(async () => await router.SendAsync(new FetchRequest(), BrokerRouterProxy.TestTopic, _partitionId, CancellationToken.None));
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]

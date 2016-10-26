@@ -115,7 +115,6 @@ namespace KafkaClient.Tests
         [TestCase(ErrorResponseCode.Unknown)]
         [TestCase(ErrorResponseCode.InvalidTopic)]
         [TestCase(ErrorResponseCode.InvalidRequiredAcks)]
-        [ExpectedException(typeof(RequestException))]
         public async Task ShouldThrowExceptionWhenNotARetriableErrorCode(ErrorResponseCode errorCode)
         {
             var conn = Substitute.For<IConnection>();
@@ -123,35 +122,33 @@ namespace KafkaClient.Tests
             conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>()).Returns(x => CreateMetadataResponse(errorCode));
 
             _brokerRouter.Connections.ReturnsForAnyArgs(new List<IConnection> {conn});
-            var response = await _brokerRouter.GetMetadataAsync(new [] { "Test"}, CancellationToken.None);
+            Assert.ThrowsAsync<RequestException>(() => _brokerRouter.GetMetadataAsync(new [] { "Test"}, CancellationToken.None));
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
         [TestCase(null)]
         [TestCase("")]
-        [ExpectedException(typeof(ConnectionException))]
-        public async Task ShouldThrowExceptionWhenHostIsMissing(string host)
+        public void ShouldThrowExceptionWhenHostIsMissing(string host)
         {
             var conn = Substitute.For<IConnection>();
 
             conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>()).Returns(x => CreateMetadataResponse(1, host, 1));
 
             _brokerRouter.Connections.ReturnsForAnyArgs(new List<IConnection> {conn});
-            var response = await _brokerRouter.GetMetadataAsync(new [] { "Test"}, CancellationToken.None);
+            Assert.ThrowsAsync<ConnectionException>(() => _brokerRouter.GetMetadataAsync(new [] { "Test"}, CancellationToken.None));
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
         [TestCase(0)]
         [TestCase(-1)]
-        [ExpectedException(typeof(ConnectionException))]
-        public async Task ShouldThrowExceptionWhenPortIsMissing(int port)
+        public void ShouldThrowExceptionWhenPortIsMissing(int port)
         {
             var conn = Substitute.For<IConnection>();
 
             conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>()).Returns(x => CreateMetadataResponse(1, "123", port));
 
             _brokerRouter.Connections.ReturnsForAnyArgs(new List<IConnection> {conn});
-            var response = await _brokerRouter.GetMetadataAsync(new [] { "Test"}, CancellationToken.None);
+            Assert.ThrowsAsync<ConnectionException>(() => _brokerRouter.GetMetadataAsync(new [] { "Test"}, CancellationToken.None));
         }
 
 #pragma warning disable 1998

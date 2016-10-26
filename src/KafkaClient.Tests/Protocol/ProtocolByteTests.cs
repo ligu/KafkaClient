@@ -6,6 +6,7 @@ using KafkaClient.Common;
 using KafkaClient.Protocol;
 using KafkaClient.Protocol.Types;
 using NUnit.Framework;
+using NUnit.Framework.Internal;
 
 namespace KafkaClient.Tests.Protocol
 {

@@ -47,10 +47,9 @@ namespace KafkaClient.Tests
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
-        [ExpectedException(typeof(ConnectionException))]
         public void BrokerRouterConstructorThrowsException()
         {
-            var result = new BrokerRouter(new Uri("http://noaddress:1"));
+            Assert.Throws<ConnectionException>(() => new BrokerRouter(new Uri("http://noaddress:1")));
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
@@ -87,7 +86,6 @@ namespace KafkaClient.Tests
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
-        [ExpectedException(typeof(RequestException))]
         public async Task BrokerRouteShouldThrowIfCycleCouldNotConnectToAnyServer()
         {
             var routerProxy = new BrokerRouterProxy(_kernel);
@@ -95,17 +93,10 @@ namespace KafkaClient.Tests
             routerProxy.BrokerConn1.MetadataResponseFunction = () => { throw new Exception("some error"); };
             var router = routerProxy.Create();
 
-            try
-            {
-                await router.GetTopicMetadataAsync(TestTopic, CancellationToken.None);
-                router.GetTopicMetadata(TestTopic);
-            }
-            catch
-            {
-                Assert.That(routerProxy.BrokerConn0.MetadataRequestCallCount, Is.EqualTo(1));
-                Assert.That(routerProxy.BrokerConn1.MetadataRequestCallCount, Is.EqualTo(1));
-                throw;
-            }
+            Assert.ThrowsAsync<RequestException>(async () => await router.GetTopicMetadataAsync(TestTopic, CancellationToken.None));
+
+            Assert.That(routerProxy.BrokerConn0.MetadataRequestCallCount, Is.EqualTo(1));
+            Assert.That(routerProxy.BrokerConn1.MetadataRequestCallCount, Is.EqualTo(1));
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
@@ -124,13 +115,13 @@ namespace KafkaClient.Tests
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
-        public void BrokerRouteShouldThrowNoLeaderElectedForPartition()
+        public async Task BrokerRouteShouldThrowNoLeaderElectedForPartition()
         {
             var routerProxy = new BrokerRouterProxy(_kernel);
             routerProxy.MetadataResponse = BrokerRouterProxy.CreateMetadataResponseWithNotEndToElectLeader;
 
             var router = routerProxy.Create();
-            Assert.Throws<CachedMetadataException>(async () =>await router.GetTopicMetadataAsync(TestTopic, CancellationToken.None));
+            Assert.ThrowsAsync<CachedMetadataException>(async () => await router.GetTopicMetadataAsync(TestTopic, CancellationToken.None));
             Assert.AreEqual(0, router.GetTopicMetadata().Count);
         }
 
@@ -244,17 +235,15 @@ namespace KafkaClient.Tests
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
-        [ExpectedException(typeof(CachedMetadataException))]
         public async Task SelectExactPartitionShouldThrowWhenPartitionDoesNotExist()
         {
             var routerProxy = new BrokerRouterProxy(_kernel);
             var router = routerProxy.Create();
             await router.GetTopicMetadataAsync(TestTopic, CancellationToken.None);
-            router.GetBrokerRoute(TestTopic, 3);
+            Assert.Throws<CachedMetadataException>(() => router.GetBrokerRoute(TestTopic, 3));
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
-        [ExpectedException(typeof(CachedMetadataException))]
         public async Task SelectExactPartitionShouldThrowWhenTopicsCollectionIsEmpty()
         {
             var metadataResponse = await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers();
@@ -265,11 +254,10 @@ namespace KafkaClient.Tests
             routerProxy.BrokerConn0.MetadataResponseFunction = async () => metadataResponse;
 #pragma warning restore 1998
 
-            routerProxy.Create().GetBrokerRoute(TestTopic, 1);
+            Assert.Throws<CachedMetadataException>(() => routerProxy.Create().GetBrokerRoute(TestTopic, 1));
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
-        [ExpectedException(typeof(CachedMetadataException))]
         public async Task SelectExactPartitionShouldThrowWhenBrokerCollectionIsEmpty()
         {
             var metadataResponse = await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers();
@@ -281,7 +269,7 @@ namespace KafkaClient.Tests
 #pragma warning restore 1998
             var router = routerProxy.Create();
             await router.GetTopicMetadataAsync(TestTopic, CancellationToken.None);
-            router.GetBrokerRoute(TestTopic, 1);
+            Assert.Throws<CachedMetadataException>(() => router.GetBrokerRoute(TestTopic, 1));
         }
 
         #endregion SelectBrokerRouteAsync Exact Tests...
@@ -308,7 +296,6 @@ namespace KafkaClient.Tests
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
-        [ExpectedException(typeof(CachedMetadataException))]
         public async Task SelectPartitionShouldThrowWhenTopicsCollectionIsEmpty()
         {
             var metadataResponse = await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers();
@@ -319,11 +306,10 @@ namespace KafkaClient.Tests
             routerProxy.BrokerConn0.MetadataResponseFunction = async () => metadataResponse;
 #pragma warning restore 1998
 
-            routerProxy.Create().GetBrokerRoute(TestTopic);
+            Assert.Throws<CachedMetadataException>(() => routerProxy.Create().GetBrokerRoute(TestTopic));
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
-        [ExpectedException(typeof(CachedMetadataException))]
         public async Task SelectPartitionShouldThrowWhenBrokerCollectionIsEmpty()
         {
             var metadataResponse = await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers();
@@ -336,7 +322,7 @@ namespace KafkaClient.Tests
 #pragma warning restore 1998
             var routerProxy1 = routerProxy.Create();
             await routerProxy1.GetTopicMetadataAsync(TestTopic, CancellationToken.None);
-            routerProxy1.GetBrokerRoute(TestTopic);
+            Assert.Throws<CachedMetadataException>(() => routerProxy1.GetBrokerRoute(TestTopic));
         }
 
         #endregion SelectBrokerRouteAsync Select Tests...

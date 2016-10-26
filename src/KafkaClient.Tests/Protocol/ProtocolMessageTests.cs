@@ -14,7 +14,6 @@ namespace KafkaClient.Tests.Protocol
     public class ProtocolMessageTests
     {
         [Test, Repeat(IntegrationConfig.TestAttempts)]
-        [ExpectedException(typeof(CrcValidationException))]
         public void DecodeMessageShouldThrowWhenCrcFails()
         {
             var testMessage = new Message(value: "kafka test message.", key: "test");
@@ -24,7 +23,7 @@ namespace KafkaClient.Tests.Protocol
                 var encoded = writer.ToBytesNoLength();
                 encoded[0] += 1;
                 using (var reader = new BigEndianBinaryReader(encoded)) {
-                    var result = reader.ReadMessage(encoded.Length, 0).First();
+                    Assert.Throws<CrcValidationException>(() => reader.ReadMessage(encoded.Length, 0).First());
                 }
             }
         }

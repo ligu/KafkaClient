@@ -50,7 +50,7 @@ namespace KafkaClient.Tests
                 var messages = new List<Message> { new Message("1"), new Message("2") };
 
                 var sendTask = producer.SendMessagesAsync(messages, "UnitTest", CancellationToken.None).ConfigureAwait(false);
-                Assert.Throws<RequestException>(async () => await sendTask);
+                Assert.ThrowsAsync<RequestException>(async () => await sendTask);
 
                 Assert.That(routerProxy.BrokerConn0.ProduceRequestCallCount, Is.EqualTo(1));
                 Assert.That(routerProxy.BrokerConn1.ProduceRequestCallCount, Is.EqualTo(1));
@@ -160,7 +160,7 @@ namespace KafkaClient.Tests
         #region Nagle Tests...
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
-        public async void ProducesShouldBatchAndOnlySendOneProduceRequest()
+        public async Task ProducesShouldBatchAndOnlySendOneProduceRequest()
         {
             var routerProxy = new FakeBrokerRouter();
             var producer = new Producer(routerProxy.Create(), new ProducerConfiguration(batchSize: 2));
@@ -180,7 +180,7 @@ namespace KafkaClient.Tests
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
-        public async void ProducesShouldSendOneProduceRequestForEachBatchSize()
+        public async Task ProducesShouldSendOneProduceRequestForEachBatchSize()
         {
             var routerProxy = new FakeBrokerRouter();
             var producer = new Producer(routerProxy.Create(), new ProducerConfiguration(batchSize: 4));
@@ -209,7 +209,7 @@ namespace KafkaClient.Tests
         [TestCase(1, 2, 100, 100, 2)]
         [TestCase(1, 1, 100, 200, 2)]
         [TestCase(1, 1, 100, 100, 1)]
-        public async void ProducesShouldSendExpectedProduceRequestForEachAckLevelAndTimeoutCombination(short ack1, short ack2, int time1, int time2, int expected)
+        public async Task ProducesShouldSendExpectedProduceRequestForEachAckLevelAndTimeoutCombination(short ack1, short ack2, int time1, int time2, int expected)
         {
             var routerProxy = new FakeBrokerRouter();
             var producer = new Producer(routerProxy.Create(), new ProducerConfiguration(batchSize: 100));
@@ -232,7 +232,7 @@ namespace KafkaClient.Tests
         [TestCase(MessageCodec.CodecGzip, MessageCodec.CodecNone, 2)]
         [TestCase(MessageCodec.CodecGzip, MessageCodec.CodecGzip, 1)]
         [TestCase(MessageCodec.CodecNone, MessageCodec.CodecNone, 1)]
-        public async void ProducesShouldSendExpectedProduceRequestForEachCodecCombination(MessageCodec codec1, MessageCodec codec2, int expected)
+        public async Task ProducesShouldSendExpectedProduceRequestForEachCodecCombination(MessageCodec codec1, MessageCodec codec2, int expected)
         {
             var routerProxy = new FakeBrokerRouter();
             var producer = new Producer(routerProxy.Create(), new ProducerConfiguration(batchSize: 100));
@@ -252,7 +252,7 @@ namespace KafkaClient.Tests
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
-        public async void ProducerShouldAllowFullBatchSizeOfMessagesToQueue()
+        public async Task ProducerShouldAllowFullBatchSizeOfMessagesToQueue()
         {
             var routerProxy = new FakeBrokerRouter();
             var producer = new Producer(routerProxy.Create(), new ProducerConfiguration(batchSize: 1002, batchMaxDelay: TimeSpan.FromSeconds(10000)));
@@ -340,24 +340,22 @@ namespace KafkaClient.Tests
         #region Dispose Tests...
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
-        [ExpectedException(typeof(ObjectDisposedException))]
-        public async void SendingMessageWhenDisposedShouldThrow()
+        public async Task SendingMessageWhenDisposedShouldThrow()
         {
             var router = Substitute.For<IBrokerRouter>();
             var producer = new Producer(router);
             using (producer) { }
-            await producer.SendMessageAsync(new Message("1"), "Test", CancellationToken.None);
+            Assert.ThrowsAsync<ObjectDisposedException>(async () => await producer.SendMessageAsync(new Message("1"), "Test", CancellationToken.None));
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
-        [ExpectedException(typeof(ObjectDisposedException))]
         public async Task SendingMessageWhenStoppedShouldThrow()
         {
             var router = Substitute.For<IBrokerRouter>();
             using (var producer = new Producer(router, new ProducerConfiguration(stopTimeout: TimeSpan.FromMilliseconds(200))))
             {
                 await producer.StopAsync(CancellationToken.None);
-                await producer.SendMessageAsync(new Message("1"), "Test", CancellationToken.None);
+                Assert.ThrowsAsync<ObjectDisposedException>(async () => await producer.SendMessageAsync(new Message("1"), "Test", CancellationToken.None));
             }
         }
 

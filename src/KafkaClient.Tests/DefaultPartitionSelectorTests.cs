@@ -116,7 +116,6 @@ namespace KafkaClient.Tests
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
-        [ExpectedException(typeof(CachedMetadataException))]
         public void KeyHashShouldThrowExceptionWhenChoosesAPartitionIdThatDoesNotExist()
         {
             var selector = new PartitionSelector();
@@ -125,16 +124,15 @@ namespace KafkaClient.Tests
                                               new MetadataPartition(999, 1) 
                                           });
 
-            selector.Select(topic, CreateKeyForPartition(1));
+            Assert.Throws<CachedMetadataException>(() => selector.Select(topic, CreateKeyForPartition(1)));
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
-        [ExpectedException(typeof(CachedMetadataException))]
         public void SelectorShouldThrowExceptionWhenPartitionsAreEmpty()
         {
             var selector = new PartitionSelector();
             var topic = new MetadataTopic("emptyPartition");
-            selector.Select(topic, CreateKeyForPartition(1));
+            Assert.Throws<CachedMetadataException>(() => selector.Select(topic, CreateKeyForPartition(1)));
         }
     }
 }

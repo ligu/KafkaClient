@@ -346,25 +346,23 @@ namespace KafkaClient.Tests.Connections
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
-        [ExpectedException(typeof(ConnectionException))]
         public async Task WhenNoConnectionThrowSocketException()
         {
             var socket = new TcpSocket(new Endpoint(new Uri("http://not.com"), null), log: _log);
 
             var resultTask = socket.ReadAsync(4, CancellationToken.None);
-            await resultTask;
+            Assert.ThrowsAsync<ConnectionException>(async () => await resultTask);
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
-        [ExpectedException(typeof(ConnectionException))]
         public async Task WhenNoConnectionThrowSocketExceptionAfterMaxRetry()
         {
             var reconnectionAttempt = 0;
             var config = new ConnectionConfiguration(onConnecting: (endpoint, attempt, elapsed) => Interlocked.Increment(ref reconnectionAttempt));
             var socket = new TcpSocket(new Endpoint(new Uri("http://not.com"), null), config, _log);
             var resultTask = socket.ReadAsync(4, CancellationToken.None);
-            await resultTask;
-            Assert.Equals(reconnectionAttempt, ConnectionConfiguration.Defaults.MaxConnectionAttempts);
+            Assert.ThrowsAsync<ConnectionException>(async () => await resultTask);
+            Assert.That(reconnectionAttempt, Is.EqualTo(ConnectionConfiguration.Defaults.MaxConnectionAttempts + 2));
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
@@ -397,7 +395,7 @@ namespace KafkaClient.Tests.Connections
                 log.Info(() => LogEvent.Create("Waiting for onDisconnected"));
                 await Task.WhenAny(disconnectEvent.Task, Task.Delay(100000));
                 Assert.IsTrue(disconnectEvent.Task.IsCompleted, "Server should have disconnected the client.");
-                Assert.Throws<ConnectionException>(async () => await readTask);
+                Assert.ThrowsAsync<ConnectionException>(async () => await readTask);
                 await TaskTest.WaitFor(() => connects == 2, 6000);
                 log.Info(() => LogEvent.Create("connects == 2"));
                 Assert.That(connects, Is.EqualTo(2), "Socket should have reconnected.");

@@ -63,13 +63,12 @@ namespace KafkaClient.Tests
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
-        [ExpectedException(typeof(CachedMetadataException))]
         public void EmptyTopicMetadataShouldThrowException()
         {
             var routerProxy = new BrokerRouterProxy(_kernel);
             var router = routerProxy.Create();
 
-            router.GetTopicMetadata("MissingTopic");
+            Assert.Throws<CachedMetadataException>(() => router.GetTopicMetadata("MissingTopic"));
         }
 
         #endregion GetTopic Tests...
