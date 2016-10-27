@@ -26,8 +26,8 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class OffsetCommitRequest : GroupRequest, IRequest<OffsetCommitResponse>, IEquatable<OffsetCommitRequest>
     {
-        public OffsetCommitRequest(string groupId, IEnumerable<OffsetCommit> offsetCommits, string memberId = null, int generationId = 0, TimeSpan? offsetRetention = null) 
-            : base(ApiKeyRequestType.OffsetCommit, groupId, memberId, generationId)
+        public OffsetCommitRequest(string groupId, IEnumerable<OffsetCommit> offsetCommits, string memberId = null, int generationId = -1, TimeSpan? offsetRetention = null) 
+            : base(ApiKeyRequestType.OffsetCommit, groupId, memberId ?? "", generationId)
         {
             OffsetRetention = offsetRetention;
             OffsetCommits = ImmutableList<OffsetCommit>.Empty.AddNotNullRange(offsetCommits);
