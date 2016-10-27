@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -21,10 +22,10 @@ namespace KafkaClient.Tests.Connections
         [SetUp]
         public void Setup()
         {
-            var options = new KafkaOptions(IntegrationConfig.IntegrationUri, new ConnectionConfiguration(versionSupport: VersionSupport.Kafka8.MakeDynamic()));
+            var options = new KafkaOptions(IntegrationConfig.IntegrationUri, new ConnectionConfiguration(versionSupport: VersionSupport.Kafka8.MakeDynamic()), log: new ConsoleLog());
             var endpoint = new ConnectionFactory().Resolve(options.ServerUris.First(), options.Log);
 
-            _conn = new Connection(new TcpSocket(endpoint, options.ConnectionConfiguration), options.ConnectionConfiguration, options.Log);
+            _conn = new Connection(new TcpSocket(endpoint, options.ConnectionConfiguration), options.ConnectionConfiguration, IntegrationConfig.NoDebugLog);
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
@@ -49,21 +50,31 @@ namespace KafkaClient.Tests.Connections
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
-        public async Task EnsureMultipleAsyncRequestsCanReadResponses()
+        public async Task EnsureMultipleAsyncRequestsCanReadResponses([Values(1, 5)] int senders, [Values(10, 50, 200)] int totalRequests)
         {
-            var requests = new List<Task<MetadataResponse>>();
+            var requestsSoFar = 0;
+            var requestTasks = new ConcurrentBag<Task<MetadataResponse>>();
             var singleResult = await _conn.SendAsync(new MetadataRequest(IntegrationConfig.TopicName()), CancellationToken.None);
             Assert.That(singleResult.Topics.Count, Is.GreaterThan(0));
             Assert.That(singleResult.Topics.First().Partitions.Count, Is.GreaterThan(0));
 
-            for (int i = 0; i < 20; i++)
-            {
-                requests.Add(_conn.SendAsync(new MetadataRequest(), CancellationToken.None));
+            var senderTasks = new List<Task>();
+            for (var s = 0; s < senders; s++) {
+                senderTasks.Add(Task.Run(async () => {
+                    while (true) {
+                        await Task.Delay(1);
+                        if (Interlocked.Increment(ref requestsSoFar) > totalRequests) break;
+                        requestTasks.Add(_conn.SendAsync(new MetadataRequest(), CancellationToken.None));
+                    }
+                }));
             }
+
+            await Task.WhenAll(senderTasks);
+            var requests = requestTasks.ToArray();
             await Task.WhenAll(requests);
 
             var results = requests.Select(x => x.Result).ToList();
-            Assert.That(results.Count, Is.EqualTo(20));
+            Assert.That(results.Count, Is.EqualTo(totalRequests));
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]

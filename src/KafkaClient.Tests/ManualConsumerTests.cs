@@ -446,7 +446,7 @@ namespace KafkaClient.Tests
         public async Task FetchLastOffsetTopicDoesntExistTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
-            var brokerRouter = new BrokerRouter(_kafkaUri, new ConnectionFactory(), _config);
+            var brokerRouter = new BrokerRouter(_kafkaUri, new ConnectionFactory(), _config, log: new ConsoleLog());
 
             var topic = IntegrationConfig.TopicName();
 
