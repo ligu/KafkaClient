@@ -30,7 +30,7 @@ namespace KafkaClient.Connections
         private readonly CancellationTokenSource _disposeToken = new CancellationTokenSource();
         private int _disposeCount;
 
-        private Task _readerTask;
+        private readonly Task _readerTask;
         private int _activeReaderCount;
         private int _correlationIdSeed;
 
@@ -49,7 +49,10 @@ namespace KafkaClient.Connections
             _log = log ?? TraceLog.Log;
             _configuration = configuration ?? new ConnectionConfiguration();
             _versionSupport = _configuration.VersionSupport.IsDynamic ? null : _configuration.VersionSupport;
-            StartReader();
+
+            // This thread will poll the receive stream for data, parse a message out
+            // and trigger an event with the message payload
+            _readerTask = Task.Factory.StartNew(DedicatedReaderTask, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
         }
 
         /// <summary>
@@ -156,57 +159,53 @@ namespace KafkaClient.Connections
 
         #endregion Equals
 
-        private void StartReader()
+        private async Task DedicatedReaderTask()
         {
-            // This thread will poll the receive stream for data, parse a message out
-            // and trigger an event with the message payload
-            _readerTask = Task.Run(async () => {
-                try {
-                    // only allow one reader to execute, dump out all other requests
-                    if (Interlocked.Increment(ref _activeReaderCount) != 1) return;
+            try {
+                // only allow one reader to execute, dump out all other requests
+                if (Interlocked.Increment(ref _activeReaderCount) != 1) return;
 
-                    var messageSize = 0;
-                    // use backoff so we don't take over the CPU when there's a failure
-                    await new BackoffRetry(TimeSpan.MaxValue, TimeSpan.FromMilliseconds(50), maxDelay: TimeSpan.FromSeconds(5)).AttemptAsync(
-                        async attempt => {
-                            _log.Debug(() => LogEvent.Create($"Awaiting data from {_socket.Endpoint}"));
-                            if (messageSize == 0) {
-                                var messageSizeResult = await _socket.ReadAsync(4, _disposeToken.Token).ConfigureAwait(false);
-                                messageSize = messageSizeResult.ToInt32(); // hold onto it in case we fail while reading from the socket
-                            }
+                var messageSize = 0;
+                // use backoff so we don't take over the CPU when there's a failure
+                await new BackoffRetry(null, TimeSpan.FromMilliseconds(5), maxDelay: TimeSpan.FromSeconds(5)).AttemptAsync(
+                    async attempt => {
+                        _log.Debug(() => LogEvent.Create($"Awaiting data from {_socket.Endpoint}"));
+                        if (messageSize == 0) {
+                            var messageSizeResult = await _socket.ReadAsync(4, _disposeToken.Token).ConfigureAwait(false);
+                            messageSize = messageSizeResult.ToInt32(); // hold onto it in case we fail while reading from the socket
+                        }
 
-                            var currentSize = messageSize;
-                            _log.Debug(() => LogEvent.Create($"Reading {currentSize} bytes from tcp {_socket.Endpoint}"));
-                            var message = await _socket.ReadAsync(currentSize, _disposeToken.Token).ConfigureAwait(false);
-                            messageSize = 0; // reset so we read the size next time through -- note that if the ReadAsync reads partially we're still in trouble
+                        var currentSize = messageSize;
+                        _log.Debug(() => LogEvent.Create($"Reading {currentSize} bytes from tcp {_socket.Endpoint}"));
+                        var message = await _socket.ReadAsync(currentSize, _disposeToken.Token).ConfigureAwait(false);
+                        messageSize = 0; // reset so we read the size next time through -- note that if the ReadAsync reads partially we're still in trouble
 
-                            CorrelatePayloadToRequest(message);
-                            if (attempt > 0) {
-                                _log.Info(() => LogEvent.Create($"Polling read thread has recovered on {_socket.Endpoint}"));
-                            }
-                        },
-                        (exception, attempt, delay) => {
-                            if (_disposeToken.IsCancellationRequested) {
-                                throw exception.PrepareForRethrow();
-                            }
+                        CorrelatePayloadToRequest(message);
+                        if (attempt > 0) {
+                            _log.Info(() => LogEvent.Create($"Polling read thread has recovered on {_socket.Endpoint}"));
+                        }
+                    },
+                    (exception, attempt, delay) => {
+                        if (_disposeToken.IsCancellationRequested) {
+                            throw exception.PrepareForRethrow();
+                        }
 
-                            // It is possible for orphaned requests to exist in the _requestsByCorrelation after failure
-                            if (attempt == 0) {
-                                _log.Error(LogEvent.Create(exception,  $"Polling failure on {_socket.Endpoint} attempt {attempt} delay {delay}"));
-                            } else {
-                                _log.Info(() => LogEvent.Create(exception, $"Polling failure on {_socket.Endpoint} attempt {attempt} delay {delay}"));
-                            }
-                        },
-                        null, // since there is no max attempts/delay
-                        _disposeToken.Token
-                    ).ConfigureAwait(false);
-                } catch (Exception ex) {
-                    _log.Debug(() => LogEvent.Create(ex));
-                } finally {
-                    Interlocked.Decrement(ref _activeReaderCount);
-                    _log.Info(() => LogEvent.Create($"Closed down connection to {_socket.Endpoint}"));
-                }
-            });
+                        // It is possible for orphaned requests to exist in the _requestsByCorrelation after failure
+                        if (attempt == 0) {
+                            _log.Error(LogEvent.Create(exception,  $"Polling failure on {_socket.Endpoint} attempt {attempt} delay {delay}"));
+                        } else {
+                            _log.Info(() => LogEvent.Create(exception, $"Polling failure on {_socket.Endpoint} attempt {attempt} delay {delay}"));
+                        }
+                    },
+                    null, // since there is no max attempts/delay
+                    _disposeToken.Token
+                ).ConfigureAwait(false);
+            } catch (Exception ex) {
+                _log.Debug(() => LogEvent.Create(ex));
+            } finally {
+                Interlocked.Decrement(ref _activeReaderCount);
+                _log.Info(() => LogEvent.Create($"Closed down connection to {_socket.Endpoint}"));
+            }
         }
 
         private void CorrelatePayloadToRequest(byte[] payload)
