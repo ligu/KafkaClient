@@ -7,17 +7,10 @@ namespace KafkaClient.Tests
     public class ConsoleLog : ILog
     {
         private readonly LogLevel _minLevel;
-        private readonly ImmutableDictionary<LogLevel, ConsoleColor> _colors;
         private readonly ImmutableDictionary<LogLevel, string> _levels;
-        private static readonly object ConsoleWriterLock = new object();
         public ConsoleLog(LogLevel minLevel)
         {
             _minLevel = minLevel;
-            _colors = ImmutableDictionary<LogLevel, ConsoleColor>.Empty
-                .Add(LogLevel.Debug, ConsoleColor.DarkGray)
-                .Add(LogLevel.Info, ConsoleColor.White)
-                .Add(LogLevel.Warn, ConsoleColor.Yellow)
-                .Add(LogLevel.Error, ConsoleColor.Red);
             _levels = ImmutableDictionary<LogLevel, string>
                 .Empty
                 .Add(LogLevel.Debug, "d")
@@ -36,11 +29,7 @@ namespace KafkaClient.Tests
 
             var logEvent = producer();
             var text = ToText(level, logEvent);
-            lock (ConsoleWriterLock) {
-                Console.ForegroundColor = _colors[level];
-                Console.WriteLine(text);
-                Console.ResetColor();
-            }
+            Console.WriteLine(text);
         }
 
         public string ToText(LogLevel level, LogEvent logEvent)

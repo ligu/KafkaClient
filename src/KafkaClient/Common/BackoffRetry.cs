@@ -8,7 +8,7 @@ namespace KafkaClient.Common
         private readonly TimeSpan _delay;
         private readonly bool _isLinear;
 
-        public BackoffRetry(TimeSpan timeout, TimeSpan delay, int? maxAttempts = null, bool isLinear = false, TimeSpan? maxDelay = null)
+        public BackoffRetry(TimeSpan? timeout, TimeSpan delay, int? maxAttempts = null, bool isLinear = false, TimeSpan? maxDelay = null)
             : base (timeout, maxAttempts)
         {
             _delay = delay;
@@ -34,7 +34,10 @@ namespace KafkaClient.Common
                 delayMilliseconds = Math.Min(delayMilliseconds, _maxDelay.Value.TotalMilliseconds);
             }
 
-            return TimeSpan.FromMilliseconds(Math.Min(delayMilliseconds, Timeout.TotalMilliseconds - timeTaken.TotalMilliseconds));
+            if (Timeout.HasValue) {
+                delayMilliseconds = Math.Min(delayMilliseconds, Timeout.Value.TotalMilliseconds - timeTaken.TotalMilliseconds);
+            }
+            return TimeSpan.FromMilliseconds(delayMilliseconds);
         }
     }
 }

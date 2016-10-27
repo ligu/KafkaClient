@@ -9,7 +9,7 @@ namespace KafkaClient.Common
             Timeout = timeout;
         }
 
-        public TimeSpan Timeout { get; }
+        public TimeSpan? Timeout { get; }
 
         public TimeSpan? RetryDelay(int attempt, TimeSpan timeTaken) => null;
 

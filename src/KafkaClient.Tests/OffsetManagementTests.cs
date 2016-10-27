@@ -90,7 +90,7 @@ namespace KafkaClient.Tests
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
-        public void OffsetCommitShouldStoreMetadata()
+        public async Task OffsetCommitShouldStoreMetadata()
         {
             const int partitionId = 0;
             const long offset = 101;
@@ -98,10 +98,10 @@ namespace KafkaClient.Tests
 
             var router = new BrokerRouter(_options);
 
-            var conn = router.GetBrokerRoute(IntegrationConfig.TopicName(), partitionId);
+            var conn = await router.GetBrokerRouteAsync(IntegrationConfig.TopicName(), partitionId, CancellationToken.None);
 
             var commit = new OffsetCommitRequest(IntegrationConfig.ConsumerName(), new []{ new OffsetCommit(IntegrationConfig.TopicName(), partitionId, offset, metadata) });
-            var commitResponse = conn.Connection.SendAsync(commit, CancellationToken.None).Result;
+            var commitResponse = await conn.Connection.SendAsync(commit, CancellationToken.None);
             var commitTopic = commitResponse.Topics.SingleOrDefault();
 
             Assert.That(commitTopic, Is.Not.Null);

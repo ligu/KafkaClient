@@ -7,7 +7,7 @@ namespace KafkaClient.Common
         /// <summary>
         /// The maximum time to wait across all attempts.
         /// </summary>
-        TimeSpan Timeout { get; }
+        TimeSpan? Timeout { get; }
 
         /// <summary>
         /// How much to delay before the next attempt.

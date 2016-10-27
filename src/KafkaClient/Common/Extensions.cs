@@ -55,9 +55,9 @@ namespace KafkaClient.Common
             return exception;
         }
 
-        public static async Task<bool> TryApplyAsync<T>(this AsyncCollection<T> collection, Action<T> apply, CancellationToken cancellationToken)
+        public static async Task<int> TryApplyAsync<T>(this AsyncCollection<T> collection, Action<T> apply, CancellationToken cancellationToken)
         {
-            var appliedToAny = false;
+            var count = 0;
             try {
                 while (true) {
                     // Try rather than simply Take (in case the collection has been closed and is not empty)
@@ -65,11 +65,11 @@ namespace KafkaClient.Common
                     if (!result.Success) break;
 
                     apply(result.Item);
-                    appliedToAny = true;
+                    count++;
                 }
             } catch (OperationCanceledException) {
             }
-            return appliedToAny;
+            return count;
         }
 
         public static void AddRange<T>(this AsyncCollection<T> collection, IEnumerable<T> items, CancellationToken cancellationToken)
