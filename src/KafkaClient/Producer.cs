@@ -172,7 +172,7 @@ namespace KafkaClient
             var sendBatches = new List<ProduceTaskBatch>();
             foreach (var endpointGroup in endpointGroups) {
                 var produceTasksByTopicPayload = endpointGroup
-                    .GroupBy(_ => new Topic(_.Route.TopicName, _.Route.PartitionId))
+                    .GroupBy(_ => (Topic)_.Route)
                     .ToImmutableDictionary(g => g.Key, g => g.Select(_ => _.ProduceTask).ToImmutableList());
                 var messageCount = produceTasksByTopicPayload.Values.Sum(_ => _.Count);
                 var payloads = produceTasksByTopicPayload.Select(p => new Payload(p.Key.TopicName, p.Key.PartitionId, p.Value.Select(_ => _.Message), codec));

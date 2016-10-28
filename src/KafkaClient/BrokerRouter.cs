@@ -251,7 +251,7 @@ namespace KafkaClient
         {
             IConnection conn;
             return _brokerConnections.TryGetValue(partition.LeaderId, out conn)
-                ? new BrokerRoute(topicName, partition.PartitionId, conn) 
+                ? new BrokerRoute(topicName, partition.PartitionId, partition.LeaderId, conn) 
                 : null;
         }
 

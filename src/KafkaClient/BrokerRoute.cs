@@ -5,14 +5,17 @@ namespace KafkaClient
 {
     public class BrokerRoute : Topic
     {
-        public BrokerRoute(string topicName, int partitionId, IConnection connection) : base(topicName, partitionId)
+        public BrokerRoute(string topicName, int partitionId, int brokerId, IConnection connection) : base(topicName, partitionId)
         {
+            BrokerId = brokerId;
             Connection = connection;
         }
 
         public IConnection Connection { get; }
 
-        public override string ToString() => $"{Connection.Endpoint.ServerUri} {base.ToString()}";
+        public int BrokerId { get; }
+
+        public override string ToString() => $"{Connection.Endpoint.ServerUri} ({BrokerId}) {base.ToString()}";
 
     }
 }
