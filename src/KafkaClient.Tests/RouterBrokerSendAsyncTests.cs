@@ -54,17 +54,6 @@ namespace KafkaClient.Tests
             Assert.That(routerProxy.BrokerConn0.MetadataRequestCallCount, Is.EqualTo(2));
             Assert.That(routerProxy.BrokerConn0.FetchRequestCallCount, Is.EqualTo(2));
         }
-        
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
-        public async Task ShouldThrowFormatExceptionWhenTopicIsInvalid()
-        {
-            var routerProxy = new BrokerRouterProxy(_kernel);
-            var router = routerProxy.Create();
-            string invalidTopic = " ";
-            var fetchRequest = new FetchRequest();
-            Assert.ThrowsAsync<FormatException>(async () => await router.SendAsync(fetchRequest, invalidTopic, 0, CancellationToken.None));
-
-        }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
         [TestCase(typeof(ConnectionException))]

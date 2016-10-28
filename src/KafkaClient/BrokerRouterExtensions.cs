@@ -59,55 +59,68 @@ namespace KafkaClient
         /// <exception cref="TimeoutException">Thrown if there request times out</exception>
         /// <exception cref="ConnectionException">Thrown in case of network error contacting broker (after retries), or if none of the default brokers can be contacted.</exception>
         /// <exception cref="RequestException">Thrown in case of an unexpected error in the request</exception>
-        /// <exception cref="FormatException">Thrown in case the topic name is invalid</exception>
         public static async Task<T> SendAsync<T>(this IBrokerRouter brokerRouter, IRequest<T> request, string topicName, int partition, CancellationToken cancellationToken, IRequestContext context = null, IRetry retryPolicy = null) where T : class, IResponse
         {
-            if (topicName.Contains(" ")) throw new FormatException($"topic name ({topicName}) is invalid");
-
+            var topicNames = new[] { topicName };
+            var log = brokerRouter.Log;
             bool? metadataInvalid = false;
             T response = null;
             Endpoint endpoint = null;
 
             return await (retryPolicy ?? new Retry(TimeSpan.MaxValue, 3)).AttemptAsync(
                 async (attempt, timer) => {
-                    if (metadataInvalid.GetValueOrDefault(true)) {
-                        // unknown metadata status should not force the issue
-                        await brokerRouter.RefreshTopicMetadataAsync(topicName, metadataInvalid.GetValueOrDefault(), cancellationToken).ConfigureAwait(false);
-                        metadataInvalid = false;
-                    }
+                    metadataInvalid = await brokerRouter.MetadataRetryRefresh(topicNames, metadataInvalid, cancellationToken);
 
-                    brokerRouter.Log.Debug(() => LogEvent.Create($"Router SendAsync request {request.ApiKey} (attempt {attempt})"));
+                    // create request
                     var route = await brokerRouter.GetBrokerRouteAsync(topicName, partition, cancellationToken);
                     endpoint = route.Connection.Endpoint;
+
+                    // make request
                     response = await route.Connection.SendAsync(request, cancellationToken, context).ConfigureAwait(false);
-
-                    // this can happen if you send ProduceRequest with ack level=0
-                    if (response == null) return new RetryAttempt<T>(null);
-
-                    var errors = response.Errors.Where(e => e != ErrorResponseCode.None).ToList();
-                    if (errors.Count == 0) return new RetryAttempt<T>(response);
-
-                    var shouldRetry = errors.Any(e => e.IsRetryable());
-                    metadataInvalid = errors.All(e => e.IsFromStaleMetadata());
-                    brokerRouter.Log.Warn(() => {
-                        var routes = errors.Aggregate($"{route} -", (buffer, e) => $"{buffer} {e}");
-                        return LogEvent.Create($"Error response in Router SendAsync (attempt {attempt + 1}): {routes}");
-                    });
-
-                    if (!shouldRetry) throw request.ExtractExceptions(response, endpoint);
-                    return RetryAttempt<T>.Retry;
+                    return request.MetadataRetryResponse(response, attempt, endpoint, log, out metadataInvalid);
                 },
-                null, // do nothing on normal retry -- should log?
+                (attempt, retry) => request.MetadataRetry(attempt, brokerRouter.Log),
                 finalAttempt => { throw request.ExtractExceptions(response, endpoint); },
-                (ex, attempt, retry) => {
-                    if (IsPotentiallyRecoverableByMetadataRefresh(ex)) {
-                        metadataInvalid = null; // ie. the state of the metadata is unknown
-                    } else {
-                        throw ex.PrepareForRethrow();
-                    }
-                },
+                (ex, attempt, retry) => metadataInvalid = request.MetadataRetry(attempt, brokerRouter.Log, ex),
                 null, // do nothing on final exception -- will be rethrown
                 cancellationToken);
+        }
+
+        private static async Task<bool> MetadataRetryRefresh(this IBrokerRouter brokerRouter, IEnumerable<string> topicNames, bool? metadataInvalid, CancellationToken cancellationToken)
+        {
+            if (metadataInvalid.GetValueOrDefault(true)) {
+                // unknown metadata status should not force the issue
+                await brokerRouter.RefreshTopicMetadataAsync(topicNames, metadataInvalid.GetValueOrDefault(), cancellationToken).ConfigureAwait(false);
+            }
+            return false;
+        }
+
+        private static bool? MetadataRetry<T>(this IRequest<T> request, int attempt, ILog log, Exception exception = null) where T : IResponse
+        {
+            log.Debug(() => LogEvent.Create(exception, $"Retrying request {request.ApiKey} (attempt {attempt})"));
+            if (exception != null) {
+                if (IsPotentiallyRecoverableByMetadataRefresh(exception)) {
+                    return null; // ie. the state of the metadata is unknown
+                }
+                throw exception.PrepareForRethrow();
+            }
+            return true;
+        }
+
+        private static RetryAttempt<T> MetadataRetryResponse<T>(this IRequest<T> request, T response, int attempt, Endpoint endpoint, ILog log, out bool? metadataInvalid) where T : class, IResponse
+        {
+            metadataInvalid = false;
+            if (response == null) return request.ExpectResponse ? RetryAttempt<T>.Retry : new RetryAttempt<T>(null);
+
+            var errors = response.Errors.Where(e => e != ErrorResponseCode.None).ToList();
+            if (errors.Count == 0) return new RetryAttempt<T>(response);
+
+            var shouldRetry = errors.Any(e => e.IsRetryable());
+            metadataInvalid = errors.All(e => e.IsFromStaleMetadata());
+            log.Warn(() => LogEvent.Create($"{request.ApiKey} response contained errors (attempt {attempt}): {string.Join(" ", errors)}"));
+
+            if (!shouldRetry) throw request.ExtractExceptions(response, endpoint);
+            return RetryAttempt<T>.Retry;
         }
 
         private static bool IsPotentiallyRecoverableByMetadataRefresh(Exception exception)
