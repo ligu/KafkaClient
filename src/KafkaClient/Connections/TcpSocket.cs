@@ -156,20 +156,22 @@ namespace KafkaClient.Connections
         private async Task ProcessReceiveTaskAsync(Stream stream, SocketPayloadReceiveTask receiveTask)
         {
             using (receiveTask) {
+                var totalBytesReceived = 0;
                 var timer = new Stopwatch();
                 try {
                     _configuration.OnReading?.Invoke(Endpoint, receiveTask.ReadSize);
                     var buffer = new byte[receiveTask.ReadSize];
                     timer.Start();
-                    for (var totalBytesReceived = 0; totalBytesReceived < receiveTask.ReadSize;) {
+                    while (totalBytesReceived < receiveTask.ReadSize) {
                         var readSize = receiveTask.ReadSize - totalBytesReceived;
 
                         _log.Debug(() => LogEvent.Create($"Receiving ({readSize}? bytes) from {Endpoint}"));
                         _configuration.OnReadingChunk?.Invoke(Endpoint, receiveTask.ReadSize, totalBytesReceived, timer.Elapsed);
                         var bytesReceived = await stream.ReadAsync(buffer, totalBytesReceived, readSize, receiveTask.CancellationToken).ConfigureAwait(false);
-                        _configuration.OnReadChunk?.Invoke(Endpoint, receiveTask.ReadSize, receiveTask.ReadSize - totalBytesReceived, bytesReceived, timer.Elapsed);
-                        _log.Debug(() => LogEvent.Create($"Received {bytesReceived} bytes from {Endpoint}{(receiveTask.CancellationToken.IsCancellationRequested ? " (cancelled)" : "")}"));
+                        var remainingBytes = receiveTask.ReadSize - totalBytesReceived;
                         totalBytesReceived += bytesReceived;
+                        _configuration.OnReadChunk?.Invoke(Endpoint, receiveTask.ReadSize, remainingBytes, bytesReceived, timer.Elapsed);
+                        _log.Debug(() => LogEvent.Create($"Received {bytesReceived} bytes from {Endpoint}{(receiveTask.CancellationToken.IsCancellationRequested ? " (cancelled)" : "")}"));
 
                         if (bytesReceived <= 0) {
                             using (_client) {
@@ -187,6 +189,7 @@ namespace KafkaClient.Connections
                     _configuration.OnRead?.Invoke(Endpoint, buffer, timer.Elapsed);
 
                     receiveTask.Tcs.TrySetResult(buffer);
+                    totalBytesReceived = 0;
                 } catch (Exception ex) {
                     timer.Stop();
                     _configuration.OnReadFailed?.Invoke(Endpoint, receiveTask.ReadSize, timer.Elapsed, ex);
@@ -198,7 +201,11 @@ namespace KafkaClient.Connections
                         exception = new ConnectionException(Endpoint, ex);
                     }
 
-                    receiveTask.Tcs.TrySetException(exception ?? ex);
+                    if (totalBytesReceived > 0) {
+                        receiveTask.Tcs.TrySetException(new PartialReadException(totalBytesReceived, receiveTask.ReadSize, exception ?? ex));
+                    } else {
+                        receiveTask.Tcs.TrySetException(exception ?? ex);
+                    }
                     if (_disposeToken.IsCancellationRequested) return;
                     if (exception != null) throw exception;
                     throw;

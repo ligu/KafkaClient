@@ -165,11 +165,18 @@ namespace KafkaClient.Connections
                 // only allow one reader to execute, dump out all other requests
                 if (Interlocked.Increment(ref _activeReaderCount) != 1) return;
 
+                var bytesToSkip = 0;
                 var messageSize = 0;
                 // use backoff so we don't take over the CPU when there's a failure
                 await new BackoffRetry(null, TimeSpan.FromMilliseconds(5), maxDelay: TimeSpan.FromSeconds(5)).AttemptAsync(
                     async attempt => {
                         _log.Debug(() => LogEvent.Create($"Awaiting data from {_socket.Endpoint}"));
+                        if (messageSize == 0) {
+                            // read partially failed before -- need to advance the stream to skip the remaining bytes
+                            await _socket.ReadAsync(bytesToSkip, _disposeToken.Token).ConfigureAwait(false);
+                            bytesToSkip = 0;
+                        }
+
                         if (messageSize == 0) {
                             var messageSizeResult = await _socket.ReadAsync(4, _disposeToken.Token).ConfigureAwait(false);
                             messageSize = messageSizeResult.ToInt32(); // hold onto it in case we fail while reading from the socket
@@ -188,6 +195,16 @@ namespace KafkaClient.Connections
                     (exception, attempt, delay) => {
                         if (_disposeToken.IsCancellationRequested) {
                             throw exception.PrepareForRethrow();
+                        }
+
+                        var partialException = exception as PartialReadException;
+                        if (partialException != null) {
+                            if (messageSize > 0) {
+                                // read failed after getting the size and having read some actual data
+                                bytesToSkip = partialException.ReadSize - partialException.BytesRead;
+                                messageSize = 0;
+                            }
+                            exception = partialException.InnerException;
                         }
 
                         // It is possible for orphaned requests to exist in the _requestsByCorrelation after failure

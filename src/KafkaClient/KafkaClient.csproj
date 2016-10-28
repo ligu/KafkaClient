@@ -86,6 +86,7 @@
     <Compile Include="Common\NoRetry.cs" />
     <Compile Include="Common\Retry.cs" />
     <Compile Include="Connections\IVersionSupport.cs" />
+    <Compile Include="Connections\PartialReadException.cs" />
     <Compile Include="Connections\SocketPayloadReceiveTask.cs" />
     <Compile Include="Connections\SocketPayloadSendTask.cs" />
     <Compile Include="Common\CancellableTask.cs" />
@@ -132,7 +133,6 @@
     <Compile Include="Protocol\Types\IProtocolTypeEncoder.cs" />
     <Compile Include="Protocol\Types\ProtocolTypeEncoder.cs" />
     <Compile Include="SendMessageConfiguration.cs" />
-    <Compile Include="StatisticsTrackerOptions.cs" />
     <Compile Include="Protocol\ApiKeyRequestType.cs" />
     <Compile Include="Protocol\BufferUnderRunException.cs" />
     <Compile Include="CachedMetadataException.cs" />
