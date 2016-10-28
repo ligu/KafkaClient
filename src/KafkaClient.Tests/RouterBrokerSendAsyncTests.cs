@@ -84,15 +84,7 @@ namespace KafkaClient.Tests
 
             routerProxy.BrokerConn0.FetchResponseFunction = FailedInFirstMessageException(exceptionType, routerProxy._cacheExpiration);
             routerProxy.BrokerConn0.MetadataResponseFunction = BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers;
-            try
-            {
-                await router.SendAsync(new FetchRequest(), BrokerRouterProxy.TestTopic, _partitionId, CancellationToken.None);
-                Assert.IsTrue(false, "Should throw exception");
-            }
-            catch (Exception ex)
-            {
-                Assert.That(ex.GetType(), Is.EqualTo(exceptionType));
-            }
+            Assert.ThrowsAsync(exceptionType, async () => await router.SendAsync(new FetchRequest(), BrokerRouterProxy.TestTopic, _partitionId, CancellationToken.None));
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
