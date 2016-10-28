@@ -7,16 +7,15 @@ namespace KafkaClient.Tests
     public class ConsoleLog : ILog
     {
         private readonly LogLevel _minLevel;
-        private readonly ImmutableDictionary<LogLevel, string> _levels;
-        public ConsoleLog(LogLevel minLevel)
-        {
-            _minLevel = minLevel;
-            _levels = ImmutableDictionary<LogLevel, string>
+        private static readonly ImmutableDictionary<LogLevel, string> _levels = ImmutableDictionary<LogLevel, string>
                 .Empty
                 .Add(LogLevel.Debug, "d")
                 .Add(LogLevel.Info, "i")
                 .Add(LogLevel.Warn, "w")
                 .Add(LogLevel.Error, "e");
+        public ConsoleLog(LogLevel minLevel)
+        {
+            _minLevel = minLevel;
         }
 
         public ConsoleLog() : this (LogLevel.Debug)
@@ -32,7 +31,7 @@ namespace KafkaClient.Tests
             Console.WriteLine(text);
         }
 
-        public string ToText(LogLevel level, LogEvent logEvent)
+        public static string ToText(LogLevel level, LogEvent logEvent)
         {
             var timestamp = DateTime.Now.ToString("hh:mm:ss-ffffff");
             var threadId = System.Threading.Thread.CurrentThread.ManagedThreadId;

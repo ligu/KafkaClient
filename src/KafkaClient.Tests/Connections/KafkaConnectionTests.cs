@@ -10,6 +10,7 @@ using KafkaClient.Tests.Helpers;
 using KafkaClient.Tests.Protocol;
 using Ninject.MockingKernel.Moq;
 using NUnit.Framework;
+using NUnit.Framework.Internal;
 
 namespace KafkaClient.Tests.Connections
 {
@@ -89,7 +90,6 @@ namespace KafkaClient.Tests.Connections
 
         #region Read Tests...
 
-    
         [Test, Repeat(IntegrationConfig.TestAttempts)]
         public async Task KafkaConnectionShouldLogDisconnectAndRecover()
         {
@@ -124,6 +124,47 @@ namespace KafkaClient.Tests.Connections
 
                     Assert.That(mockLog.LogEvents.Count(e => e.Item1 == LogLevel.Error && e.Item2.Message.StartsWith("Polling failure on")), Is.AtLeast(currentAttempt));
                 }
+            }
+        }
+
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        public async Task KafkaConnectionShouldSkipPartiallyReadMessage()
+        {
+            var mockLog = new MemoryLog();
+            var bytesRead = 0;
+
+            var config = new ConnectionConfiguration(onReadChunk: (endpoint, size, remaining, read, elapsed) => Interlocked.Add(ref bytesRead, read));
+
+            using (var server = new FakeTcpServer(new ConsoleLog(), 8999))
+            using (var socket = new TcpSocket(_endpoint, config, log: new ConsoleLog()))
+            using (new Connection(socket, config, log: mockLog))
+            {
+                // send size
+                var size = 200;
+                await server.SendDataAsync(size.ToBytes());
+                var randomizer = Randomizer.CreateRandomizer();
+                var firstBytes = new byte[99];
+                for (var i = 0; i < firstBytes.Length; i++) {
+                    firstBytes[i] = randomizer.NextByte();
+                }
+
+                // send half of payload
+                await server.SendDataAsync(firstBytes);
+                await TaskTest.WaitFor(() => bytesRead == firstBytes.Length);
+
+                //Assert.That(mockLog.LogEvents.Count(e => e.Item1 == LogLevel.Warn && e.Item2.Message.StartsWith("Skipping")), Is.EqualTo(0));
+
+                server.DropConnection();
+
+                // send half of payload should be skipped
+                var lastBytes = new byte[size];
+                for (var i = 0; i < lastBytes.Length; i++) {
+                    lastBytes[i] = randomizer.NextByte();
+                }
+                await server.SendDataAsync(lastBytes);
+                await TaskTest.WaitFor(() => bytesRead >= size);
+
+                Assert.That(mockLog.LogEvents.Count(e => e.Item1 == LogLevel.Warn && e.Item2.Message.StartsWith($"Skipping {size - firstBytes.Length} bytes on")), Is.EqualTo(1));
             }
         }
 

@@ -172,8 +172,9 @@ namespace KafkaClient.Connections
                     async attempt => {
                         _log.Debug(() => LogEvent.Create($"Awaiting data from {_socket.Endpoint}"));
                         if (messageSize == 0) {
-                            // read partially failed before -- need to advance the stream to skip the remaining bytes
-                            await _socket.ReadAsync(bytesToSkip, _disposeToken.Token).ConfigureAwait(false);
+                            var skipSize = bytesToSkip;
+                            _log.Warn(() => LogEvent.Create($"Skipping {skipSize} bytes on {_socket.Endpoint} because of partial read"));
+                            await _socket.ReadAsync(skipSize, _disposeToken.Token).ConfigureAwait(false);
                             bytesToSkip = 0;
                         }
 
@@ -200,7 +201,7 @@ namespace KafkaClient.Connections
                         var partialException = exception as PartialReadException;
                         if (partialException != null) {
                             if (messageSize > 0) {
-                                // read failed after getting the size and having read some actual data
+                                _log.Warn(() => LogEvent.Create($"Polling failure on {_socket.Endpoint} read {partialException.BytesRead} of {partialException.ReadSize}"));
                                 bytesToSkip = partialException.ReadSize - partialException.BytesRead;
                                 messageSize = 0;
                             }
