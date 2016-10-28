@@ -24,23 +24,47 @@ namespace KafkaClient
         /// Note that because offsets are pulled in descending order, asking for the earliest offset will always return you a single element.
         /// </param>
         /// <param name="cancellationToken"></param>
-        public static async Task<IImmutableList<OffsetTopic>> GetTopicOffsetAsync(this IBrokerRouter brokerRouter, string topicName, int maxOffsets, long offsetTime, CancellationToken cancellationToken)
+        /// <param name="retryPolicy"></param>
+        public static async Task<IImmutableList<OffsetTopic>> GetTopicOffsetAsync(this IBrokerRouter brokerRouter, string topicName, int maxOffsets, long offsetTime, CancellationToken cancellationToken, IRetry retryPolicy = null)
         {
-            var topicMetadata = await brokerRouter.GetTopicMetadataAsync(topicName, cancellationToken).ConfigureAwait(false);
+            bool? metadataInvalid = false;
+            var offsets = new Dictionary<int, OffsetTopic>();
+            BrokeredRequest<OffsetResponse>[] brokeredRequests = null;
 
-            // send the offset request to each partition leader
-            var sendRequests = topicMetadata.Partitions
-                .GroupBy(x => x.LeaderId)
-                .Select(partitions => {
-                    var partitionId = partitions.Select(_ => _.PartitionId).First();
-                    var route = brokerRouter.GetBrokerRoute(topicName, partitionId);
+            return await (retryPolicy ?? new Retry(TimeSpan.MaxValue, 3)).AttemptAsync(
+                async (attempt, timer) => {
+                    metadataInvalid = await brokerRouter.RefreshTopicMetadataIfInvalidAsync(topicName, metadataInvalid, cancellationToken).ConfigureAwait(false);
 
-                    var request = new OffsetRequest(partitions.Select(_ => new Offset(topicName, _.PartitionId, offsetTime, maxOffsets)));
-                    return route.Connection.SendAsync(request, cancellationToken);
-                }).ToArray();
+                    var topicMetadata = await brokerRouter.GetTopicMetadataAsync(topicName, cancellationToken).ConfigureAwait(false);
+                    brokeredRequests = topicMetadata
+                        .Partitions
+                        .Where(_ => !offsets.ContainsKey(_.PartitionId)) // skip partitions already successfully retrieved
+                        .GroupBy(x => x.LeaderId)
+                        .Select(partitions => 
+                            new BrokeredRequest<OffsetResponse>(
+                                new OffsetRequest(partitions.Select(_ => new Offset(topicName, _.PartitionId, offsetTime, maxOffsets))), 
+                                topicName, 
+                                partitions.Select(_ => _.PartitionId).First(), 
+                                brokerRouter.Log))
+                        .ToArray();
 
-            await Task.WhenAll(sendRequests).ConfigureAwait(false);
-            return ImmutableList<OffsetTopic>.Empty.AddNotNullRange(sendRequests.SelectMany(x => x.Result.Topics));
+                    await Task.WhenAll(brokeredRequests.Select(_ => _.SendAsync(brokerRouter, cancellationToken))).ConfigureAwait(false);
+                    var responses = brokeredRequests.Select(_ => _.MetadataRetryResponse(attempt, out metadataInvalid)).ToArray();
+                    foreach (var response in responses.Where(_ => _.IsSuccessful)) {
+                        foreach (var offsetTopic in response.Value.Topics) {
+                            offsets[offsetTopic.PartitionId] = offsetTopic;
+                        }
+                    }
+
+                    return responses.All(_ => _.IsSuccessful) 
+                        ? new RetryAttempt<IImmutableList<OffsetTopic>>(offsets.Values.ToImmutableList()) 
+                        : RetryAttempt<IImmutableList<OffsetTopic>>.Retry;
+                },
+                brokeredRequests.MetadataRetry,
+                brokeredRequests.ThrowExtractedException,
+                (ex, attempt, retry) => brokeredRequests.MetadataRetry(attempt, ex, out metadataInvalid),
+                null, // do nothing on final exception -- will be rethrown
+                cancellationToken);
         }
 
         /// <summary>
@@ -62,51 +86,52 @@ namespace KafkaClient
         public static async Task<T> SendAsync<T>(this IBrokerRouter brokerRouter, IRequest<T> request, string topicName, int partitionId, CancellationToken cancellationToken, IRequestContext context = null, IRetry retryPolicy = null) where T : class, IResponse
         {
             bool? metadataInvalid = false;
-            var requestRetry = new RequestRetry<T>(request, topicName, brokerRouter.Log);
+            var brokeredRequest = new BrokeredRequest<T>(request, topicName, partitionId, brokerRouter.Log);
 
             return await (retryPolicy ?? new Retry(TimeSpan.MaxValue, 3)).AttemptAsync(
                 async (attempt, timer) => {
-                    if (metadataInvalid.GetValueOrDefault(true)) {
-                        // unknown metadata status should not force the issue
-                        await brokerRouter.RefreshTopicMetadataAsync(topicName, metadataInvalid.GetValueOrDefault(), cancellationToken).ConfigureAwait(false);
-                        metadataInvalid = false;
-                    }
-
-                    await requestRetry.GetBrokerRouteAsync(brokerRouter, partitionId, cancellationToken).ConfigureAwait(false);
-                    await requestRetry.SendAsync(context, cancellationToken).ConfigureAwait(false);
-                    return requestRetry.MetadataRetryResponse(attempt, out metadataInvalid);
+                    metadataInvalid = await brokerRouter.RefreshTopicMetadataIfInvalidAsync(topicName, metadataInvalid, cancellationToken).ConfigureAwait(false);
+                    await brokeredRequest.SendAsync(brokerRouter, cancellationToken, context).ConfigureAwait(false);
+                    return brokeredRequest.MetadataRetryResponse(attempt, out metadataInvalid);
                 },
-                requestRetry.MetadataRetry,
-                requestRetry.ThrowExtractedException,
-                (ex, attempt, retry) => requestRetry.MetadataRetry(attempt, ex, out metadataInvalid),
+                brokeredRequest.MetadataRetry,
+                brokeredRequest.ThrowExtractedException,
+                (ex, attempt, retry) => brokeredRequest.MetadataRetry(attempt, ex, out metadataInvalid),
                 null, // do nothing on final exception -- will be rethrown
                 cancellationToken);
         }
 
-        private class RequestRetry<T> where T : class, IResponse
+        public static async Task<bool> RefreshTopicMetadataIfInvalidAsync(this IBrokerRouter brokerRouter, string topicName, bool? metadataInvalid, CancellationToken cancellationToken)
         {
-            public RequestRetry(IRequest<T> request, string topicName, ILog log)
+            if (metadataInvalid.GetValueOrDefault(true)) {
+                // unknown metadata status should not force the issue
+                await brokerRouter.RefreshTopicMetadataAsync(topicName, metadataInvalid.GetValueOrDefault(), cancellationToken).ConfigureAwait(false);
+            }
+            return false;
+        }
+
+        internal class BrokeredRequest<T> where T : class, IResponse
+        {
+            public BrokeredRequest(IRequest<T> request, string topicName, int partitionId, ILog log)
             {
                 _request = request;
                 _topicName = topicName;
+                _partitionId = partitionId;
                 _log = log;
             }
 
             private readonly ILog _log;
             private readonly IRequest<T> _request;
             private readonly string _topicName;
+            private readonly int _partitionId;
 
             private BrokerRoute _route;
             private T _response;
 
-            public async Task GetBrokerRouteAsync(IBrokerRouter brokerRouter, int partitionId, CancellationToken cancellationToken)
+            public async Task SendAsync(IBrokerRouter brokerRouter, CancellationToken cancellationToken, IRequestContext context = null)
             {
                 _response = null;
-                _route = await brokerRouter.GetBrokerRouteAsync(_topicName, partitionId, cancellationToken).ConfigureAwait(false);
-            }
-
-            public async Task SendAsync(IRequestContext context, CancellationToken cancellationToken)
-            {
+                _route = await brokerRouter.GetBrokerRouteAsync(_topicName, _partitionId, cancellationToken).ConfigureAwait(false);
                 _response = await _route.Connection.SendAsync(_request, cancellationToken, context).ConfigureAwait(false);
             }
 
@@ -144,7 +169,33 @@ namespace KafkaClient
 
             public void ThrowExtractedException(int attempt)
             {
-                throw _request.ExtractExceptions(_response, _route.Connection.Endpoint);
+                throw ResponseException;
+            }
+
+            public Exception ResponseException => _request.ExtractExceptions(_response, _route.Connection.Endpoint);
+        }
+
+        internal static void MetadataRetry<T>(this IEnumerable<BrokeredRequest<T>> brokeredRequests, int attempt, TimeSpan retry) where T : class, IResponse
+        {
+            foreach (var brokeredRequest in brokeredRequests) {
+                brokeredRequest.MetadataRetry(attempt, retry);
+            }
+        }
+
+        internal static void ThrowExtractedException<T>(this BrokeredRequest<T>[] brokeredRequests, int attempt) where T : class, IResponse
+        {
+            throw brokeredRequests.Select(_ => _.ResponseException).FlattenAggregates();
+        }
+
+        internal static void MetadataRetry<T>(this IEnumerable<BrokeredRequest<T>> brokeredRequests, int attempt, Exception exception, out bool? retry) where T : class, IResponse
+        {
+            retry = null;
+            foreach (var brokeredRequest in brokeredRequests) {
+                bool? requestRetry;
+                brokeredRequest.MetadataRetry(attempt, exception, out requestRetry);
+                if (requestRetry.HasValue) {
+                    retry = requestRetry;
+                }
             }
         }
 

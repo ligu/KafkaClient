@@ -216,5 +216,19 @@ namespace KafkaClient.Common
             int value;
             while (-1 != (value = stream.ReadByte())) yield return (byte)value;
         }
+
+        public static Exception FlattenAggregates(this IEnumerable<Exception> exceptions)
+        {
+            var exceptionList = exceptions.ToArray();
+            if (exceptionList.Length == 1) return exceptionList[0];
+
+            return new AggregateException(exceptionList.SelectMany<Exception, Exception>(
+                ex => {
+                    var aggregateException = ex as AggregateException;
+                    if (aggregateException != null) return aggregateException.InnerExceptions;
+                    return new[] { ex };
+                }));
+            
+        }
     }
 }
