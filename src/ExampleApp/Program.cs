@@ -20,7 +20,7 @@ namespace ExampleApp
             //start an out of process thread that runs a consumer that will write all received messages to the console
             Task.Run(() =>
             {
-                var consumer = new Consumer(new ConsumerOptions(topicName, new BrokerRouter(options)) { Log = new TraceLog() });
+                var consumer = new OldConsumer(new ConsumerOptions(topicName, new BrokerRouter(options)) { Log = new TraceLog() });
                 foreach (var data in consumer.Consume())
                 {
                     Console.WriteLine("Response: P{0},O{1} : {2}", data.PartitionId, data.Offset, data.Value.ToUtf8String());

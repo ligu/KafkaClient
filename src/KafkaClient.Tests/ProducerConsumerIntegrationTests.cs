@@ -61,7 +61,7 @@ namespace KafkaClient.Tests
             using (var producer = new Producer(router))
             {
                 var responseAckLevel1 = await producer.SendMessageAsync(new Message("Ack Level 1"), IntegrationConfig.TopicName(), 0, new SendMessageConfiguration(acks: 1), CancellationToken.None);
-                var offsetResponse = await producer.BrokerRouter.GetTopicOffsetAsync(IntegrationConfig.TopicName(), CancellationToken.None);
+                var offsetResponse = await producer.BrokerRouter.GetTopicOffsetsAsync(IntegrationConfig.TopicName(), CancellationToken.None);
                 var maxOffset = offsetResponse.First(x => x.PartitionId == 0);
                 Assert.AreEqual(responseAckLevel1.Offset, maxOffset.Offsets.Max() - 1);
             }
@@ -74,7 +74,7 @@ namespace KafkaClient.Tests
             using (var producer = new Producer(router))
             {
                 var responseAckLevel1 = await producer.SendMessagesAsync(new [] { new Message("Ack Level 1"), new Message("Ack Level 1") }, IntegrationConfig.TopicName(), 0, new SendMessageConfiguration(acks: 1), CancellationToken.None);
-                var offsetResponse = await producer.BrokerRouter.GetTopicOffsetAsync(IntegrationConfig.TopicName(), CancellationToken.None);
+                var offsetResponse = await producer.BrokerRouter.GetTopicOffsetsAsync(IntegrationConfig.TopicName(), CancellationToken.None);
                 var maxOffset = offsetResponse.First(x => x.PartitionId == 0);
 
                 Assert.AreEqual(responseAckLevel1.Last().Offset, maxOffset.Offsets.Max() - 1);
@@ -94,7 +94,7 @@ namespace KafkaClient.Tests
                 offsetResponse = responseAckLevel1.Offset;
             }
             using (var router = new BrokerRouter(IntegrationConfig.IntegrationUri, log: IntegrationConfig.NoDebugLog ))
-            using (var consumer = new Consumer(new ConsumerOptions(IntegrationConfig.TopicName(), router) { MaxWaitTimeForMinimumBytes = TimeSpan.Zero }, new OffsetPosition[] { new OffsetPosition(0, offsetResponse) }))
+            using (var consumer = new OldConsumer(new ConsumerOptions(IntegrationConfig.TopicName(), router) { MaxWaitTimeForMinimumBytes = TimeSpan.Zero }, new OffsetPosition[] { new OffsetPosition(0, offsetResponse) }))
             {
                 var result = consumer.Consume().Take(1).ToList().FirstOrDefault();
                 Assert.AreEqual(messge.ToString(), result.Value.ToUtf8String());
@@ -110,9 +110,9 @@ namespace KafkaClient.Tests
             using (var router = new BrokerRouter(IntegrationConfig.IntegrationUri, log: IntegrationConfig.NoDebugLog ))
             using (var producer = new Producer(router))
             {
-                var offsets = producer.BrokerRouter.GetTopicOffsetAsync(IntegrationConfig.TopicName(), CancellationToken.None).Result;
+                var offsets = producer.BrokerRouter.GetTopicOffsetsAsync(IntegrationConfig.TopicName(), CancellationToken.None).Result;
 
-                using (var consumer = new Consumer(new ConsumerOptions(IntegrationConfig.TopicName(), router) { MaxWaitTimeForMinimumBytes = TimeSpan.Zero },
+                using (var consumer = new OldConsumer(new ConsumerOptions(IntegrationConfig.TopicName(), router) { MaxWaitTimeForMinimumBytes = TimeSpan.Zero },
                     offsets.Select(x => new OffsetPosition(x.PartitionId, x.Offsets.Max())).ToArray()))
                 {
                     for (int i = 0; i < 20; i++)
@@ -146,7 +146,7 @@ namespace KafkaClient.Tests
             var producer = new Producer(router, new ProducerConfiguration(causesRaceConditionOldVersion, batchMaxDelay: TimeSpan.Zero)); // this is slow on purpose
             //this is not slow  var producer = new Producer(router);
             IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(">> create producer"));
-            var offsets = await producer.BrokerRouter.GetTopicOffsetAsync(IntegrationConfig.TopicName(), CancellationToken.None);
+            var offsets = await producer.BrokerRouter.GetTopicOffsetsAsync(IntegrationConfig.TopicName(), CancellationToken.None);
             IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(">> request Offset"));
             List<Task> sendList = new List<Task>(numberOfMessage);
             for (int i = 0; i < numberOfMessage; i++)
@@ -162,7 +162,7 @@ namespace KafkaClient.Tests
             ConsumerOptions consumerOptions = new ConsumerOptions(IntegrationConfig.TopicName(), router);
             consumerOptions.PartitionWhitelist = new List<int> { partition };
 
-            Consumer consumer = new Consumer(consumerOptions, offsets.Select(x => new OffsetPosition(x.PartitionId, x.Offsets.Max())).ToArray());
+            OldConsumer consumer = new OldConsumer(consumerOptions, offsets.Select(x => new OffsetPosition(x.PartitionId, x.Offsets.Max())).ToArray());
 
             int expected = 0;
             IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(">> start Consume"));
@@ -206,7 +206,7 @@ namespace KafkaClient.Tests
             var producer = new Producer(router, new ProducerConfiguration(batchSize: numberOfMessage / 10, batchMaxDelay: TimeSpan.FromMilliseconds(25)));
             IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create($">> create producer ,time Milliseconds:{stopwatch.ElapsedMilliseconds}"));
             stopwatch.Restart();
-            var offsets = await producer.BrokerRouter.GetTopicOffsetAsync(topicName, CancellationToken.None);
+            var offsets = await producer.BrokerRouter.GetTopicOffsetsAsync(topicName, CancellationToken.None);
             IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create($">> request Offset,time Milliseconds:{stopwatch.ElapsedMilliseconds}"));
             stopwatch.Restart();
             List<Task> sendList = new List<Task>(numberOfMessage);
@@ -229,7 +229,7 @@ namespace KafkaClient.Tests
             ConsumerOptions consumerOptions = new ConsumerOptions(topicName, router);
             consumerOptions.PartitionWhitelist = new List<int> { partition };
             consumerOptions.MaxWaitTimeForMinimumBytes = TimeSpan.Zero;
-            Consumer consumer = new Consumer(consumerOptions, offsets.Select(x => new OffsetPosition(x.PartitionId, x.Offsets.Max())).ToArray());
+            OldConsumer consumer = new OldConsumer(consumerOptions, offsets.Select(x => new OffsetPosition(x.PartitionId, x.Offsets.Max())).ToArray());
 
             int expected = 0;
             IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create($">> start Consume ,time Milliseconds:{stopwatch.ElapsedMilliseconds}"));
@@ -277,10 +277,10 @@ namespace KafkaClient.Tests
             using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri)))
             using (var producer = new Producer(router))
             {
-                var offsets = producer.BrokerRouter.GetTopicOffsetAsync(IntegrationConfig.TopicName(), CancellationToken.None).Result
+                var offsets = producer.BrokerRouter.GetTopicOffsetsAsync(IntegrationConfig.TopicName(), CancellationToken.None).Result
                     .Select(x => new OffsetPosition(x.PartitionId, x.Offsets.Max())).ToArray();
 
-                using (var consumer = new Consumer(new ConsumerOptions(IntegrationConfig.TopicName(), router) { MaxWaitTimeForMinimumBytes = TimeSpan.Zero }, offsets))
+                using (var consumer = new OldConsumer(new ConsumerOptions(IntegrationConfig.TopicName(), router) { MaxWaitTimeForMinimumBytes = TimeSpan.Zero }, offsets))
                 {
                     for (int i = 0; i < 20; i++)
                     {
@@ -317,10 +317,10 @@ namespace KafkaClient.Tests
             using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri)))
             using (var producer = new Producer(router))
             {
-                var startOffsets = producer.BrokerRouter.GetTopicOffsetAsync(IntegrationConfig.TopicName(), CancellationToken.None).Result
+                var startOffsets = producer.BrokerRouter.GetTopicOffsetsAsync(IntegrationConfig.TopicName(), CancellationToken.None).Result
                     .Select(x => new OffsetPosition(x.PartitionId, x.Offsets.Max())).ToArray();
 
-                using (var consumer = new Consumer(new ConsumerOptions(IntegrationConfig.TopicName(), router) { MaxWaitTimeForMinimumBytes = TimeSpan.Zero }, startOffsets))
+                using (var consumer = new OldConsumer(new ConsumerOptions(IntegrationConfig.TopicName(), router) { MaxWaitTimeForMinimumBytes = TimeSpan.Zero }, startOffsets))
                 {
                     for (int i = 0; i < 20; i++)
                     {
@@ -351,7 +351,7 @@ namespace KafkaClient.Tests
             var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri, partitionSelector: partitionSelector.Object));
             var producer = new Producer(router);
 
-            var offsets = await producer.BrokerRouter.GetTopicOffsetAsync(IntegrationConfig.TopicName(), CancellationToken.None);
+            var offsets = await producer.BrokerRouter.GetTopicOffsetsAsync(IntegrationConfig.TopicName(), CancellationToken.None);
             int partitionId = 0;
 
             //message should send to PartitionId and not use the key to Select Broker Route !!
@@ -361,7 +361,7 @@ namespace KafkaClient.Tests
             }
 
             //consume form partitionId to verify that date is send to currect partion !!.
-            var consumer = new Consumer(new ConsumerOptions(IntegrationConfig.TopicName(), router) { PartitionWhitelist = { partitionId } }, offsets.Select(x => new OffsetPosition(x.PartitionId, x.Offsets.Max())).ToArray());
+            var consumer = new OldConsumer(new ConsumerOptions(IntegrationConfig.TopicName(), router) { PartitionWhitelist = { partitionId } }, offsets.Select(x => new OffsetPosition(x.PartitionId, x.Offsets.Max())).ToArray());
 
             for (int i = 0; i < 20; i++)
             {
@@ -382,10 +382,10 @@ namespace KafkaClient.Tests
             using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri)))
             using (var producer = new Producer(router))
             {
-                var offsets = producer.BrokerRouter.GetTopicOffsetAsync(IntegrationConfig.TopicName(), CancellationToken.None).Result;
+                var offsets = producer.BrokerRouter.GetTopicOffsetsAsync(IntegrationConfig.TopicName(), CancellationToken.None).Result;
 
                 //create consumer with buffer size of 1 (should block upstream)
-                using (var consumer = new Consumer(new ConsumerOptions(IntegrationConfig.TopicName(), router) { ConsumerBufferSize = 1, MaxWaitTimeForMinimumBytes = TimeSpan.Zero },
+                using (var consumer = new OldConsumer(new ConsumerOptions(IntegrationConfig.TopicName(), router) { ConsumerBufferSize = 1, MaxWaitTimeForMinimumBytes = TimeSpan.Zero },
                       offsets.Select(x => new OffsetPosition(x.PartitionId, x.Offsets.Max())).ToArray()))
                 {
                     for (int i = 0; i < 20; i++)
@@ -413,10 +413,10 @@ namespace KafkaClient.Tests
             using (var producer = new Producer(producerRouter))
             {
                 //get current offset and reset consumer to top of log
-                var offsets = await producer.BrokerRouter.GetTopicOffsetAsync(IntegrationConfig.TopicName(), CancellationToken.None).ConfigureAwait(false);
+                var offsets = await producer.BrokerRouter.GetTopicOffsetsAsync(IntegrationConfig.TopicName(), CancellationToken.None).ConfigureAwait(false);
 
                 using (var consumerRouter = new BrokerRouter(options))
-                using (var consumer = new Consumer(new ConsumerOptions(IntegrationConfig.TopicName(), consumerRouter) { MaxWaitTimeForMinimumBytes = TimeSpan.Zero },
+                using (var consumer = new OldConsumer(new ConsumerOptions(IntegrationConfig.TopicName(), consumerRouter) { MaxWaitTimeForMinimumBytes = TimeSpan.Zero },
                      offsets.Select(x => new OffsetPosition(x.PartitionId, x.Offsets.Max())).ToArray()))
                 {
                     Console.WriteLine("Sending {0} test messages", expectedCount);
@@ -431,7 +431,7 @@ namespace KafkaClient.Tests
 
                     var consumerOffset = consumer.GetOffsetPosition().OrderBy(x => x.PartitionId).ToList();
 
-                    var serverOffset = await producer.BrokerRouter.GetTopicOffsetAsync(IntegrationConfig.TopicName(), CancellationToken.None).ConfigureAwait(false);
+                    var serverOffset = await producer.BrokerRouter.GetTopicOffsetsAsync(IntegrationConfig.TopicName(), CancellationToken.None).ConfigureAwait(false);
                     var positionOffset = serverOffset.Select(x => new OffsetPosition(x.PartitionId, x.Offsets.Max()))
                         .OrderBy(x => x.PartitionId)
                         .ToList();

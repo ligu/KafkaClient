@@ -61,11 +61,11 @@ namespace KafkaClient.Tests
             IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(">> Start EnsureGzipCanDecompressMessageFromKafka"));
             var router = new BrokerRouter(_options);
             using (var producer = new Producer(router, new ProducerConfiguration(batchSize: numberOfMessages))) {
-                var offsets = await producer.BrokerRouter.GetTopicOffsetAsync(topicName, CancellationToken.None);
+                var offsets = await producer.BrokerRouter.GetTopicOffsetsAsync(topicName, CancellationToken.None);
                 var offsetPositions = offsets.Where(x => x.Offsets.Count != 0).Select(x => new OffsetPosition(x.PartitionId, x.Offsets.Max()));
                 var consumerOptions = new ConsumerOptions(topicName, router) { PartitionWhitelist = new List<int> { 0 } };
 
-                using (var consumer = new Consumer(consumerOptions, offsetPositions.ToArray())) {
+                using (var consumer = new OldConsumer(consumerOptions, offsetPositions.ToArray())) {
                     var messages = new List<Message>();
                     for (var i = 0; i < numberOfMessages; i++) {
                         messages.Add(new Message(i.ToString()));

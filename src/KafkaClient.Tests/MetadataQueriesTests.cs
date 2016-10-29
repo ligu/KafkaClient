@@ -28,7 +28,7 @@ namespace KafkaClient.Tests
             var routerProxy = new BrokerRouterProxy(_kernel);
             var router = routerProxy.Create();
 
-            var result = router.GetTopicOffsetAsync(BrokerRouterProxy.TestTopic, 2, -1, CancellationToken.None).Result;
+            var result = router.GetTopicOffsetsAsync(BrokerRouterProxy.TestTopic, 2, -1, CancellationToken.None).Result;
             Assert.That(routerProxy.BrokerConn0.OffsetRequestCallCount, Is.EqualTo(1));
             Assert.That(routerProxy.BrokerConn1.OffsetRequestCallCount, Is.EqualTo(1));
         }
@@ -40,7 +40,7 @@ namespace KafkaClient.Tests
             routerProxy.BrokerConn0.OffsetResponseFunction = () => { throw new ApplicationException("test 99"); };
             var router = routerProxy.Create();
 
-            router.GetTopicOffsetAsync(BrokerRouterProxy.TestTopic, 2,  -1, CancellationToken.None).ContinueWith(t =>
+            router.GetTopicOffsetsAsync(BrokerRouterProxy.TestTopic, 2,  -1, CancellationToken.None).ContinueWith(t =>
             {
                 Assert.That(t.IsFaulted, Is.True);
                 Assert.That(t.Exception.Flatten().ToString(), Does.Contain("test 99"));

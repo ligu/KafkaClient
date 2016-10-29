@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,92 +21,47 @@ namespace KafkaClient.Tests
 
         [Test]
         [Ignore("manual test")]
-        public void ConsumerFailure()
-        {
-            string topic = "TestTopicIssue13-2-3R-1P";
-            using (var router = new BrokerRouter(_options))
-            {
-                var producer = new Producer(router);
-                var offsets = producer.BrokerRouter.GetTopicOffsetAsync(topic, CancellationToken.None).Result;
-                var maxOffsets = offsets.Select(x => new OffsetPosition(x.PartitionId, x.Offsets.Max())).ToArray();
-                var consumerOptions = new ConsumerOptions(topic, router) { PartitionWhitelist = new List<int>() { 0 }, MaxWaitTimeForMinimumBytes = TimeSpan.Zero };
-
-                SandMessageForever(producer, topic);
-                ReadMessageForever(consumerOptions, maxOffsets);
-            }
-        }
-
-        [Test]
-        [Ignore("manual test")]
         public async Task ManualConsumerFailure()
         {
-            string topic = "TestTopicIssue13-3R-1P";
-            var manualConsumer = new ManualConsumer(0, topic, new BrokerRouter(_options), "test client", 10000);
-            long offset = await manualConsumer.FetchLastOffsetAsync(CancellationToken.None);
+            var topicName = "TestTopicIssue13-3R-1P";
+            using (var router = new BrokerRouter(_options)) {
+                var consumer = new Consumer(new BrokerRouter(_options), 10000);
+                var offset = await router.GetTopicOffsetAsync(topicName, 0, CancellationToken.None);
 
-            var router = new BrokerRouter(_options);
-            var producer = new Producer(router);
-            SandMessageForever(producer, topic);
-            await ReadMessageForever(manualConsumer, offset);
+                var producer = new Producer(router);
+                var send = SandMessageForever(producer, offset.TopicName, offset.PartitionId);
+                var read = ReadMessageForever(consumer, offset.TopicName, offset.PartitionId, offset.Offsets.Last());
+                await Task.WhenAll(send, read);
+            }
         }
 
-   
-
-        private  void ReadMessageForever(ConsumerOptions consumerOptions, OffsetPosition[] maxOffsets)
+        private async Task SandMessageForever(IProducer producer, string topicName, int partitionId)
         {
-            using (var consumer = new Consumer(consumerOptions, maxOffsets))
-            {
-                var blockingEnumerableOfMessage = consumer.Consume();
-                foreach (var message in blockingEnumerableOfMessage)
-                {
-                    Log.Info(() => LogEvent.Create($"Offset{message.Offset}"));
+            for (var id = 0;;) {
+                try {
+                    await producer.SendMessageAsync(new Message((++id).ToString()), topicName, partitionId, CancellationToken.None);
+                    await Task.Delay(100);
+                } catch (Exception ex) {
+                    Log.Info(() => LogEvent.Create(ex, "can't send:"));
                 }
             }
         }
 
-        private  void SandMessageForever(Producer producer, string topic)
+        private  async Task ReadMessageForever(IConsumer consumer, string topicName, int partitionId, long offset)
         {
-            var sandMessageForever = Task.Run(() =>
-            {
-                int id = 0;
-                while (true)
-                {
-                    try
-                    {
-                        producer.SendMessageAsync(new Message((++id).ToString()), topic, 0, CancellationToken.None).Wait();
-                        Thread.Sleep(1000);
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Info(() => LogEvent.Create(ex, "can't send:"));
-                    }
-                }
-            });
-        }
+            while (true) {
+                try {
+                    var messages = await consumer.FetchMessagesAsync(topicName, partitionId, offset, 100, CancellationToken.None);
 
-        private  async Task ReadMessageForever(ManualConsumer manualConsumer, long offset)
-        {
-            while (true)
-            {
-                try
-                {
-                    var messages = await manualConsumer.FetchMessagesAsync(1000, offset, CancellationToken.None);
-
-                    if (messages.Any())
-                    {
-                        foreach (var message in messages)
-                        {
+                    if (messages.Any()) {
+                        foreach (var message in messages) {
                             Log.Info(() => LogEvent.Create($"Offset{message.Offset}"));
                         }
-                        offset = messages.Max(x => x.Offset) + 1;
-                    }
-                    else
-                    {
+                        offset = messages.Max(x => x.Offset) + 3;
+                    } else {
                         await Task.Delay(100);
                     }
-                }
-                catch (Exception ex)
-                {
+                } catch (Exception ex) {
                     Log.Info(() => LogEvent.Create(ex, "can't read:"));
                 }
             }

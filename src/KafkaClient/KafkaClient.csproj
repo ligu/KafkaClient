@@ -92,12 +92,13 @@
     <Compile Include="Connections\SocketPayloadSendTask.cs" />
     <Compile Include="Common\CancellableTask.cs" />
     <Compile Include="Connections\VersionSupport.cs" />
+    <Compile Include="Consumer.cs" />
     <Compile Include="ICacheConfiguration.cs" />
-    <Compile Include="IManualConsumer.cs" />
+    <Compile Include="IConsumer.cs" />
+    <Compile Include="ConsumerExtensions.cs" />
     <Compile Include="IProducer.cs" />
     <Compile Include="IProducerConfiguration.cs" />
     <Compile Include="ISendMessageConfiguration.cs" />
-    <Compile Include="ManualConsumer.cs" />
     <Compile Include="CacheConfiguration.cs" />
     <Compile Include="ProducerConfiguration.cs" />
     <Compile Include="ProducerExtensions.cs" />
@@ -179,7 +180,7 @@
     <Compile Include="Connections\ITcpSocket.cs" />
     <Compile Include="BrokerRoute.cs" />
     <Compile Include="Common\ScheduledTimer.cs" />
-    <Compile Include="Consumer.cs" />
+    <Compile Include="OldConsumer.cs" />
     <Compile Include="Connections\IConnection.cs" />
     <Compile Include="IBrokerRouter.cs" />
     <Compile Include="BrokerRouterExtensions.cs" />

@@ -13,19 +13,15 @@ namespace KafkaClient
     public static class BrokerRouterExtensions
     {
         /// <summary>
-        /// Get offsets for each partition from a given topic.
+        /// Get offsets for all partitions of a given topic.
         /// </summary>
         /// <param name="brokerRouter">The router which provides the route and metadata.</param>
         /// <param name="topicName">Name of the topic to get offset information from.</param>
         /// <param name="maxOffsets">How many to get, at most.</param>
-        /// <param name="offsetTime">
-        /// Used to ask for all messages before a certain time (ms). There are two special values.
-        /// Specify -1 to receive the latest offsets and -2 to receive the earliest available offset.
-        /// Note that because offsets are pulled in descending order, asking for the earliest offset will always return you a single element.
-        /// </param>
+        /// <param name="offsetTime">These are best described by <see cref="Offset.Time"/></param>
         /// <param name="cancellationToken"></param>
         /// <param name="retryPolicy"></param>
-        public static async Task<IImmutableList<OffsetTopic>> GetTopicOffsetAsync(this IBrokerRouter brokerRouter, string topicName, int maxOffsets, long offsetTime, CancellationToken cancellationToken, IRetry retryPolicy = null)
+        public static async Task<IImmutableList<OffsetTopic>> GetTopicOffsetsAsync(this IBrokerRouter brokerRouter, string topicName, int maxOffsets, long offsetTime, CancellationToken cancellationToken, IRetry retryPolicy = null)
         {
             bool? metadataInvalid = false;
             var offsets = new Dictionary<int, OffsetTopic>();
@@ -68,14 +64,68 @@ namespace KafkaClient
         }
 
         /// <summary>
-        /// Get offsets for each partition from a given topic.
+        /// Get offsets for all partitions of a given topic.
         /// </summary>
         /// <param name="brokerRouter">The router which provides the route and metadata.</param>
         /// <param name="topicName">Name of the topic to get offset information from.</param>
         /// <param name="cancellationToken"></param>
-        public static Task<IImmutableList<OffsetTopic>> GetTopicOffsetAsync(this IBrokerRouter brokerRouter, string topicName, CancellationToken cancellationToken)
+        public static Task<IImmutableList<OffsetTopic>> GetTopicOffsetsAsync(this IBrokerRouter brokerRouter, string topicName, CancellationToken cancellationToken)
         {
-            return brokerRouter.GetTopicOffsetAsync(topicName, Offset.DefaultMaxOffsets, Offset.DefaultTime, cancellationToken);
+            return brokerRouter.GetTopicOffsetsAsync(topicName, Offset.DefaultMaxOffsets, Offset.LatestTime, cancellationToken);
+        }
+
+        /// <summary>
+        /// Get offsets for a single partitions of a given topic.
+        /// </summary>
+        /// <param name="brokerRouter">The router which provides the route and metadata.</param>
+        /// <param name="topicName">Name of the topic to get offset information from.</param>
+        /// <param name="partitionId">The partition to get offsets for.</param>
+        /// <param name="maxOffsets">How many to get, at most.</param>
+        /// <param name="offsetTime">These are best described by <see cref="Offset.Time"/></param>
+        /// <param name="cancellationToken"></param>
+        public static async Task<OffsetTopic> GetTopicOffsetAsync(this IBrokerRouter brokerRouter, string topicName, int partitionId, int maxOffsets, long offsetTime, CancellationToken cancellationToken)
+        {
+            var request = new OffsetRequest(new Offset(topicName, partitionId));
+            var response = await brokerRouter.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
+            return response.Topics.SingleOrDefault(t => t.TopicName == topicName && t.PartitionId == partitionId);
+        }
+
+        /// <summary>
+        /// Get offsets for a single partitions of a given topic.
+        /// </summary>
+        public static Task<OffsetTopic> GetTopicOffsetAsync(this IBrokerRouter brokerRouter, string topicName, int partitionId, CancellationToken cancellationToken)
+        {
+            return brokerRouter.GetTopicOffsetAsync(topicName, partitionId, Offset.DefaultMaxOffsets, Offset.LatestTime, cancellationToken);
+        }
+
+        /// <summary>
+        /// Get offsets for a single partitions of a given topic.
+        /// </summary>
+        /// <param name="brokerRouter">The router which provides the route and metadata.</param>
+        /// <param name="topicName">Name of the topic to get offset information from.</param>
+        /// <param name="partitionId">The partition to get offsets for.</param>
+        /// <param name="consumerGroup">The id of the consumer group</param>
+        /// <param name="cancellationToken"></param>
+        public static async Task<OffsetFetchTopic> GetTopicOffsetAsync(this IBrokerRouter brokerRouter, string topicName, int partitionId, string consumerGroup, CancellationToken cancellationToken)
+        {
+            var request = new OffsetFetchRequest(consumerGroup, new Topic(topicName, partitionId));
+            var response = await brokerRouter.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
+            return response.Topics.SingleOrDefault(t => t.TopicName == topicName && t.PartitionId == partitionId);
+        }
+
+        /// <summary>
+        /// Get offsets for a single partitions of a given topic.
+        /// </summary>
+        /// <param name="brokerRouter">The router which provides the route and metadata.</param>
+        /// <param name="topicName">Name of the topic to get offset information from.</param>
+        /// <param name="partitionId">The partition to get offsets for.</param>
+        /// <param name="consumerGroup">The id of the consumer group</param>
+        /// <param name="offset">The new offset</param>
+        /// <param name="cancellationToken"></param>
+        public static async Task CommitTopicOffsetAsync(this IBrokerRouter brokerRouter, string topicName, int partitionId, string consumerGroup, long offset, CancellationToken cancellationToken)
+        {
+            var request = new OffsetCommitRequest(consumerGroup, new [] { new OffsetCommit(topicName, partitionId, offset) });
+            await brokerRouter.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
         }
 
         /// <exception cref="CachedMetadataException">Thrown if the cached metadata for the given topic is invalid or missing.</exception>

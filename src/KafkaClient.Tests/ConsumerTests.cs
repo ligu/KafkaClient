@@ -28,7 +28,7 @@ namespace KafkaClient.Tests
 
             var options = CreateOptions(router);
 
-            using (var consumer = new Consumer(options))
+            using (var consumer = new OldConsumer(options))
             {
                 var tokenSrc = new CancellationTokenSource();
 
@@ -55,7 +55,7 @@ namespace KafkaClient.Tests
             var router = routerProxy.Create();
             var options = CreateOptions(router);
             options.PartitionWhitelist = new List<int> { 0 };
-            using (var consumer = new Consumer(options))
+            using (var consumer = new OldConsumer(options))
             {
                 var test = consumer.Consume();
 
@@ -78,7 +78,7 @@ namespace KafkaClient.Tests
             var options = CreateOptions(router);
             options.PartitionWhitelist = new List<int>();
 
-            using (var consumer = new Consumer(options))
+            using (var consumer = new OldConsumer(options))
             {
                 var test = consumer.Consume();
 
@@ -105,7 +105,7 @@ namespace KafkaClient.Tests
             var router = routerProxy.Create();
             var options = CreateOptions(router);
             options.PartitionWhitelist = new List<int>();
-            using (var consumer = new Consumer(options))
+            using (var consumer = new OldConsumer(options))
             {
                 var test = consumer.Consume();
                 var wait = TaskTest.WaitFor(() => consumer.ConsumerTaskCount >= 2);
@@ -124,7 +124,7 @@ namespace KafkaClient.Tests
             var router = routerProxy.Create();
             var options = CreateOptions(router);
             options.PartitionWhitelist = new List<int>();
-            using (var consumer = new Consumer(options))
+            using (var consumer = new OldConsumer(options))
             {
                 var test = consumer.Consume();
                 var wait = TaskTest.WaitFor(() => consumer.ConsumerTaskCount >= 2);
@@ -138,7 +138,7 @@ namespace KafkaClient.Tests
         {
             var router = new MoqMockingKernel().GetMock<IBrokerRouter>();
             //router.Setup(x => x.Log.DebugFormat(It.IsAny<string>()));
-            var consumer = new Consumer(CreateOptions(router.Object));
+            var consumer = new OldConsumer(CreateOptions(router.Object));
             using (consumer) { }
             router.Verify(x => x.Dispose(), Times.Once());
         }
@@ -154,7 +154,7 @@ namespace KafkaClient.Tests
             var options = CreateOptions(router);
             options.PartitionWhitelist = new List<int>();
 
-            var consumer = new Consumer(options);
+            var consumer = new OldConsumer(options);
             using (consumer)
             {
                 var test = consumer.Consume();
