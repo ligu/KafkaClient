@@ -30,17 +30,6 @@ namespace KafkaClient.Protocol
                 gzip.CopyTo(destination);
                 gzip.Flush();
                 gzip.Close();
-                //var buffer = new byte[DefaultCopyBufferSize];
-                //var totalRead = 0;
-                //int read;
-                //while ((read = gzip.Read(buffer, 0, length - totalRead)) != 0) {
-                //    totalRead += read;
-                //    if (totalRead >= length) {
-                //        destination.Write(buffer, 0, (int)(length - destination.Length + SizeBytes));
-                //        break;
-                //    }
-                //    destination.Write(buffer, 0, read);
-                //}
             }
             destination.Position = 0;
             destination.Write(((int)destination.Length - SizeBytes).ToBytes(), 0, SizeBytes); // fill the placeholder
@@ -49,12 +38,5 @@ namespace KafkaClient.Protocol
         }
 
         private const int SizeBytes = 4;
-
-        // From System.IO.Stream:
-        // We pick a value that is the largest multiple of 4096 that is still smaller than the large object heap threshold (85K).
-        // The CopyTo/CopyToAsync buffer is short-lived and is likely to be collected at Gen0, and it offers a significant
-        // improvement in Copy performance.
-        private const int DefaultCopyBufferSize = 81920;
-
     }
 }

@@ -558,36 +558,7 @@ namespace KafkaClient.Protocol
                     using (var gzipReader = new BigEndianBinaryReader(messageStream.Unzip())) {
                         return gzipReader.ReadMessages(partitionId);
                     }
-                    //byte[] unzippedBytes = null;
-                    //using (var destination = new MemoryStream()) {
-                    //    const int sizeBytes = 4;
-                    //    destination.Write(BitConverter.GetBytes(0), 0, sizeBytes); // placeholder for size
-                    //    using (var gzip = new GZipStream(reader.BaseStream, CompressionMode.Decompress, true)) {
-                    //        var buffer = new byte[1024];
-                    //        var totalRead = 0;
-                    //        int read;
-                    //        while ((read = gzip.Read(buffer, 0, buffer.Length)) != 0) {
-                    //            totalRead += read;
-                    //            if (totalRead >= messageLength) {
-                    //                destination.Write(buffer, 0, (int)(messageLength - destination.Length + sizeBytes));
-                    //                break;
-                    //            }
-                    //            destination.Write(buffer, 0, read);
-                    //        }
-                    //    }
-                    //    destination.Position = 0;
-                    //    destination.Write(((int)destination.Length).ToBytes(), 0, 4); // fill the placeholder
-                    //    unzippedBytes = destination.ToArray();
-                    //}
                 }
-                    //using (var messageStream = new MemoryStream(value)) {
-
-                    //    //using (var writer = new KafkaWriter()) {
-                    //    //    messageStream.UnzipTo(writer.BaseStream);
-                    //    //    using (var gzipReader = new BigEndianBinaryReader(writer.ToBytes())) {
-                    //    //        return gzipReader.ReadMessages(partitionId);
-                    //    //    }
-                    //    //}
 
                 default:
                     throw new NotSupportedException($"Codec type of {codec} is not supported.");
