@@ -124,6 +124,12 @@ namespace KafkaClient.Protocol
                 return false;
             }
 
+            var bytes = value as byte[];
+            if (bytes != null) {
+                buffer.Append("[ ... ]");
+                return false;
+            }
+
             var enumerable = value as IEnumerable;
             if (enumerable != null) {
                 buffer.Append("[ ");
