@@ -30,7 +30,7 @@ namespace KafkaClient.Tests
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
-        public async Task ProtocolGateway()
+        public async Task CanFetch()
         {
             int partitionId = 0;
             var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri));
@@ -335,6 +335,7 @@ namespace KafkaClient.Tests
             var offest = 5;
             var newOffset = 10;
 
+            await brokerRouter.GetTopicOffsetAsync(topicName, partitionId, CancellationToken.None);
             await brokerRouter.CommitTopicOffsetAsync(topicName, partitionId, consumerGroup, offest, CancellationToken.None);
             var res = await brokerRouter.GetTopicOffsetAsync(topicName, partitionId, consumerGroup, CancellationToken.None);
             Assert.AreEqual(offest, res.Offset);

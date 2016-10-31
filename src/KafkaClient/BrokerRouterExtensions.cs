@@ -125,7 +125,14 @@ namespace KafkaClient
         public static async Task CommitTopicOffsetAsync(this IBrokerRouter brokerRouter, string topicName, int partitionId, string consumerGroup, long offset, CancellationToken cancellationToken)
         {
             var request = new OffsetCommitRequest(consumerGroup, new [] { new OffsetCommit(topicName, partitionId, offset) });
-            await brokerRouter.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
+
+            try {
+                await brokerRouter.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
+            } catch (RequestException ex) when (ex.ErrorCode == ErrorResponseCode.NotCoordinatorForGroup) {
+                // ensure it exists then retry
+                await brokerRouter.SendAsync(new GroupCoordinatorRequest(consumerGroup), topicName, partitionId, CancellationToken.None);
+                await brokerRouter.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
+            }
         }
 
         /// <exception cref="CachedMetadataException">Thrown if the cached metadata for the given topic is invalid or missing.</exception>

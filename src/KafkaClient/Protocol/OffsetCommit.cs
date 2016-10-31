@@ -7,6 +7,8 @@ namespace KafkaClient.Protocol
         public OffsetCommit(string topicName, int partitionId, long offset, string metadata = null, long? timeStamp = null) 
             : base(topicName, partitionId)
         {
+            if (offset < -1L) throw new ArgumentOutOfRangeException(nameof(offset), offset, "value must be >= -1");
+
             Offset = offset;
             TimeStamp = timeStamp;
             Metadata = metadata;

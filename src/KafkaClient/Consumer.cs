@@ -29,6 +29,8 @@ namespace KafkaClient
 
         public async Task<IImmutableList<Message>> FetchMessagesAsync(string topicName, int partitionId, long offset, int maxCount, CancellationToken cancellationToken)
         {
+            if (offset < 0) throw new ArgumentOutOfRangeException(nameof(offset), offset, "must be >= 0");
+
             // Previously fetched messages may contain everything we need
             var localIndex = _localMessages.FindIndex(m => m.Offset == offset);
             if (0 <= localIndex && localIndex + maxCount <= _localMessages.Count) return _localMessages.GetRange(localIndex, maxCount);

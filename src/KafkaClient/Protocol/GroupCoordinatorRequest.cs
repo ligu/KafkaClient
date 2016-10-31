@@ -15,6 +15,8 @@ namespace KafkaClient.Protocol
         public GroupCoordinatorRequest(string groupId) 
             : base(ApiKeyRequestType.GroupCoordinator)
         {
+            if (string.IsNullOrEmpty(groupId)) throw new ArgumentNullException(nameof(groupId));
+
             GroupId = groupId;
         }
 

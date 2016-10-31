@@ -26,6 +26,8 @@ namespace KafkaClient.Protocol
         public OffsetFetchRequest(string groupId, IEnumerable<Topic> topics) 
             : base(ApiKeyRequestType.OffsetFetch)
         {
+            if (string.IsNullOrEmpty(groupId)) throw new ArgumentNullException(nameof(groupId));
+
             GroupId = groupId;
             Topics = ImmutableList<Topic>.Empty.AddNotNullRange(topics);
         }
