@@ -95,14 +95,12 @@
     <Compile Include="Helpers\MessageHelper.cs" />
     <Compile Include="Helpers\TaskTest.cs" />
     <Compile Include="GzipProducerConsumerTests.cs" />
-    <Compile Include="KafkaMetadataGetAsyncUnitTests.cs" />
-    <Compile Include="ConsumingTests.cs" />
+    <Compile Include="ConsumerIntegrationTests.cs" />
     <Compile Include="ManualTesting.cs" />
     <Compile Include="OffsetManagementTests.cs" />
     <Compile Include="ProducerConsumerIntegrationTests.cs" />
     <Compile Include="ProducerIntegrationTests.cs" />
     <Compile Include="Program.cs" />
-    <Compile Include="Protocol\ProtocolGatewayTest.cs" />
     <Compile Include="Common\BigEndianBinaryReaderTests.cs" />
     <Compile Include="Common\BigEndianBinaryWriterTests.cs" />
     <Compile Include="CircularBufferTests.cs" />

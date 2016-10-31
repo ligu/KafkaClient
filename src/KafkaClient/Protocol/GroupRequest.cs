@@ -7,6 +7,8 @@ namespace KafkaClient.Protocol
         /// <inheritdoc />
         protected GroupRequest(ApiKeyRequestType apiKey, string groupId, string memberId, int generationId = 0, bool expectResponse = true) : base(apiKey, expectResponse)
         {
+            if (string.IsNullOrEmpty(groupId)) throw new ArgumentNullException(nameof(groupId));
+
             GroupId = groupId;
             MemberId = memberId;
             GenerationId = generationId;

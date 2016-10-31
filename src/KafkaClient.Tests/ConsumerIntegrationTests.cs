@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using KafkaClient.Common;
 using KafkaClient.Connections;
 using KafkaClient.Protocol;
 using KafkaClient.Tests.Helpers;
@@ -13,7 +14,7 @@ namespace KafkaClient.Tests
 {
     [TestFixture]
     [Category("Integration")]
-    public class ConsumingTests
+    public class ConsumerIntegrationTests
     {
         private readonly KafkaOptions _options;
         private readonly Uri _kafkaUri;
@@ -21,11 +22,30 @@ namespace KafkaClient.Tests
         private readonly int _partitionId = 0;
         private readonly IConnectionConfiguration _config;
 
-        public ConsumingTests()
+        public ConsumerIntegrationTests()
         {
             _kafkaUri = IntegrationConfig.IntegrationUri;
-            _options = new KafkaOptions(IntegrationConfig.IntegrationUri);
+            _options = new KafkaOptions(IntegrationConfig.IntegrationUri, log: new ConsoleLog());
             _config = new ConnectionConfiguration(TimeSpan.FromMinutes(1));
+        }
+
+        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        public async Task ProtocolGateway()
+        {
+            int partitionId = 0;
+            var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri));
+
+            var producer = new Producer(router);
+            string messageValue = Guid.NewGuid().ToString();
+            var response = await producer.SendMessageAsync(new Message(messageValue), IntegrationConfig.TopicName(), partitionId, CancellationToken.None);
+            var offset = response.Offset;
+
+            var fetch = new Fetch(IntegrationConfig.TopicName(), partitionId, offset, 32000);
+
+            var fetchRequest = new FetchRequest(fetch, minBytes: 10);
+
+            var r = await router.SendAsync(fetchRequest, IntegrationConfig.TopicName(), partitionId, CancellationToken.None);
+            Assert.IsTrue(r.Topics.First().Messages.First().Value.ToUtf8String() == messageValue);
         }
 
         [Test]
@@ -152,7 +172,7 @@ namespace KafkaClient.Tests
             Assert.AreEqual(0, result.Count, "Should not get any messages");
         }
 
-        [Test]
+        [Test, Explicit]
         public async Task FetchMessagesOffsetBiggerThanLastOffsetInQueueTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
@@ -211,7 +231,7 @@ namespace KafkaClient.Tests
             Assert.ThrowsAsync<CachedMetadataException>(async () => await consumer.FetchMessagesAsync(topic, partitionId, offset, 5, CancellationToken.None));
         }
 
-        [Test]
+        [Test, Explicit]
         public async Task FetchMessagesBufferUnderRunTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer

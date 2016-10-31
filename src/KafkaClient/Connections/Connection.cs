@@ -171,7 +171,7 @@ namespace KafkaClient.Connections
                 await new BackoffRetry(null, TimeSpan.FromMilliseconds(5), maxDelay: TimeSpan.FromSeconds(5)).AttemptAsync(
                     async attempt => {
                         _log.Debug(() => LogEvent.Create($"Awaiting data from {_socket.Endpoint}"));
-                        if (messageSize == 0) {
+                        if (bytesToSkip > 0) {
                             var skipSize = bytesToSkip;
                             _log.Warn(() => LogEvent.Create($"Skipping {skipSize} bytes on {_socket.Endpoint} because of partial read"));
                             await _socket.ReadAsync(skipSize, _disposeToken.Token).ConfigureAwait(false);

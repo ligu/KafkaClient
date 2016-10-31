@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Common;
 using KafkaClient.Protocol;
+using KafkaClient.Tests.Helpers;
 using NUnit.Framework;
 
 namespace KafkaClient.Tests
@@ -12,12 +13,26 @@ namespace KafkaClient.Tests
     [Category("Integration")]
     internal class ManualTesting
     {
-        private readonly KafkaOptions _options = new KafkaOptions(new []{ new Uri("http://S1.com:9092"), new Uri("http://S2.com:9092"), new Uri("http://S3.com:9092") }, log: new ConsoleLog(LogLevel.Warn));
+        private readonly KafkaOptions _options = new KafkaOptions(IntegrationConfig.IntegrationUri, log: new ConsoleLog(LogLevel.Warn));
         public readonly ILog Log = new ConsoleLog(LogLevel.Debug);
 
         /// <summary>
         /// These tests are for manual run. You need to stop the partition leader and then start it again and let it became the leader.        
         /// </summary>
+
+        [Test]
+        [Ignore("Disable auto topic create in our server")]
+        public async Task NewlyCreatedTopicShouldRetryUntilBrokerIsAssigned()
+        {
+            var expectedTopic = Guid.NewGuid().ToString();
+            var router = new BrokerRouter(_options);
+            var response = router.GetMetadataAsync(new []{ expectedTopic }, CancellationToken.None);
+            var topic = (await response).Topics.FirstOrDefault();
+
+            Assert.That(topic, Is.Not.Null);
+            Assert.That(topic.TopicName, Is.EqualTo(expectedTopic));
+            Assert.That(topic.ErrorCode, Is.EqualTo((int)ErrorResponseCode.None));
+        }
 
         [Test]
         [Ignore("manual test")]
