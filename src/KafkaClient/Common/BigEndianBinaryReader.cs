@@ -24,8 +24,13 @@ namespace KafkaClient.Common
     {
         private const int KafkaNullSize = -1;
 
+        public BigEndianBinaryReader(Stream stream)
+            : base(stream, Encoding.UTF8)
+        {
+        }
+
         public BigEndianBinaryReader(byte[] payload, int offset, int count)
-            : base(new MemoryStream(payload, offset, count), Encoding.UTF8)
+            : this(new MemoryStream(payload, offset, count))
         {
         }
 

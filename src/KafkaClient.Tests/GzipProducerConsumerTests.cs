@@ -15,7 +15,7 @@ namespace KafkaClient.Tests
     [Category("Integration")]
     public class GzipProducerConsumerTests
     {
-        private readonly KafkaOptions _options = new KafkaOptions(IntegrationConfig.IntegrationUri, log: new ConsoleLog());
+        private readonly KafkaOptions _options = new KafkaOptions(IntegrationConfig.IntegrationUri, log: new ConsoleLog(LogLevel.Info));
 
         private Connection GetKafkaConnection()
         {
@@ -58,25 +58,27 @@ namespace KafkaClient.Tests
         {
             var numberOfMessages = 3;
             var topicName = IntegrationConfig.TopicName();
-            IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(">> Start EnsureGzipCanDecompressMessageFromKafka"));
-            var router = new BrokerRouter(_options);
-            using (var producer = new Producer(router, new ProducerConfiguration(batchSize: numberOfMessages))) {
-                var offsets = await producer.BrokerRouter.GetTopicOffsetsAsync(topicName, CancellationToken.None);
-                var offsetPositions = offsets.Where(x => x.Offsets.Count != 0).Select(x => new OffsetPosition(x.PartitionId, x.Offsets.Max()));
-                var consumerOptions = new ConsumerOptions(topicName, router) { PartitionWhitelist = new List<int> { 0 } };
+            var partitionId = 0;
 
-                using (var consumer = new OldConsumer(consumerOptions, offsetPositions.ToArray())) {
+            IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(">> Start EnsureGzipCanDecompressMessageFromKafka"));
+            using (var router = new BrokerRouter(_options)) {
+                using (var producer = new Producer(router, new ProducerConfiguration(batchSize: numberOfMessages)))
+                {
+                    var offset = await producer.BrokerRouter.GetTopicOffsetAsync(topicName, 0, CancellationToken.None);
+                    var consumer = new Consumer(router);
                     var messages = new List<Message>();
                     for (var i = 0; i < numberOfMessages; i++) {
                         messages.Add(new Message(i.ToString()));
                     }
                     IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(">> Start SendMessagesAsync"));
-                    await producer.SendMessagesAsync(messages, topicName, 0, new SendMessageConfiguration(codec: MessageCodec.CodecGzip), CancellationToken.None);
+                    await producer.SendMessagesAsync(messages, topicName, partitionId, new SendMessageConfiguration(codec: MessageCodec.CodecGzip), CancellationToken.None);
                     IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(">> End SendMessagesAsync"));
 
                     IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(">> Start Consume"));
-                    var results = consumer.Consume(new CancellationTokenSource(TimeSpan.FromSeconds(15)).Token).Take(messages.Count).ToList();
+                    var results = await consumer.FetchMessagesAsync(offset, messages.Count, CancellationToken.None);
                     IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(">> End Consume"));
+                    Assert.That(results, Is.Not.Null);
+                    Assert.That(results.Count, Is.EqualTo(messages.Count));
                     for (var i = 0; i < messages.Count; i++) {
                         Assert.That(results[i].Value.ToUtf8String(), Is.EqualTo(i.ToString()));
                     }

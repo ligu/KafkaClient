@@ -44,9 +44,10 @@ namespace KafkaClient
                 // Previously fetched messages contain some of what we need, so append
                 _localMessages = (ImmutableList<Message>)_localMessages.AddNotNullRange(topic?.Messages);
             } else {
+                localIndex = 0;
                 _localMessages = topic?.Messages?.ToImmutableList() ?? ImmutableList<Message>.Empty;
             }
-            return _localMessages.GetRange(localIndex, maxCount);
+            return _localMessages.GetRange(localIndex, Math.Min(maxCount, _localMessages.Count));
         }
     }
 }

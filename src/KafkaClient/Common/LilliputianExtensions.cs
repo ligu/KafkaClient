@@ -33,45 +33,22 @@ namespace KafkaClient.Common
             return Encoding.UTF8.GetBytes(value);
         }
 
-        public static byte[] ToBytes(this short value)
-        {
-            return BitConverter.GetBytes(value).Reverse().ToArray();
-        }
-
         public static byte[] ToBytes(this int value)
         {
-            return BitConverter.GetBytes(value).Reverse().ToArray();
-        }
-
-        public static byte[] ToBytes(this long value)
-        {
-            return BitConverter.GetBytes(value).Reverse().ToArray();
-        }
-
-        public static byte[] ToBytes(this float value)
-        {
-            return BitConverter.GetBytes(value).Reverse().ToArray();
-        }
-
-        public static byte[] ToBytes(this double value)
-        {
-            return BitConverter.GetBytes(value).Reverse().ToArray();
-        }
-
-        public static byte[] ToBytes(this char value)
-        {
-            return BitConverter.GetBytes(value).Reverse().ToArray();
-        }
-
-        public static byte[] ToBytes(this bool value)
-        {
-            return BitConverter.GetBytes(value).Reverse().ToArray();
+            return BitConverter.GetBytes(value).ToBigEndian();
         }
 
         public static int ToInt32(this byte[] value)
         {
-            return BitConverter.ToInt32(value.Reverse().ToArray(), 0);
+            return BitConverter.ToInt32(BitConverter.IsLittleEndian ? value.Reverse().ToArray() : value, 0);
         }
 
+        public static byte[] ToBigEndian(this byte[] bytes)
+        {
+            if (BitConverter.IsLittleEndian) {
+                Array.Reverse(bytes);
+            }
+            return bytes;
+        }
     }
 }

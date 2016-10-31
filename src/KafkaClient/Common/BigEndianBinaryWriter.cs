@@ -132,11 +132,7 @@ namespace KafkaClient.Common
         {
             Contract.Requires(bytes != null);
 
-            if (BitConverter.IsLittleEndian) {
-                Array.Reverse(bytes);
-            }
-
-            base.Write(bytes);
+            base.Write(bytes.ToBigEndian());
         }
     }
 }

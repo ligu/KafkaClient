@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Threading;
 using KafkaClient.Common;
@@ -107,9 +108,8 @@ namespace KafkaClient.Protocol
             using (var writer = new KafkaWriter()) {
                 writer.Write(messages, false);
                 var messageSet = writer.ToBytesNoLength();
-                var gZipBytes = Compression.Zip(messageSet);
 
-                var compressedMessage = new Message(gZipBytes, (byte)MessageCodec.CodecGzip);
+                var compressedMessage = new Message(Compression.Zip(messageSet), (byte)MessageCodec.CodecGzip);
 
                 return new CompressedMessageResult {
                     CompressedAmount = messageSet.Length - compressedMessage.Value.Length,
@@ -543,19 +543,51 @@ namespace KafkaClient.Protocol
                 }
             }
             var key = reader.ReadBytes();
-            var value = reader.ReadBytes();
 
             var codec = (MessageCodec)(Message.AttributeMask & attribute);
             switch (codec)
             {
-                case MessageCodec.CodecNone:
+                case MessageCodec.CodecNone: {
+                    var value = reader.ReadBytes();
                     return ImmutableList<Message>.Empty.Add(new Message(value, attribute, offset, partitionId, messageVersion, key, timestamp));
+                }
 
-                case MessageCodec.CodecGzip:
-                    var gZipData = value;
-                    using (var gzipReader = new BigEndianBinaryReader(gZipData)) {
+                case MessageCodec.CodecGzip: {
+                    var messageLength = reader.ReadInt32();
+                    var messageStream = new LimitedStream(reader.BaseStream, messageLength);
+                    using (var gzipReader = new BigEndianBinaryReader(messageStream.Unzip())) {
                         return gzipReader.ReadMessages(partitionId);
                     }
+                    //byte[] unzippedBytes = null;
+                    //using (var destination = new MemoryStream()) {
+                    //    const int sizeBytes = 4;
+                    //    destination.Write(BitConverter.GetBytes(0), 0, sizeBytes); // placeholder for size
+                    //    using (var gzip = new GZipStream(reader.BaseStream, CompressionMode.Decompress, true)) {
+                    //        var buffer = new byte[1024];
+                    //        var totalRead = 0;
+                    //        int read;
+                    //        while ((read = gzip.Read(buffer, 0, buffer.Length)) != 0) {
+                    //            totalRead += read;
+                    //            if (totalRead >= messageLength) {
+                    //                destination.Write(buffer, 0, (int)(messageLength - destination.Length + sizeBytes));
+                    //                break;
+                    //            }
+                    //            destination.Write(buffer, 0, read);
+                    //        }
+                    //    }
+                    //    destination.Position = 0;
+                    //    destination.Write(((int)destination.Length).ToBytes(), 0, 4); // fill the placeholder
+                    //    unzippedBytes = destination.ToArray();
+                    //}
+                }
+                    //using (var messageStream = new MemoryStream(value)) {
+
+                    //    //using (var writer = new KafkaWriter()) {
+                    //    //    messageStream.UnzipTo(writer.BaseStream);
+                    //    //    using (var gzipReader = new BigEndianBinaryReader(writer.ToBytes())) {
+                    //    //        return gzipReader.ReadMessages(partitionId);
+                    //    //    }
+                    //    //}
 
                 default:
                     throw new NotSupportedException($"Codec type of {codec} is not supported.");
