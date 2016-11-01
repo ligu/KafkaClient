@@ -141,7 +141,6 @@ namespace KafkaClient.Common
             }
         }
 
-
         public static async Task<T> AttemptAsync<T>(
             this IRetry policy, 
             Func<int, Stopwatch, Task<RetryAttempt<T>>> action, 

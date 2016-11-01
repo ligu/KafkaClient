@@ -507,7 +507,7 @@ namespace KafkaClient.Protocol
                 var messageSize = reader.ReadInt32();
 
                 // if the stream does not have enough left in the payload, we got only a partial message
-                if (reader.Available(messageSize) == false) break;
+                if (reader.Available(messageSize) == false) throw new BufferUnderRunException($"Message header size of {MessageHeaderSize} is not fully available.");
 
                 try {
                     messages = messages.AddRange(reader.ReadMessage(messageSize, offset, partitionId));

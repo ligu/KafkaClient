@@ -9,6 +9,7 @@ using KafkaClient.Tests.Fakes;
 using KafkaClient.Tests.Helpers;
 using KafkaClient.Tests.Protocol;
 using Ninject.MockingKernel.Moq;
+using Nito.AsyncEx;
 using NUnit.Framework;
 using NUnit.Framework.Internal;
 
@@ -237,7 +238,7 @@ namespace KafkaClient.Tests.Connections
                     server.OnClientConnected += () => Console.WriteLine("Client connected...");
                     server.OnBytesReceived += (b) =>
                     {
-                        var send = server.SendDataAsync(MessageHelper.CreateMetadataResponse(1, "Test"));
+                        AsyncContext.Run(async () => await server.SendDataAsync(MessageHelper.CreateMetadataResponse(1, "Test")));
                     };
 
                     await Task.WhenAny(taskResult, Task.Delay(TimeSpan.FromSeconds(15)));

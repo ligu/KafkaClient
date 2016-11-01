@@ -62,17 +62,17 @@ namespace KafkaClient.Connections
         public async Task<byte[]> ReadAsync(int readSize, CancellationToken cancellationToken)
         {
             var readTask = new SocketPayloadReadTask(readSize, cancellationToken);
-            await _readTaskQueue.EnqueueAsync(readTask, cancellationToken);
-            return await readTask.Tcs.Task;
+            await _readTaskQueue.EnqueueAsync(readTask, cancellationToken).ConfigureAwait(false);
+            return await readTask.Tcs.Task.ConfigureAwait(false);
         }
 
         /// <inheritdoc />
         public async Task<DataPayload> WriteAsync(DataPayload payload, CancellationToken cancellationToken)
         {
             var writeTask = new SocketPayloadWriteTask(payload, cancellationToken);
-            await _writeTaskQueue.EnqueueAsync(writeTask, cancellationToken);
+            await _writeTaskQueue.EnqueueAsync(writeTask, cancellationToken).ConfigureAwait(false);
             _configuration.OnWriteEnqueued?.Invoke(Endpoint, payload);
-            return await writeTask.Tcs.Task;
+            return await writeTask.Tcs.Task.ConfigureAwait(false);
         }
 
         #endregion Interface Implementation...
@@ -91,7 +91,7 @@ namespace KafkaClient.Connections
                     var netStreamTask = GetStreamAsync();
                     if (await netStreamTask.IsCancelled(_disposeToken.Token).ConfigureAwait(false)) {
                         var disposedException = new ObjectDisposedException($"Object is disposing (TcpSocket for {Endpoint})");
-                        await SetExceptionToAllPendingTasksAsync(disposedException);
+                        await SetExceptionToAllPendingTasksAsync(disposedException).ConfigureAwait(false);
                         _configuration.OnDisconnected?.Invoke(Endpoint, disposedException);
                         return;
                     }
@@ -99,7 +99,7 @@ namespace KafkaClient.Connections
                     var netStream = await netStreamTask.ConfigureAwait(false);
                     await ProcessNetworkstreamTasks(netStream).ConfigureAwait(false);
                 } catch (Exception ex) {
-                    await SetExceptionToAllPendingTasksAsync(ex);
+                    await SetExceptionToAllPendingTasksAsync(ex).ConfigureAwait(false);
                     _configuration.OnDisconnected?.Invoke(Endpoint, ex);
                 }
             }
@@ -108,8 +108,8 @@ namespace KafkaClient.Connections
         private async Task SetExceptionToAllPendingTasksAsync(Exception ex)
         {
             var wrappedException = WrappedException(ex);
-            var failedWrites = await _writeTaskQueue.TryApplyAsync(p => p.Tcs.TrySetException(wrappedException), new CancellationToken(true));
-            var failedReads = await _readTaskQueue.TryApplyAsync(p => p.Tcs.TrySetException(wrappedException), new CancellationToken(true));
+            var failedWrites = await _writeTaskQueue.TryApplyAsync(p => p.Tcs.TrySetException(wrappedException), new CancellationToken(true)).ConfigureAwait(false);
+            var failedReads = await _readTaskQueue.TryApplyAsync(p => p.Tcs.TrySetException(wrappedException), new CancellationToken(true)).ConfigureAwait(false);
             if (failedWrites > 0) {
                 _log.Error(LogEvent.Create(ex, $"TcpSocket exception, cancelled {failedWrites} pending writes"));
             }
@@ -132,13 +132,13 @@ namespace KafkaClient.Connections
             await Task.WhenAny(readTask, writeTask).ConfigureAwait(false);
             if (_disposeToken.IsCancellationRequested) return;
 
-            await ThrowTaskExceptionIfFaulted(readTask);
-            await ThrowTaskExceptionIfFaulted(writeTask);
+            await ThrowTaskExceptionIfFaulted(readTask).ConfigureAwait(false);
+            await ThrowTaskExceptionIfFaulted(writeTask).ConfigureAwait(false);
         }
 
         private static async Task ThrowTaskExceptionIfFaulted(Task task)
         {
-            if (task.IsFaulted || task.IsCanceled) await task;
+            if (task.IsFaulted || task.IsCanceled) await task.ConfigureAwait(false);
         }
 
         private async Task ProcessNetworkstreamTask<T>(Stream stream, AsyncProducerConsumerQueue<T> queue, Func<Stream, T, Task> asyncProcess)
@@ -146,8 +146,8 @@ namespace KafkaClient.Connections
             Task lastTask = Task.FromResult(true);
             try {
                 while (!_disposeToken.IsCancellationRequested && stream != null) {
-                    await lastTask;
-                    var takeResult = await queue.DequeueAsync(_disposeToken.Token);
+                    await lastTask.ConfigureAwait(false);
+                    var takeResult = await queue.DequeueAsync(_disposeToken.Token).ConfigureAwait(false);
                     lastTask = asyncProcess(stream, takeResult);
                 }
             } catch (InvalidOperationException) {

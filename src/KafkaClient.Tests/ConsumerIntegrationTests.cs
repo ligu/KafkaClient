@@ -25,8 +25,8 @@ namespace KafkaClient.Tests
         public ConsumerIntegrationTests()
         {
             _kafkaUri = IntegrationConfig.IntegrationUri;
-            _options = new KafkaOptions(IntegrationConfig.IntegrationUri, log: new ConsoleLog());
-            _config = new ConnectionConfiguration(TimeSpan.FromMinutes(1));
+            _config = new ConnectionConfiguration(TimeSpan.FromSeconds(10));
+            _options = new KafkaOptions(IntegrationConfig.IntegrationUri, _config, log: new ConsoleLog());
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
@@ -182,8 +182,13 @@ namespace KafkaClient.Tests
 
             var offset = await brokerRouter.GetTopicOffsetAsync(IntegrationConfig.TopicName(), _partitionId, CancellationToken.None);
 
-            Assert.ThrowsAsync(Is.InstanceOf<FetchOutOfRangeException>().With.Message.StartsWith("Kafka returned OffsetOutOfRange for Fetch request"), 
-                async () => await consumer.FetchMessagesAsync(offset.TopicName, offset.PartitionId, offset.Offsets.Last() + 1, 5, CancellationToken.None));
+            try {
+                // Now let's consume
+                await consumer.FetchMessagesAsync(offset.TopicName, offset.PartitionId, offset.Offsets.Last() + 1, 5, CancellationToken.None);
+                Assert.Fail("should have thrown FetchOutOfRangeException");
+            } catch (FetchOutOfRangeException ex) when (ex.Message.StartsWith("Kafka returned OffsetOutOfRange for Fetch request")) {
+                Console.WriteLine(ex.ToString());
+            }
         }
 
         [Test]
@@ -250,8 +255,13 @@ namespace KafkaClient.Tests
 
             await producer.SendMessagesAsync(messages, topic, _partitionId, new SendMessageConfiguration(ackTimeout: TimeSpan.FromSeconds(3)), CancellationToken.None);
 
-            // Now let's consume
-            Assert.ThrowsAsync<BufferUnderRunException>(async () => await consumer.FetchMessagesAsync(offset, 5, CancellationToken.None));
+            try {
+                // Now let's consume
+                await consumer.FetchMessagesAsync(offset, 5, CancellationToken.None);
+                Assert.Fail("should have thrown BufferUnderRunException");
+            } catch (BufferUnderRunException ex) {
+                Console.WriteLine(ex.ToString());
+            }
         }
 
         [Test]

@@ -32,7 +32,7 @@ namespace KafkaClient.Connections
 
         private readonly Task _receiveTask;
         private int _activeReaderCount;
-        private int _correlationIdSeed;
+        private static int _correlationIdSeed;
 
         private readonly AsyncReaderWriterLock _versionSupportLock = new AsyncReaderWriterLock();
         private IVersionSupport _versionSupport;
@@ -75,7 +75,7 @@ namespace KafkaClient.Connections
         {
             var version = context?.ApiVersion;
             if (!version.HasValue) {
-                version = await GetVersionAsync(request.ApiKey, token);
+                version = await GetVersionAsync(request.ApiKey, token).ConfigureAwait(false);
             }
             context = new RequestContext(NextCorrelationId(), version, context?.ClientId, context?.Encoders ?? _configuration.Encoders, context?.ProtocolType ?? request.ProtocolType);
 
@@ -115,13 +115,13 @@ namespace KafkaClient.Connections
         {
             if (!_configuration.VersionSupport.IsDynamic) return _configuration.VersionSupport.GetVersion(requestType).GetValueOrDefault();
 
-            using (await _versionSupportLock.ReaderLockAsync(cancellationToken)) {
+            using (await _versionSupportLock.ReaderLockAsync(cancellationToken).ConfigureAwait(false)) {
                 if (_versionSupport != null) return _versionSupport.GetVersion(requestType).GetValueOrDefault();
             }
-            using (await _versionSupportLock.WriterLockAsync(cancellationToken)) {
+            using (await _versionSupportLock.WriterLockAsync(cancellationToken).ConfigureAwait(false)) {
                 return await _configuration.ConnectionRetry.AttemptAsync(
                     async (attempt, timer) => {
-                        var response = await SendAsync(new ApiVersionsRequest(), cancellationToken, new RequestContext(version: 0));
+                        var response = await SendAsync(new ApiVersionsRequest(), cancellationToken, new RequestContext(version: 0)).ConfigureAwait(false);
                         if (response.ErrorCode.IsRetryable()) return RetryAttempt<short>.Retry;
                         if (!response.ErrorCode.IsSuccess()) return RetryAttempt<short>.Abort;
 
