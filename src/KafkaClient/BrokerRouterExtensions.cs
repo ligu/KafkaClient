@@ -109,7 +109,7 @@ namespace KafkaClient
         public static async Task<OffsetFetchTopic> GetTopicOffsetAsync(this IBrokerRouter brokerRouter, string topicName, int partitionId, string consumerGroup, CancellationToken cancellationToken)
         {
             var request = new OffsetFetchRequest(consumerGroup, new Topic(topicName, partitionId));
-            var response = await brokerRouter.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
+            var response = await brokerRouter.SendAsync(request, topicName, partitionId, consumerGroup, cancellationToken).ConfigureAwait(false);
             return response.Topics.SingleOrDefault(t => t.TopicName == topicName && t.PartitionId == partitionId);
         }
 
@@ -125,13 +125,17 @@ namespace KafkaClient
         public static async Task CommitTopicOffsetAsync(this IBrokerRouter brokerRouter, string topicName, int partitionId, string consumerGroup, long offset, CancellationToken cancellationToken)
         {
             var request = new OffsetCommitRequest(consumerGroup, new [] { new OffsetCommit(topicName, partitionId, offset) });
+            await brokerRouter.SendAsync(request, topicName, partitionId, consumerGroup, cancellationToken).ConfigureAwait(false);
+        }
 
+        private static async Task<T> SendAsync<T>(this IBrokerRouter brokerRouter, IRequest<T> request, string topicName, int partitionId, string consumerGroup, CancellationToken cancellationToken) where T : class, IResponse
+        {
             try {
-                await brokerRouter.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
+                return await brokerRouter.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
             } catch (RequestException ex) when (ex.ErrorCode == ErrorResponseCode.NotCoordinatorForGroup) {
-                // ensure it exists then retry
-                await brokerRouter.SendAsync(new GroupCoordinatorRequest(consumerGroup), topicName, partitionId, CancellationToken.None);
-                await brokerRouter.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
+                // ensure the group exists, then retry
+                await brokerRouter.SendAsync(new GroupCoordinatorRequest(consumerGroup), topicName, partitionId, cancellationToken).ConfigureAwait(false);
+                return await brokerRouter.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
             }
         }
 

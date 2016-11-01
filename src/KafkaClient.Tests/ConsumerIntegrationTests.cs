@@ -172,11 +172,11 @@ namespace KafkaClient.Tests
             Assert.AreEqual(0, result.Count, "Should not get any messages");
         }
 
-        [Test, Explicit]
+        [Test]
         public async Task FetchMessagesOffsetBiggerThanLastOffsetInQueueTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
-            var brokerRouter = new BrokerRouter(_kafkaUri, new ConnectionFactory(), _config);
+            var brokerRouter = new BrokerRouter(_kafkaUri, new ConnectionFactory(), _config, log: new ConsoleLog());
 
             var consumer = new Consumer(brokerRouter, DefaultMaxMessageSetSize);
 
@@ -213,7 +213,7 @@ namespace KafkaClient.Tests
             var offset = 0;
 
             // Now let's consume
-            Assert.ThrowsAsync<RequestException>(async () => await consumer.FetchMessagesAsync(topic, _partitionId, offset, 5, CancellationToken.None));
+            await consumer.FetchMessagesAsync(topic, _partitionId, offset, 5, CancellationToken.None);
         }
 
         [Test]
@@ -231,7 +231,7 @@ namespace KafkaClient.Tests
             Assert.ThrowsAsync<CachedMetadataException>(async () => await consumer.FetchMessagesAsync(topic, partitionId, offset, 5, CancellationToken.None));
         }
 
-        [Test, Explicit]
+        [Test]
         public async Task FetchMessagesBufferUnderRunTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
@@ -263,7 +263,7 @@ namespace KafkaClient.Tests
             var consumerGroup = Guid.NewGuid().ToString();
 
             var topicName = IntegrationConfig.TopicName();
-            Assert.ThrowsAsync<RequestException>(async () => await brokerRouter.GetTopicOffsetAsync(topicName, partitionId, consumerGroup, CancellationToken.None));
+            await brokerRouter.GetTopicOffsetAsync(topicName, partitionId, consumerGroup, CancellationToken.None);
         }
 
         [Test]
@@ -287,7 +287,7 @@ namespace KafkaClient.Tests
             var topic = IntegrationConfig.TopicName();
             var consumerGroup = IntegrationConfig.ConsumerName();
 
-            Assert.ThrowsAsync<RequestException>(async () => await brokerRouter.GetTopicOffsetAsync(topic, _partitionId, consumerGroup, CancellationToken.None));
+            await brokerRouter.GetTopicOffsetAsync(topic, _partitionId, consumerGroup, CancellationToken.None);
         }
 
         [Test]
