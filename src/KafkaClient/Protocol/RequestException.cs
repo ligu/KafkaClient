@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Runtime.Serialization;
-using KafkaClient.Common;
 using KafkaClient.Connections;
 
 namespace KafkaClient.Protocol
@@ -8,7 +6,6 @@ namespace KafkaClient.Protocol
     /// <summary>
     /// An exception caused by a Kafka Request
     /// </summary>
-    [Serializable]
     public class RequestException : KafkaException
     {
         public RequestException(ApiKeyRequestType apiKey, ErrorResponseCode errorCode, string message = null)
@@ -26,22 +23,6 @@ namespace KafkaClient.Protocol
         public RequestException(string message, Exception innerException)
             : base(message, innerException)
         {
-        }
-
-        public RequestException(SerializationInfo info, StreamingContext context)
-            : base(info, context)
-        {
-            ApiKey = (ApiKeyRequestType)info.GetInt16(nameof(ApiKey));
-            ErrorCode = (ErrorResponseCode)info.GetInt16(nameof(ErrorCode));
-            Endpoint = info.GetValue<Endpoint>(nameof(Endpoint));
-        }
-
-        public override void GetObjectData(SerializationInfo info, StreamingContext context)
-        {
-            base.GetObjectData(info, context);
-            info.AddValue(nameof(ApiKey), (short)ApiKey);
-            info.AddValue(nameof(ErrorCode), (short)ErrorCode);
-            info.AddValue(nameof(Endpoint), Endpoint);
         }
 
         public ApiKeyRequestType ApiKey { get; }

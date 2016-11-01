@@ -1,13 +1,11 @@
 ﻿using System;
-using System.Runtime.Serialization;
 
 namespace KafkaClient
 {
     /// <summary>
     /// Base class for all exceptions related to kafka, to make it easier to handle them en mass
     /// </summary>
-    [Serializable]
-    public class KafkaException : ApplicationException
+    public class KafkaException : Exception
     {
         public KafkaException(string message)
             : base(message)
@@ -19,9 +17,5 @@ namespace KafkaClient
         {
         }
 
-        public KafkaException(SerializationInfo info, StreamingContext context)
-            : base(info, context)
-        {
-        }
     }
 }

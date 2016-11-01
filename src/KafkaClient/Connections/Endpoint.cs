@@ -1,33 +1,19 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
-using System.Runtime.Serialization;
+using System.Threading.Tasks;
 using KafkaClient.Common;
+using System.Linq;
 
 namespace KafkaClient.Connections
 {
-    [Serializable]
     public class Endpoint : IEquatable<Endpoint>
     {
         public Endpoint(Uri serverUri, IPEndPoint ip)
         {
             ServerUri = serverUri;
             IP = ip;
-        }
-
-        [SuppressMessage("ReSharper", "UnusedParameter.Local")]
-        public Endpoint(SerializationInfo info, StreamingContext context)
-        {
-            ServerUri = info.GetValue<Uri>("ServerUri");
-            IP = info.GetValue<IPEndPoint>("IP");
-        }
-
-        public void GetObjectData(SerializationInfo info, StreamingContext context)
-        {
-            info.AddValue("ServerUri", ServerUri);
-            info.AddValue("IP", IP);
         }
 
         public Uri ServerUri { get; }

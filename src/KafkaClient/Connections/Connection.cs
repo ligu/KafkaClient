@@ -253,7 +253,7 @@ namespace KafkaClient.Connections
         {
             if (requestItem == null) return;
             if (_requestsByCorrelation.TryAdd(requestItem.CorrelationId, requestItem) == false) {
-                throw new ApplicationException("Failed to register request for async response.");
+                throw new KafkaException("Failed to register request for async response.");
             }
         }
 

@@ -1,9 +1,7 @@
 ﻿using System;
-using System.Runtime.Serialization;
 
 namespace KafkaClient.Protocol
 {
-    [Serializable]
     public class BufferUnderRunException : KafkaException
     {
         public BufferUnderRunException(int messageHeaderSize, int requiredBufferSize, long remainingBufferSize)
@@ -22,22 +20,6 @@ namespace KafkaClient.Protocol
         public BufferUnderRunException(string message, Exception innerException)
             : base(message, innerException)
         {
-        }
-
-        public BufferUnderRunException(SerializationInfo info, StreamingContext context)
-            : base(info, context)
-        {
-            MessageHeaderSize = info.GetInt32("MessageHeaderSize");
-            RequiredBufferSize = info.GetInt32("RequiredBufferSize");
-            RemainingBufferSize = info.GetInt64("RemainingBufferSize");
-        }
-
-        public override void GetObjectData(SerializationInfo info, StreamingContext context)
-        {
-            base.GetObjectData(info, context);
-            info.AddValue("MessageHeaderSize", MessageHeaderSize);
-            info.AddValue("RequiredBufferSize", RequiredBufferSize);
-            info.AddValue("RemainingBufferSize", RemainingBufferSize);
         }
 
         public int MessageHeaderSize { get; set; }
