@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Diagnostics.Contracts;
 using System.IO;
 using System.Text;
 
@@ -25,20 +24,20 @@ namespace KafkaClient.Common
         public BigEndianBinaryWriter(Stream stream)
             : base(stream, Encoding.UTF8)
         {
-            Contract.Requires(stream != null);
+            if (stream == null) throw new ArgumentNullException(nameof(stream));
         }
 
         public BigEndianBinaryWriter(Stream stream, bool leaveOpen)
             : base(stream, Encoding.UTF8, leaveOpen)
         {
-            Contract.Requires(stream != null);
+            if (stream == null) throw new ArgumentNullException(nameof(stream));
         }
 
         public override void Write(decimal value)
         {
             var ints = decimal.GetBits(value);
-            Contract.Assume(ints != null);
-            Contract.Assume(ints.Length == 4);
+            if (ints == null) throw new ArgumentNullException(nameof(value));
+            if (ints.Length != 4) throw new ArgumentOutOfRangeException(nameof(value), value, "Must evaluate to 4 ints");
 
             if (BitConverter.IsLittleEndian)
                 Array.Reverse(ints);
@@ -130,7 +129,7 @@ namespace KafkaClient.Common
 
         private void WriteBigEndian(byte[] bytes)
         {
-            Contract.Requires(bytes != null);
+            if (bytes == null) throw new ArgumentNullException(nameof(bytes));
 
             base.Write(bytes.ToBigEndian());
         }

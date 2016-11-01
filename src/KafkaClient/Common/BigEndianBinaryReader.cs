@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Diagnostics.Contracts;
 using System.IO;
 using System.Text;
 
@@ -175,8 +174,8 @@ namespace KafkaClient.Common
 
         private T EndianAwareRead<T>(int size, Func<byte[], int, T> converter) where T : struct
         {
-            Contract.Requires(size >= 0);
-            Contract.Requires(converter != null);
+            if (size < 0) throw new ArgumentOutOfRangeException(nameof(size), size, "Must be >= 0");
+            if (converter == null) throw new ArgumentNullException(nameof(converter));
 
             var bytes = GetNextBytesNativeEndian(size);
             return converter(bytes, 0);
@@ -184,9 +183,7 @@ namespace KafkaClient.Common
 
         private byte[] GetNextBytesNativeEndian(int count)
         {
-            Contract.Requires(count >= 0);
-            Contract.Ensures(Contract.Result<byte[]>() != null);
-            Contract.Ensures(Contract.Result<byte[]>().Length == count);
+            if (count < 0) throw new ArgumentOutOfRangeException(nameof(count), count, "Must be >= 0");
 
             var bytes = GetNextBytes(count);
             if (BitConverter.IsLittleEndian) {
@@ -197,9 +194,7 @@ namespace KafkaClient.Common
 
         private byte[] GetNextBytes(int count)
         {
-            Contract.Requires(count >= 0);
-            Contract.Ensures(Contract.Result<byte[]>() != null);
-            Contract.Ensures(Contract.Result<byte[]>().Length == count);
+            if (count < 0) throw new ArgumentOutOfRangeException(nameof(count), count, "Must be >= 0");
 
             var buffer = new byte[count];
             var bytesRead = BaseStream.Read(buffer, 0, count);

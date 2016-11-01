@@ -117,7 +117,7 @@ namespace KafkaClient.Tests.Connections
                     server.SendDataAsync(CreateCorrelationMessage(1)).Wait(TimeSpan.FromSeconds(5));
                     await TaskTest.WaitFor(() => connected == disconnected);
 
-                    Assert.That(mockLog.LogEvents.Count(e => e.Item1 == LogLevel.Info && e.Item2.Message.StartsWith("Polling read thread has recovered on ")), Is.EqualTo(currentAttempt-1));
+                    Assert.That(mockLog.LogEvents.Count(e => e.Item1 == LogLevel.Info && e.Item2.Message.StartsWith("Polling receive thread has recovered on ")), Is.EqualTo(currentAttempt-1));
 
                     server.DropConnection();
                     await TaskTest.WaitFor(() => disconnected == currentAttempt);
