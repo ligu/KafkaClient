@@ -5,7 +5,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.ExceptionServices;
-using System.Runtime.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using Nito.AsyncEx;
@@ -55,27 +54,26 @@ namespace KafkaClient.Common
             return exception;
         }
 
-        public static async Task<int> TryApplyAsync<T>(this AsyncCollection<T> collection, Action<T> apply, CancellationToken cancellationToken)
+        public static async Task<int> TryApplyAsync<T>(this AsyncProducerConsumerQueue<T> collection, Action<T> apply, CancellationToken cancellationToken)
         {
             var count = 0;
             try {
                 while (true) {
-                    // Try rather than simply Take (in case the collection has been closed and is not empty)
-                    var result = await collection.TryTakeAsync(cancellationToken);
-                    if (!result.Success) break;
+                    var result = await collection.DequeueAsync(cancellationToken).ConfigureAwait(false);
 
-                    apply(result.Item);
+                    apply(result);
                     count++;
                 }
+            } catch (InvalidOperationException) {
             } catch (OperationCanceledException) {
             }
             return count;
         }
 
-        public static void AddRange<T>(this AsyncCollection<T> collection, IEnumerable<T> items, CancellationToken cancellationToken)
+        public static async Task EnqueueRangeAsync<T>(this AsyncProducerConsumerQueue<T> queue, IEnumerable<T> items, CancellationToken cancellationToken)
         {
             foreach (var item in items) {
-                collection.Add(item, cancellationToken);
+                await queue.EnqueueAsync(item, cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -192,11 +190,6 @@ namespace KafkaClient.Common
                 onFinalException?.Invoke(ex, attempt);
                 throw ex.PrepareForRethrow();
             }
-        }
-
-        public static T GetValue<T>(this SerializationInfo info, string name)
-        {
-            return (T)info.GetValue(name, typeof(T));
         }
 
         public static IImmutableList<T> AddNotNull<T>(this IImmutableList<T> list, T item) where T : class

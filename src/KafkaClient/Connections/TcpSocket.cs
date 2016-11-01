@@ -22,8 +22,8 @@ namespace KafkaClient.Connections
         private readonly ILog _log;
         private readonly IConnectionConfiguration _configuration;
 
-        private readonly AsyncCollection<SocketPayloadWriteTask> _writeTaskQueue;
-        private readonly AsyncCollection<SocketPayloadReadTask> _readTaskQueue;
+        private readonly AsyncProducerConsumerQueue<SocketPayloadWriteTask> _writeTaskQueue;
+        private readonly AsyncProducerConsumerQueue<SocketPayloadReadTask> _readTaskQueue;
         // ReSharper disable NotAccessedField.Local
         private readonly Task _socketTask;
         // ReSharper restore NotAccessedField.Local
@@ -41,8 +41,8 @@ namespace KafkaClient.Connections
             Endpoint = endpoint;
             _log = log ?? TraceLog.Log;
             _configuration = configuration ?? new ConnectionConfiguration();
-            _writeTaskQueue = new AsyncCollection<SocketPayloadWriteTask>();
-            _readTaskQueue = new AsyncCollection<SocketPayloadReadTask>();
+            _writeTaskQueue = new AsyncProducerConsumerQueue<SocketPayloadWriteTask>();
+            _readTaskQueue = new AsyncProducerConsumerQueue<SocketPayloadReadTask>();
 
             _disposeRegistration = _disposeToken.Token.Register(() => {
                 _writeTaskQueue.CompleteAdding();
@@ -59,20 +59,20 @@ namespace KafkaClient.Connections
         public Endpoint Endpoint { get; }
 
         /// <inheritdoc />
-        public Task<byte[]> ReadAsync(int readSize, CancellationToken cancellationToken)
+        public async Task<byte[]> ReadAsync(int readSize, CancellationToken cancellationToken)
         {
             var readTask = new SocketPayloadReadTask(readSize, cancellationToken);
-            _readTaskQueue.Add(readTask, cancellationToken);
-            return readTask.Tcs.Task;
+            await _readTaskQueue.EnqueueAsync(readTask, cancellationToken);
+            return await readTask.Tcs.Task;
         }
 
         /// <inheritdoc />
-        public Task<DataPayload> WriteAsync(DataPayload payload, CancellationToken cancellationToken)
+        public async Task<DataPayload> WriteAsync(DataPayload payload, CancellationToken cancellationToken)
         {
             var writeTask = new SocketPayloadWriteTask(payload, cancellationToken);
-            _writeTaskQueue.Add(writeTask, cancellationToken);
+            await _writeTaskQueue.EnqueueAsync(writeTask, cancellationToken);
             _configuration.OnWriteEnqueued?.Invoke(Endpoint, payload);
-            return writeTask.Tcs.Task;
+            return await writeTask.Tcs.Task;
         }
 
         #endregion Interface Implementation...
@@ -141,15 +141,17 @@ namespace KafkaClient.Connections
             if (task.IsFaulted || task.IsCanceled) await task;
         }
 
-        private async Task ProcessNetworkstreamTask<T>(Stream stream, AsyncCollection<T> queue, Func<Stream, T, Task> asyncProcess)
+        private async Task ProcessNetworkstreamTask<T>(Stream stream, AsyncProducerConsumerQueue<T> queue, Func<Stream, T, Task> asyncProcess)
         {
             Task lastTask = Task.FromResult(true);
-            while (!_disposeToken.IsCancellationRequested && stream != null) {
-                await lastTask;
-                var takeResult = await queue.TryTakeAsync(_disposeToken.Token);
-                if (!takeResult.Success) return;
-
-                lastTask = asyncProcess(stream, takeResult.Item);
+            try {
+                while (!_disposeToken.IsCancellationRequested && stream != null) {
+                    await lastTask;
+                    var takeResult = await queue.DequeueAsync(_disposeToken.Token);
+                    lastTask = asyncProcess(stream, takeResult);
+                }
+            } catch (InvalidOperationException) {
+                // thrown from DequeueAsync if closed and emptry
             }
         }
 

@@ -18,7 +18,7 @@ namespace KafkaClient
     {
         private int _stopCount = 0;
         private readonly CancellationTokenSource _stopToken;
-        private readonly AsyncCollection<ProduceTopicTask> _produceMessageQueue;
+        private readonly AsyncProducerConsumerQueue<ProduceTopicTask> _produceMessageQueue;
         private readonly SemaphoreSlim _produceRequestSemaphore;
         private readonly Task _batchSendTask;
 
@@ -67,7 +67,7 @@ namespace KafkaClient
         {
             BrokerRouter = brokerRouter;
             Configuration = configuration ?? new ProducerConfiguration();
-            _produceMessageQueue = new AsyncCollection<ProduceTopicTask>();
+            _produceMessageQueue = new AsyncProducerConsumerQueue<ProduceTopicTask>();
             _produceRequestSemaphore = new SemaphoreSlim(Configuration.RequestParallelization, Configuration.RequestParallelization);
             _stopToken = new CancellationTokenSource();
             _batchSendTask = Task.Run(BatchSendAsync, _stopToken.Token);
@@ -79,7 +79,7 @@ namespace KafkaClient
             var produceTopicTasks = messages.Select(message => new ProduceTopicTask(topicName, partition, message, configuration ?? Configuration.SendDefaults, cancellationToken)).ToArray();
             Interlocked.Add(ref _sendingMessageCount, produceTopicTasks.Length);
             try {
-                _produceMessageQueue.AddRange(produceTopicTasks, cancellationToken);
+                await _produceMessageQueue.EnqueueRangeAsync(produceTopicTasks, cancellationToken);
                 var topics = await Task.WhenAll(produceTopicTasks.Select(x => x.Tcs.Task)).ConfigureAwait(false);
                 return topics.ToImmutableList();
             } catch (InvalidOperationException ex) {
@@ -139,16 +139,16 @@ namespace KafkaClient
                 using (var cancellation = new TimedCancellation(_stopToken.Token, Configuration.BatchMaxDelay)) {
                     while (batch.Count < Configuration.BatchSize && !cancellation.Token.IsCancellationRequested) {
                         // Try rather than simply Take (in case the collection has been closed and is not empty)
-                        var result = await _produceMessageQueue.TryTakeAsync(cancellation.Token);
-                        if (!result.Success) break;
+                        var result = await _produceMessageQueue.DequeueAsync(cancellation.Token);
 
-                        if (result.Item.CancellationToken.IsCancellationRequested) {
-                            result.Item.Tcs.SetCanceled();
+                        if (result.CancellationToken.IsCancellationRequested) {
+                            result.Tcs.SetCanceled();
                         } else {
-                            batch = batch.Add(result.Item);
+                            batch = batch.Add(result);
                         }
                     }
                 }
+            } catch (InvalidOperationException) { // From DequeueAsync
             } catch (OperationCanceledException) { // cancellation token fired while attempting to get tasks: normal behavior
             }
             return batch;

@@ -16,9 +16,8 @@ namespace KafkaClient.Protocol
                 using (var gzip = new GZipStream(destination, CompressionLevel.Fastest, false)) {
                     gzip.Write(bytes, 0, bytes.Length);
                     gzip.Flush();
-                    gzip.Close();
-                    return destination.ToArray();
                 }
+                return destination.ToArray();
             }
         }
 
@@ -29,7 +28,6 @@ namespace KafkaClient.Protocol
             using (var gzip = new GZipStream(source, CompressionMode.Decompress, true)) {
                 gzip.CopyTo(destination);
                 gzip.Flush();
-                gzip.Close();
             }
             destination.Position = 0;
             destination.Write(((int)destination.Length - SizeBytes).ToBytes(), 0, SizeBytes); // fill the placeholder

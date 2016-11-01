@@ -97,7 +97,7 @@ namespace KafkaClient.Protocol
 
         private static StringBuilder AppendWithIndent(this StringBuilder buffer, object o, string indent)
         {
-            foreach (var property in o.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance).Where(p => p.CanRead && p.GetIndexParameters().Length <= 1)) {
+            foreach (var property in o.GetType().GetRuntimeProperties().Where(p => p.CanRead && p.GetIndexParameters().Length <= 1)) {
                 buffer.Append($"{indent}{property.Name}: ").AppendValueWithIndent(property.GetValue(o), indent);
                 buffer.AppendLine();
             }
@@ -147,7 +147,7 @@ namespace KafkaClient.Protocol
                 return false;
             }
 
-            if (value.GetType().IsClass) {
+            if (value.GetType().GetTypeInfo().IsClass) {
                 if (isInline) {
                     buffer.AppendLine();
                 }
