@@ -362,7 +362,6 @@ namespace KafkaClient.Tests
         }
 
         [Test]
-        [Ignore("This test is currently faulty, can't have UpdateOrCreateOffset behave differently than FetchOffset")]
         public async Task UpdateOrCreateOffsetTopicDoesntExistTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
@@ -435,7 +434,7 @@ namespace KafkaClient.Tests
 
             var topic = IntegrationConfig.TopicName();
 
-            Assert.ThrowsAsync<RequestException>(async () => await brokerRouter.GetTopicOffsetAsync(topic, _partitionId, CancellationToken.None));
+            await brokerRouter.GetTopicOffsetAsync(topic, _partitionId, CancellationToken.None);
         }
 
         private void CheckMessages(List<Message> expected, List<Message> actual)

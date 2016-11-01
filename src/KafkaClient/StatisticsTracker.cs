@@ -70,14 +70,14 @@ namespace KafkaClient
             }
         }
 
-        internal static IDisposable TrackNetworkWrite(SocketPayloadSendTask sendTask)
+        internal static IDisposable TrackNetworkWrite(SocketPayloadWriteTask writeTask)
         {
             var sw = Stopwatch.StartNew();
             Interlocked.Increment(ref Gauges.ActiveWriteOperation);
             return new Disposable(
                 () => {
                     Interlocked.Decrement(ref Gauges.ActiveWriteOperation);
-                    CompleteNetworkWrite(sendTask.Payload, sw.ElapsedMilliseconds, sendTask.Tcs.Task.Exception != null);
+                    CompleteNetworkWrite(writeTask.Payload, sw.ElapsedMilliseconds, writeTask.Tcs.Task.Exception != null);
                 });
         }
 

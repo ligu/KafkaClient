@@ -3,11 +3,11 @@ using KafkaClient.Common;
 
 namespace KafkaClient.Connections
 {
-    internal class SocketPayloadSendTask : CancellableTask<DataPayload>
+    internal class SocketPayloadWriteTask : CancellableTask<DataPayload>
     {
         public DataPayload Payload { get; }
 
-        public SocketPayloadSendTask(DataPayload payload, CancellationToken cancellationToken)
+        public SocketPayloadWriteTask(DataPayload payload, CancellationToken cancellationToken)
             : base(cancellationToken)
         {
             Payload = payload;

@@ -106,7 +106,7 @@ namespace KafkaClient.Common
                     if (attempt == 0) { // first failure
                         timer.Restart();
                     }
-                    await policy.HandleErrorAndDelayAsync(onException, onFinalException, attempt, timer, ex, cancellationToken);
+                    await policy.HandleErrorAndDelayAsync(onException, onFinalException, attempt, timer, ex, cancellationToken).ConfigureAwait(false);
                 }
             }
         }
@@ -170,7 +170,7 @@ namespace KafkaClient.Common
                         return response.Value;
                     }
                 } catch (Exception ex) {
-                    await policy.HandleErrorAndDelayAsync(onException, onFinalException, attempt, timer, ex, cancellationToken);
+                    await policy.HandleErrorAndDelayAsync(onException, onFinalException, attempt, timer, ex, cancellationToken).ConfigureAwait(false);;
                 }
             }
         }

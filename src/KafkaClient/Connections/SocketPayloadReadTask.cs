@@ -3,9 +3,9 @@ using KafkaClient.Common;
 
 namespace KafkaClient.Connections
 {
-    internal class SocketPayloadReceiveTask : CancellableTask<byte[]>
+    internal class SocketPayloadReadTask : CancellableTask<byte[]>
     {
-        public SocketPayloadReceiveTask(int readSize, CancellationToken cancellationToken)
+        public SocketPayloadReadTask(int readSize, CancellationToken cancellationToken)
             : base(cancellationToken)
         {
             ReadSize = readSize;

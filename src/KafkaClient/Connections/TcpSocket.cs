@@ -22,8 +22,8 @@ namespace KafkaClient.Connections
         private readonly ILog _log;
         private readonly IConnectionConfiguration _configuration;
 
-        private readonly AsyncCollection<SocketPayloadSendTask> _sendTaskQueue;
-        private readonly AsyncCollection<SocketPayloadReceiveTask> _receiveTaskQueue;
+        private readonly AsyncCollection<SocketPayloadWriteTask> _writeTaskQueue;
+        private readonly AsyncCollection<SocketPayloadReadTask> _readTaskQueue;
         // ReSharper disable NotAccessedField.Local
         private readonly Task _socketTask;
         // ReSharper restore NotAccessedField.Local
@@ -41,12 +41,12 @@ namespace KafkaClient.Connections
             Endpoint = endpoint;
             _log = log ?? TraceLog.Log;
             _configuration = configuration ?? new ConnectionConfiguration();
-            _sendTaskQueue = new AsyncCollection<SocketPayloadSendTask>();
-            _receiveTaskQueue = new AsyncCollection<SocketPayloadReceiveTask>();
+            _writeTaskQueue = new AsyncCollection<SocketPayloadWriteTask>();
+            _readTaskQueue = new AsyncCollection<SocketPayloadReadTask>();
 
             _disposeRegistration = _disposeToken.Token.Register(() => {
-                _sendTaskQueue.CompleteAdding();
-                _receiveTaskQueue.CompleteAdding();
+                _writeTaskQueue.CompleteAdding();
+                _readTaskQueue.CompleteAdding();
             });
 
             // dedicate a long running task to the read/write operations
@@ -61,18 +61,18 @@ namespace KafkaClient.Connections
         /// <inheritdoc />
         public Task<byte[]> ReadAsync(int readSize, CancellationToken cancellationToken)
         {
-            var readTask = new SocketPayloadReceiveTask(readSize, cancellationToken);
-            _receiveTaskQueue.Add(readTask, cancellationToken);
+            var readTask = new SocketPayloadReadTask(readSize, cancellationToken);
+            _readTaskQueue.Add(readTask, cancellationToken);
             return readTask.Tcs.Task;
         }
 
         /// <inheritdoc />
         public Task<DataPayload> WriteAsync(DataPayload payload, CancellationToken cancellationToken)
         {
-            var sendTask = new SocketPayloadSendTask(payload, cancellationToken);
-            _sendTaskQueue.Add(sendTask, cancellationToken);
+            var writeTask = new SocketPayloadWriteTask(payload, cancellationToken);
+            _writeTaskQueue.Add(writeTask, cancellationToken);
             _configuration.OnWriteEnqueued?.Invoke(Endpoint, payload);
-            return sendTask.Tcs.Task;
+            return writeTask.Tcs.Task;
         }
 
         #endregion Interface Implementation...
@@ -108,13 +108,13 @@ namespace KafkaClient.Connections
         private async Task SetExceptionToAllPendingTasksAsync(Exception ex)
         {
             var wrappedException = WrappedException(ex);
-            var failedSend = await _sendTaskQueue.TryApplyAsync(p => p.Tcs.TrySetException(wrappedException), new CancellationToken(true));
-            var failedReceive = await _receiveTaskQueue.TryApplyAsync(p => p.Tcs.TrySetException(wrappedException), new CancellationToken(true));
-            if (failedSend > 0) {
-                _log.Error(LogEvent.Create(ex, $"TcpSocket exception, cancelled {failedSend} pending writes"));
+            var failedWrites = await _writeTaskQueue.TryApplyAsync(p => p.Tcs.TrySetException(wrappedException), new CancellationToken(true));
+            var failedReads = await _readTaskQueue.TryApplyAsync(p => p.Tcs.TrySetException(wrappedException), new CancellationToken(true));
+            if (failedWrites > 0) {
+                _log.Error(LogEvent.Create(ex, $"TcpSocket exception, cancelled {failedWrites} pending writes"));
             }
-            if (failedReceive > 0) {
-                _log.Error(LogEvent.Create(ex, $"TcpSocket exception, cancelled {failedReceive} pending reads"));
+            if (failedReads > 0) {
+                _log.Error(LogEvent.Create(ex, $"TcpSocket exception, cancelled {failedReads} pending reads"));
             }
         }
 
@@ -127,13 +127,13 @@ namespace KafkaClient.Connections
             //https://msdn.microsoft.com/en-us/library/z2xae4f4.aspx
 
             //Exception need to thrown immediately and not depend on the next task
-            var receiveTask = ProcessNetworkstreamTask(netStream, _receiveTaskQueue, ProcessReceiveTaskAsync);
-            var sendTask = ProcessNetworkstreamTask(netStream, _sendTaskQueue, ProcessSentTasksAsync);
-            await Task.WhenAny(receiveTask, sendTask).ConfigureAwait(false);
+            var readTask = ProcessNetworkstreamTask(netStream, _readTaskQueue, ProcessReadTaskAsync);
+            var writeTask = ProcessNetworkstreamTask(netStream, _writeTaskQueue, ProcessWriteTasksAsync);
+            await Task.WhenAny(readTask, writeTask).ConfigureAwait(false);
             if (_disposeToken.IsCancellationRequested) return;
 
-            await ThrowTaskExceptionIfFaulted(receiveTask);
-            await ThrowTaskExceptionIfFaulted(sendTask);
+            await ThrowTaskExceptionIfFaulted(readTask);
+            await ThrowTaskExceptionIfFaulted(writeTask);
         }
 
         private static async Task ThrowTaskExceptionIfFaulted(Task task)
@@ -153,31 +153,31 @@ namespace KafkaClient.Connections
             }
         }
 
-        private async Task ProcessReceiveTaskAsync(Stream stream, SocketPayloadReceiveTask receiveTask)
+        private async Task ProcessReadTaskAsync(Stream stream, SocketPayloadReadTask readTask)
         {
-            using (receiveTask) {
-                var totalBytesReceived = 0;
+            using (readTask) {
+                var totalBytesRead = 0;
                 var timer = new Stopwatch();
                 try {
-                    _configuration.OnReading?.Invoke(Endpoint, receiveTask.ReadSize);
-                    var buffer = new byte[receiveTask.ReadSize];
+                    _configuration.OnReading?.Invoke(Endpoint, readTask.ReadSize);
+                    var buffer = new byte[readTask.ReadSize];
                     timer.Start();
-                    while (totalBytesReceived < receiveTask.ReadSize) {
-                        var readSize = receiveTask.ReadSize - totalBytesReceived;
+                    while (totalBytesRead < readTask.ReadSize) {
+                        var readSize = readTask.ReadSize - totalBytesRead;
 
-                        _log.Debug(() => LogEvent.Create($"Receiving ({readSize}? bytes) from {Endpoint}"));
-                        _configuration.OnReadingChunk?.Invoke(Endpoint, receiveTask.ReadSize, totalBytesReceived, timer.Elapsed);
-                        var bytesReceived = await stream.ReadAsync(buffer, totalBytesReceived, readSize, receiveTask.CancellationToken).ConfigureAwait(false);
-                        var remainingBytes = receiveTask.ReadSize - totalBytesReceived;
-                        totalBytesReceived += bytesReceived;
-                        _configuration.OnReadChunk?.Invoke(Endpoint, receiveTask.ReadSize, remainingBytes, bytesReceived, timer.Elapsed);
-                        _log.Debug(() => LogEvent.Create($"Received {bytesReceived} bytes from {Endpoint}{(receiveTask.CancellationToken.IsCancellationRequested ? " (cancelled)" : "")}"));
+                        _log.Debug(() => LogEvent.Create($"Reading ({readSize}? bytes) from {Endpoint}"));
+                        _configuration.OnReadingChunk?.Invoke(Endpoint, readTask.ReadSize, totalBytesRead, timer.Elapsed);
+                        var bytesRead = await stream.ReadAsync(buffer, totalBytesRead, readSize, readTask.CancellationToken).ConfigureAwait(false);
+                        totalBytesRead += bytesRead;
+                        var remainingBytes = readTask.ReadSize - totalBytesRead;
+                        _configuration.OnReadChunk?.Invoke(Endpoint, readTask.ReadSize, remainingBytes, bytesRead, timer.Elapsed);
+                        _log.Debug(() => LogEvent.Create($"Read {bytesRead} bytes from {Endpoint}{(readTask.CancellationToken.IsCancellationRequested ? " (cancelled)" : "")}"));
 
-                        if (bytesReceived <= 0) {
+                        if (bytesRead <= 0) {
                             using (_client) {
                                 _client = null;
                                 if (_disposeToken.IsCancellationRequested) {
-                                    _configuration.OnReadFailed?.Invoke(Endpoint, receiveTask.ReadSize, timer.Elapsed, new TaskCanceledException());
+                                    _configuration.OnReadFailed?.Invoke(Endpoint, readTask.ReadSize, timer.Elapsed, new TaskCanceledException());
                                     return;
                                 }
 
@@ -188,11 +188,11 @@ namespace KafkaClient.Connections
                     timer.Stop();
                     _configuration.OnRead?.Invoke(Endpoint, buffer, timer.Elapsed);
 
-                    receiveTask.Tcs.TrySetResult(buffer);
-                    totalBytesReceived = 0;
+                    readTask.Tcs.TrySetResult(buffer);
+                    totalBytesRead = 0;
                 } catch (Exception ex) {
                     timer.Stop();
-                    _configuration.OnReadFailed?.Invoke(Endpoint, receiveTask.ReadSize, timer.Elapsed, ex);
+                    _configuration.OnReadFailed?.Invoke(Endpoint, readTask.ReadSize, timer.Elapsed, ex);
 
                     Exception exception = null;
                     if (_disposeToken.IsCancellationRequested) {
@@ -201,10 +201,10 @@ namespace KafkaClient.Connections
                         exception = new ConnectionException(Endpoint, ex);
                     }
 
-                    if (totalBytesReceived > 0) {
-                        receiveTask.Tcs.TrySetException(new PartialReadException(totalBytesReceived, receiveTask.ReadSize, exception ?? ex));
+                    if (totalBytesRead > 0) {
+                        readTask.Tcs.TrySetException(new PartialReadException(totalBytesRead, readTask.ReadSize, exception ?? ex));
                     } else {
-                        receiveTask.Tcs.TrySetException(exception ?? ex);
+                        readTask.Tcs.TrySetException(exception ?? ex);
                     }
                     if (_disposeToken.IsCancellationRequested) return;
                     if (exception != null) throw exception;
@@ -213,25 +213,25 @@ namespace KafkaClient.Connections
             }
         }
 
-        private async Task ProcessSentTasksAsync(Stream stream, SocketPayloadSendTask sendTask)
+        private async Task ProcessWriteTasksAsync(Stream stream, SocketPayloadWriteTask writeTask)
         {
-            if (sendTask == null) return;
+            if (writeTask == null) return;
 
-            using (sendTask) {
+            using (writeTask) {
                 var timer = new Stopwatch();
                 try {
-                    _log.Debug(() => LogEvent.Create($"Sending {sendTask.Payload.Buffer.Length} bytes with correlation id {sendTask.Payload.CorrelationId} to {Endpoint}"));
-                    _configuration.OnWriting?.Invoke(Endpoint, sendTask.Payload);
+                    _log.Debug(() => LogEvent.Create($"Writing {writeTask.Payload.Buffer.Length} bytes with correlation id {writeTask.Payload.CorrelationId} to {Endpoint}"));
+                    _configuration.OnWriting?.Invoke(Endpoint, writeTask.Payload);
                     timer.Start();
-                    await stream.WriteAsync(sendTask.Payload.Buffer, 0, sendTask.Payload.Buffer.Length, _disposeToken.Token).ConfigureAwait(false);
+                    await stream.WriteAsync(writeTask.Payload.Buffer, 0, writeTask.Payload.Buffer.Length, _disposeToken.Token).ConfigureAwait(false);
                     timer.Stop();
-                    _configuration.OnWritten?.Invoke(Endpoint, sendTask.Payload, timer.Elapsed);
-                    _log.Debug(() => LogEvent.Create($"Sent {sendTask.Payload.Buffer.Length} bytes with correlation id {sendTask.Payload.CorrelationId} to {Endpoint}"));
-                    sendTask.Tcs.TrySetResult(sendTask.Payload);
+                    _configuration.OnWritten?.Invoke(Endpoint, writeTask.Payload, timer.Elapsed);
+                    _log.Debug(() => LogEvent.Create($"Wrote {writeTask.Payload.Buffer.Length} bytes with correlation id {writeTask.Payload.CorrelationId} to {Endpoint}"));
+                    writeTask.Tcs.TrySetResult(writeTask.Payload);
                 } catch (Exception ex) {
                     var wrappedException = WrappedException(ex);
-                    _configuration.OnWriteFailed?.Invoke(Endpoint, sendTask.Payload, timer.Elapsed, wrappedException);
-                    sendTask.Tcs.TrySetException(wrappedException);
+                    _configuration.OnWriteFailed?.Invoke(Endpoint, writeTask.Payload, timer.Elapsed, wrappedException);
+                    writeTask.Tcs.TrySetException(wrappedException);
                     throw;
                 }
             }
