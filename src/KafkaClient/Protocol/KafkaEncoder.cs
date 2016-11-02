@@ -19,7 +19,6 @@ namespace KafkaClient.Protocol
             if (typeof(T) == typeof(FetchResponse)) return (T)FetchResponse(context, payload, hasSize);
             if (typeof(T) == typeof(OffsetResponse)) return (T)OffsetResponse(context, payload, hasSize);
             if (typeof(T) == typeof(MetadataResponse)) return (T)MetadataResponse(context, payload, hasSize);
-            if (typeof(T) == typeof(StopReplicaResponse)) return (T)StopReplicaResponse(context, payload, hasSize);
             if (typeof(T) == typeof(OffsetCommitResponse)) return (T)OffsetCommitResponse(context, payload, hasSize);
             if (typeof(T) == typeof(OffsetFetchResponse)) return (T)OffsetFetchResponse(context, payload, hasSize);
             if (typeof(T) == typeof(GroupCoordinatorResponse)) return (T)GroupCoordinatorResponse(context, payload, hasSize);
@@ -64,8 +63,6 @@ namespace KafkaClient.Protocol
                     return EncodeRequest(context, (OffsetRequest) request);
                 case ApiKeyRequestType.Metadata:
                     return EncodeRequest(context, (MetadataRequest) request);
-                case ApiKeyRequestType.StopReplica:
-                    return EncodeRequest(context, (StopReplicaRequest) request);
                 case ApiKeyRequestType.OffsetCommit:
                     return EncodeRequest(context, (OffsetCommitRequest) request);
                 case ApiKeyRequestType.OffsetFetch:
@@ -278,23 +275,6 @@ namespace KafkaClient.Protocol
                 message.Write(request.Topics, true);
 
                 return message.ToBytes();
-            }
-        }
-
-        private static byte[] EncodeRequest(IRequestContext context, StopReplicaRequest request)
-        {
-            using (var writer = EncodeHeader(context, request)) {
-                writer.Write(request.ControllerId)
-                      .Write(request.ControllerEpoch)
-                      .Write(request.DeletePartitions ? (byte)1 : (byte)0)
-                      .Write(request.Topics.Count);
-
-                foreach (var topic in request.Topics) {
-                    writer.Write(topic.TopicName)
-                          .Write(topic.PartitionId);
-                }
-
-                return writer.ToBytes();
             }
         }
 
@@ -612,7 +592,6 @@ namespace KafkaClient.Protocol
             }
         }
 
-
         private static IResponse ProduceResponse(IRequestContext context, byte[] payload, bool hasSize)
         {
             using (var reader = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
@@ -754,23 +733,7 @@ namespace KafkaClient.Protocol
                     topics[t] = new MetadataResponse.Topic(topicName, topicError, partitions, isInternal);
                 }
 
-                return new MetadataResponse(brokers, topics, controllerId);
-            }
-        }
-
-        private static IResponse StopReplicaResponse(IRequestContext context, byte[] payload, bool hasSize)
-        {
-            using (var reader = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
-                var errorCode = (ErrorResponseCode)reader.ReadInt16();
-
-                var topics = new TopicResponse[reader.ReadInt32()];
-                for (var i = 0; i < topics.Length; i++) {
-                    var topicName = reader.ReadString();
-                    var partitionId = reader.ReadInt32();
-                    var topicErrorCode = (ErrorResponseCode)reader.ReadInt16();
-                    topics[i] = new TopicResponse(topicName, partitionId, topicErrorCode);
-                }
-                return new StopReplicaResponse(errorCode, topics);
+                return new MetadataResponse(brokers, topics, controllerId, clusterId);
             }
         }
         

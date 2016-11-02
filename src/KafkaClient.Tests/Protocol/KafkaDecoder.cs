@@ -34,7 +34,6 @@ namespace KafkaClient.Tests.Protocol
             if (typeof(T) == typeof(FetchRequest)) return (T)FetchRequest(context, data);
             if (typeof(T) == typeof(OffsetRequest)) return (T)OffsetRequest(context, data);
             if (typeof(T) == typeof(MetadataRequest)) return (T)MetadataRequest(context, data);
-            if (typeof(T) == typeof(StopReplicaRequest)) return (T)StopReplicaRequest(context, data);
             if (typeof(T) == typeof(OffsetCommitRequest)) return (T)OffsetCommitRequest(context, data);
             if (typeof(T) == typeof(OffsetFetchRequest)) return (T)OffsetFetchRequest(context, data);
             if (typeof(T) == typeof(GroupCoordinatorRequest)) return (T)GroupCoordinatorRequest(context, data);
@@ -64,7 +63,6 @@ namespace KafkaClient.Tests.Protocol
                 || TryEncodeResponse(writer, context, response as FetchResponse)
                 || TryEncodeResponse(writer, context, response as OffsetResponse)
                 || TryEncodeResponse(writer, context, response as MetadataResponse)
-                || TryEncodeResponse(writer, context, response as StopReplicaResponse)
                 || TryEncodeResponse(writer, context, response as OffsetCommitResponse)
                 || TryEncodeResponse(writer, context, response as OffsetFetchResponse)
                 || TryEncodeResponse(writer, context, response as GroupCoordinatorResponse)
@@ -165,24 +163,6 @@ namespace KafkaClient.Tests.Protocol
                 }
 
                 return new MetadataRequest(topicNames);
-            }
-        }
-
-        private static IRequest StopReplicaRequest(IRequestContext context, byte[] payload)
-        {
-            using (var reader = ReadHeader(payload)) {
-                var controllerId = reader.ReadInt32();
-                var controllerEpoch = reader.ReadInt32();
-                var shouldDelete = reader.ReadBoolean();
-
-                var topics = new TopicPartition[reader.ReadInt32()];
-                for (var t = 0; t < topics.Length; t++) {
-                    var topicName = reader.ReadString();
-                    var partitionId = reader.ReadInt32();
-                    topics[t] = new TopicPartition(topicName, partitionId);
-                }
-
-                return new StopReplicaRequest(controllerId, controllerEpoch, topics, shouldDelete);
             }
         }
         
@@ -500,20 +480,6 @@ namespace KafkaClient.Tests.Protocol
                         writer.Write(isr);
                     }
                 }
-            }
-            return true;
-        }
-
-        private static bool TryEncodeResponse(IKafkaWriter writer, IRequestContext context, StopReplicaResponse response)
-        {
-            if (response == null) return false;
-
-            writer.Write(response.ErrorCode)
-                .Write(response.Topics.Count);
-            foreach (var topic in response.Topics) {
-                writer.Write(topic.TopicName)
-                    .Write(topic.PartitionId)
-                    .Write(topic.ErrorCode);
             }
             return true;
         }

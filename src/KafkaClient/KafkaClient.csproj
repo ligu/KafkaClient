@@ -102,16 +102,12 @@
     <Compile Include="CacheConfiguration.cs" />
     <Compile Include="ProducerConfiguration.cs" />
     <Compile Include="ProducerExtensions.cs" />
-    <Compile Include="Protocol\ControlledShutdownRequest.cs" />
-    <Compile Include="Protocol\ControlledShutdownResponse.cs" />
     <Compile Include="Protocol\CreateTopicsRequest.cs" />
     <Compile Include="Protocol\CreateTopicsResponse.cs" />
     <Compile Include="Protocol\DeleteTopicsRequest.cs" />
     <Compile Include="Protocol\DeleteTopicsResponse.cs" />
     <Compile Include="Protocol\DescribeGroupsRequest.cs" />
     <Compile Include="Protocol\DescribeGroupsResponse.cs" />
-    <Compile Include="Protocol\LeaderAndIsrRequest.cs" />
-    <Compile Include="Protocol\LeaderAndIsrResponse.cs" />
     <Compile Include="Protocol\ListGroupsRequest.cs" />
     <Compile Include="Protocol\ListGroupsResponse.cs" />
     <Compile Include="Protocol\SaslHandshakeRequest.cs" />
@@ -129,8 +125,6 @@
     <Compile Include="Protocol\JoinGroupResponse.cs" />
     <Compile Include="Protocol\LeaveGroupRequest.cs" />
     <Compile Include="Protocol\LeaveGroupResponse.cs" />
-    <Compile Include="Protocol\StopReplicaRequest.cs" />
-    <Compile Include="Protocol\StopReplicaResponse.cs" />
     <Compile Include="Protocol\SyncGroupRequest.cs" />
     <Compile Include="Protocol\SyncGroupResponse.cs" />
     <Compile Include="Protocol\Types\IMemberAssignment.cs" />
