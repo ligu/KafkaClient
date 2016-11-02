@@ -47,24 +47,6 @@ namespace KafkaClient.Tests.Protocol
     {
         private readonly Randomizer _randomizer = new Randomizer();
 
-        /// <summary>
-        /// ProduceRequest => RequiredAcks Timeout [TopicName [Partition MessageSetSize MessageSet]]
-        ///  RequiredAcks => int16   -- This field indicates how many acknowledgements the servers should receive before responding to the request. 
-        ///                             If it is 0 the server will not send any response (this is the only case where the server will not reply to 
-        ///                             a request). If it is 1, the server will wait the data is written to the local log before sending a response. 
-        ///                             If it is -1 the server will block until the message is committed by all in sync replicas before sending a response.
-        ///  Timeout => int32        -- This provides a maximum time in milliseconds the server can await the receipt of the number of acknowledgements 
-        ///                             in RequiredAcks. The timeout is not an exact limit on the request time for a few reasons: (1) it does not include 
-        ///                             network latency, (2) the timer begins at the beginning of the processing of this request so if many requests are 
-        ///                             queued due to server overload that wait time will not be included, (3) we will not terminate a local write so if 
-        ///                             the local write time exceeds this timeout it will not be respected. To get a hard timeout of this type the client 
-        ///                             should use the socket timeout.
-        ///  TopicName => string     -- The topic that data is being published to.
-        ///  Partition => int32      -- The partition that data is being published to.
-        ///  MessageSetSize => int32 -- The size, in bytes, of the message set that follows.
-        /// 
-        /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-Messagesets
-        /// </summary>
         [Test]
         public void ProduceRequest(
             [Values(0, 1, 2)] short version,
@@ -85,25 +67,6 @@ namespace KafkaClient.Tests.Protocol
             request.AssertCanEncodeDecodeRequest(version);
         }
 
-        /// <summary>
-        /// ProduceResponse => [TopicName [Partition ErrorCode Offset *Timestamp]] *ThrottleTime
-        ///  *ThrottleTime is only version 1 (0.9.0) and above
-        ///  *Timestamp is only version 2 (0.10.0) and above
-        ///  TopicName => string   -- The topic this response entry corresponds to.
-        ///  Partition => int32    -- The partition this response entry corresponds to.
-        ///  ErrorCode => int16    -- The error from this partition, if any. Errors are given on a per-partition basis because a given partition may be 
-        ///                           unavailable or maintained on a different host, while others may have successfully accepted the produce request.
-        ///  Offset => int64       -- The offset assigned to the first message in the message set appended to this partition.
-        ///  Timestamp => int64    -- If LogAppendTime is used for the topic, this is the timestamp assigned by the broker to the message set. 
-        ///                           All the messages in the message set have the same timestamp.
-        ///                           If CreateTime is used, this field is always -1. The producer can assume the timestamp of the messages in the 
-        ///                           produce request has been accepted by the broker if there is no error code returned.
-        ///                           Unit is milliseconds since beginning of the epoch (midnight Jan 1, 1970 (UTC)).
-        ///  ThrottleTime => int32 -- Duration in milliseconds for which the request was throttled due to quota violation. 
-        ///                           (Zero if the request did not violate any quota).
-        /// 
-        /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-Messagesets
-        /// </summary>
         [Test]
         public void ProduceResponse(
             [Values(0, 1, 2)] short version,
@@ -126,30 +89,9 @@ namespace KafkaClient.Tests.Protocol
             response.AssertCanEncodeDecodeResponse(version);
         }
 
-        /// <summary>
-        /// FetchRequest => ReplicaId MaxWaitTime MinBytes [TopicName [Partition FetchOffset MaxBytes]]
-        ///  ReplicaId => int32   -- The replica id indicates the node id of the replica initiating this request. Normal client consumers should always 
-        ///                          specify this as -1 as they have no node id. Other brokers set this to be their own node id. The value -2 is accepted 
-        ///                          to allow a non-broker to issue fetch requests as if it were a replica broker for debugging purposes.
-        ///  MaxWaitTime => int32 -- The max wait time is the maximum amount of time in milliseconds to block waiting if insufficient data is available 
-        ///                          at the time the request is issued.
-        ///  MinBytes => int32    -- This is the minimum number of bytes of messages that must be available to give a response. If the client sets this 
-        ///                          to 0 the server will always respond immediately, however if there is no new data since their last request they will 
-        ///                          just get back empty message sets. If this is set to 1, the server will respond as soon as at least one partition has 
-        ///                          at least 1 byte of data or the specified timeout occurs. By setting higher values in combination with the timeout the 
-        ///                          consumer can tune for throughput and trade a little additional latency for reading only large chunks of data (e.g. 
-        ///                          setting MaxWaitTime to 100 ms and setting MinBytes to 64k would allow the server to wait up to 100ms to try to accumulate 
-        ///                          64k of data before responding).
-        ///  TopicName => string  -- The name of the topic.
-        ///  Partition => int32   -- The id of the partition the fetch is for.
-        ///  FetchOffset => int64 -- The offset to begin this fetch from.
-        ///  MaxBytes => int32    -- The maximum bytes to include in the message set for this partition. This helps bound the size of the response.
-        /// 
-        /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-FetchAPI
-        /// </summary>
         [Test]
         public void FetchRequest(
-            [Values(0, 1, 2)] short version,
+            [Values(0, 1, 2, 3)] short version,
             [Values(0, 100)] int maxWaitMilliseconds, 
             [Values(0, 64000)] int minBytes, 
             [Values("test", "a really long name, with spaces and punctuation!")] string topic, 
@@ -161,28 +103,13 @@ namespace KafkaClient.Tests.Protocol
             for (var t = 0; t < topicsPerRequest; t++) {
                 fetches.Add(new FetchRequest.Topic(topic + t, t % totalPartitions, _randomizer.Next(0, int.MaxValue), maxBytes));
             }
-            var request = new FetchRequest(fetches, TimeSpan.FromMilliseconds(maxWaitMilliseconds), minBytes);
+            var request = new FetchRequest(fetches, TimeSpan.FromMilliseconds(maxWaitMilliseconds), minBytes, version >= 3 ? maxBytes / _randomizer.Next(1, maxBytes) : 0);
             request.AssertCanEncodeDecodeRequest(version);
         }
 
-        /// <summary>
-        /// FetchResponse => *ThrottleTime [TopicName [Partition ErrorCode HighwaterMarkOffset MessageSetSize MessageSet]]
-        ///  *ThrottleTime is only version 1 (0.9.0) and above
-        ///  ThrottleTime => int32        -- Duration in milliseconds for which the request was throttled due to quota violation. (Zero if the request did not 
-        ///                                  violate any quota.)
-        ///  TopicName => string          -- The topic this response entry corresponds to.
-        ///  Partition => int32           -- The partition this response entry corresponds to.
-        ///  ErrorCode => int16           -- The error from this partition, if any. Errors are given on a per-partition basis because a given partition may 
-        ///                                  be unavailable or maintained on a different host, while others may have successfully accepted the produce request.
-        ///  HighwaterMarkOffset => int64 -- The offset at the end of the log for this partition. This can be used by the client to determine how many messages 
-        ///                                  behind the end of the log they are.
-        ///  MessageSetSize => int32      -- The size in bytes of the message set for this partition
-        /// 
-        /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-FetchResponse
-        /// </summary>
         [Test]
         public void FetchResponse(
-            [Values(0, 1, 2)] short version,
+            [Values(0, 1, 2, 3)] short version,
             [Values(0, 1234)] int throttleTime,
             [Values("test", "a really long name, with spaces and punctuation!")] string topicName, 
             [Values(1, 10)] int topicsPerRequest, 
@@ -205,51 +132,28 @@ namespace KafkaClient.Tests.Protocol
             response.AssertCanEncodeDecodeResponse(version);
         }
 
-        /// <summary>
-        /// OffsetRequest => ReplicaId [TopicName [Partition Timestamp MaxNumberOfOffsets]]
-        ///  ReplicaId => int32   -- The replica id indicates the node id of the replica initiating this request. Normal client consumers should always 
-        ///                          specify this as -1 as they have no node id. Other brokers set this to be their own node id. The value -2 is accepted 
-        ///                          to allow a non-broker to issue fetch requests as if it were a replica broker for debugging purposes.
-        ///  TopicName => string  -- The name of the topic.
-        ///  Partition => int32   -- The id of the partition the fetch is for.
-        ///  Timestamp => int64        -- Used to ask for all messages before a certain time (ms). There are two special values. Specify -1 to receive the 
-        ///                          latest offset (i.e. the offset of the next coming message) and -2 to receive the earliest available offset. Note 
-        ///                          that because offsets are pulled in descending order, asking for the earliest offset will always return you a single element.
-        ///  MaxNumberOfOffsets => int32 
-        /// 
-        /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetAPI(AKAListOffset)
-        /// </summary>
         [Test]
         public void OffsetsRequest(
+            [Values(0, 1)] short version,
             [Values("test", "a really long name, with spaces and punctuation!")] string topic, 
             [Values(1, 10)] int topicsPerRequest, 
             [Values(1, 5)] int totalPartitions, 
             [Values(-2, -1, 123456, 10000000)] long time,
             [Values(1, 10)] int maxOffsets)
         {
-            var offsets = new List<OffsetRequest.Topic>();
+            var topics = new List<OffsetRequest.Topic>();
             for (var t = 0; t < topicsPerRequest; t++) {
-                var offset = new OffsetRequest.Topic(topic + t, t % totalPartitions, time, maxOffsets);
-                offsets.Add(offset);
+                var offset = new OffsetRequest.Topic(topic + t, t % totalPartitions, time, version == 0 ? maxOffsets : 1);
+                topics.Add(offset);
             }
-            var request = new OffsetRequest(offsets);
+            var request = new OffsetRequest(topics);
 
-            request.AssertCanEncodeDecodeRequest(0);
+            request.AssertCanEncodeDecodeRequest(version);
         }
 
-        /// <summary>
-        /// OffsetResponse => [TopicName [PartitionOffsets]]
-        ///  PartitionOffsets => Partition ErrorCode [Offset]
-        ///  TopicName => string  -- The name of the topic.
-        ///  Partition => int32   -- The id of the partition the fetch is for.
-        ///  ErrorCode => int16   -- The error from this partition, if any. Errors are given on a per-partition basis because a given partition may 
-        ///                          be unavailable or maintained on a different host, while others may have successfully accepted the produce request.
-        ///  Offset => int64
-        /// 
-        /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetAPI(AKAListOffset)
-        /// </summary>
         [Test]
         public void OffsetsResponse(
+            [Values(0, 1)] short version,
             [Values("test", "a really long name, with spaces and punctuation!")] string topicName, 
             [Values(1, 10)] int topicsPerRequest, 
             [Values(5)] int totalPartitions, 
@@ -264,20 +168,14 @@ namespace KafkaClient.Tests.Protocol
             for (var t = 0; t < topicsPerRequest; t++) {
                 var partitionId = t % totalPartitions;
                 for (var o = 0; o < offsetsPerPartition; o++) {
-                    topics.Add(new OffsetResponse.Topic(topicName + t, partitionId, errorCode, (long)_randomizer.Next()));
+                    topics.Add(new OffsetResponse.Topic(topicName + t, partitionId, errorCode, _randomizer.Next(-1, int.MaxValue), version >= 1 ? (DateTime?)DateTime.UtcNow : null));
                 }
             }
             var response = new OffsetResponse(topics);
 
-            response.AssertCanEncodeDecodeResponse(0);
+            response.AssertCanEncodeDecodeResponse(version);
         }
 
-        /// <summary>
-        /// TopicMetadataRequest => [TopicName]
-        ///  TopicName => string  -- The topics to produce metadata for. If no topics are specified fetch metadata for all topics.
-        ///
-        /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-MetadataAPI
-        /// </summary>
         [Test]
         public void MetadataRequest(
             [Values("test", "a really long name, with spaces and punctuation!")] string topic,
@@ -294,7 +192,7 @@ namespace KafkaClient.Tests.Protocol
 
         [Test]
         public void MetadataResponse(
-            [Values(0, 1)] short version,
+            [Values(0, 1, 2)] short version,
             [Values(1, 15)] int brokersPerRequest,
             [Values("test", "a really long name, with spaces and punctuation!")] string topicName,
             [Values(1, 10)] int topicsPerRequest,
@@ -325,28 +223,11 @@ namespace KafkaClient.Tests.Protocol
                 }
                 topics.Add(new MetadataResponse.Topic(topicName + t, errorCode, partitions, version >= 1 ? topicsPerRequest%2 == 0 : (bool?)null));
             }
-            var response = new MetadataResponse(brokers, topics, version >= 1 ? brokersPerRequest : (int?)null);
+            var response = new MetadataResponse(brokers, topics, version >= 1 ? brokersPerRequest : (int?)null, version >= 2 ? $"cluster-{version}" : null);
 
             response.AssertCanEncodeDecodeResponse(version);
         }
 
-        /// <summary>
-        /// OffsetCommitRequest => ConsumerGroup *ConsumerGroupGenerationId *MemberId *RetentionTime [TopicName [Partition Offset *TimeStamp Metadata]]
-        /// *ConsumerGroupGenerationId, MemberId is only version 1 (0.8.2) and above
-        /// *TimeStamp is only version 1 (0.8.2)
-        /// *RetentionTime is only version 2 (0.9.0) and above
-        ///  ConsumerGroupId => string          -- The consumer group id.
-        ///  ConsumerGroupGenerationId => int32 -- The generation of the consumer group.
-        ///  MemberId => string                 -- The consumer id assigned by the group coordinator.
-        ///  RetentionTime => int64             -- Timestamp period in ms to retain the offset.
-        ///  TopicName => string                -- The topic to commit.
-        ///  Partition => int32                 -- The partition id.
-        ///  Offset => int64                    -- message offset to be committed.
-        ///  Timestamp => int64                 -- Commit timestamp.
-        ///  Metadata => string                 -- Any associated metadata the client wants to keep
-        ///
-        /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
-        /// </summary>
         [Test]
         public void OffsetCommitRequest(
             [Values(0, 1, 2)] short version,
@@ -359,6 +240,7 @@ namespace KafkaClient.Tests.Protocol
             [Values(10)] int maxOffsets,
             [Values(null, "something useful for the client")] string metadata)
         {
+            var timestamp = retentionTime;
             var offsetCommits = new List<OffsetCommitRequest.Topic>();
             for (var t = 0; t < topicsPerRequest; t++) {
                 offsetCommits.Add(new OffsetCommitRequest.Topic(
@@ -366,7 +248,7 @@ namespace KafkaClient.Tests.Protocol
                                       t%maxPartitions,
                                       _randomizer.Next(0, int.MaxValue),
                                       metadata,
-                                      version == 1 ? retentionTime : (long?)null));
+                                      version == 1 ? timestamp : (long?)null));
             }
             var request = new OffsetCommitRequest(
                 groupId,
@@ -378,14 +260,6 @@ namespace KafkaClient.Tests.Protocol
             request.AssertCanEncodeDecodeRequest(version);
         }
 
-        /// <summary>
-        /// OffsetCommitResponse => [TopicName [Partition ErrorCode]]]
-        ///  TopicName => string -- The name of the topic.
-        ///  Partition => int32  -- The id of the partition.
-        ///  ErrorCode => int16  -- The error code for the partition, if any.
-        ///
-        /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
-        /// </summary>
         [Test]
         public void OffsetCommitResponse(
             [Values("test", "a really long name, with spaces and punctuation!")] string topicName,
@@ -407,14 +281,6 @@ namespace KafkaClient.Tests.Protocol
             response.AssertCanEncodeDecodeResponse(0);
         }
 
-        /// <summary>
-        /// OffsetFetchRequest => ConsumerGroup [TopicName [Partition]]
-        ///  ConsumerGroup => string -- The consumer group id.
-        ///  TopicName => string     -- The topic to commit.
-        ///  Partition => int32      -- The partition id.
-        ///
-        /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
-        /// </summary>
         [Test]
         public void OffsetFetchRequest(
             [Values("group1", "group2")] string groupId,
@@ -431,16 +297,6 @@ namespace KafkaClient.Tests.Protocol
             request.AssertCanEncodeDecodeRequest(0);
         }
 
-        /// <summary>
-        /// OffsetFetchResponse => [TopicName [Partition Offset Metadata ErrorCode]]
-        ///  TopicName => string -- The name of the topic.
-        ///  Partition => int32  -- The id of the partition.
-        ///  Offset => int64     -- The offset, or -1 if none exists.
-        ///  Metadata => string  -- The metadata associated with the topic and partition.
-        ///  ErrorCode => int16  -- The error code for the partition, if any.
-        ///
-        /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
-        /// </summary>
         [Test]
         public void OffsetFetchResponse(
             [Values("test", "a really long name, with spaces and punctuation!")] string topicName,
@@ -469,12 +325,6 @@ namespace KafkaClient.Tests.Protocol
             response.AssertCanEncodeDecodeResponse(0);
         }
 
-        /// <summary>
-        /// GroupCoordinatorRequest => GroupId
-        ///  GroupId => string -- The consumer group id.
-        ///
-        /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
-        /// </summary>
         [Test]
         public void GroupCoordinatorRequest([Values("group1", "group2")] string groupId)
         {
@@ -482,15 +332,6 @@ namespace KafkaClient.Tests.Protocol
             request.AssertCanEncodeDecodeRequest(0);
         }
 
-        /// <summary>
-        /// GroupCoordinatorResponse => ErrorCode CoordinatorId CoordinatorHost CoordinatorPort
-        ///  ErrorCode => int16        -- The error code.
-        ///  CoordinatorId => int32    -- The broker id.
-        ///  CoordinatorHost => string -- The hostname of the broker.
-        ///  CoordinatorPort => int32  -- The port on which the broker accepts requests.
-        ///
-        /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
-        /// </summary>
         [Test]
         public void GroupCoordinatorResponse(
             [Values(
@@ -506,11 +347,6 @@ namespace KafkaClient.Tests.Protocol
             response.AssertCanEncodeDecodeResponse(0);
         }
 
-        /// <summary>
-        /// ApiVersions => 
-        ///
-        /// From http://kafka.apache.org/protocol.html#protocol_messages
-        /// </summary>
         [Test]
         public void ApiVersionsRequest()
         {
@@ -518,15 +354,6 @@ namespace KafkaClient.Tests.Protocol
             request.AssertCanEncodeDecodeRequest(0);
         }
 
-        /// <summary>
-        /// ApiVersionsResponse => ErrorCode [ApiKey MinVersion MaxVersion]
-        ///  ErrorCode => int16  -- The error code.
-        ///  ApiKey => int16     -- The Api Key.
-        ///  MinVersion => int16 -- The minimum supported version.
-        ///  MaxVersion => int16 -- The maximum supported version.
-        ///
-        /// From http://kafka.apache.org/protocol.html#protocol_messages
-        /// </summary>
         [Test]
         public void ApiVersionsResponse(
             [Values(
@@ -546,6 +373,7 @@ namespace KafkaClient.Tests.Protocol
 
         [Test]
         public void JoinGroupRequest(
+            [Values(0, 1)] short version,
             [Values("test", "a groupId")] string groupId, 
             [Values(1, 20000)] int sessionTimeout,
             [Values("", "an existing member")] string memberId, 
@@ -558,9 +386,9 @@ namespace KafkaClient.Tests.Protocol
                 _randomizer.NextBytes(bytes);
                 protocols.Add(new JoinGroupRequest.GroupProtocol(protocolType + p, new ByteMember(bytes)));
             }
-            var request = new JoinGroupRequest(groupId, TimeSpan.FromMilliseconds(sessionTimeout), memberId, protocolType, protocols);
+            var request = new JoinGroupRequest(groupId, TimeSpan.FromMilliseconds(sessionTimeout), memberId, protocolType, protocols, version >= 1 ? (TimeSpan?)TimeSpan.FromMilliseconds(sessionTimeout * 2) : null);
 
-            request.AssertCanEncodeDecodeRequest(0);
+            request.AssertCanEncodeDecodeRequest(version);
         }
 
         [Test]
@@ -878,6 +706,124 @@ namespace KafkaClient.Tests.Protocol
         {
             var mechanisms = new[] { "EXTERNAL", "ANONYMOUS", "PLAIN", "OTP", "SKEY", "CRAM-MD5", "DIGEST-MD5", "SCRAM", "NTLM", "GSSAPI", "OAUTHBEARER" };
             var response = new SaslHandshakeResponse(errorCode, mechanisms.Take(count));
+
+            response.AssertCanEncodeDecodeResponse(0);
+        }
+
+        [Test]
+        public void DeleteTopicsRequest(
+            [Values("test", "anotherNameForATopic")] string topicName, 
+            [Range(2, 3)] int count,
+            [Values(0, 1, 20000)] int timeoutMilliseconds)
+        {
+            var topics = new string[count];
+            for (var t = 0; t < count; t++) {
+                topics[t] = topicName + t;
+            }
+            var request = new DeleteTopicsRequest(topics, TimeSpan.FromMilliseconds(timeoutMilliseconds));
+
+            request.AssertCanEncodeDecodeRequest(0);
+        }
+
+        [Test]
+        public void DeleteTopicsResponse(
+            [Values(
+                 ErrorResponseCode.None,
+                 ErrorResponseCode.NotController
+             )] ErrorResponseCode errorCode,
+            [Values("test", "anotherNameForATopic")] string topicName, 
+            [Range(1, 11)] int count)
+        {
+            var topics = new TopicsResponse.Topic[count];
+            for (var t = 0; t < count; t++) {
+                topics[t] = new TopicsResponse.Topic(topicName + t, errorCode);
+            }
+            var response = new DeleteTopicsResponse(topics);
+
+            response.AssertCanEncodeDecodeResponse(0);
+        }
+
+        [Test]
+        public void CreateTopicsRequest(
+            [Values("test", "a really long name, with spaces and punctuation!")] string topicName,
+            [Values(1, 10)] int topicsPerRequest,
+            [Values(1, 5)] int partitionsPerTopic,
+            [Values(1, 3)] short replicationFactor,
+            [Values(0, 3)] int configCount,
+            [Values(0, 1, 20000)] int timeoutMilliseconds)
+        {
+            var topics = new List<CreateTopicsRequest.Topic>();
+            for (var t = 0; t < topicsPerRequest; t++) {
+                var configs = new Dictionary<string, string>();
+                for (var c = 0; c < configCount; c++) {
+                    configs["config-" + c] = Guid.NewGuid().ToString("N");
+                }
+                if (configs.Count == 0 && _randomizer.NextBool()) {
+                    configs = null;
+                }
+                //var partitions = new List<MetadataResponse.Partition>();
+                //for (var partitionId = 0; partitionId < partitionsPerTopic; partitionId++) {
+                //    var leader = _randomizer.Next(0, brokersPerRequest - 1);
+                //    var replica = 0;
+                //    var replicas = _randomizer.Next(0, brokersPerRequest - 1).Repeat(() => replica++);
+                //    var isr = 0;
+                //    var isrs = _randomizer.Next(0, replica).Repeat(() => isr++);
+                //    partitions.Add(new MetadataResponse.Partition(partitionId, leader, replicationFactor, replicas, isrs));
+                //}
+                topics.Add(new CreateTopicsRequest.Topic(topicName + t, partitionsPerTopic, replicationFactor, configs));
+            }
+            var request = new CreateTopicsRequest(topics, TimeSpan.FromMilliseconds(timeoutMilliseconds));
+
+            request.AssertCanEncodeDecodeRequest(0);
+        }
+
+        [Test]
+        public void CreateTopicsExplicitRequest(
+            [Values("test", "a really long name, with spaces and punctuation!")] string topicName,
+            [Values(1, 10)] int topicsPerRequest,
+            [Values(1, 5)] int partitionsPerTopic,
+            [Values(1, 3)] short replicationFactor,
+            [Values(0, 3)] int configCount,
+            [Values(0, 1, 20000)] int timeoutMilliseconds)
+        {
+            var topics = new List<CreateTopicsRequest.Topic>();
+            for (var t = 0; t < topicsPerRequest; t++) {
+                var configs = new Dictionary<string, string>();
+                for (var c = 0; c < configCount; c++) {
+                    configs["config-" + c] = Guid.NewGuid().ToString("N");
+                }
+                if (configs.Count == 0 && _randomizer.NextBool()) {
+                    configs = null;
+                }
+
+                var assignments = new List<CreateTopicsRequest.ReplicaAssignment>();
+                for (var partitionId = 0; partitionId < partitionsPerTopic; partitionId++) {
+                    var replica = 0;
+                    var replicas = _randomizer.Next(0, replicationFactor - 1).Repeat(() => replica++);
+                    assignments.Add(new CreateTopicsRequest.ReplicaAssignment(partitionId, replicas));
+                }
+                topics.Add(new CreateTopicsRequest.Topic(topicName + t, assignments, configs));
+            }
+            var request = new CreateTopicsRequest(topics, TimeSpan.FromMilliseconds(timeoutMilliseconds));
+
+            request.AssertCanEncodeDecodeRequest(0);
+        }
+
+        [Test]
+        public void CreateTopicsResponse(
+            [Values(
+                 ErrorResponseCode.None,
+                 ErrorResponseCode.InvalidTopic,
+                ErrorResponseCode.InvalidPartitions
+             )] ErrorResponseCode errorCode,
+            [Values("test", "anotherNameForATopic")] string topicName, 
+            [Range(1, 11)] int count)
+        {
+            var topics = new TopicsResponse.Topic[count];
+            for (var t = 0; t < count; t++) {
+                topics[t] = new TopicsResponse.Topic(topicName + t, errorCode);
+            }
+            var response = new CreateTopicsResponse(topics);
 
             response.AssertCanEncodeDecodeResponse(0);
         }

@@ -7,7 +7,7 @@ using KafkaClient.Protocol.Types;
 namespace KafkaClient.Protocol
 {
     /// <summary>
-    /// JoinGroup Response (Version: 0) => error_code generation_id group_protocol leader_id member_id [member] 
+    /// JoinGroup Response => error_code generation_id group_protocol leader_id member_id [member] 
     ///   error_code => INT16
     ///   generation_id => INT32   -- The generation of the consumer group.
     ///   group_protocol => STRING -- The group protocol selected by the coordinator TODO: is this the name or the type? Assuming type

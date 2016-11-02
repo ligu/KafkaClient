@@ -30,6 +30,8 @@ namespace KafkaClient.Protocol
             if (typeof(T) == typeof(ListGroupsResponse)) return (T)ListGroupsResponse(context, payload, hasSize);
             if (typeof(T) == typeof(SaslHandshakeResponse)) return (T)SaslHandshakeResponse(context, payload, hasSize);
             if (typeof(T) == typeof(ApiVersionsResponse)) return (T)ApiVersionsResponse(context, payload, hasSize);
+            if (typeof(T) == typeof(CreateTopicsResponse)) return (T)CreateTopicsResponse(context, payload, hasSize);
+            if (typeof(T) == typeof(DeleteTopicsResponse)) return (T)DeleteTopicsResponse(context, payload, hasSize);
             return default(T);
         }
 
@@ -85,6 +87,10 @@ namespace KafkaClient.Protocol
                     return EncodeRequest(context, (SaslHandshakeRequest) request);
                 case ApiKeyRequestType.ApiVersions:
                     return EncodeRequest(context, (ApiVersionsRequest) request);
+                case ApiKeyRequestType.CreateTopics:
+                    return EncodeRequest(context, (CreateTopicsRequest) request);
+                case ApiKeyRequestType.DeleteTopics:
+                    return EncodeRequest(context, (DeleteTopicsRequest) request);
 
                 default:
                     using (var message = EncodeHeader(context, request)) {
@@ -191,7 +197,7 @@ namespace KafkaClient.Protocol
                 foreach (var groupedPayload in groupedPayloads) {
                     var payloads = groupedPayload.ToList();
                     writer.Write(groupedPayload.Key.TopicName)
-                          .Write(payloads.Count) // shouldn't this be 1?
+                          .Write(payloads.Count)
                           .Write(groupedPayload.Key.PartitionId);
 
                     switch (groupedPayload.Key.Codec)
@@ -223,9 +229,13 @@ namespace KafkaClient.Protocol
                 var topicGroups = request.Topics.GroupBy(x => x.TopicName).ToList();
                 writer.Write(ReplicaId)
                       .Write((int)Math.Min(int.MaxValue, request.MaxWaitTime.TotalMilliseconds))
-                      .Write(request.MinBytes)
-                      .Write(topicGroups.Count);
+                      .Write(request.MinBytes);
 
+                if (context.ApiVersion >= 3) {
+                    writer.Write(request.MaxBytes);
+                }
+
+                writer.Write(topicGroups.Count);
                 foreach (var topicGroup in topicGroups) {
                     var partitions = topicGroup.GroupBy(x => x.PartitionId).ToList();
                     writer.Write(topicGroup.Key)
@@ -259,8 +269,11 @@ namespace KafkaClient.Protocol
                     foreach (var partition in partitions) {
                         foreach (var offset in partition) {
                             writer.Write(partition.Key)
-                                  .Write(offset.Timestamp)
-                                  .Write(offset.MaxOffsets);
+                                  .Write(offset.Timestamp);
+
+                            if (context.ApiVersion == 0) {
+                                writer.Write(offset.MaxOffsets);
+                            }
                         }
                     }
                 }
@@ -353,8 +366,12 @@ namespace KafkaClient.Protocol
         {
             using (var writer = EncodeHeader(context, request)) {
                 writer.Write(request.GroupId)
-                      .Write((int)request.SessionTimeout.TotalMilliseconds)
-                      .Write(request.MemberId)
+                      .Write((int)request.SessionTimeout.TotalMilliseconds);
+
+                if (context.ApiVersion >= 1) {
+                    writer.Write((int) request.RebalanceTimeout.TotalMilliseconds);
+                }
+                writer.Write(request.MemberId)
                       .Write(request.ProtocolType)
                       .Write(request.GroupProtocols.Count);
 
@@ -441,6 +458,40 @@ namespace KafkaClient.Protocol
                 return writer.ToBytes();
             }
         }
+
+        private static byte[] EncodeRequest(IRequestContext context, CreateTopicsRequest request)
+        {
+            using (var writer = EncodeHeader(context, request)) {
+                writer.Write(request.Topics.Count);
+                foreach (var topic in request.Topics) {
+                    writer.Write(topic.TopicName)
+                          .Write(topic.NumberOfPartitions)
+                          .Write(topic.ReplicationFactor)
+                          .Write(topic.ReplicaAssignments.Count);
+                    foreach (var assignment in topic.ReplicaAssignments) {
+                        writer.Write(assignment.PartitionId)
+                              .Write(assignment.Replicas);
+                    }
+                    writer.Write(topic.Configs.Count);
+                    foreach (var config in topic.Configs) {
+                        writer.Write(config.Key)
+                              .Write(config.Value);
+                    }
+                }
+                writer.Write((int)request.Timeout.TotalMilliseconds);
+                return writer.ToBytes();
+            }
+        }
+
+        private static byte[] EncodeRequest(IRequestContext context, DeleteTopicsRequest request)
+        {
+            using (var writer = EncodeHeader(context, request)) {
+                writer.Write(request.Topics, true)
+                      .Write((int) request.Timeout.TotalMilliseconds);
+                return writer.ToBytes();
+            }
+        }
+
 
         /// <summary>
         /// Encode the common head for kafka request.
@@ -705,6 +756,10 @@ namespace KafkaClient.Protocol
                 if (context.ApiVersion >= 1) {
                     controllerId = reader.ReadInt32();
                 }
+                string clusterId = null;
+                if (context.ApiVersion >= 2) {
+                    clusterId = reader.ReadString();
+                }
 
                 var topics = new MetadataResponse.Topic[reader.ReadInt32()];
                 for (var t = 0; t < topics.Length; t++) {
@@ -912,6 +967,32 @@ namespace KafkaClient.Protocol
                     apiKeys[i] = new ApiVersionsResponse.VersionSupport(apiKey, minVersion, maxVersion);
                 }
                 return new ApiVersionsResponse(errorCode, apiKeys);
+            }
+        }        
+
+        private static IResponse CreateTopicsResponse(IRequestContext context, byte[] payload, bool hasSize)
+        {
+            using (var reader = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
+                var topics = new TopicsResponse.Topic[reader.ReadInt32()];
+                for (var i = 0; i < topics.Length; i++) {
+                    var topicName = reader.ReadString();
+                    var errorCode = reader.ReadErrorCode();
+                    topics[i] = new TopicsResponse.Topic(topicName, errorCode);
+                }
+                return new CreateTopicsResponse(topics);
+            }
+        }        
+
+        private static IResponse DeleteTopicsResponse(IRequestContext context, byte[] payload, bool hasSize)
+        {
+            using (var reader = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
+                var topics = new TopicsResponse.Topic[reader.ReadInt32()];
+                for (var i = 0; i < topics.Length; i++) {
+                    var topicName = reader.ReadString();
+                    var errorCode = reader.ReadErrorCode();
+                    topics[i] = new TopicsResponse.Topic(topicName, errorCode);
+                }
+                return new DeleteTopicsResponse(topics);
             }
         }        
 

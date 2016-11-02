@@ -107,7 +107,7 @@ namespace KafkaClient.Protocol
                 if (ReferenceEquals(null, other)) return false;
                 if (ReferenceEquals(this, other)) return true;
                 return base.Equals(other) 
-                    && Timestamp == other.Timestamp
+                    && Timestamp.ToUnixEpochMilliseconds() == other.Timestamp.ToUnixEpochMilliseconds()
                     && Offset == other.Offset;
             }
 

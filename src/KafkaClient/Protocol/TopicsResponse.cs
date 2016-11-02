@@ -26,7 +26,7 @@ namespace KafkaClient.Protocol
         {
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
-            return Equals(Topics, other.Topics);
+            return Topics.HasEqualElementsInOrder(other.Topics);
         }
 
         public override int GetHashCode()

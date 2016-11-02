@@ -6,14 +6,14 @@ using KafkaClient.Common;
 namespace KafkaClient.Protocol
 {
     /// <summary>
-    /// CreateTopics Request (Version: 0) => [create_topic_requests] timeout 
+    /// CreateTopics Request => [create_topic_requests] timeout 
     ///  create_topic_requests => topic num_partitions replication_factor [replica_assignment] [configs] 
     ///    topic => STRING
     ///    num_partitions => INT32
     ///    replication_factor => INT16
-    ///    replica_assignment => partition_id [replicas] 
+    ///    replica_assignment => partition_id [replica] 
     ///      partition_id => INT32
-    ///      replicas => INT32
+    ///      replica => INT32
     ///    configs => config_key config_value 
     ///      config_key => STRING
     ///      config_value => STRING
@@ -21,14 +21,14 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class CreateTopicsRequest : Request, IRequest<CreateTopicsResponse>, IEquatable<CreateTopicsRequest>
     {
-        public CreateTopicsRequest(IEnumerable<TopicCreation> topics = null, TimeSpan? timeout = null)
+        public CreateTopicsRequest(IEnumerable<Topic> topics = null, TimeSpan? timeout = null)
             : base(ApiKeyRequestType.CreateTopics)
         {
-            Topics = ImmutableList<TopicCreation>.Empty.AddNotNullRange(topics);
+            Topics = ImmutableList<Topic>.Empty.AddNotNullRange(topics);
             Timeout = timeout ?? TimeSpan.Zero;
         }
 
-        public IImmutableList<TopicCreation> Topics { get; }
+        public IImmutableList<Topic> Topics { get; }
 
         /// <summary>
         /// The time in ms to wait for a topic to be completely created on the controller node. Values &lt;= 0 will trigger 
@@ -66,9 +66,9 @@ namespace KafkaClient.Protocol
             return !Equals(left, right);
         }
 
-        public class TopicCreation : IEquatable<TopicCreation>
+        public class Topic : IEquatable<Topic>
         {
-            public TopicCreation(string topicName, int numberOfPartitions, short replicationFactor, IEnumerable<KeyValuePair<string, string>> configs = null)
+            public Topic(string topicName, int numberOfPartitions, short replicationFactor, IEnumerable<KeyValuePair<string, string>> configs = null)
                 : this (topicName, configs)
             {
                 NumberOfPartitions = numberOfPartitions;
@@ -76,7 +76,7 @@ namespace KafkaClient.Protocol
                 ReplicaAssignments = ImmutableList<ReplicaAssignment>.Empty;
             }
 
-            public TopicCreation(string topicName, IEnumerable<ReplicaAssignment> replicaAssignments, IEnumerable<KeyValuePair<string, string>> configs = null)
+            public Topic(string topicName, IEnumerable<ReplicaAssignment> replicaAssignments, IEnumerable<KeyValuePair<string, string>> configs = null)
                 : this (topicName, configs)
             {
                 NumberOfPartitions = -1;
@@ -84,7 +84,7 @@ namespace KafkaClient.Protocol
                 ReplicaAssignments = ImmutableList<ReplicaAssignment>.Empty.AddNotNullRange(replicaAssignments);
             }
 
-            private TopicCreation(string topicName, IEnumerable<KeyValuePair<string, string>> configs)
+            private Topic(string topicName, IEnumerable<KeyValuePair<string, string>> configs)
             {
                 TopicName = topicName;
                 Configs = ImmutableDictionary<string, string>.Empty.AddNotNullRange(configs);
@@ -118,10 +118,10 @@ namespace KafkaClient.Protocol
 
             public override bool Equals(object obj)
             {
-                return Equals(obj as TopicCreation);
+                return Equals(obj as Topic);
             }
 
-            public bool Equals(TopicCreation other)
+            public bool Equals(Topic other)
             {
                 if (ReferenceEquals(null, other)) return false;
                 if (ReferenceEquals(this, other)) return true;
@@ -144,12 +144,12 @@ namespace KafkaClient.Protocol
                 }
             }
 
-            public static bool operator ==(TopicCreation left, TopicCreation right)
+            public static bool operator ==(Topic left, Topic right)
             {
                 return Equals(left, right);
             }
 
-            public static bool operator !=(TopicCreation left, TopicCreation right)
+            public static bool operator !=(Topic left, Topic right)
             {
                 return !Equals(left, right);
             }

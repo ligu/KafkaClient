@@ -15,7 +15,7 @@ namespace KafkaClient.Protocol
     ///   TopicName => string  -- The name of the topic.
     /// 
     ///   PartitionData => Partition Timestamp *MaxNumberOfOffsets
-    ///    *MaxNumberOfOffsets is only version 0 (0.10.0.1) and below
+    ///    *MaxNumberOfOffsets is only version 0 (0.10.0.1)
     ///    Partition => int32   -- The id of the partition the fetch is for.
     ///    Timestamp => int64   -- Used to ask for all messages before a certain time (ms). There are two special values. Specify -1 to receive the 
     ///                            latest offset (i.e. the offset of the next coming message) and -2 to receive the earliest available offset. Note 

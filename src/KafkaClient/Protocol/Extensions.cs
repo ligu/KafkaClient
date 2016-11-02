@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -77,7 +78,8 @@ namespace KafkaClient.Protocol
                 || code == ErrorResponseCode.GroupCoordinatorNotAvailable
                 || code == ErrorResponseCode.NotCoordinatorForGroup
                 || code == ErrorResponseCode.NotEnoughReplicas
-                || code == ErrorResponseCode.NotEnoughReplicasAfterAppend;
+                || code == ErrorResponseCode.NotEnoughReplicasAfterAppend
+                || code == ErrorResponseCode.NotController;
         }
 
         public static bool IsFromStaleMetadata(this ErrorResponseCode code)
@@ -176,6 +178,15 @@ namespace KafkaClient.Protocol
         public static IKafkaWriter Write(this IKafkaWriter writer, IMemberAssignment assignment, IProtocolTypeEncoder encoder)
         {
             encoder.EncodeAssignment(writer, assignment);
+            return writer;
+        }
+
+        public static IKafkaWriter Write(this IKafkaWriter writer, IImmutableList<int> values)
+        {
+            writer.Write(values.Count);
+            foreach (var value in values) {
+                writer.Write(value);
+            }
             return writer;
         }
 

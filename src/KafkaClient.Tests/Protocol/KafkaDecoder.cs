@@ -45,6 +45,8 @@ namespace KafkaClient.Tests.Protocol
             if (typeof(T) == typeof(ListGroupsRequest)) return (T)ListGroupsRequest(context, data);
             if (typeof(T) == typeof(SaslHandshakeRequest)) return (T)SaslHandshakeRequest(context, data);
             if (typeof(T) == typeof(ApiVersionsRequest)) return (T)ApiVersionsRequest(context, data);
+            if (typeof(T) == typeof(CreateTopicsRequest)) return (T)CreateTopicsRequest(context, data);
+            if (typeof(T) == typeof(DeleteTopicsRequest)) return (T)DeleteTopicsRequest(context, data);
             return default(T);
         }
 
@@ -73,7 +75,9 @@ namespace KafkaClient.Tests.Protocol
                 || TryEncodeResponse(writer, context, response as DescribeGroupsResponse)
                 || TryEncodeResponse(writer, context, response as ListGroupsResponse)
                 || TryEncodeResponse(writer, context, response as SaslHandshakeResponse)
-                || TryEncodeResponse(writer, context, response as ApiVersionsResponse);
+                || TryEncodeResponse(writer, context, response as ApiVersionsResponse)
+                || TryEncodeResponse(writer, context, response as CreateTopicsResponse)
+                || TryEncodeResponse(writer, context, response as DeleteTopicsResponse);
 
                 return writer.ToBytes();
             }
@@ -112,9 +116,14 @@ namespace KafkaClient.Tests.Protocol
                 var maxWaitTime = reader.ReadInt32();
                 var minBytes = reader.ReadInt32();
 
-                var fetches = new List<FetchRequest.Topic>();
-                var payloadCount = reader.ReadInt32();
-                for (var i = 0; i < payloadCount; i++) {
+                var totalMaxBytes = 0;
+                if (context.ApiVersion >= 3) {
+                    totalMaxBytes = reader.ReadInt32();
+                }
+
+                var topics = new List<FetchRequest.Topic>();
+                var topicCount = reader.ReadInt32();
+                for (var i = 0; i < topicCount; i++) {
                     var topicName = reader.ReadString();
 
                     var partitionCount = reader.ReadInt32();
@@ -123,10 +132,10 @@ namespace KafkaClient.Tests.Protocol
                         var offset = reader.ReadInt64();
                         var maxBytes = reader.ReadInt32();
 
-                        fetches.Add(new FetchRequest.Topic(topicName, partitionId, offset, maxBytes));
+                        topics.Add(new FetchRequest.Topic(topicName, partitionId, offset, maxBytes));
                     }
                 }
-                return new FetchRequest(fetches, TimeSpan.FromMilliseconds(maxWaitTime), minBytes);
+                return new FetchRequest(topics, TimeSpan.FromMilliseconds(maxWaitTime), minBytes, totalMaxBytes);
             }
         }
 
@@ -136,7 +145,7 @@ namespace KafkaClient.Tests.Protocol
                 // ReSharper disable once UnusedVariable
                 var replicaId = reader.ReadInt32(); // expect -1
 
-                var offsets = new List<OffsetRequest.Topic>();
+                var topics = new List<OffsetRequest.Topic>();
                 var offsetCount = reader.ReadInt32();
                 for (var i = 0; i < offsetCount; i++) {
                     var topicName = reader.ReadString();
@@ -145,12 +154,15 @@ namespace KafkaClient.Tests.Protocol
                     for (var j = 0; j < partitionCount; j++) {
                         var partitionId = reader.ReadInt32();
                         var time = reader.ReadInt64();
-                        var maxOffsets = reader.ReadInt32();
+                        var maxOffsets = 1;
+                        if (context.ApiVersion == 0) {
+                            maxOffsets = reader.ReadInt32();
+                        }
 
-                        offsets.Add(new OffsetRequest.Topic(topicName, partitionId, time, maxOffsets));
+                        topics.Add(new OffsetRequest.Topic(topicName, partitionId, time, maxOffsets));
                     }
                 }
-                return new OffsetRequest(offsets);
+                return new OffsetRequest(topics);
             }
         }
 
@@ -243,6 +255,10 @@ namespace KafkaClient.Tests.Protocol
             using (var reader = ReadHeader(payload)) {
                 var groupId = reader.ReadString();
                 var sessionTimeout = TimeSpan.FromMilliseconds(reader.ReadInt32());
+                TimeSpan? rebalanceTimeout = null;
+                if (context.ApiVersion >= 1) {
+                    rebalanceTimeout = TimeSpan.FromMilliseconds(reader.ReadInt32());
+                }
                 var memberId = reader.ReadString();
                 var protocolType = reader.ReadString();
                 var groupProtocols = new JoinGroupRequest.GroupProtocol[reader.ReadInt32()];
@@ -254,7 +270,7 @@ namespace KafkaClient.Tests.Protocol
                     groupProtocols[g] = new JoinGroupRequest.GroupProtocol(protocolName, metadata);
                 }
 
-                return new JoinGroupRequest(groupId, sessionTimeout, memberId, protocolType, groupProtocols);
+                return new JoinGroupRequest(groupId, sessionTimeout, memberId, protocolType, groupProtocols, rebalanceTimeout);
             }
         }
 
@@ -333,6 +349,53 @@ namespace KafkaClient.Tests.Protocol
             }
         }
         
+        private static IRequest CreateTopicsRequest(IRequestContext context, byte[] payload)
+        {
+            using (var reader = ReadHeader(payload)) {
+                var topics = new CreateTopicsRequest.Topic[reader.ReadInt32()];
+                for (var t = 0; t < topics.Length; t++) {
+                    var topicName = reader.ReadString();
+                    var numPartitions = reader.ReadInt32();
+                    var replicationFactor = reader.ReadInt16();
+
+                    var assignments = new CreateTopicsRequest.ReplicaAssignment[reader.ReadInt32()];
+                    for (var a = 0; a < assignments.Length; a++) {
+                        var partitionId = reader.ReadInt32();
+                        var replicaCount = reader.ReadInt32();
+                        var replicas = replicaCount.Repeat(reader.ReadInt32).ToArray();
+                        assignments[a] = new CreateTopicsRequest.ReplicaAssignment(partitionId, replicas);
+                    }
+
+                    var configs = new KeyValuePair<string, string>[reader.ReadInt32()];
+                    for (var c = 0; c < configs.Length; c++) {
+                        var key = reader.ReadString();
+                        var value = reader.ReadString();
+                        configs[c] = new KeyValuePair<string, string>(key, value);
+                    }
+
+                    topics[t] = assignments.Length > 0
+                        ? new CreateTopicsRequest.Topic(topicName, assignments, configs)
+                        : new CreateTopicsRequest.Topic(topicName, numPartitions, replicationFactor, configs);
+                }
+                var timeout = reader.ReadInt32();
+
+                return new CreateTopicsRequest(topics, TimeSpan.FromMilliseconds(timeout));
+            }
+        }
+        
+        private static IRequest DeleteTopicsRequest(IRequestContext context, byte[] payload)
+        {
+            using (var reader = ReadHeader(payload)) {
+                var topics = new string[reader.ReadInt32()];
+                for (var t = 0; t < topics.Length; t++) {
+                    topics[t] = reader.ReadString();
+                }
+                var timeout = reader.ReadInt32();
+
+                return new DeleteTopicsRequest(topics, TimeSpan.FromMilliseconds(timeout));
+            }
+        }
+        
         private static IKafkaReader ReadHeader(byte[] data)
         {
             IRequestContext context;
@@ -372,7 +435,7 @@ namespace KafkaClient.Tests.Protocol
                 var partitions = topic.ToList();
 
                 writer.Write(topic.Key)
-                    .Write(partitions.Count); // partitionsPerTopic
+                    .Write(partitions.Count);
                 foreach (var partition in partitions) {
                     writer.Write(partition.PartitionId)
                         .Write(partition.ErrorCode)
@@ -422,7 +485,7 @@ namespace KafkaClient.Tests.Protocol
                 var partitions = topic.ToList();
 
                 writer.Write(topic.Key)
-                    .Write(partitions.Count); // partitionsPerTopic
+                    .Write(partitions.Count);
                 foreach (var partition in partitions) {
                     writer.Write(partition.PartitionId)
                         .Write(partition.ErrorCode);
@@ -430,7 +493,7 @@ namespace KafkaClient.Tests.Protocol
                         writer.Write(1)
                               .Write(partition.Offset);
                     } else {
-                        writer.Write(partition.Timestamp.ToUnixEpochMilliseconds() ?? 0)
+                        writer.Write(partition.Timestamp.ToUnixEpochMilliseconds() ?? 0L)
                             .Write(partition.Offset);
                     }
                 }
@@ -455,6 +518,9 @@ namespace KafkaClient.Tests.Protocol
             if (context.ApiVersion >= 1) {
                 writer.Write(response.ControllerId.GetValueOrDefault());
             }
+            if (context.ApiVersion >= 2) {
+                writer.Write(response.ClusterId);
+            }
 
             var groupedTopics = response.Topics.GroupBy(t => new { t.TopicName, t.ErrorCode, t.IsInternal }).ToList();
             writer.Write(groupedTopics.Count);
@@ -471,14 +537,8 @@ namespace KafkaClient.Tests.Protocol
                     writer.Write(partition.ErrorCode)
                         .Write(partition.PartitionId)
                         .Write(partition.LeaderId)
-                        .Write(partition.Replicas.Count);
-                    foreach (var replica in partition.Replicas) {
-                        writer.Write(replica);
-                    }
-                    writer.Write(partition.Isrs.Count);
-                    foreach (var isr in partition.Isrs) {
-                        writer.Write(isr);
-                    }
+                        .Write(partition.Replicas)
+                        .Write(partition.Isrs);
                 }
             }
             return true;
@@ -639,6 +699,30 @@ namespace KafkaClient.Tests.Protocol
                 writer.Write((short)versionSupport.ApiKey)
                     .Write(versionSupport.MinVersion)
                     .Write(versionSupport.MaxVersion);
+            }
+            return true;
+        }
+
+        private static bool TryEncodeResponse(IKafkaWriter writer, IRequestContext context, CreateTopicsResponse response)
+        {
+            if (response == null) return false;
+
+            writer.Write(response.Topics.Count);
+            foreach (var topic in response.Topics) {
+                writer.Write(topic.TopicName)
+                    .Write(topic.ErrorCode);
+            }
+            return true;
+        }
+
+        private static bool TryEncodeResponse(IKafkaWriter writer, IRequestContext context, DeleteTopicsResponse response)
+        {
+            if (response == null) return false;
+
+            writer.Write(response.Topics.Count);
+            foreach (var topic in response.Topics) {
+                writer.Write(topic.TopicName)
+                    .Write(topic.ErrorCode);
             }
             return true;
         }

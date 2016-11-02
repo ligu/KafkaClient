@@ -6,7 +6,7 @@ using KafkaClient.Common;
 namespace KafkaClient.Protocol
 {
     /// <summary>
-    /// DeleteTopics Request (Version: 0) => [topics] timeout 
+    /// DeleteTopics Request => [topics] timeout 
     ///  topics => STRING
     ///  timeout => INT32
     /// </summary>
