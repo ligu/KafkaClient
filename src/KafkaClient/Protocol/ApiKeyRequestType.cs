@@ -9,7 +9,9 @@
         Fetch = 1,
         Offset = 2,
         Metadata = 3,
+        LeaderAndIsr = 4,
         StopReplica = 5,
+        ControlledShutdown = 7,
         OffsetCommit = 8,
         OffsetFetch = 9,
         GroupCoordinator = 10,
@@ -20,6 +22,8 @@
         DescribeGroups = 15,
         ListGroups = 16,
         SaslHandshake = 17,
-        ApiVersions = 18
+        ApiVersions = 18,
+        CreateTopics = 19,
+        DeleteTopics = 20
     }
 }

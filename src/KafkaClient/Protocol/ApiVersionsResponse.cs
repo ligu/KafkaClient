@@ -16,11 +16,11 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class ApiVersionsResponse : IResponse, IEquatable<ApiVersionsResponse>
     {
-        public ApiVersionsResponse(ErrorResponseCode errorCode = ErrorResponseCode.None, IEnumerable<ApiVersionSupport> supportedVersions = null)
+        public ApiVersionsResponse(ErrorResponseCode errorCode = ErrorResponseCode.None, IEnumerable<VersionSupport> supportedVersions = null)
         {
             ErrorCode = errorCode;
             Errors = ImmutableList<ErrorResponseCode>.Empty.Add(ErrorCode);
-            SupportedVersions = ImmutableList<ApiVersionSupport>.Empty.AddNotNullRange(supportedVersions);
+            SupportedVersions = ImmutableList<VersionSupport>.Empty.AddNotNullRange(supportedVersions);
         }
 
         public IImmutableList<ErrorResponseCode> Errors { get; }
@@ -30,7 +30,9 @@ namespace KafkaClient.Protocol
         /// </summary>
         public ErrorResponseCode ErrorCode { get; }
 
-        public IImmutableList<ApiVersionSupport> SupportedVersions { get; }
+        public IImmutableList<VersionSupport> SupportedVersions { get; }
+
+        #region Equality
 
         /// <inheritdoc />
         public override bool Equals(object obj)
@@ -65,6 +67,70 @@ namespace KafkaClient.Protocol
         public static bool operator !=(ApiVersionsResponse left, ApiVersionsResponse right)
         {
             return !Equals(left, right);
+        }
+
+        #endregion
+
+        public class VersionSupport : IEquatable<VersionSupport>
+        {
+            public VersionSupport(ApiKeyRequestType apiKey, short minVersion, short maxVersion)
+            {
+                ApiKey = apiKey;
+                MinVersion = minVersion;
+                MaxVersion = maxVersion;
+            }
+
+            /// <summary>
+            /// API key.
+            /// </summary>
+            public ApiKeyRequestType ApiKey { get; } 
+
+            /// <summary>
+            /// Minimum supported version.
+            /// </summary>
+            public short MinVersion { get; }
+
+            /// <summary>
+            /// Maximum supported version.
+            /// </summary>
+            public short MaxVersion { get; }
+
+            #region Equality
+
+            public override bool Equals(object obj)
+            {
+                return Equals(obj as VersionSupport);
+            }
+
+            public bool Equals(VersionSupport other)
+            {
+                if (ReferenceEquals(null, other)) return false;
+                if (ReferenceEquals(this, other)) return true;
+                return ApiKey == other.ApiKey && MinVersion == other.MinVersion && MaxVersion == other.MaxVersion;
+            }
+
+            public override int GetHashCode()
+            {
+                unchecked {
+                    var hashCode = (int) ApiKey;
+                    hashCode = (hashCode*397) ^ MinVersion.GetHashCode();
+                    hashCode = (hashCode*397) ^ MaxVersion.GetHashCode();
+                    return hashCode;
+                }
+            }
+
+            public static bool operator ==(VersionSupport left, VersionSupport right)
+            {
+                return Equals(left, right);
+            }
+
+            public static bool operator !=(VersionSupport left, VersionSupport right)
+            {
+                return !Equals(left, right);
+            }
+
+            #endregion
+
         }
     }
 }

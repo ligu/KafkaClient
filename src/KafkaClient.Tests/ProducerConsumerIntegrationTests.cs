@@ -63,7 +63,7 @@ namespace KafkaClient.Tests
                 var responseAckLevel1 = await producer.SendMessageAsync(new Message("Ack Level 1"), IntegrationConfig.TopicName(), 0, new SendMessageConfiguration(acks: 1), CancellationToken.None);
                 var offsetResponse = await producer.BrokerRouter.GetTopicOffsetsAsync(IntegrationConfig.TopicName(), CancellationToken.None);
                 var maxOffset = offsetResponse.First(x => x.PartitionId == 0);
-                Assert.AreEqual(responseAckLevel1.Offset, maxOffset.Offsets.Max() - 1);
+                Assert.AreEqual(responseAckLevel1.Offset, maxOffset.Offset - 1);
             }
         }
 
@@ -77,7 +77,7 @@ namespace KafkaClient.Tests
                 var offsetResponse = await producer.BrokerRouter.GetTopicOffsetsAsync(IntegrationConfig.TopicName(), CancellationToken.None);
                 var maxOffset = offsetResponse.First(x => x.PartitionId == 0);
 
-                Assert.AreEqual(responseAckLevel1.Last().Offset, maxOffset.Offsets.Max() - 1);
+                Assert.AreEqual(responseAckLevel1.Last().Offset, maxOffset.Offset - 1);
             }
         }
 
@@ -113,7 +113,7 @@ namespace KafkaClient.Tests
                 var offsets = producer.BrokerRouter.GetTopicOffsetsAsync(IntegrationConfig.TopicName(), CancellationToken.None).Result;
 
                 using (var consumer = new OldConsumer(new ConsumerOptions(IntegrationConfig.TopicName(), router) { MaxWaitTimeForMinimumBytes = TimeSpan.Zero },
-                    offsets.Select(x => new OffsetPosition(x.PartitionId, x.Offsets.Max())).ToArray()))
+                    offsets.Select(x => new OffsetPosition(x.PartitionId, x.Offset)).ToArray()))
                 {
                     for (var i = 0; i < 20; i++)
                     {
@@ -162,7 +162,7 @@ namespace KafkaClient.Tests
             var consumerOptions = new ConsumerOptions(IntegrationConfig.TopicName(), router);
             consumerOptions.PartitionWhitelist = new List<int> { partition };
 
-            var consumer = new OldConsumer(consumerOptions, offsets.Select(x => new OffsetPosition(x.PartitionId, x.Offsets.Max())).ToArray());
+            var consumer = new OldConsumer(consumerOptions, offsets.Select(x => new OffsetPosition(x.PartitionId, x.Offset)).ToArray());
 
             var expected = 0;
             IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(">> start Consume"));
@@ -229,7 +229,7 @@ namespace KafkaClient.Tests
             var consumerOptions = new ConsumerOptions(topicName, router);
             consumerOptions.PartitionWhitelist = new List<int> { partition };
             consumerOptions.MaxWaitTimeForMinimumBytes = TimeSpan.Zero;
-            var consumer = new OldConsumer(consumerOptions, offsets.Select(x => new OffsetPosition(x.PartitionId, x.Offsets.Max())).ToArray());
+            var consumer = new OldConsumer(consumerOptions, offsets.Select(x => new OffsetPosition(x.PartitionId, x.Offset)).ToArray());
 
             var expected = 0;
             IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create($">> start Consume ,time Milliseconds:{stopwatch.ElapsedMilliseconds}"));
@@ -278,7 +278,7 @@ namespace KafkaClient.Tests
             using (var producer = new Producer(router))
             {
                 var offsets = producer.BrokerRouter.GetTopicOffsetsAsync(IntegrationConfig.TopicName(), CancellationToken.None).Result
-                    .Select(x => new OffsetPosition(x.PartitionId, x.Offsets.Max())).ToArray();
+                    .Select(x => new OffsetPosition(x.PartitionId, x.Offset)).ToArray();
 
                 using (var consumer = new OldConsumer(new ConsumerOptions(IntegrationConfig.TopicName(), router) { MaxWaitTimeForMinimumBytes = TimeSpan.Zero }, offsets))
                 {
@@ -318,7 +318,7 @@ namespace KafkaClient.Tests
             using (var producer = new Producer(router))
             {
                 var startOffsets = producer.BrokerRouter.GetTopicOffsetsAsync(IntegrationConfig.TopicName(), CancellationToken.None).Result
-                    .Select(x => new OffsetPosition(x.PartitionId, x.Offsets.Max())).ToArray();
+                    .Select(x => new OffsetPosition(x.PartitionId, x.Offset)).ToArray();
 
                 using (var consumer = new OldConsumer(new ConsumerOptions(IntegrationConfig.TopicName(), router) { MaxWaitTimeForMinimumBytes = TimeSpan.Zero }, startOffsets))
                 {
@@ -361,7 +361,7 @@ namespace KafkaClient.Tests
             }
 
             //consume form partitionId to verify that date is send to currect partion !!.
-            var consumer = new OldConsumer(new ConsumerOptions(IntegrationConfig.TopicName(), router) { PartitionWhitelist = { partitionId } }, offsets.Select(x => new OffsetPosition(x.PartitionId, x.Offsets.Max())).ToArray());
+            var consumer = new OldConsumer(new ConsumerOptions(IntegrationConfig.TopicName(), router) { PartitionWhitelist = { partitionId } }, offsets.Select(x => new OffsetPosition(x.PartitionId, x.Offset)).ToArray());
 
             for (var i = 0; i < 20; i++)
             {
@@ -386,7 +386,7 @@ namespace KafkaClient.Tests
 
                 //create consumer with buffer size of 1 (should block upstream)
                 using (var consumer = new OldConsumer(new ConsumerOptions(IntegrationConfig.TopicName(), router) { ConsumerBufferSize = 1, MaxWaitTimeForMinimumBytes = TimeSpan.Zero },
-                      offsets.Select(x => new OffsetPosition(x.PartitionId, x.Offsets.Max())).ToArray()))
+                      offsets.Select(x => new OffsetPosition(x.PartitionId, x.Offset)).ToArray()))
                 {
                     for (var i = 0; i < 20; i++)
                     {
@@ -417,7 +417,7 @@ namespace KafkaClient.Tests
 
                 using (var consumerRouter = new BrokerRouter(options))
                 using (var consumer = new OldConsumer(new ConsumerOptions(IntegrationConfig.TopicName(), consumerRouter) { MaxWaitTimeForMinimumBytes = TimeSpan.Zero },
-                     offsets.Select(x => new OffsetPosition(x.PartitionId, x.Offsets.Max())).ToArray()))
+                     offsets.Select(x => new OffsetPosition(x.PartitionId, x.Offset)).ToArray()))
                 {
                     Console.WriteLine("Sending {0} test messages", expectedCount);
                     var response = await producer.SendMessagesAsync(Enumerable.Range(0, expectedCount).Select(x => new Message(x.ToString())), IntegrationConfig.TopicName(), CancellationToken.None);
@@ -432,7 +432,7 @@ namespace KafkaClient.Tests
                     var consumerOffset = consumer.GetOffsetPosition().OrderBy(x => x.PartitionId).ToList();
 
                     var serverOffset = await producer.BrokerRouter.GetTopicOffsetsAsync(IntegrationConfig.TopicName(), CancellationToken.None).ConfigureAwait(false);
-                    var positionOffset = serverOffset.Select(x => new OffsetPosition(x.PartitionId, x.Offsets.Max()))
+                    var positionOffset = serverOffset.Select(x => new OffsetPosition(x.PartitionId, x.Offset))
                         .OrderBy(x => x.PartitionId)
                         .ToList();
 

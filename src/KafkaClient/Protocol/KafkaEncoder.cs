@@ -263,7 +263,7 @@ namespace KafkaClient.Protocol
                     foreach (var partition in partitions) {
                         foreach (var offset in partition) {
                             writer.Write(partition.Key)
-                                  .Write(offset.Time)
+                                  .Write(offset.Timestamp)
                                   .Write(offset.MaxOffsets);
                         }
                     }
@@ -304,7 +304,7 @@ namespace KafkaClient.Protocol
             using (var writer = EncodeHeader(context, request)) {
                 writer.Write(request.GroupId);
                 if (context.ApiVersion >= 1) {
-                    writer.Write(request.GenerationId)
+                    writer.Write(request.GroupGenerationId)
                           .Write(request.MemberId);
                 }
                 if (context.ApiVersion >= 2) {
@@ -394,7 +394,7 @@ namespace KafkaClient.Protocol
             using (var writer = EncodeHeader(context, request)) {
                 return writer
                     .Write(request.GroupId)
-                    .Write(request.GenerationId)
+                    .Write(request.GroupGenerationId)
                     .Write(request.MemberId)
                     .ToBytes();
             }
@@ -414,7 +414,7 @@ namespace KafkaClient.Protocol
         {
             using (var writer = EncodeHeader(context, request)) {
                 writer.Write(request.GroupId)
-                    .Write(request.GenerationId)
+                    .Write(request.GroupGenerationId)
                     .Write(request.MemberId)
                     .Write(request.GroupAssignments.Count);
 
@@ -554,7 +554,7 @@ namespace KafkaClient.Protocol
 
                 case MessageCodec.CodecGzip: {
                     var messageLength = reader.ReadInt32();
-                    var messageStream = new LimitedStream(reader.BaseStream, messageLength);
+                    var messageStream = new LimitedReadableStream(reader.BaseStream, messageLength);
                     using (var gzipReader = new BigEndianBinaryReader(messageStream.Unzip())) {
                         return gzipReader.ReadMessages(partitionId);
                     }

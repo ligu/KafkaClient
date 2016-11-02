@@ -10,7 +10,7 @@ namespace KafkaClient
     {
         public static Task<IImmutableList<Message>> FetchMessagesAsync(this IConsumer consumer, OffsetTopic offset, int maxCount, CancellationToken cancellationToken)
         {
-            return consumer.FetchMessagesAsync(offset.TopicName, offset.PartitionId, offset.Offsets.Last(), maxCount, cancellationToken);
+            return consumer.FetchMessagesAsync(offset.TopicName, offset.PartitionId, offset.Offset, maxCount, cancellationToken);
         }
     }
 }

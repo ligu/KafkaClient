@@ -34,13 +34,19 @@ namespace KafkaClient.Tests.Fakes
 #pragma warning disable 1998
             _fakeConn0.ProduceResponseFunction = async () => new ProduceResponse(new ProduceTopic(TestTopic, 0, ErrorResponseCode.None, _offset0++));
             _fakeConn0.MetadataResponseFunction = async () => MetadataResponse();
-            _fakeConn0.OffsetResponseFunction = async () => new OffsetResponse(new OffsetTopic(TestTopic, 0, ErrorResponseCode.None, new []{ 0L, 99L }));
+            _fakeConn0.OffsetResponseFunction = async () => new OffsetResponse(new [] {
+                new OffsetTopic(TestTopic, 0, ErrorResponseCode.None, 0L),
+                new OffsetTopic(TestTopic, 0, ErrorResponseCode.None, 99L)
+            });
             _fakeConn0.FetchResponseFunction = async () => { Thread.Sleep(500); return null; };
 
             _fakeConn1 = new FakeConnection(new Uri("http://localhost:2"));
             _fakeConn1.ProduceResponseFunction = async () => new ProduceResponse(new ProduceTopic(TestTopic, 1, ErrorResponseCode.None, _offset1++));
             _fakeConn1.MetadataResponseFunction = async () => MetadataResponse();
-            _fakeConn1.OffsetResponseFunction = async () => new OffsetResponse(new OffsetTopic(TestTopic, 1, ErrorResponseCode.None, new []{ 0L, 100L }));
+            _fakeConn1.OffsetResponseFunction = async () => new OffsetResponse(new [] {
+                new OffsetTopic(TestTopic, 1, ErrorResponseCode.None, 0L),
+                new OffsetTopic(TestTopic, 1, ErrorResponseCode.None, 100L)
+            });
             _fakeConn1.FetchResponseFunction = async () => { Thread.Sleep(500); return null; };
 #pragma warning restore 1998
 

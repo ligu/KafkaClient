@@ -7,13 +7,23 @@ namespace KafkaClient.Protocol
 {
     public class OffsetTopic : TopicResponse, IEquatable<OffsetTopic>
     {
-        public OffsetTopic(string topic, int partitionId, ErrorResponseCode errorCode = ErrorResponseCode.None, IEnumerable<long> offsets = null) 
+        public OffsetTopic(string topic, int partitionId, ErrorResponseCode errorCode = ErrorResponseCode.None, long offset = -1, DateTime? timestamp = null) 
             : base(topic, partitionId, errorCode)
         {
-            Offsets = ImmutableList<long>.Empty.AddNotNullRange(offsets);
+            Offset = offset;
+            Timestamp = timestamp;
         }
 
-        public IImmutableList<long> Offsets { get; }
+        /// <summary>
+        /// The timestamp associated with the returned offset.
+        /// This only applies to version 1 and above.
+        /// </summary>
+        public DateTime? Timestamp { get; set; }
+
+        /// <summary>
+        /// The offset found.
+        /// </summary>
+        public long Offset { get; set; }
 
         #region Equality
 
@@ -27,13 +37,17 @@ namespace KafkaClient.Protocol
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
             return base.Equals(other) 
-                   && Offsets.HasEqualElementsInOrder(other.Offsets);
+                && Timestamp == other.Timestamp
+                && Offset == other.Offset;
         }
 
         public override int GetHashCode()
         {
             unchecked {
-                return (base.GetHashCode()*397) ^ (Offsets?.GetHashCode() ?? 0);
+                var hashCode = base.GetHashCode();
+                hashCode = (hashCode*397) ^ (Timestamp?.GetHashCode() ?? 0);
+                hashCode = (hashCode*397) ^ Offset.GetHashCode();
+                return hashCode;
             }
         }
 

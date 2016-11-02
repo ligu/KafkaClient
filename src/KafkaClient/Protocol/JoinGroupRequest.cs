@@ -7,9 +7,10 @@ using KafkaClient.Protocol.Types;
 namespace KafkaClient.Protocol
 {
     /// <summary>
-    /// JoinGroup Request (Version: 0) => group_id session_timeout member_id protocol_type [protocol_name protocol_metadata] 
+    /// JoinGroup Request (Version: 0) => group_id session_timeout *rebalance_timeout member_id protocol_type [protocol_name protocol_metadata] 
     ///   group_id => STRING           -- The group id.
     ///   session_timeout => INT32     -- The coordinator considers the consumer dead if it receives no heartbeat after this timeout in ms.
+    ///   rebalance_timeout => INT32   -- The maximum time that the coordinator will wait for each member to rejoin when rebalancing the group
     ///   member_id => STRING          -- The assigned consumer id or an empty string for a new consumer.
     ///   protocol_type => STRING      -- Unique name for class of protocols implemented by group (ie "consumer")
     ///   GroupProtocols => [ProtocolName ProtocolMetadata]

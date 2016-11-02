@@ -207,13 +207,13 @@ namespace KafkaClient.Tests.Protocol
         }
 
         /// <summary>
-        /// OffsetRequest => ReplicaId [TopicName [Partition Time MaxNumberOfOffsets]]
+        /// OffsetRequest => ReplicaId [TopicName [Partition Timestamp MaxNumberOfOffsets]]
         ///  ReplicaId => int32   -- The replica id indicates the node id of the replica initiating this request. Normal client consumers should always 
         ///                          specify this as -1 as they have no node id. Other brokers set this to be their own node id. The value -2 is accepted 
         ///                          to allow a non-broker to issue fetch requests as if it were a replica broker for debugging purposes.
         ///  TopicName => string  -- The name of the topic.
         ///  Partition => int32   -- The id of the partition the fetch is for.
-        ///  Time => int64        -- Used to ask for all messages before a certain time (ms). There are two special values. Specify -1 to receive the 
+        ///  Timestamp => int64        -- Used to ask for all messages before a certain time (ms). There are two special values. Specify -1 to receive the 
         ///                          latest offset (i.e. the offset of the next coming message) and -2 to receive the earliest available offset. Note 
         ///                          that because offsets are pulled in descending order, asking for the earliest offset will always return you a single element.
         ///  MaxNumberOfOffsets => int32 
@@ -264,7 +264,9 @@ namespace KafkaClient.Tests.Protocol
             var topics = new List<OffsetTopic>();
             for (var t = 0; t < topicsPerRequest; t++) {
                 var partitionId = t % totalPartitions;
-                topics.Add(new OffsetTopic(topicName + t, partitionId, errorCode, offsetsPerPartition.Repeat(() => (long)_randomizer.Next())));
+                for (var o = 0; o < offsetsPerPartition; o++) {
+                    topics.Add(new OffsetTopic(topicName + t, partitionId, errorCode, (long)_randomizer.Next()));
+                }
             }
             var response = new OffsetResponse(topics);
 
@@ -337,7 +339,7 @@ namespace KafkaClient.Tests.Protocol
         ///  ConsumerGroupId => string          -- The consumer group id.
         ///  ConsumerGroupGenerationId => int32 -- The generation of the consumer group.
         ///  MemberId => string                 -- The consumer id assigned by the group coordinator.
-        ///  RetentionTime => int64             -- Time period in ms to retain the offset.
+        ///  RetentionTime => int64             -- Timestamp period in ms to retain the offset.
         ///  TopicName => string                -- The topic to commit.
         ///  Partition => int32                 -- The partition id.
         ///  Offset => int64                    -- message offset to be committed.
@@ -534,9 +536,9 @@ namespace KafkaClient.Tests.Protocol
              )] ErrorResponseCode errorCode
             )
         {
-            var supported = new List<ApiVersionSupport>();
+            var supported = new List<ApiVersionsResponse.VersionSupport>();
             for (short apiKey = 0; apiKey <= 18; apiKey++) {
-                supported.Add(new ApiVersionSupport((ApiKeyRequestType)apiKey, 0, (short)_randomizer.Next(0, 2)));
+                supported.Add(new ApiVersionsResponse.VersionSupport((ApiKeyRequestType)apiKey, 0, (short)_randomizer.Next(0, 2)));
             }
             var response = new ApiVersionsResponse(errorCode, supported);
 
@@ -721,11 +723,11 @@ namespace KafkaClient.Tests.Protocol
             [Values("consumer", "other")] string protocolType, 
             [Values(1, 10)] int assignmentsPerRequest)
         {
-            var assignments = new List<SyncGroupAssignment>();
+            var assignments = new List<SyncGroupRequest.GroupAssignment>();
             for (var a = 0; a < assignmentsPerRequest; a++) {
                 var bytes = new byte[assignmentsPerRequest*100];
                 _randomizer.NextBytes(bytes);
-                assignments.Add(new SyncGroupAssignment(protocolType + a, new ByteMember(bytes)));
+                assignments.Add(new SyncGroupRequest.GroupAssignment(protocolType + a, new ByteMember(bytes)));
             }
             var request = new SyncGroupRequest(groupId, generationId, memberId, assignments);
 
@@ -755,14 +757,14 @@ namespace KafkaClient.Tests.Protocol
             [Values(1, 10)] int assignmentsPerRequest)
         {
             var encoder = new ConsumerEncoder();
-            var assignments = new List<SyncGroupAssignment>();
+            var assignments = new List<SyncGroupRequest.GroupAssignment>();
             for (var a = 0; a < assignmentsPerRequest; a++) {
                 var topics = new List<Topic>();
                 for (var t = 0; t < assignmentsPerRequest; t++) {
                     topics.Add(new Topic(groupId + t, t));
                 }
                 var assignment = new ConsumerMemberAssignment(0, topics);
-                assignments.Add(new SyncGroupAssignment(protocolType + a, assignment));
+                assignments.Add(new SyncGroupRequest.GroupAssignment(protocolType + a, assignment));
             }
             var request = new SyncGroupRequest(groupId, generationId, memberId, assignments);
 
@@ -886,9 +888,9 @@ namespace KafkaClient.Tests.Protocol
             [Range(2, 3)] int count,
             [Values("consumer")] string protocolType)
         {
-            var groups = new ListGroup[count];
+            var groups = new ListGroupsResponse.Group[count];
             for (var g = 0; g < count; g++) {
-                groups[g] = new ListGroup(groupId + g, protocolType);
+                groups[g] = new ListGroupsResponse.Group(groupId + g, protocolType);
             }
             var response = new ListGroupsResponse(errorCode, groups);
 

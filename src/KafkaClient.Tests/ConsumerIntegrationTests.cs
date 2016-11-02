@@ -95,7 +95,7 @@ namespace KafkaClient.Tests
             CheckMessages(messages.Take(5).ToList(), result);
 
             // Now let's consume again
-            result = (await consumer.FetchMessagesAsync(offset.TopicName, offset.PartitionId, offset.Offsets.Last() + 5, 5, CancellationToken.None)).ToList();
+            result = (await consumer.FetchMessagesAsync(offset.TopicName, offset.PartitionId, offset.Offset + 5, 5, CancellationToken.None)).ToList();
 
             CheckMessages(messages.Skip(5).ToList(), result);
         }
@@ -123,7 +123,7 @@ namespace KafkaClient.Tests
             CheckMessages(messages.Take(7).ToList(), result);
 
             // Now let's consume again
-            result = (await consumer.FetchMessagesAsync(offset.TopicName, offset.PartitionId, offset.Offsets.Last() + 5, 2, CancellationToken.None)).ToList();
+            result = (await consumer.FetchMessagesAsync(offset.TopicName, offset.PartitionId, offset.Offset + 5, 2, CancellationToken.None)).ToList();
 
             CheckMessages(messages.Skip(8).ToList(), result);
         }
@@ -151,7 +151,7 @@ namespace KafkaClient.Tests
             CheckMessages(messages.Take(5).ToList(), result);
 
             // Now let's consume again
-            result = (await consumer.FetchMessagesAsync(offset.TopicName, offset.PartitionId, offset.Offsets.Last() + 5, 5, CancellationToken.None)).ToList();
+            result = (await consumer.FetchMessagesAsync(offset.TopicName, offset.PartitionId, offset.Offset + 5, 5, CancellationToken.None)).ToList();
 
             CheckMessages(messages.Skip(5).ToList(), result);
         }
@@ -184,7 +184,7 @@ namespace KafkaClient.Tests
 
             try {
                 // Now let's consume
-                await consumer.FetchMessagesAsync(offset.TopicName, offset.PartitionId, offset.Offsets.Last() + 1, 5, CancellationToken.None);
+                await consumer.FetchMessagesAsync(offset.TopicName, offset.PartitionId, offset.Offset + 1, 5, CancellationToken.None);
                 Assert.Fail("should have thrown FetchOutOfRangeException");
             } catch (FetchOutOfRangeException ex) when (ex.Message.StartsWith("Kafka returned OffsetOutOfRange for Fetch request")) {
                 Console.WriteLine(ex.ToString());
@@ -422,7 +422,7 @@ namespace KafkaClient.Tests
 
             var offset = await brokerRouter.GetTopicOffsetAsync(topic, _partitionId, CancellationToken.None);
 
-            Assert.AreNotEqual(-1, offset.Offsets.LastOrDefault());
+            Assert.AreNotEqual(-1, offset.Offset);
         }
 
         [Test]

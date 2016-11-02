@@ -6,7 +6,7 @@ using KafkaClient.Common;
 namespace KafkaClient.Protocol
 {
     /// <summary>
-    /// ProduceRequest => RequiredAcks Timeout [TopicName [Partition MessageSetSize MessageSet]]
+    /// ProduceRequest => RequiredAcks Timeout [TopicData]
     ///  RequiredAcks => int16   -- This field indicates how many acknowledgements the servers should receive before responding to the request. 
     ///                             If it is 0 the server will not send any response (this is the only case where the server will not reply to 
     ///                             a request). If it is 1, the server will wait the data is written to the local log before sending a response. 
@@ -17,9 +17,11 @@ namespace KafkaClient.Protocol
     ///                             queued due to server overload that wait time will not be included, (3) we will not terminate a local write so if 
     ///                             the local write time exceeds this timeout it will not be respected. To get a hard timeout of this type the client 
     ///                             should use the socket timeout.
-    ///  TopicName => string     -- The topic that data is being published to.
-    ///  Partition => int32      -- The partition that data is being published to.
-    ///  MessageSetSize => int32 -- The size, in bytes, of the message set that follows.
+    ///  TopicData => TopicName Data
+    ///   TopicName => string    -- The topic that data is being published to.
+    ///   Data => Partition MessageSet
+    ///    Partition => int32    -- The partition that data is being published to.
+    ///    MessageSet => BYTES   -- The size (and bytes) of the message set that follows.
     /// 
     /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-Messagesets
     /// </summary>

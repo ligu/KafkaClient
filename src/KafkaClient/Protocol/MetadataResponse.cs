@@ -7,36 +7,44 @@ using KafkaClient.Common;
 namespace KafkaClient.Protocol
 {
     /// <summary>
-    /// MetadataResponse => [Broker] *ControllerId [TopicMetadata]
-    /// *ControllerId, Rack, IsInternal is only version 1 (0.10.0) and above
+    /// MetadataResponse => [Broker] *ClusterId *ControllerId [TopicMetadata]
+    ///  *ControllerId is only version 1 (0.10.0) and above
+    ///  *ClusterId is only version 2 (0.10.1) and above
+    /// 
     ///  Broker => NodeId Host Port *Rack  (any number of brokers may be returned)
-    ///                               -- The node id, hostname, and port information for a kafka broker
-    ///   NodeId => int32             -- The broker id.
-    ///   Host => string              -- The hostname of the broker.
-    ///   Port => int32               -- The port on which the broker accepts requests.
-    ///   Rack => string              -- The rack of the broker.
-    ///  ControllerId => int32        -- The broker id of the controller broker
+    ///   *Rack is only version 1 (0.10.0) and above
+    ///                                -- The node id, hostname, and port information for a kafka broker
+    ///   NodeId => int32              -- The broker id.
+    ///   Host => string               -- The hostname of the broker.
+    ///   Port => int32                -- The port on which the broker accepts requests.
+    ///   Rack => string               -- The rack of the broker.
+    ///  ControllerId => int32         -- The broker id of the controller broker
+    ///  ClusterId => string           -- The cluster id that this broker belongs to.
+    /// 
     ///  TopicMetadata => TopicErrorCode TopicName *IsInternal [PartitionMetadata]
-    ///   TopicErrorCode => int16     -- The error code for the given topic.
-    ///   TopicName => string         -- The name of the topic.
-    ///   IsInternal => boolean       -- Indicates if the topic is considered a Kafka internal topic
-    ///  PartitionMetadata => PartitionErrorCode PartitionId Leader Replicas Isr
-    ///   PartitionErrorCode => int16 -- The error code for the partition, if any.
-    ///   PartitionId => int32        -- The id of the partition.
-    ///   Leader => int32             -- The id of the broker acting as leader for this partition.
-    ///                                  If no leader exists because we are in the middle of a leader election this id will be -1.
-    ///   Replicas => [int32]         -- The set of all nodes that host this partition.
-    ///   Isr => [int32]              -- The set of nodes that are in sync with the leader for this partition.
+    ///   *IsInternal is only version 1 (0.10.0) and above
+    ///   TopicErrorCode => int16      -- The error code for the given topic.
+    ///   TopicName => string          -- The name of the topic.
+    ///   IsInternal => boolean        -- Indicates if the topic is considered a Kafka internal topic
+    /// 
+    ///   PartitionMetadata => PartitionErrorCode PartitionId Leader Replicas Isr
+    ///    PartitionErrorCode => int16 -- The error code for the partition, if any.
+    ///    PartitionId => int32        -- The id of the partition.
+    ///    Leader => int32             -- The id of the broker acting as leader for this partition.
+    ///                                   If no leader exists because we are in the middle of a leader election this id will be -1.
+    ///    Replicas => [int32]         -- The set of all nodes that host this partition.
+    ///    Isr => [int32]              -- The set of nodes that are in sync with the leader for this partition.
     ///
     /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-MetadataAPI
     /// </summary>
     public class MetadataResponse : IResponse, IEquatable<MetadataResponse>
     {
-        public MetadataResponse(IEnumerable<Broker> brokers = null, IEnumerable<MetadataTopic> topics = null, int? controllerId = null)
+        public MetadataResponse(IEnumerable<Broker> brokers = null, IEnumerable<MetadataTopic> topics = null, int? controllerId = null, string clusterId = null)
         {
             Brokers = ImmutableList<Broker>.Empty.AddNotNullRange(brokers);
             Topics = ImmutableList<MetadataTopic>.Empty.AddNotNullRange(topics);
             ControllerId = controllerId;
+            ClusterId = clusterId;
             Errors = ImmutableList<ErrorResponseCode>.Empty.AddRange(Topics.Select(t => t.ErrorCode));
         }
 
@@ -44,6 +52,7 @@ namespace KafkaClient.Protocol
 
         public IImmutableList<Broker> Brokers { get; }
         public int? ControllerId { get; }
+        public string ClusterId { get; }
         public IImmutableList<MetadataTopic> Topics { get; }
 
         /// <inheritdoc />
@@ -59,6 +68,7 @@ namespace KafkaClient.Protocol
             if (ReferenceEquals(this, other)) return true;
             return Brokers.HasEqualElementsInOrder(other.Brokers) 
                 && ControllerId == other.ControllerId
+                && ClusterId == other.ClusterId
                 && Topics.HasEqualElementsInOrder(other.Topics);
         }
 
@@ -68,6 +78,7 @@ namespace KafkaClient.Protocol
             unchecked {
                 var hashCode = Brokers?.GetHashCode() ?? 0;
                 hashCode = (hashCode*397) ^ (ControllerId?.GetHashCode() ?? 0);
+                hashCode = (hashCode*397) ^ (ClusterId?.GetHashCode() ?? 0);
                 hashCode = (hashCode*397) ^ (Topics?.GetHashCode() ?? 0);
                 return hashCode;
             }

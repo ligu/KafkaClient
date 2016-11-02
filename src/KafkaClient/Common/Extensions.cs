@@ -200,6 +200,10 @@ namespace KafkaClient.Common
         {
             return items != null ? list.AddRange(items) : list;
         }
+        public static IImmutableDictionary<T, TValue> AddNotNullRange<T, TValue>(this IImmutableDictionary<T, TValue> dictionary, IEnumerable<KeyValuePair<T, TValue>> items)
+        {
+            return items != null ? dictionary.AddRange(items) : dictionary;
+        }
 
         public static IEnumerable<byte> ToEnumerable(this Stream stream)
         {

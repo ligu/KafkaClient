@@ -253,14 +253,16 @@ namespace KafkaClient
                    {
                        try
                        {
-                           var offsets = t.Result.FirstOrDefault(x => x.PartitionId == fetch.PartitionId);
-                           if (offsets == null) return;
+                           var offsets = t.Result.Where(x => x.PartitionId == fetch.PartitionId).ToList();
+                           if (!offsets.Any()) return;
 
-                           if (offsets.Offsets.Min() > fetch.Offset)
-                               SetOffsetPosition(new OffsetPosition(fetch.PartitionId, offsets.Offsets.Min()));
+                           var minOffset = offsets.Min(o => o.Offset);
+                           if (minOffset > fetch.Offset)
+                               SetOffsetPosition(new OffsetPosition(fetch.PartitionId, minOffset));
 
-                           if (offsets.Offsets.Max() < fetch.Offset)
-                               SetOffsetPosition(new OffsetPosition(fetch.PartitionId, offsets.Offsets.Max()));
+                           var maxOffset = offsets.Max(o => o.Offset);
+                           if (maxOffset < fetch.Offset)
+                               SetOffsetPosition(new OffsetPosition(fetch.PartitionId, maxOffset));
                        }
                        catch (Exception ex)
                        {

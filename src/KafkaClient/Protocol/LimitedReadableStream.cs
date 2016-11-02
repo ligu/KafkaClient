@@ -3,12 +3,12 @@ using System.IO;
 
 namespace KafkaClient.Protocol
 {
-    public class LimitedStream : Stream
+    internal class LimitedReadableStream : Stream
     {
         private readonly Stream _stream;
         private readonly long _finalPosition;
 
-        public LimitedStream(Stream stream, int maxRead)
+        public LimitedReadableStream(Stream stream, int maxRead)
         {
             _stream = stream;
             _finalPosition = _stream.Position + maxRead;

@@ -4,9 +4,9 @@ namespace KafkaClient.Protocol
 {
     public class Offset : Topic, IEquatable<Offset>
     {
-        public Offset(string topicName, int partitionId, long time = LatestTime, int maxOffsets = DefaultMaxOffsets) : base(topicName, partitionId)
+        public Offset(string topicName, int partitionId, long timestamp = LatestTime, int maxOffsets = DefaultMaxOffsets) : base(topicName, partitionId)
         {
-            Time = time;
+            Timestamp = timestamp;
             MaxOffsets = maxOffsets;
         }
 
@@ -15,8 +15,11 @@ namespace KafkaClient.Protocol
         /// Specify -1 to receive the latest offsets and -2 to receive the earliest available offset.
         /// Note that because offsets are pulled in descending order, asking for the earliest offset will always return you a single element.
         /// </summary>
-        public long Time { get; }
+        public long Timestamp { get; }
 
+        /// <summary>
+        /// Only applies to version 1 (Kafka 0.10.1 and below)
+        /// </summary>
         public int MaxOffsets { get; }
 
         public const long LatestTime = -1L;
@@ -35,7 +38,7 @@ namespace KafkaClient.Protocol
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
             return base.Equals(other) 
-                && Time == other.Time 
+                && Timestamp == other.Timestamp 
                 && MaxOffsets == other.MaxOffsets;
         }
 
@@ -43,7 +46,7 @@ namespace KafkaClient.Protocol
         {
             unchecked {
                 int hashCode = base.GetHashCode();
-                hashCode = (hashCode*397) ^ Time.GetHashCode();
+                hashCode = (hashCode*397) ^ Timestamp.GetHashCode();
                 hashCode = (hashCode*397) ^ MaxOffsets;
                 return hashCode;
             }

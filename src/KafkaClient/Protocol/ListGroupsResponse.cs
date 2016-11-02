@@ -16,11 +16,11 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class ListGroupsResponse : IResponse, IEquatable<ListGroupsResponse>
     {
-        public ListGroupsResponse(ErrorResponseCode errorCode = ErrorResponseCode.None, IEnumerable<ListGroup> groups = null)
+        public ListGroupsResponse(ErrorResponseCode errorCode = ErrorResponseCode.None, IEnumerable<Group> groups = null)
         {
             ErrorCode = errorCode;
             Errors = ImmutableList<ErrorResponseCode>.Empty.Add(ErrorCode);
-            Groups = ImmutableList<ListGroup>.Empty.AddNotNullRange(groups);
+            Groups = ImmutableList<Group>.Empty.AddNotNullRange(groups);
         }
 
         public IImmutableList<ErrorResponseCode> Errors { get; }
@@ -30,7 +30,9 @@ namespace KafkaClient.Protocol
         /// </summary>
         public ErrorResponseCode ErrorCode { get; }
 
-        public IImmutableList<ListGroup> Groups { get; }
+        public IImmutableList<Group> Groups { get; }
+
+        #region Equality
 
         /// <inheritdoc />
         public override bool Equals(object obj)
@@ -66,5 +68,55 @@ namespace KafkaClient.Protocol
         {
             return !Equals(left, right);
         }
+
+        #endregion
+
+        public class Group : IEquatable<Group>
+        {
+            public Group(string groupId, string protocolType)
+            {
+                GroupId = groupId;
+                ProtocolType = protocolType;
+            }
+
+            public string GroupId { get; }
+            public string ProtocolType { get; }
+
+            /// <inheritdoc />
+            public override bool Equals(object obj)
+            {
+                return Equals(obj as Group);
+            }
+
+            /// <inheritdoc />
+            public bool Equals(Group other)
+            {
+                if (ReferenceEquals(null, other)) return false;
+                if (ReferenceEquals(this, other)) return true;
+                return string.Equals(GroupId, other.GroupId) 
+                       && string.Equals(ProtocolType, other.ProtocolType);
+            }
+
+            /// <inheritdoc />
+            public override int GetHashCode()
+            {
+                unchecked {
+                    return ((GroupId?.GetHashCode() ?? 0)*397) ^ (ProtocolType?.GetHashCode() ?? 0);
+                }
+            }
+
+            /// <inheritdoc />
+            public static bool operator ==(Group left, Group right)
+            {
+                return Equals(left, right);
+            }
+
+            /// <inheritdoc />
+            public static bool operator !=(Group left, Group right)
+            {
+                return !Equals(left, right);
+            }
+        }
+
     }
 }

@@ -45,7 +45,7 @@ namespace KafkaClient.Tests
 
                 var producer = new Producer(router);
                 var send = SandMessageForever(producer, offset.TopicName, offset.PartitionId);
-                var read = ReadMessageForever(consumer, offset.TopicName, offset.PartitionId, offset.Offsets.Last());
+                var read = ReadMessageForever(consumer, offset.TopicName, offset.PartitionId, offset.Offset);
                 await Task.WhenAll(send, read);
             }
         }

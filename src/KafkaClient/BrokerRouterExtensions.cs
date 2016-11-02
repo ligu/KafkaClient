@@ -18,7 +18,7 @@ namespace KafkaClient
         /// <param name="brokerRouter">The router which provides the route and metadata.</param>
         /// <param name="topicName">Name of the topic to get offset information from.</param>
         /// <param name="maxOffsets">How many to get, at most.</param>
-        /// <param name="offsetTime">These are best described by <see cref="Offset.Time"/></param>
+        /// <param name="offsetTime">These are best described by <see cref="Offset.Timestamp"/></param>
         /// <param name="cancellationToken"></param>
         /// <param name="retryPolicy"></param>
         public static async Task<IImmutableList<OffsetTopic>> GetTopicOffsetsAsync(this IBrokerRouter brokerRouter, string topicName, int maxOffsets, long offsetTime, CancellationToken cancellationToken, IRetry retryPolicy = null)
@@ -81,7 +81,7 @@ namespace KafkaClient
         /// <param name="topicName">Name of the topic to get offset information from.</param>
         /// <param name="partitionId">The partition to get offsets for.</param>
         /// <param name="maxOffsets">How many to get, at most.</param>
-        /// <param name="offsetTime">These are best described by <see cref="Offset.Time"/></param>
+        /// <param name="offsetTime">These are best described by <see cref="Offset.Timestamp"/></param>
         /// <param name="cancellationToken"></param>
         public static async Task<OffsetTopic> GetTopicOffsetAsync(this IBrokerRouter brokerRouter, string topicName, int partitionId, int maxOffsets, long offsetTime, CancellationToken cancellationToken)
         {

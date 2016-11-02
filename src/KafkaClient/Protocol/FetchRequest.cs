@@ -6,7 +6,8 @@ using KafkaClient.Common;
 namespace KafkaClient.Protocol
 {
     /// <summary>
-    /// FetchRequest => ReplicaId MaxWaitTime MinBytes [TopicName [Partition FetchOffset MaxBytes]]
+    /// FetchRequest => ReplicaId MaxWaitTime MinBytes *MaxBytes [TopicData]
+    ///  *MaxBytes is only version 3 (0.10.1) and above
     ///  ReplicaId => int32   -- The replica id indicates the node id of the replica initiating this request. Normal client consumers should always 
     ///                          specify this as -1 as they have no node id. Other brokers set this to be their own node id. The value -2 is accepted 
     ///                          to allow a non-broker to issue fetch requests as if it were a replica broker for debugging purposes.
@@ -19,25 +20,33 @@ namespace KafkaClient.Protocol
     ///                          consumer can tune for throughput and trade a little additional latency for reading only large chunks of data (e.g. 
     ///                          setting MaxWaitTime to 100 ms and setting MinBytes to 64k would allow the server to wait up to 100ms to try to accumulate 
     ///                          64k of data before responding).
-    ///  TopicName => string  -- The name of the topic.
-    ///  Partition => int32   -- The id of the partition the fetch is for.
-    ///  FetchOffset => int64 -- The offset to begin this fetch from.
-    ///  MaxBytes => int32    -- The maximum bytes to include in the message set for this partition. This helps bound the size of the response.
+    ///  MaxBytes => int32    -- Maximum bytes to accumulate in the response. Note that this is not an absolute maximum, if the first message in the 
+    ///                          first non-empty partition of the fetch is larger than this value, the message will still be returned to ensure that 
+    ///                          progress can be made.
+    /// 
+    ///  TopicData => TopicName [PartitionData]
+    ///   TopicName => string   -- The name of the topic.
+    /// 
+    ///   PartitionData => Partition FetchOffset MaxBytes
+    ///    Partition => int32   -- The id of the partition the fetch is for.
+    ///    FetchOffset => int64 -- The offset to begin this fetch from.
+    ///    MaxBytes => int32    -- The maximum bytes to include in the message set for this partition. This helps bound the size of the response.
     /// 
     /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-FetchAPI
     /// </summary>
     public class FetchRequest : Request, IRequest<FetchResponse>, IEquatable<FetchRequest>
     {
-        public FetchRequest(Fetch fetch, TimeSpan? maxWaitTime = null, int minBytes = DefaultMinBlockingByteBufferSize) 
-            : this (new []{ fetch }, maxWaitTime, minBytes)
+        public FetchRequest(Fetch fetch, TimeSpan? maxWaitTime = null, int minBytes = DefaultMinBlockingByteBufferSize, int maxBytes = 0) 
+            : this (new []{ fetch }, maxWaitTime, minBytes, maxBytes)
         {
         }
 
-        public FetchRequest(IEnumerable<Fetch> fetches = null, TimeSpan? maxWaitTime = null, int minBytes = DefaultMinBlockingByteBufferSize) 
+        public FetchRequest(IEnumerable<Fetch> fetches = null, TimeSpan? maxWaitTime = null, int minBytes = DefaultMinBlockingByteBufferSize, int maxBytes = 0) 
             : base(ApiKeyRequestType.Fetch)
         {
             MaxWaitTime = maxWaitTime ?? TimeSpan.FromMilliseconds(DefaultMaxBlockingWaitTime);
             MinBytes = minBytes;
+            MaxBytes = maxBytes;
             Fetches = ImmutableList<Fetch>.Empty.AddNotNullRange(fetches);
         }
 
@@ -59,6 +68,12 @@ namespace KafkaClient.Protocol
         /// </summary>
         public int MinBytes { get; }
 
+        /// <summary>
+        /// Maximum bytes to accumulate in the response. Note that this is not an absolute maximum, if the first message in the first non-empty partition of the fetch is larger than 
+        /// this value, the message will still be returned to ensure that progress can be made.
+        /// </summary>
+        public int MaxBytes { get; }
+
         public IImmutableList<Fetch> Fetches { get; }
 
         /// <inheritdoc />
@@ -74,6 +89,7 @@ namespace KafkaClient.Protocol
             if (ReferenceEquals(this, other)) return true;
             return MaxWaitTime.Equals(other.MaxWaitTime) 
                 && MinBytes == other.MinBytes 
+                && MaxBytes == other.MaxBytes 
                 && Fetches.HasEqualElementsInOrder(other.Fetches);
         }
 
@@ -83,6 +99,7 @@ namespace KafkaClient.Protocol
             unchecked {
                 var hashCode = MaxWaitTime.GetHashCode();
                 hashCode = (hashCode*397) ^ MinBytes;
+                hashCode = (hashCode*397) ^ MaxBytes;
                 hashCode = (hashCode*397) ^ (Fetches?.GetHashCode() ?? 0);
                 return hashCode;
             }
