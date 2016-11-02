@@ -2,7 +2,7 @@
 
 namespace KafkaClient.Protocol
 {
-    public class TopicResponse : Topic, IEquatable<TopicResponse>
+    public class TopicResponse : TopicPartition, IEquatable<TopicResponse>
     {
         public TopicResponse(string topicName, int partitionId, ErrorResponseCode errorCode)
             : base(topicName, partitionId)

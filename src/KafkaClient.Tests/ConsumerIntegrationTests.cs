@@ -40,7 +40,7 @@ namespace KafkaClient.Tests
             var response = await producer.SendMessageAsync(new Message(messageValue), IntegrationConfig.TopicName(), partitionId, CancellationToken.None);
             var offset = response.Offset;
 
-            var fetch = new Fetch(IntegrationConfig.TopicName(), partitionId, offset, 32000);
+            var fetch = new FetchRequest.Topic(IntegrationConfig.TopicName(), partitionId, offset, 32000);
 
             var fetchRequest = new FetchRequest(fetch, minBytes: 10);
 

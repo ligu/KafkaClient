@@ -39,7 +39,7 @@ namespace KafkaClient.Tests
                 IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(">> End GetTopicMetadataAsync"));
                 var conn = router.GetBrokerRoute(topicName, 0);
 
-                var request = new ProduceRequest(new Payload(topicName, 0, new [] {
+                var request = new ProduceRequest(new ProduceRequest.Payload(topicName, 0, new [] {
                                     new Message("0", "1"),
                                     new Message("1", "1"),
                                     new Message("2", "1")

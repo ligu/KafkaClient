@@ -36,7 +36,7 @@ namespace KafkaClient
             if (0 <= localIndex && localIndex + maxCount <= _localMessages.Count) return _localMessages.GetRange(localIndex, maxCount);
 
             var localCount = (0 <= localIndex && localIndex < _localMessages.Count) ? _localMessages.Count - localIndex : 0;
-            var request = new FetchRequest(new Fetch(topicName, partitionId, offset + localCount, _maxFetchBytes), _maxServerWait);
+            var request = new FetchRequest(new FetchRequest.Topic(topicName, partitionId, offset + localCount, _maxFetchBytes), _maxServerWait);
             var response = await _brokerRouter.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
             var topic = response.Topics.SingleOrDefault();
 

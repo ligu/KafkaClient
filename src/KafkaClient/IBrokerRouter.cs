@@ -58,7 +58,7 @@ namespace KafkaClient
         /// use <see cref="GetTopicMetadataAsync(string, CancellationToken)"/>.
         /// </remarks>
         /// <exception cref="CachedMetadataException">Thrown if the topic metadata does not exist in the cache.</exception>
-        MetadataTopic GetTopicMetadata(string topicName);
+        MetadataResponse.Topic GetTopicMetadata(string topicName);
 
         /// <summary>
         /// Returns Topic metadata for each topic requested.
@@ -69,12 +69,12 @@ namespace KafkaClient
         /// use <see cref="GetTopicMetadataAsync(IEnumerable&lt;string&gt;, CancellationToken)"/>.
         /// </remarks>
         /// <exception cref="CachedMetadataException">Thrown if the topic metadata does not exist in the cache.</exception>
-        IImmutableList<MetadataTopic> GetTopicMetadata(IEnumerable<string> topicNames);
+        IImmutableList<MetadataResponse.Topic> GetTopicMetadata(IEnumerable<string> topicNames);
 
         /// <summary>
         /// Returns all cached topic metadata.
         /// </summary>
-        IImmutableList<MetadataTopic> GetTopicMetadata();
+        IImmutableList<MetadataResponse.Topic> GetTopicMetadata();
 
         /// <summary>
         /// Returns Topic metadata for the topic requested.
@@ -83,7 +83,7 @@ namespace KafkaClient
         /// This method will check the cache first, and if the topic is missing it will initiate a call to the kafka 
         /// servers, updating the cache with the resulting metadata.
         /// </remarks>
-        Task<MetadataTopic> GetTopicMetadataAsync(string topicName, CancellationToken cancellationToken);
+        Task<MetadataResponse.Topic> GetTopicMetadataAsync(string topicName, CancellationToken cancellationToken);
 
         /// <summary>
         /// Returns Topic metadata for each topic requested.
@@ -92,7 +92,7 @@ namespace KafkaClient
         /// This method will check the cache first, and for any missing topic metadata it will initiate a call to the kafka 
         /// servers, updating the cache with the resulting metadata.
         /// </remarks>
-        Task<IImmutableList<MetadataTopic>> GetTopicMetadataAsync(IEnumerable<string> topicNames, CancellationToken cancellationToken);
+        Task<IImmutableList<MetadataResponse.Topic>> GetTopicMetadataAsync(IEnumerable<string> topicNames, CancellationToken cancellationToken);
 
         /// <summary>
         /// Force a call to the kafka servers to refresh metadata for the given topic.

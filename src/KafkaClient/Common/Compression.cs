@@ -1,9 +1,8 @@
 ﻿using System;
 using System.IO;
 using System.IO.Compression;
-using KafkaClient.Common;
 
-namespace KafkaClient.Protocol
+namespace KafkaClient.Common
 {
     /// <summary>
     /// Extension methods which allow compression of byte arrays

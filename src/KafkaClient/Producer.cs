@@ -74,7 +74,7 @@ namespace KafkaClient
         }
 
         /// <inheritdoc />
-        public async Task<ImmutableList<ProduceTopic>> SendMessagesAsync(IEnumerable<Message> messages, string topicName, int? partition, ISendMessageConfiguration configuration, CancellationToken cancellationToken)
+        public async Task<ImmutableList<ProduceResponse.Topic>> SendMessagesAsync(IEnumerable<Message> messages, string topicName, int? partition, ISendMessageConfiguration configuration, CancellationToken cancellationToken)
         {
             var produceTopicTasks = messages.Select(message => new ProduceTopicTask(topicName, partition, message, configuration ?? Configuration.SendDefaults, cancellationToken)).ToArray();
             Interlocked.Add(ref _sendingMessageCount, produceTopicTasks.Length);
@@ -172,10 +172,10 @@ namespace KafkaClient
             var sendBatches = new List<ProduceTaskBatch>();
             foreach (var endpointGroup in endpointGroups) {
                 var produceTasksByTopicPayload = endpointGroup
-                    .GroupBy(_ => (Topic)_.Route)
+                    .GroupBy(_ => (TopicPartition)_.Route)
                     .ToImmutableDictionary(g => g.Key, g => g.Select(_ => _.ProduceTask).ToImmutableList());
                 var messageCount = produceTasksByTopicPayload.Values.Sum(_ => _.Count);
-                var payloads = produceTasksByTopicPayload.Select(p => new Payload(p.Key.TopicName, p.Key.PartitionId, p.Value.Select(_ => _.Message), codec));
+                var payloads = produceTasksByTopicPayload.Select(p => new ProduceRequest.Payload(p.Key.TopicName, p.Key.PartitionId, p.Value.Select(_ => _.Message), codec));
                 var request = new ProduceRequest(payloads, endpointGroup.Key.AckTimeout, endpointGroup.Key.Acks);
                 BrokerRouter.Log.Debug(() => LogEvent.Create($"Produce request for topics{request.Payloads.Aggregate("", (buffer, p) => $"{buffer} {p}")} with {messageCount} messages"));
 
@@ -205,12 +205,12 @@ namespace KafkaClient
                     if (batch.Acks == 0 && batchResult == null) {
                         foreach (var topic in batch.TasksByTopicPayload.Keys) {
                             foreach (var task in batch.TasksByTopicPayload[topic]) {
-                                task.Tcs.SetResult(new ProduceTopic(topic.TopicName, topic.PartitionId, ErrorResponseCode.None, -1));
+                                task.Tcs.SetResult(new ProduceResponse.Topic(topic.TopicName, topic.PartitionId, ErrorResponseCode.None, -1));
                             }
                         }
                         return;
                     }
-                    var resultTopics = batchResult.Topics.ToImmutableDictionary(t => new Topic(t.TopicName, t.PartitionId));
+                    var resultTopics = batchResult.Topics.ToImmutableDictionary(t => new TopicPartition(t.TopicName, t.PartitionId));
                     BrokerRouter.Log.Debug(() => LogEvent.Create($"Produce response for topics{resultTopics.Keys.Aggregate("", (buffer, p) => $"{buffer} {p}")}"));
 
                     foreach (var topic in batch.TasksByTopicPayload.Keys.Except(resultTopics.Keys)) {
@@ -231,8 +231,8 @@ namespace KafkaClient
                         var offsetCount = 0;
                         foreach (var task in tasks) {
                             task.Tcs.SetResult(batch.Acks == 0
-                                ? new ProduceTopic(topic.TopicName, topic.PartitionId, ErrorResponseCode.None, -1)
-                                : new ProduceTopic(topic.TopicName, topic.PartitionId, topic.ErrorCode, topic.Offset + offsetCount, topic.Timestamp));
+                                ? new ProduceResponse.Topic(topic.TopicName, topic.PartitionId, ErrorResponseCode.None, -1)
+                                : new ProduceResponse.Topic(topic.TopicName, topic.PartitionId, topic.ErrorCode, topic.Offset + offsetCount, topic.Timestamp));
                             offsetCount += 1;
                         }
                     }
@@ -271,7 +271,7 @@ namespace KafkaClient
             }
         }
 
-        private class ProduceTopicTask : CancellableTask<ProduceTopic>
+        private class ProduceTopicTask : CancellableTask<ProduceResponse.Topic>
         {
             public ProduceTopicTask(string topicName, int? partition, Message message, ISendMessageConfiguration configuration, CancellationToken cancellationToken)
                 : base(cancellationToken)
@@ -299,7 +299,7 @@ namespace KafkaClient
 
         private class ProduceTaskBatch
         {
-            public ProduceTaskBatch(Endpoint endpoint, short acks, Task<ProduceResponse> receiveTask, ImmutableDictionary<Topic, ImmutableList<ProduceTopicTask>> tasksByTopicPayload)
+            public ProduceTaskBatch(Endpoint endpoint, short acks, Task<ProduceResponse> receiveTask, ImmutableDictionary<TopicPartition, ImmutableList<ProduceTopicTask>> tasksByTopicPayload)
             {
                 Endpoint = endpoint;
                 Acks = acks;
@@ -310,7 +310,7 @@ namespace KafkaClient
             public Endpoint Endpoint { get; }
             public short Acks { get; }
             public Task<ProduceResponse> ReceiveTask { get; }
-            public ImmutableDictionary<Topic, ImmutableList<ProduceTopicTask>> TasksByTopicPayload { get; }
+            public ImmutableDictionary<TopicPartition, ImmutableList<ProduceTopicTask>> TasksByTopicPayload { get; }
         }
     }
 }

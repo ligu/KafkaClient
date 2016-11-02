@@ -15,7 +15,7 @@ namespace KafkaClient.Protocol
     ///   TopicName => string  -- The name of the topic.
     /// 
     ///   PartitionData => Partition Timestamp *MaxNumberOfOffsets
-    ///    *MaxNumberOfOffsets is only version 0 (0.10.1) and above
+    ///    *MaxNumberOfOffsets is only version 0 (0.10.0.1) and below
     ///    Partition => int32   -- The id of the partition the fetch is for.
     ///    Timestamp => int64   -- Used to ask for all messages before a certain time (ms). There are two special values. Specify -1 to receive the 
     ///                            latest offset (i.e. the offset of the next coming message) and -2 to receive the earliest available offset. Note 
@@ -27,18 +27,20 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class OffsetRequest : Request, IRequest<OffsetResponse>, IEquatable<OffsetRequest>
     {
-        public OffsetRequest(params Offset[] offsets)
-            : this((IEnumerable<Offset>)offsets)
+        public OffsetRequest(params Topic[] topics)
+            : this((IEnumerable<Topic>)topics)
         {
         }
 
-        public OffsetRequest(IEnumerable<Offset> offsets) 
+        public OffsetRequest(IEnumerable<Topic> offsets) 
             : base(ApiKeyRequestType.Offset)
         {
-            Offsets = ImmutableList<Offset>.Empty.AddNotNullRange(offsets);
+            Topics = ImmutableList<Topic>.Empty.AddNotNullRange(offsets);
         }
 
-        public IImmutableList<Offset> Offsets { get; }
+        public IImmutableList<Topic> Topics { get; }
+
+        #region Equality
 
         /// <inheritdoc />
         public override bool Equals(object obj)
@@ -51,13 +53,13 @@ namespace KafkaClient.Protocol
         {
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
-            return Offsets.HasEqualElementsInOrder(other.Offsets);
+            return Topics.HasEqualElementsInOrder(other.Topics);
         }
 
         /// <inheritdoc />
         public override int GetHashCode()
         {
-            return Offsets?.GetHashCode() ?? 0;
+            return Topics?.GetHashCode() ?? 0;
         }
 
         /// <inheritdoc />
@@ -70,6 +72,72 @@ namespace KafkaClient.Protocol
         public static bool operator !=(OffsetRequest left, OffsetRequest right)
         {
             return !Equals(left, right);
+        }
+
+        #endregion
+
+        public class Topic : TopicPartition, IEquatable<Topic>
+        {
+            public Topic(string topicName, int partitionId, long timestamp = LatestTime, int maxOffsets = DefaultMaxOffsets) : base(topicName, partitionId)
+            {
+                Timestamp = timestamp;
+                MaxOffsets = maxOffsets;
+            }
+
+            /// <summary>
+            /// Used to ask for all messages before a certain time (ms). There are two special values.
+            /// Specify -1 to receive the latest offsets and -2 to receive the earliest available offset.
+            /// Note that because offsets are pulled in descending order, asking for the earliest offset will always return you a single element.
+            /// </summary>
+            public long Timestamp { get; }
+
+            /// <summary>
+            /// Only applies to version 0 (Kafka 0.10.1 and below)
+            /// </summary>
+            public int MaxOffsets { get; }
+
+            public const long LatestTime = -1L;
+            public const long EarliestTime = -2L;
+            public const int DefaultMaxOffsets = 1;
+
+            #region Equality
+
+            public override bool Equals(object obj)
+            {
+                return Equals(obj as Topic);
+            }
+
+            public bool Equals(Topic other)
+            {
+                if (ReferenceEquals(null, other)) return false;
+                if (ReferenceEquals(this, other)) return true;
+                return base.Equals(other) 
+                    && Timestamp == other.Timestamp 
+                    && MaxOffsets == other.MaxOffsets;
+            }
+
+            public override int GetHashCode()
+            {
+                unchecked {
+                    int hashCode = base.GetHashCode();
+                    hashCode = (hashCode*397) ^ Timestamp.GetHashCode();
+                    hashCode = (hashCode*397) ^ MaxOffsets;
+                    return hashCode;
+                }
+            }
+
+            public static bool operator ==(Topic left, Topic right)
+            {
+                return Equals(left, right);
+            }
+
+            public static bool operator !=(Topic left, Topic right)
+            {
+                return !Equals(left, right);
+            }
+
+            #endregion
+        
         }
     }
 }

@@ -10,7 +10,7 @@ namespace KafkaClient
     {
         private readonly ConcurrentDictionary<string, int> _roundRobinTracker = new ConcurrentDictionary<string, int>();
 
-        public MetadataPartition Select(MetadataTopic topic, byte[] key)
+        public MetadataResponse.Partition Select(MetadataResponse.Topic topic, byte[] key)
         {
             if (topic == null) throw new ArgumentNullException(nameof(topic));
             if (topic.Partitions.Count <= 0) throw new CachedMetadataException($"topic/{topic.TopicName} has no partitions.") { TopicName = topic.TopicName };

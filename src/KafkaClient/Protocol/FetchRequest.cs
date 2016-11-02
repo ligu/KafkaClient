@@ -36,18 +36,18 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class FetchRequest : Request, IRequest<FetchResponse>, IEquatable<FetchRequest>
     {
-        public FetchRequest(Fetch fetch, TimeSpan? maxWaitTime = null, int minBytes = DefaultMinBlockingByteBufferSize, int maxBytes = 0) 
-            : this (new []{ fetch }, maxWaitTime, minBytes, maxBytes)
+        public FetchRequest(Topic topic, TimeSpan? maxWaitTime = null, int minBytes = DefaultMinBlockingByteBufferSize, int maxBytes = 0) 
+            : this (new []{ topic }, maxWaitTime, minBytes, maxBytes)
         {
         }
 
-        public FetchRequest(IEnumerable<Fetch> fetches = null, TimeSpan? maxWaitTime = null, int minBytes = DefaultMinBlockingByteBufferSize, int maxBytes = 0) 
+        public FetchRequest(IEnumerable<Topic> fetches = null, TimeSpan? maxWaitTime = null, int minBytes = DefaultMinBlockingByteBufferSize, int maxBytes = 0) 
             : base(ApiKeyRequestType.Fetch)
         {
             MaxWaitTime = maxWaitTime ?? TimeSpan.FromMilliseconds(DefaultMaxBlockingWaitTime);
             MinBytes = minBytes;
             MaxBytes = maxBytes;
-            Fetches = ImmutableList<Fetch>.Empty.AddNotNullRange(fetches);
+            Topics = ImmutableList<Topic>.Empty.AddNotNullRange(fetches);
         }
 
         internal const int DefaultMinBlockingByteBufferSize = 4096;
@@ -74,7 +74,9 @@ namespace KafkaClient.Protocol
         /// </summary>
         public int MaxBytes { get; }
 
-        public IImmutableList<Fetch> Fetches { get; }
+        public IImmutableList<Topic> Topics { get; }
+
+        #region Equality
 
         /// <inheritdoc />
         public override bool Equals(object obj)
@@ -90,7 +92,7 @@ namespace KafkaClient.Protocol
             return MaxWaitTime.Equals(other.MaxWaitTime) 
                 && MinBytes == other.MinBytes 
                 && MaxBytes == other.MaxBytes 
-                && Fetches.HasEqualElementsInOrder(other.Fetches);
+                && Topics.HasEqualElementsInOrder(other.Topics);
         }
 
         /// <inheritdoc />
@@ -100,7 +102,7 @@ namespace KafkaClient.Protocol
                 var hashCode = MaxWaitTime.GetHashCode();
                 hashCode = (hashCode*397) ^ MinBytes;
                 hashCode = (hashCode*397) ^ MaxBytes;
-                hashCode = (hashCode*397) ^ (Fetches?.GetHashCode() ?? 0);
+                hashCode = (hashCode*397) ^ (Topics?.GetHashCode() ?? 0);
                 return hashCode;
             }
         }
@@ -115,6 +117,66 @@ namespace KafkaClient.Protocol
         public static bool operator !=(FetchRequest left, FetchRequest right)
         {
             return !Equals(left, right);
+        }
+
+        #endregion
+
+        public class Topic : TopicPartition, IEquatable<Topic>
+        {
+            public Topic(string topicName, int partitionId, long offset, int? maxBytes = null)
+                : base(topicName, partitionId)
+            {
+                Offset = offset;
+                MaxBytes = maxBytes.GetValueOrDefault(FetchRequest.DefaultMinBlockingByteBufferSize * 8);
+            }
+
+            /// <summary>
+            /// The offset to begin this fetch from.
+            /// </summary>
+            public long Offset { get; }
+
+            /// <summary>
+            /// The maximum bytes to include in the message set for this partition. This helps bound the size of the response.
+            /// </summary>
+            public int MaxBytes { get; }
+
+            #region Equality
+
+            public override bool Equals(object obj)
+            {
+                return Equals(obj as Topic);
+            }
+
+            public bool Equals(Topic other)
+            {
+                if (ReferenceEquals(null, other)) return false;
+                if (ReferenceEquals(this, other)) return true;
+                return Equals((TopicPartition) other) 
+                    && Offset == other.Offset 
+                    && MaxBytes == other.MaxBytes;
+            }
+
+            public override int GetHashCode()
+            {
+                unchecked {
+                    int hashCode = base.GetHashCode();
+                    hashCode = (hashCode*397) ^ Offset.GetHashCode();
+                    hashCode = (hashCode*397) ^ MaxBytes;
+                    return hashCode;
+                }
+            }
+
+            public static bool operator ==(Topic left, Topic right)
+            {
+                return Equals(left, right);
+            }
+
+            public static bool operator !=(Topic left, Topic right)
+            {
+                return !Equals(left, right);
+            }
+
+            #endregion
         }
     }
 }

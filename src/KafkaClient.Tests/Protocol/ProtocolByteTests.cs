@@ -76,10 +76,10 @@ namespace KafkaClient.Tests.Protocol
             [Values(1, 5)] int totalPartitions, 
             [Values(3)] int messagesPerSet)
         {
-            var payloads = new List<Payload>();
+            var payloads = new List<ProduceRequest.Payload>();
             for (var t = 0; t < topicsPerRequest; t++) {
                 var partition = 1 + t%totalPartitions;
-                payloads.Add(new Payload(topic + t, partition, GenerateMessages(messagesPerSet, (byte) (version >= 2 ? 1 : 0), partition)));
+                payloads.Add(new ProduceRequest.Payload(topic + t, partition, GenerateMessages(messagesPerSet, (byte) (version >= 2 ? 1 : 0), partition)));
             }
             var request = new ProduceRequest(payloads, TimeSpan.FromMilliseconds(timeoutMilliseconds), acks);
 
@@ -118,9 +118,9 @@ namespace KafkaClient.Tests.Protocol
             )] ErrorResponseCode errorCode,
             [Values(0, 100000)] int throttleTime)
         {
-            var topics = new List<ProduceTopic>();
+            var topics = new List<ProduceResponse.Topic>();
             for (var t = 0; t < topicsPerRequest; t++) {
-                topics.Add(new ProduceTopic(topicName + t, t % totalPartitions, errorCode, _randomizer.Next(), version >= 2 ? timestampMilliseconds.FromUnixEpochMilliseconds() : (DateTime?)null));
+                topics.Add(new ProduceResponse.Topic(topicName + t, t % totalPartitions, errorCode, _randomizer.Next(), version >= 2 ? timestampMilliseconds.FromUnixEpochMilliseconds() : (DateTime?)null));
             }
             var response = new ProduceResponse(topics, version >= 1 ? TimeSpan.FromMilliseconds(throttleTime) : (TimeSpan?)null);
 
@@ -158,9 +158,9 @@ namespace KafkaClient.Tests.Protocol
             [Values(1, 5)] int totalPartitions, 
             [Values(25600000)] int maxBytes)
         {
-            var fetches = new List<Fetch>();
+            var fetches = new List<FetchRequest.Topic>();
             for (var t = 0; t < topicsPerRequest; t++) {
-                fetches.Add(new Fetch(topic + t, t % totalPartitions, _randomizer.Next(0, int.MaxValue), maxBytes));
+                fetches.Add(new FetchRequest.Topic(topic + t, t % totalPartitions, _randomizer.Next(0, int.MaxValue), maxBytes));
             }
             var request = new FetchRequest(fetches, TimeSpan.FromMilliseconds(maxWaitMilliseconds), minBytes);
             request.AssertCanEncodeDecodeRequest(version);
@@ -195,11 +195,11 @@ namespace KafkaClient.Tests.Protocol
             [Values(3)] int messagesPerSet
             )
         {
-            var topics = new List<FetchTopicResponse>();
+            var topics = new List<FetchResponse.Topic>();
             for (var t = 0; t < topicsPerRequest; t++) {
                 var partitionId = t % totalPartitions;
                 var messages = GenerateMessages(messagesPerSet, (byte) (version >= 2 ? 1 : 0), partitionId);
-                topics.Add(new FetchTopicResponse(topicName + t, partitionId, _randomizer.Next(), errorCode, messages));
+                topics.Add(new FetchResponse.Topic(topicName + t, partitionId, _randomizer.Next(), errorCode, messages));
             }
             var response = new FetchResponse(topics, version >= 1 ? TimeSpan.FromMilliseconds(throttleTime) : (TimeSpan?)null);
 
@@ -228,9 +228,9 @@ namespace KafkaClient.Tests.Protocol
             [Values(-2, -1, 123456, 10000000)] long time,
             [Values(1, 10)] int maxOffsets)
         {
-            var offsets = new List<Offset>();
+            var offsets = new List<OffsetRequest.Topic>();
             for (var t = 0; t < topicsPerRequest; t++) {
-                var offset = new Offset(topic + t, t % totalPartitions, time, maxOffsets);
+                var offset = new OffsetRequest.Topic(topic + t, t % totalPartitions, time, maxOffsets);
                 offsets.Add(offset);
             }
             var request = new OffsetRequest(offsets);
@@ -261,11 +261,11 @@ namespace KafkaClient.Tests.Protocol
             )] ErrorResponseCode errorCode, 
             [Values(1, 5)] int offsetsPerPartition)
         {
-            var topics = new List<OffsetTopic>();
+            var topics = new List<OffsetResponse.Topic>();
             for (var t = 0; t < topicsPerRequest; t++) {
                 var partitionId = t % totalPartitions;
                 for (var o = 0; o < offsetsPerPartition; o++) {
-                    topics.Add(new OffsetTopic(topicName + t, partitionId, errorCode, (long)_randomizer.Next()));
+                    topics.Add(new OffsetResponse.Topic(topicName + t, partitionId, errorCode, (long)_randomizer.Next()));
                 }
             }
             var response = new OffsetResponse(topics);
@@ -313,18 +313,18 @@ namespace KafkaClient.Tests.Protocol
                 }
                 brokers.Add(new Broker(b, "broker-" + b, 9092 + b, rack));
             }
-            var topics = new List<MetadataTopic>();
+            var topics = new List<MetadataResponse.Topic>();
             for (var t = 0; t < topicsPerRequest; t++) {
-                var partitions = new List<MetadataPartition>();
+                var partitions = new List<MetadataResponse.Partition>();
                 for (var partitionId = 0; partitionId < partitionsPerTopic; partitionId++) {
                     var leader = _randomizer.Next(0, brokersPerRequest - 1);
                     var replica = 0;
                     var replicas = _randomizer.Next(0, brokersPerRequest - 1).Repeat(() => replica++);
                     var isr = 0;
                     var isrs = _randomizer.Next(0, replica).Repeat(() => isr++);
-                    partitions.Add(new MetadataPartition(partitionId, leader, errorCode, replicas, isrs));
+                    partitions.Add(new MetadataResponse.Partition(partitionId, leader, errorCode, replicas, isrs));
                 }
-                topics.Add(new MetadataTopic(topicName + t, errorCode, partitions, version >= 1 ? topicsPerRequest%2 == 0 : (bool?)null));
+                topics.Add(new MetadataResponse.Topic(topicName + t, errorCode, partitions, version >= 1 ? topicsPerRequest%2 == 0 : (bool?)null));
             }
             var response = new MetadataResponse(brokers, topics, version >= 1 ? brokersPerRequest : (int?)null);
 
@@ -360,9 +360,9 @@ namespace KafkaClient.Tests.Protocol
             [Values(10)] int maxOffsets,
             [Values(null, "something useful for the client")] string metadata)
         {
-            var offsetCommits = new List<OffsetCommit>();
+            var offsetCommits = new List<OffsetCommitRequest.Topic>();
             for (var t = 0; t < topicsPerRequest; t++) {
-                offsetCommits.Add(new OffsetCommit(
+                offsetCommits.Add(new OffsetCommitRequest.Topic(
                                       topic + t,
                                       t%maxPartitions,
                                       _randomizer.Next(0, int.MaxValue),
@@ -423,9 +423,9 @@ namespace KafkaClient.Tests.Protocol
             [Values(1, 10)] int topicsPerRequest,
             [Values(5)] int maxPartitions)
         {
-            var topics = new List<Topic>();
+            var topics = new List<TopicPartition>();
             for (var t = 0; t < topicsPerRequest; t++) {
-                topics.Add(new Topic(topic + t, t % maxPartitions));
+                topics.Add(new TopicPartition(topic + t, t % maxPartitions));
             }
             var request = new OffsetFetchRequest(groupId, topics);
 
@@ -458,11 +458,11 @@ namespace KafkaClient.Tests.Protocol
                  ErrorResponseCode.GroupAuthorizationFailed
              )] ErrorResponseCode errorCode)
         {
-            var topics = new List<OffsetFetchTopic>();
+            var topics = new List<OffsetFetchResponse.Topic>();
             for (var t = 0; t < topicsPerRequest; t++) {
                 for (var partitionId = 0; partitionId < partitionsPerTopic; partitionId++) {
                     var offset = (long)_randomizer.Next(int.MinValue, int.MaxValue);
-                    topics.Add(new OffsetFetchTopic(topicName + t, partitionId, errorCode, offset, offset >= 0 ? topicName : string.Empty));
+                    topics.Add(new OffsetFetchResponse.Topic(topicName + t, partitionId, errorCode, offset, offset >= 0 ? topicName : string.Empty));
                 }
             }
             var response = new OffsetFetchResponse(topics);
@@ -554,9 +554,9 @@ namespace KafkaClient.Tests.Protocol
             [Values(0, 123456, 100000)] int controllerEpoch,
             [Values(0, 10)] int controllerId)
         {
-            var topics = new List<Topic>();
+            var topics = new List<TopicPartition>();
             for (var t = 0; t < topicsPerRequest; t++) {
-                topics.Add(new Topic(topicName + t, t % totalPartitions));
+                topics.Add(new TopicPartition(topicName + t, t % totalPartitions));
             }
             var request = new StopReplicaRequest(controllerId, controllerEpoch, topics, shouldDelete);
 
@@ -590,11 +590,11 @@ namespace KafkaClient.Tests.Protocol
             [Values("consumer", "other")] string protocolType, 
             [Values(1, 10)] int protocolsPerRequest)
         {
-            var protocols = new List<GroupProtocol>();
+            var protocols = new List<JoinGroupRequest.GroupProtocol>();
             for (var p = 0; p < protocolsPerRequest; p++) {
                 var bytes = new byte[protocolsPerRequest*100];
                 _randomizer.NextBytes(bytes);
-                protocols.Add(new GroupProtocol(protocolType + p, new ByteMember(bytes)));
+                protocols.Add(new JoinGroupRequest.GroupProtocol(protocolType + p, new ByteMember(bytes)));
             }
             var request = new JoinGroupRequest(groupId, TimeSpan.FromMilliseconds(sessionTimeout), memberId, protocolType, protocols);
 
@@ -613,11 +613,11 @@ namespace KafkaClient.Tests.Protocol
             [Values("", "an existing member")] string memberId, 
             [Values(1, 10)] int memberCount)
         {
-            var members = new List<GroupMember>();
+            var members = new List<JoinGroupResponse.Member>();
             for (var m = 0; m < memberCount; m++) {
                 var bytes = new byte[memberCount*100];
                 _randomizer.NextBytes(bytes);
-                members.Add(new GroupMember(memberId + m, new ByteMember(bytes)));
+                members.Add(new JoinGroupResponse.Member(memberId + m, new ByteMember(bytes)));
             }
             var response = new JoinGroupResponse(errorCode, generationId, protocol, leaderId, memberId, members);
 
@@ -633,12 +633,12 @@ namespace KafkaClient.Tests.Protocol
             [Values(1, 10)] int protocolsPerRequest)
         {
             var encoder = new ConsumerEncoder();
-            var protocols = new List<GroupProtocol>();
+            var protocols = new List<JoinGroupRequest.GroupProtocol>();
             for (var p = 0; p < protocolsPerRequest; p++) {
                 var userData = new byte[protocolsPerRequest*100];
                 _randomizer.NextBytes(userData);
                 var metadata = new ConsumerProtocolMetadata(0, new []{ groupId, memberId, protocolType }, userData);
-                protocols.Add(new GroupProtocol(protocolType + p, metadata));
+                protocols.Add(new JoinGroupRequest.GroupProtocol(protocolType + p, metadata));
             }
             var request = new JoinGroupRequest(groupId, TimeSpan.FromMilliseconds(sessionTimeout), memberId, protocolType, protocols);
 
@@ -658,12 +658,12 @@ namespace KafkaClient.Tests.Protocol
             [Values(1, 10)] int memberCount)
         {
             var encoder = new ConsumerEncoder();
-            var members = new List<GroupMember>();
+            var members = new List<JoinGroupResponse.Member>();
             for (var m = 0; m < memberCount; m++) {
                 var userData = new byte[memberCount*100];
                 _randomizer.NextBytes(userData);
                 var metadata = new ConsumerProtocolMetadata(0, new []{ protocol, memberId, leaderId }, userData);
-                members.Add(new GroupMember(memberId + m, metadata));
+                members.Add(new JoinGroupResponse.Member(memberId + m, metadata));
             }
             var response = new JoinGroupResponse(errorCode, generationId, protocol, leaderId, memberId, members);
 
@@ -759,9 +759,9 @@ namespace KafkaClient.Tests.Protocol
             var encoder = new ConsumerEncoder();
             var assignments = new List<SyncGroupRequest.GroupAssignment>();
             for (var a = 0; a < assignmentsPerRequest; a++) {
-                var topics = new List<Topic>();
+                var topics = new List<TopicPartition>();
                 for (var t = 0; t < assignmentsPerRequest; t++) {
-                    topics.Add(new Topic(groupId + t, t));
+                    topics.Add(new TopicPartition(groupId + t, t));
                 }
                 var assignment = new ConsumerMemberAssignment(0, topics);
                 assignments.Add(new SyncGroupRequest.GroupAssignment(protocolType + a, assignment));
@@ -780,9 +780,9 @@ namespace KafkaClient.Tests.Protocol
             [Values(1, 10)] int memberCount)
         {
             var encoder = new ConsumerEncoder();
-            var topics = new List<Topic>();
+            var topics = new List<TopicPartition>();
             for (var t = 0; t < memberCount; t++) {
-                topics.Add(new Topic("topic foo" + t, t));
+                topics.Add(new TopicPartition("topic foo" + t, t));
             }
             var assignment = new ConsumerMemberAssignment(0, topics);
             var response = new SyncGroupResponse(errorCode, assignment);
@@ -812,22 +812,22 @@ namespace KafkaClient.Tests.Protocol
              )] ErrorResponseCode errorCode,
             [Values("test", "a groupId")] string groupId, 
             [Range(2, 3)] int count,
-            [Values(DescribeGroup.States.Stable, DescribeGroup.States.Dead)] string state, 
+            [Values(KafkaClient.Protocol.DescribeGroupsResponse.Group.States.Stable, KafkaClient.Protocol.DescribeGroupsResponse.Group.States.Dead)] string state, 
             [Values("consumer", "unknown")] string protocolType,
             [Values("good", "bad", "ugly")] string protocol)
         {
-            var groups = new DescribeGroup[count];
+            var groups = new DescribeGroupsResponse.Group[count];
             for (var g = 0; g < count; g++) {
-                var members = new List<DescribeGroupMember>();
+                var members = new List<DescribeGroupsResponse.Member>();
                 for (var m = 0; m < count; m++) {
                     var metadata = new byte[count*100];
                     var assignment = new byte[count*10];
                     _randomizer.NextBytes(metadata);
                     _randomizer.NextBytes(assignment);
 
-                    members.Add(new DescribeGroupMember("member" + m, "client" + m, "host-" + m, new ByteMember(metadata), new ByteMember(assignment)));
+                    members.Add(new DescribeGroupsResponse.Member("member" + m, "client" + m, "host-" + m, new ByteMember(metadata), new ByteMember(assignment)));
                 }
-                groups[g] = new DescribeGroup(errorCode, groupId + g, state, protocolType, protocol, members);
+                groups[g] = new DescribeGroupsResponse.Group(errorCode, groupId + g, state, protocolType, protocol, members);
             }
             var response = new DescribeGroupsResponse(groups);
 
@@ -842,29 +842,29 @@ namespace KafkaClient.Tests.Protocol
              )] ErrorResponseCode errorCode,
             [Values("test", "a groupId")] string groupId, 
             [Range(2, 3)] int count,
-            [Values(DescribeGroup.States.Stable, DescribeGroup.States.AwaitingSync)] string state, 
+            [Values(KafkaClient.Protocol.DescribeGroupsResponse.Group.States.Stable, KafkaClient.Protocol.DescribeGroupsResponse.Group.States.AwaitingSync)] string state, 
             [Values("consumer")] string protocolType,
             [Values("good", "bad", "ugly")] string protocol)
         {
             var encoder = new ConsumerEncoder();
-            var groups = new DescribeGroup[count];
+            var groups = new DescribeGroupsResponse.Group[count];
             for (var g = 0; g < count; g++) {
-                var members = new List<DescribeGroupMember>();
+                var members = new List<DescribeGroupsResponse.Member>();
                 for (var m = 0; m < count; m++) {
                     var memberId = "member" + m;
                     var userData = new byte[count*100];
                     _randomizer.NextBytes(userData);
                     var metadata = new ConsumerProtocolMetadata(0, new []{ protocol, memberId, memberId }, userData);
 
-                    var topics = new List<Topic>();
+                    var topics = new List<TopicPartition>();
                     for (var t = 0; t < count; t++) {
-                        topics.Add(new Topic("topic foo" + t, t));
+                        topics.Add(new TopicPartition("topic foo" + t, t));
                     }
                     var assignment = new ConsumerMemberAssignment(0, topics);
 
-                    members.Add(new DescribeGroupMember(memberId, "client" + m, "host-" + m, metadata, assignment));
+                    members.Add(new DescribeGroupsResponse.Member(memberId, "client" + m, "host-" + m, metadata, assignment));
                 }
-                groups[g] = new DescribeGroup(errorCode, groupId + g, state, protocolType, protocol, members);
+                groups[g] = new DescribeGroupsResponse.Group(errorCode, groupId + g, state, protocolType, protocol, members);
             }
             var response = new DescribeGroupsResponse(groups);
 

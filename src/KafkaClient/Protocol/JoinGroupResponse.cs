@@ -2,17 +2,18 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using KafkaClient.Common;
+using KafkaClient.Protocol.Types;
 
 namespace KafkaClient.Protocol
 {
     /// <summary>
-    /// JoinGroup Response (Version: 0) => error_code generation_id group_protocol leader_id member_id [members] 
+    /// JoinGroup Response (Version: 0) => error_code generation_id group_protocol leader_id member_id [member] 
     ///   error_code => INT16
     ///   generation_id => INT32   -- The generation of the consumer group.
     ///   group_protocol => STRING -- The group protocol selected by the coordinator TODO: is this the name or the type? Assuming type
     ///   leader_id => STRING      -- The leader of the group
     ///   member_id => STRING      -- The consumer id assigned by the group coordinator.
-    ///   members => member_id member_metadata 
+    ///   member => member_id member_metadata 
     ///     member_id => STRING
     ///     member_metadata => BYTES
     /// 
@@ -30,7 +31,7 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class JoinGroupResponse : IResponse, IEquatable<JoinGroupResponse>
     {
-        public JoinGroupResponse(ErrorResponseCode errorCode, int generationId, string groupProtocol, string leaderId, string memberId, IEnumerable<GroupMember> members)
+        public JoinGroupResponse(ErrorResponseCode errorCode, int generationId, string groupProtocol, string leaderId, string memberId, IEnumerable<Member> members)
         {
             ErrorCode = errorCode;
             Errors = ImmutableList<ErrorResponseCode>.Empty.Add(ErrorCode);
@@ -38,7 +39,7 @@ namespace KafkaClient.Protocol
             GroupProtocol = groupProtocol;
             LeaderId = leaderId;
             MemberId = memberId;
-            Members = ImmutableList<GroupMember>.Empty.AddNotNullRange(members);
+            Members = ImmutableList<Member>.Empty.AddNotNullRange(members);
         }
 
         /// <inheritdoc />
@@ -66,7 +67,9 @@ namespace KafkaClient.Protocol
         /// </summary>
         public string MemberId { get; }
 
-        public IImmutableList<GroupMember> Members { get; }
+        public IImmutableList<Member> Members { get; }
+
+        #region Equality
 
         /// <inheritdoc />
         public override bool Equals(object obj)
@@ -112,5 +115,55 @@ namespace KafkaClient.Protocol
         {
             return !Equals(left, right);
         }
+
+        #endregion
+
+        public class Member : IEquatable<Member>
+        {
+            public Member(string memberId, IMemberMetadata metadata)
+            {
+                MemberId = memberId;
+                Metadata = metadata;
+            }
+
+            public string MemberId { get; }
+            public IMemberMetadata Metadata { get; }
+
+            /// <inheritdoc />
+            public override bool Equals(object obj)
+            {
+                return Equals(obj as Member);
+            }
+
+            /// <inheritdoc />
+            public bool Equals(Member other)
+            {
+                if (ReferenceEquals(null, other)) return false;
+                if (ReferenceEquals(this, other)) return true;
+                return string.Equals(MemberId, other.MemberId) 
+                    && Equals(Metadata, other.Metadata);
+            }
+
+            /// <inheritdoc />
+            public override int GetHashCode()
+            {
+                unchecked {
+                    return ((MemberId?.GetHashCode() ?? 0)*397) ^ (Metadata?.GetHashCode() ?? 0);
+                }
+            }
+
+            /// <inheritdoc />
+            public static bool operator ==(Member left, Member right)
+            {
+                return Equals(left, right);
+            }
+
+            /// <inheritdoc />
+            public static bool operator !=(Member left, Member right)
+            {
+                return !Equals(left, right);
+            }
+        }
+
     }
 }

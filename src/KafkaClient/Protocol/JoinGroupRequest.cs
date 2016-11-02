@@ -7,13 +7,13 @@ using KafkaClient.Protocol.Types;
 namespace KafkaClient.Protocol
 {
     /// <summary>
-    /// JoinGroup Request (Version: 0) => group_id session_timeout *rebalance_timeout member_id protocol_type [protocol_name protocol_metadata] 
+    /// JoinGroup Request (Version: 0) => group_id session_timeout *rebalance_timeout member_id protocol_type [GroupProtocol] 
     ///   group_id => STRING           -- The group id.
     ///   session_timeout => INT32     -- The coordinator considers the consumer dead if it receives no heartbeat after this timeout in ms.
     ///   rebalance_timeout => INT32   -- The maximum time that the coordinator will wait for each member to rejoin when rebalancing the group
     ///   member_id => STRING          -- The assigned consumer id or an empty string for a new consumer.
     ///   protocol_type => STRING      -- Unique name for class of protocols implemented by group (ie "consumer")
-    ///   GroupProtocols => [ProtocolName ProtocolMetadata]
+    ///   GroupProtocol => ProtocolName ProtocolMetadata
     ///     protocol_name => STRING    -- ie AssignmentStrategy for "consumer" type
     ///     protocol_metadata => BYTES -- <see cref="ConsumerProtocolMetadata"/>
     /// 
@@ -61,6 +61,8 @@ namespace KafkaClient.Protocol
         /// <inheritdoc />
         public string MemberId { get; }
 
+        #region Equality
+
         /// <inheritdoc />
         public override bool Equals(object obj)
         {
@@ -105,5 +107,55 @@ namespace KafkaClient.Protocol
         {
             return !Equals(left, right);
         }
+
+        #endregion
+
+        public class GroupProtocol : IEquatable<GroupProtocol>
+        {
+            public GroupProtocol(string name, IMemberMetadata metadata)
+            {
+                Name = name;
+                Metadata = metadata;
+            }
+
+            public string Name { get; }
+            public IMemberMetadata Metadata { get; }
+
+            /// <inheritdoc />
+            public override bool Equals(object obj)
+            {
+                return Equals(obj as GroupProtocol);
+            }
+
+            /// <inheritdoc />
+            public bool Equals(GroupProtocol other)
+            {
+                if (ReferenceEquals(null, other)) return false;
+                if (ReferenceEquals(this, other)) return true;
+                return string.Equals(Name, other.Name) 
+                    && Equals(Metadata, other.Metadata);
+            }
+
+            /// <inheritdoc />
+            public override int GetHashCode()
+            {
+                unchecked {
+                    return ((Name?.GetHashCode() ?? 0)*397) ^ (Metadata?.GetHashCode() ?? 0);
+                }
+            }
+
+            /// <inheritdoc />
+            public static bool operator ==(GroupProtocol left, GroupProtocol right)
+            {
+                return Equals(left, right);
+            }
+
+            /// <inheritdoc />
+            public static bool operator !=(GroupProtocol left, GroupProtocol right)
+            {
+                return !Equals(left, right);
+            }
+        }
+
     }
 }

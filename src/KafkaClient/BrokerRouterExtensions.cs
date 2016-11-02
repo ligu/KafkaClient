@@ -18,13 +18,13 @@ namespace KafkaClient
         /// <param name="brokerRouter">The router which provides the route and metadata.</param>
         /// <param name="topicName">Name of the topic to get offset information from.</param>
         /// <param name="maxOffsets">How many to get, at most.</param>
-        /// <param name="offsetTime">These are best described by <see cref="Offset.Timestamp"/></param>
+        /// <param name="offsetTime">These are best described by <see cref="OffsetRequest.Topic.Timestamp"/></param>
         /// <param name="cancellationToken"></param>
         /// <param name="retryPolicy"></param>
-        public static async Task<IImmutableList<OffsetTopic>> GetTopicOffsetsAsync(this IBrokerRouter brokerRouter, string topicName, int maxOffsets, long offsetTime, CancellationToken cancellationToken, IRetry retryPolicy = null)
+        public static async Task<IImmutableList<OffsetResponse.Topic>> GetTopicOffsetsAsync(this IBrokerRouter brokerRouter, string topicName, int maxOffsets, long offsetTime, CancellationToken cancellationToken, IRetry retryPolicy = null)
         {
             bool? metadataInvalid = false;
-            var offsets = new Dictionary<int, OffsetTopic>();
+            var offsets = new Dictionary<int, OffsetResponse.Topic>();
             BrokeredRequest<OffsetResponse>[] brokeredRequests = null;
 
             return await (retryPolicy ?? new Retry(TimeSpan.MaxValue, 3)).AttemptAsync(
@@ -38,7 +38,7 @@ namespace KafkaClient
                         .GroupBy(x => x.LeaderId)
                         .Select(partitions => 
                             new BrokeredRequest<OffsetResponse>(
-                                new OffsetRequest(partitions.Select(_ => new Offset(topicName, _.PartitionId, offsetTime, maxOffsets))), 
+                                new OffsetRequest(partitions.Select(_ => new OffsetRequest.Topic(topicName, _.PartitionId, offsetTime, maxOffsets))), 
                                 topicName, 
                                 partitions.Select(_ => _.PartitionId).First(), 
                                 brokerRouter.Log))
@@ -53,8 +53,8 @@ namespace KafkaClient
                     }
 
                     return responses.All(_ => _.IsSuccessful) 
-                        ? new RetryAttempt<IImmutableList<OffsetTopic>>(offsets.Values.ToImmutableList()) 
-                        : RetryAttempt<IImmutableList<OffsetTopic>>.Retry;
+                        ? new RetryAttempt<IImmutableList<OffsetResponse.Topic>>(offsets.Values.ToImmutableList()) 
+                        : RetryAttempt<IImmutableList<OffsetResponse.Topic>>.Retry;
                 },
                 brokeredRequests.MetadataRetry,
                 brokeredRequests.ThrowExtractedException,
@@ -69,9 +69,9 @@ namespace KafkaClient
         /// <param name="brokerRouter">The router which provides the route and metadata.</param>
         /// <param name="topicName">Name of the topic to get offset information from.</param>
         /// <param name="cancellationToken"></param>
-        public static Task<IImmutableList<OffsetTopic>> GetTopicOffsetsAsync(this IBrokerRouter brokerRouter, string topicName, CancellationToken cancellationToken)
+        public static Task<IImmutableList<OffsetResponse.Topic>> GetTopicOffsetsAsync(this IBrokerRouter brokerRouter, string topicName, CancellationToken cancellationToken)
         {
-            return brokerRouter.GetTopicOffsetsAsync(topicName, Offset.DefaultMaxOffsets, Offset.LatestTime, cancellationToken);
+            return brokerRouter.GetTopicOffsetsAsync(topicName, OffsetRequest.Topic.DefaultMaxOffsets, OffsetRequest.Topic.LatestTime, cancellationToken);
         }
 
         /// <summary>
@@ -81,11 +81,11 @@ namespace KafkaClient
         /// <param name="topicName">Name of the topic to get offset information from.</param>
         /// <param name="partitionId">The partition to get offsets for.</param>
         /// <param name="maxOffsets">How many to get, at most.</param>
-        /// <param name="offsetTime">These are best described by <see cref="Offset.Timestamp"/></param>
+        /// <param name="offsetTime">These are best described by <see cref="OffsetRequest.Topic.Timestamp"/></param>
         /// <param name="cancellationToken"></param>
-        public static async Task<OffsetTopic> GetTopicOffsetAsync(this IBrokerRouter brokerRouter, string topicName, int partitionId, int maxOffsets, long offsetTime, CancellationToken cancellationToken)
+        public static async Task<OffsetResponse.Topic> GetTopicOffsetAsync(this IBrokerRouter brokerRouter, string topicName, int partitionId, int maxOffsets, long offsetTime, CancellationToken cancellationToken)
         {
-            var request = new OffsetRequest(new Offset(topicName, partitionId));
+            var request = new OffsetRequest(new OffsetRequest.Topic(topicName, partitionId));
             var response = await brokerRouter.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
             return response.Topics.SingleOrDefault(t => t.TopicName == topicName && t.PartitionId == partitionId);
         }
@@ -93,9 +93,9 @@ namespace KafkaClient
         /// <summary>
         /// Get offsets for a single partitions of a given topic.
         /// </summary>
-        public static Task<OffsetTopic> GetTopicOffsetAsync(this IBrokerRouter brokerRouter, string topicName, int partitionId, CancellationToken cancellationToken)
+        public static Task<OffsetResponse.Topic> GetTopicOffsetAsync(this IBrokerRouter brokerRouter, string topicName, int partitionId, CancellationToken cancellationToken)
         {
-            return brokerRouter.GetTopicOffsetAsync(topicName, partitionId, Offset.DefaultMaxOffsets, Offset.LatestTime, cancellationToken);
+            return brokerRouter.GetTopicOffsetAsync(topicName, partitionId, OffsetRequest.Topic.DefaultMaxOffsets, OffsetRequest.Topic.LatestTime, cancellationToken);
         }
 
         /// <summary>
@@ -106,9 +106,9 @@ namespace KafkaClient
         /// <param name="partitionId">The partition to get offsets for.</param>
         /// <param name="consumerGroup">The id of the consumer group</param>
         /// <param name="cancellationToken"></param>
-        public static async Task<OffsetFetchTopic> GetTopicOffsetAsync(this IBrokerRouter brokerRouter, string topicName, int partitionId, string consumerGroup, CancellationToken cancellationToken)
+        public static async Task<OffsetFetchResponse.Topic> GetTopicOffsetAsync(this IBrokerRouter brokerRouter, string topicName, int partitionId, string consumerGroup, CancellationToken cancellationToken)
         {
-            var request = new OffsetFetchRequest(consumerGroup, new Topic(topicName, partitionId));
+            var request = new OffsetFetchRequest(consumerGroup, new TopicPartition(topicName, partitionId));
             var response = await brokerRouter.SendAsync(request, topicName, partitionId, consumerGroup, cancellationToken).ConfigureAwait(false);
             return response.Topics.SingleOrDefault(t => t.TopicName == topicName && t.PartitionId == partitionId);
         }
@@ -124,7 +124,7 @@ namespace KafkaClient
         /// <param name="cancellationToken"></param>
         public static async Task CommitTopicOffsetAsync(this IBrokerRouter brokerRouter, string topicName, int partitionId, string consumerGroup, long offset, CancellationToken cancellationToken)
         {
-            var request = new OffsetCommitRequest(consumerGroup, new [] { new OffsetCommit(topicName, partitionId, offset) });
+            var request = new OffsetCommitRequest(consumerGroup, new [] { new OffsetCommitRequest.Topic(topicName, partitionId, offset) });
             await brokerRouter.SendAsync(request, topicName, partitionId, consumerGroup, cancellationToken).ConfigureAwait(false);
         }
 
@@ -303,7 +303,7 @@ namespace KafkaClient
             return new MetadataResult(isValid: true);
         }
 
-        private static MetadataResult ValidateTopic(MetadataTopic topic)
+        private static MetadataResult ValidateTopic(MetadataResponse.Topic topic)
         {
             var errorCode = topic.ErrorCode;
             if (errorCode == ErrorResponseCode.None) return new MetadataResult(isValid: true);

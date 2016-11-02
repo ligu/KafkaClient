@@ -7,10 +7,10 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class FetchOutOfRangeException : RequestException
     {
-        public FetchOutOfRangeException(Fetch fetch, ApiKeyRequestType apiKey, ErrorResponseCode errorCode, string message = null)
+        public FetchOutOfRangeException(FetchRequest.Topic topic, ApiKeyRequestType apiKey, ErrorResponseCode errorCode, string message = null)
             : base(apiKey, errorCode, message)
         {
-            Fetch = fetch;
+            Topic = topic;
         }
 
         public FetchOutOfRangeException(string message)
@@ -23,6 +23,6 @@ namespace KafkaClient.Protocol
         {
         }
 
-        public Fetch Fetch { get; }
+        public FetchRequest.Topic Topic { get; }
     }
 }

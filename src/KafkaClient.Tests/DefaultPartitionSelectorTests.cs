@@ -14,19 +14,19 @@ namespace KafkaClient.Tests
     [Category("Unit")]
     public class DefaultPartitionSelectorTests
     {
-        private MetadataTopic _topicA;
-        private MetadataTopic _topicB;
+        private MetadataResponse.Topic _topicA;
+        private MetadataResponse.Topic _topicB;
 
         [SetUp]
         public void Setup()
         {
-            _topicA = new MetadataTopic("a", ErrorResponseCode.None, new [] {
-                                            new MetadataPartition(0, 0),
-                                            new MetadataPartition(1, 1),
+            _topicA = new MetadataResponse.Topic("a", ErrorResponseCode.None, new [] {
+                                            new MetadataResponse.Partition(0, 0),
+                                            new MetadataResponse.Partition(1, 1),
                                         });
-            _topicB = new MetadataTopic("b", ErrorResponseCode.None, new [] {
-                                            new MetadataPartition(0, 0),
-                                            new MetadataPartition(1, 1),
+            _topicB = new MetadataResponse.Topic("b", ErrorResponseCode.None, new [] {
+                                            new MetadataResponse.Partition(0, 0),
+                                            new MetadataResponse.Partition(1, 1),
                                         });
         }
 
@@ -48,7 +48,7 @@ namespace KafkaClient.Tests
         public void RoundRobinShouldHandleMultiThreadedRollOver()
         {
             var selector = new PartitionSelector();
-            var bag = new ConcurrentBag<MetadataPartition>();
+            var bag = new ConcurrentBag<MetadataResponse.Partition>();
 
             Parallel.For(0, 100, x => bag.Add(selector.Select(_topicA, null)));
 
@@ -78,14 +78,14 @@ namespace KafkaClient.Tests
         {
             const int TotalPartitions = 100;
             var selector = new PartitionSelector();
-            var partitions = new List<MetadataPartition>();
+            var partitions = new List<MetadataResponse.Partition>();
             for (int i = 0; i < TotalPartitions; i++)
             {
-                partitions.Add(new MetadataPartition(i, i));
+                partitions.Add(new MetadataResponse.Partition(i, i));
             }
-            var topic = new MetadataTopic("a", partitions: partitions);
+            var topic = new MetadataResponse.Topic("a", partitions: partitions);
 
-            var bag = new ConcurrentBag<MetadataPartition>();
+            var bag = new ConcurrentBag<MetadataResponse.Partition>();
             Parallel.For(0, TotalPartitions * 3, x => bag.Add(selector.Select(topic, null)));
 
             var eachPartitionHasThree = bag.GroupBy(x => x.PartitionId).Count();
@@ -119,9 +119,9 @@ namespace KafkaClient.Tests
         public void KeyHashShouldThrowExceptionWhenChoosesAPartitionIdThatDoesNotExist()
         {
             var selector = new PartitionSelector();
-            var topic = new MetadataTopic("badPartition", partitions: new [] {
-                                              new MetadataPartition(0, 0),
-                                              new MetadataPartition(999, 1) 
+            var topic = new MetadataResponse.Topic("badPartition", partitions: new [] {
+                                              new MetadataResponse.Partition(0, 0),
+                                              new MetadataResponse.Partition(999, 1) 
                                           });
 
             Assert.Throws<CachedMetadataException>(() => selector.Select(topic, CreateKeyForPartition(1)));
@@ -131,7 +131,7 @@ namespace KafkaClient.Tests
         public void SelectorShouldThrowExceptionWhenPartitionsAreEmpty()
         {
             var selector = new PartitionSelector();
-            var topic = new MetadataTopic("emptyPartition");
+            var topic = new MetadataResponse.Topic("emptyPartition");
             Assert.Throws<CachedMetadataException>(() => selector.Select(topic, CreateKeyForPartition(1)));
         }
     }

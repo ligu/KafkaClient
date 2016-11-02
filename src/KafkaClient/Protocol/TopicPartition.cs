@@ -2,9 +2,9 @@ using System;
 
 namespace KafkaClient.Protocol
 {
-    public class Topic : IEquatable<Topic>
+    public class TopicPartition : IEquatable<TopicPartition>
     {
-        public Topic(string topicName, int partitionId)
+        public TopicPartition(string topicName, int partitionId)
         {
             TopicName = topicName;
             PartitionId = partitionId;
@@ -24,10 +24,10 @@ namespace KafkaClient.Protocol
 
         public override bool Equals(object obj)
         {
-            return Equals(obj as Topic);
+            return Equals(obj as TopicPartition);
         }
 
-        public bool Equals(Topic other)
+        public bool Equals(TopicPartition other)
         {
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
@@ -44,12 +44,12 @@ namespace KafkaClient.Protocol
             }
         }
 
-        public static bool operator ==(Topic left, Topic right)
+        public static bool operator ==(TopicPartition left, TopicPartition right)
         {
             return Equals(left, right);
         }
 
-        public static bool operator !=(Topic left, Topic right)
+        public static bool operator !=(TopicPartition left, TopicPartition right)
         {
             return !Equals(left, right);
         }

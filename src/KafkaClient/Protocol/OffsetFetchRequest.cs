@@ -18,23 +18,23 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class OffsetFetchRequest : Request, IRequest<OffsetFetchResponse>, IEquatable<OffsetFetchRequest>
     {
-        public OffsetFetchRequest(string groupId, params Topic[] topics) 
-            : this(groupId, (IEnumerable<Topic>)topics)
+        public OffsetFetchRequest(string groupId, params TopicPartition[] topics) 
+            : this(groupId, (IEnumerable<TopicPartition>)topics)
         {
         }
 
-        public OffsetFetchRequest(string groupId, IEnumerable<Topic> topics) 
+        public OffsetFetchRequest(string groupId, IEnumerable<TopicPartition> topics) 
             : base(ApiKeyRequestType.OffsetFetch)
         {
             if (string.IsNullOrEmpty(groupId)) throw new ArgumentNullException(nameof(groupId));
 
             GroupId = groupId;
-            Topics = ImmutableList<Topic>.Empty.AddNotNullRange(topics);
+            Topics = ImmutableList<TopicPartition>.Empty.AddNotNullRange(topics);
         }
 
         public string GroupId { get; }
 
-        public IImmutableList<Topic> Topics { get; }
+        public IImmutableList<TopicPartition> Topics { get; }
 
         /// <inheritdoc />
         public override bool Equals(object obj)

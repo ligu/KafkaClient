@@ -29,7 +29,7 @@ namespace KafkaClient
 
         private ImmutableDictionary<Endpoint, IConnection> _allConnections = ImmutableDictionary<Endpoint, IConnection>.Empty;
         private ImmutableDictionary<int, IConnection> _brokerConnections = ImmutableDictionary<int, IConnection>.Empty;
-        private ImmutableDictionary<string, Tuple<MetadataTopic, DateTime>> _topicCache = ImmutableDictionary<string, Tuple<MetadataTopic, DateTime>>.Empty;
+        private ImmutableDictionary<string, Tuple<MetadataResponse.Topic, DateTime>> _topicCache = ImmutableDictionary<string, Tuple<MetadataResponse.Topic, DateTime>>.Empty;
 
         private readonly AsyncLock _lock = new AsyncLock();
 
@@ -80,7 +80,7 @@ namespace KafkaClient
             return GetBrokerRoute(topicName, partitionId, GetCachedTopic(topicName));
         }
 
-        private BrokerRoute GetBrokerRoute(string topicName, int partitionId, MetadataTopic topic)
+        private BrokerRoute GetBrokerRoute(string topicName, int partitionId, MetadataResponse.Topic topic)
         {
             var partition = topic.Partitions.FirstOrDefault(x => x.PartitionId == partitionId);
             if (partition == null)
@@ -106,35 +106,35 @@ namespace KafkaClient
         }
 
         /// <inheritdoc />
-        public MetadataTopic GetTopicMetadata(string topicName)
+        public MetadataResponse.Topic GetTopicMetadata(string topicName)
         {
             return GetCachedTopic(topicName);
         }
 
         /// <inheritdoc />
-        public IImmutableList<MetadataTopic> GetTopicMetadata(IEnumerable<string> topicNames)
+        public IImmutableList<MetadataResponse.Topic> GetTopicMetadata(IEnumerable<string> topicNames)
         {
             var topicSearchResult = TryGetCachedTopics(topicNames);
             if (topicSearchResult.Missing.Count > 0) throw new CachedMetadataException($"No metadata defined for topics: {string.Join(",", topicSearchResult.Missing)}");
 
-            return ImmutableList<MetadataTopic>.Empty.AddRange(topicSearchResult.Topics);
+            return ImmutableList<MetadataResponse.Topic>.Empty.AddRange(topicSearchResult.Topics);
         }
 
         /// <inheritdoc />
-        public IImmutableList<MetadataTopic> GetTopicMetadata()
+        public IImmutableList<MetadataResponse.Topic> GetTopicMetadata()
         {
-            return ImmutableList<MetadataTopic>.Empty.AddRange(_topicCache.Values.Select(t => t.Item1));
+            return ImmutableList<MetadataResponse.Topic>.Empty.AddRange(_topicCache.Values.Select(t => t.Item1));
         }
 
         /// <inheritdoc />
-        public async Task<MetadataTopic> GetTopicMetadataAsync(string topicName, CancellationToken cancellationToken)
+        public async Task<MetadataResponse.Topic> GetTopicMetadataAsync(string topicName, CancellationToken cancellationToken)
         {
             return TryGetCachedTopic(topicName) 
                 ?? await UpdateTopicMetadataFromServerAsync(topicName, true, cancellationToken).ConfigureAwait(false);
         }
 
         /// <inheritdoc />
-        public async Task<IImmutableList<MetadataTopic>> GetTopicMetadataAsync(IEnumerable<string> topicNames, CancellationToken cancellationToken)
+        public async Task<IImmutableList<MetadataResponse.Topic>> GetTopicMetadataAsync(IEnumerable<string> topicNames, CancellationToken cancellationToken)
         {
             var searchResult = TryGetCachedTopics(topicNames);
             return searchResult.Missing.Count == 0 
@@ -160,13 +160,13 @@ namespace KafkaClient
             return UpdateTopicMetadataFromServerAsync((IEnumerable<string>) null, true, cancellationToken);
         }
 
-        private async Task<MetadataTopic> UpdateTopicMetadataFromServerAsync(string topicName, bool ignoreCache, CancellationToken cancellationToken)
+        private async Task<MetadataResponse.Topic> UpdateTopicMetadataFromServerAsync(string topicName, bool ignoreCache, CancellationToken cancellationToken)
         {
             var topics = await UpdateTopicMetadataFromServerAsync(new [] { topicName }, ignoreCache, cancellationToken).ConfigureAwait(false);
             return topics.Single();
         }
 
-        private async Task<IImmutableList<MetadataTopic>> UpdateTopicMetadataFromServerAsync(IEnumerable<string> topicNames, bool ignoreCache, CancellationToken cancellationToken)
+        private async Task<IImmutableList<MetadataResponse.Topic>> UpdateTopicMetadataFromServerAsync(IEnumerable<string> topicNames, bool ignoreCache, CancellationToken cancellationToken)
         {
             // TODO: more sophisticated locking should be particular to topicName(s) in that multiple 
             // requests can be made in parallel for different topicName(s).
@@ -203,7 +203,7 @@ namespace KafkaClient
         private CachedTopicsResult TryGetCachedTopics(IEnumerable<string> topicNames, TimeSpan? expiration = null)
         {
             var missing = new List<string>();
-            var topics = new List<MetadataTopic>();
+            var topics = new List<MetadataResponse.Topic>();
 
             foreach (var topicName in topicNames.Distinct()) {
                 var topic = TryGetCachedTopic(topicName, expiration);
@@ -217,7 +217,7 @@ namespace KafkaClient
             return new CachedTopicsResult(topics, missing);
         }
 
-        private MetadataTopic GetCachedTopic(string topicName, TimeSpan? expiration = null)
+        private MetadataResponse.Topic GetCachedTopic(string topicName, TimeSpan? expiration = null)
         {
             var topic = TryGetCachedTopic(topicName, expiration);
             if (topic != null) return topic;
@@ -225,9 +225,9 @@ namespace KafkaClient
             throw new CachedMetadataException($"No metadata defined for topic/{topicName}") { TopicName = topicName };
         }
 
-        private MetadataTopic TryGetCachedTopic(string topicName, TimeSpan? expiration = null)
+        private MetadataResponse.Topic TryGetCachedTopic(string topicName, TimeSpan? expiration = null)
         {
-            Tuple<MetadataTopic, DateTime> cachedTopic;
+            Tuple<MetadataResponse.Topic, DateTime> cachedTopic;
             if (_topicCache.TryGetValue(topicName, out cachedTopic)) {
                 if (!expiration.HasValue || DateTime.UtcNow - cachedTopic.Item2 < expiration.Value) {
                     return cachedTopic.Item1;
@@ -236,7 +236,7 @@ namespace KafkaClient
             return null;
         }
 
-        private BrokerRoute GetCachedRoute(string topicName, MetadataPartition partition)
+        private BrokerRoute GetCachedRoute(string topicName, MetadataResponse.Partition partition)
         {
             var route = TryGetCachedRoute(topicName, partition);
             if (route != null) return route;
@@ -247,7 +247,7 @@ namespace KafkaClient
             };
         }
 
-        private BrokerRoute TryGetCachedRoute(string topicName, MetadataPartition partition)
+        private BrokerRoute TryGetCachedRoute(string topicName, MetadataResponse.Partition partition)
         {
             IConnection conn;
             return _brokerConnections.TryGetValue(partition.LeaderId, out conn)
@@ -255,7 +255,7 @@ namespace KafkaClient
                 : null;
         }
 
-        private CachedMetadataException GetPartitionElectionException(IList<Topic> partitionElections)
+        private CachedMetadataException GetPartitionElectionException(IList<TopicPartition> partitionElections)
         {
             var topic = partitionElections.FirstOrDefault();
             if (topic == null) return null;
@@ -277,14 +277,14 @@ namespace KafkaClient
             var partitionElections = metadata.Topics.SelectMany(
                 t => t.Partitions
                       .Where(p => p.IsElectingLeader)
-                      .Select(p => new Topic(t.TopicName, p.PartitionId)))
+                      .Select(p => new TopicPartition(t.TopicName, p.PartitionId)))
                       .ToList();
             if (partitionElections.Any()) throw GetPartitionElectionException(partitionElections);
 
             var topicCache = _topicCache;
             try {
                 foreach (var topic in metadata.Topics) {
-                    topicCache = topicCache.SetItem(topic.TopicName, new Tuple<MetadataTopic, DateTime>(topic, DateTime.UtcNow));
+                    topicCache = topicCache.SetItem(topic.TopicName, new Tuple<MetadataResponse.Topic, DateTime>(topic, DateTime.UtcNow));
                 }
             } finally {
                 _topicCache = topicCache;
@@ -351,12 +351,12 @@ namespace KafkaClient
 
         private class CachedTopicsResult
         {
-            public IImmutableList<MetadataTopic> Topics { get; }
+            public IImmutableList<MetadataResponse.Topic> Topics { get; }
             public IImmutableList<string> Missing { get; }
 
-            public CachedTopicsResult(IEnumerable<MetadataTopic> topics = null, IEnumerable<string> missing = null)
+            public CachedTopicsResult(IEnumerable<MetadataResponse.Topic> topics = null, IEnumerable<string> missing = null)
             {
-                Topics = ImmutableList<MetadataTopic>.Empty.AddNotNullRange(topics);
+                Topics = ImmutableList<MetadataResponse.Topic>.Empty.AddNotNullRange(topics);
                 Missing = ImmutableList<string>.Empty.AddNotNullRange(missing);
             }
         }

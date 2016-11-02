@@ -21,7 +21,7 @@ namespace KafkaClient.Tests
         {
             var routerProxy = new BrokerRouterProxy(new MoqMockingKernel());
 #pragma warning disable 1998
-            routerProxy.BrokerConn0.FetchResponseFunction = async () => new FetchResponse(new FetchTopicResponse[] {});
+            routerProxy.BrokerConn0.FetchResponseFunction = async () => new FetchResponse(new FetchResponse.Topic[] {});
 #pragma warning restore 1998
 
             var router = routerProxy.Create();
@@ -50,7 +50,7 @@ namespace KafkaClient.Tests
         {
             var routerProxy = new BrokerRouterProxy(new MoqMockingKernel());
 #pragma warning disable 1998
-            routerProxy.BrokerConn0.FetchResponseFunction = async () => new FetchResponse(new FetchTopicResponse[] {});
+            routerProxy.BrokerConn0.FetchResponseFunction = async () => new FetchResponse(new FetchResponse.Topic[] {});
 #pragma warning restore 1998
             var router = routerProxy.Create();
             var options = CreateOptions(router);
@@ -100,7 +100,7 @@ namespace KafkaClient.Tests
         {
             var routerProxy = new BrokerRouterProxy(new MoqMockingKernel());
 #pragma warning disable 1998
-            routerProxy.BrokerConn0.FetchResponseFunction = async () => new FetchResponse(new FetchTopicResponse[] {});
+            routerProxy.BrokerConn0.FetchResponseFunction = async () => new FetchResponse(new FetchResponse.Topic[] {});
 #pragma warning restore 1998
             var router = routerProxy.Create();
             var options = CreateOptions(router);
@@ -119,7 +119,7 @@ namespace KafkaClient.Tests
         {
             var routerProxy = new BrokerRouterProxy(new MoqMockingKernel());
 #pragma warning disable 1998
-            routerProxy.BrokerConn0.FetchResponseFunction = async () => new FetchResponse(new FetchTopicResponse[] {});
+            routerProxy.BrokerConn0.FetchResponseFunction = async () => new FetchResponse(new FetchResponse.Topic[] {});
 #pragma warning restore 1998
             var router = routerProxy.Create();
             var options = CreateOptions(router);
@@ -148,7 +148,7 @@ namespace KafkaClient.Tests
         {
             var routerProxy = new BrokerRouterProxy(new MoqMockingKernel());
 #pragma warning disable 1998
-            routerProxy.BrokerConn0.FetchResponseFunction = async () => new FetchResponse(new FetchTopicResponse[] {});
+            routerProxy.BrokerConn0.FetchResponseFunction = async () => new FetchResponse(new FetchResponse.Topic[] {});
 #pragma warning restore 1998
             var router = routerProxy.Create();
             var options = CreateOptions(router);

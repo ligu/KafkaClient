@@ -155,7 +155,7 @@ namespace KafkaClient.Tests
             routerProxy.BrokerConn0.MetadataResponseFunction = async () =>
             {
                 var response = await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers();
-                return new MetadataResponse(response.Brokers, response.Topics.Select(t => new MetadataTopic("test2", t.ErrorCode, t.Partitions)));
+                return new MetadataResponse(response.Brokers, response.Topics.Select(t => new MetadataResponse.Topic("test2", t.ErrorCode, t.Partitions)));
             };
 
             for (int i = 0; i < numberOfCall / 2; i++)
@@ -285,7 +285,7 @@ namespace KafkaClient.Tests
                     await Task.Delay(delay);
                     await Task.Delay(1);
                     firstTime = false;
-                    return new FetchResponse(new []{ new FetchTopicResponse("foo", 1, 0, errorResponseCode)});
+                    return new FetchResponse(new []{ new FetchResponse.Topic("foo", 1, 0, errorResponseCode)});
                 }
                 return new FetchResponse();
             };

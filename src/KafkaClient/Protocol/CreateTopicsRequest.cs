@@ -125,7 +125,7 @@ namespace KafkaClient.Protocol
             {
                 if (ReferenceEquals(null, other)) return false;
                 if (ReferenceEquals(this, other)) return true;
-                return string.Equals(TopicName, other.TopicName) 
+                return String.Equals(TopicName, other.TopicName) 
                     && NumberOfPartitions == other.NumberOfPartitions 
                     && ReplicationFactor == other.ReplicationFactor 
                     && ReplicaAssignments.HasEqualElementsInOrder(other.ReplicaAssignments) 
@@ -153,53 +153,53 @@ namespace KafkaClient.Protocol
             {
                 return !Equals(left, right);
             }
-
-            public class ReplicaAssignment : IEquatable<ReplicaAssignment>
-            {
-                public ReplicaAssignment(int partitionId, IEnumerable<int> replicas = null)
-                {
-                    PartitionId = partitionId;
-                    Replicas = ImmutableList<int>.Empty.AddNotNullRange(replicas);
-                }
-
-                public int PartitionId { get; }
-
-                /// <summary>
-                /// The set of all nodes that should host this partition. The first replica in the list is the preferred leader.
-                /// </summary>
-                public IImmutableList<int> Replicas { get; }
-
-                public override bool Equals(object obj)
-                {
-                    return Equals(obj as ReplicaAssignment);
-                }
-
-                public bool Equals(ReplicaAssignment other)
-                {
-                    if (ReferenceEquals(null, other)) return false;
-                    if (ReferenceEquals(this, other)) return true;
-                    return PartitionId == other.PartitionId 
-                        && Replicas.HasEqualElementsInOrder(other.Replicas);
-                }
-
-                public override int GetHashCode()
-                {
-                    unchecked {
-                        return (PartitionId * 397) ^ (Replicas?.GetHashCode() ?? 0);
-                    }
-                }
-
-                public static bool operator ==(ReplicaAssignment left, ReplicaAssignment right)
-                {
-                    return Equals(left, right);
-                }
-
-                public static bool operator !=(ReplicaAssignment left, ReplicaAssignment right)
-                {
-                    return !Equals(left, right);
-                }
-            }
         }
 
+        public class ReplicaAssignment : IEquatable<ReplicaAssignment>
+        {
+            public ReplicaAssignment(int partitionId, IEnumerable<int> replicas = null)
+            {
+                PartitionId = partitionId;
+                Replicas = ImmutableList<int>.Empty.AddNotNullRange(replicas);
+            }
+
+            public int PartitionId { get; }
+
+            /// <summary>
+            /// The set of all nodes that should host this partition. 
+            /// The first replica in the list is the preferred leader.
+            /// </summary>
+            public IImmutableList<int> Replicas { get; }
+
+            public override bool Equals(object obj)
+            {
+                return Equals(obj as ReplicaAssignment);
+            }
+
+            public bool Equals(ReplicaAssignment other)
+            {
+                if (ReferenceEquals(null, other)) return false;
+                if (ReferenceEquals(this, other)) return true;
+                return PartitionId == other.PartitionId 
+                    && Replicas.HasEqualElementsInOrder(other.Replicas);
+            }
+
+            public override int GetHashCode()
+            {
+                unchecked {
+                    return (PartitionId * 397) ^ (Replicas?.GetHashCode() ?? 0);
+                }
+            }
+
+            public static bool operator ==(ReplicaAssignment left, ReplicaAssignment right)
+            {
+                return Equals(left, right);
+            }
+
+            public static bool operator !=(ReplicaAssignment left, ReplicaAssignment right)
+            {
+                return !Equals(left, right);
+            }
+        }
     }
 }

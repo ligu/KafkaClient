@@ -14,10 +14,10 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class ControlledShutdownResponse : IResponse, IEquatable<ControlledShutdownResponse>
     {
-        public ControlledShutdownResponse(ErrorResponseCode errorCode, IEnumerable<Topic> topics = null)
+        public ControlledShutdownResponse(ErrorResponseCode errorCode, IEnumerable<TopicPartition> topics = null)
         {
             ErrorCode = errorCode;
-            Topics = ImmutableList<Topic>.Empty.AddNotNullRange(topics);
+            Topics = ImmutableList<TopicPartition>.Empty.AddNotNullRange(topics);
             Errors = ImmutableList<ErrorResponseCode>.Empty.Add(errorCode);
 
         }
@@ -25,7 +25,7 @@ namespace KafkaClient.Protocol
         public ErrorResponseCode ErrorCode { get; }
         public IImmutableList<ErrorResponseCode> Errors { get; }
 
-        public IImmutableList<Topic> Topics { get; }
+        public IImmutableList<TopicPartition> Topics { get; }
 
         public override bool Equals(object obj)
         {

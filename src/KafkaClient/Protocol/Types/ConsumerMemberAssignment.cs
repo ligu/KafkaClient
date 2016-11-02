@@ -19,14 +19,14 @@ namespace KafkaClient.Protocol.Types
     /// </summary>
     public class ConsumerMemberAssignment : IMemberAssignment, IEquatable<ConsumerMemberAssignment>
     {
-        public ConsumerMemberAssignment(short version = 0, IEnumerable<Topic> partitionAssignments = null)
+        public ConsumerMemberAssignment(short version = 0, IEnumerable<TopicPartition> partitionAssignments = null)
         {
             Version = version;
-            PartitionAssignments = ImmutableList<Topic>.Empty.AddNotNullRange(partitionAssignments);
+            PartitionAssignments = ImmutableList<TopicPartition>.Empty.AddNotNullRange(partitionAssignments);
         }
 
         public short Version { get; }
-        public IImmutableList<Topic> PartitionAssignments { get; }
+        public IImmutableList<TopicPartition> PartitionAssignments { get; }
 
         /// <inheritdoc />
         public override bool Equals(object obj)

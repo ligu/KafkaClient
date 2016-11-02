@@ -18,12 +18,12 @@ namespace KafkaClient.Protocol
     public class StopReplicaRequest : Request, IRequest<StopReplicaResponse>, IEquatable<StopReplicaRequest>
     {
         /// <inheritdoc />
-        public StopReplicaRequest(int controllerId, int controllerEpoch, IEnumerable<Topic> topics, bool deletePartitions = true) : base(ApiKeyRequestType.StopReplica)
+        public StopReplicaRequest(int controllerId, int controllerEpoch, IEnumerable<TopicPartition> topics, bool deletePartitions = true) : base(ApiKeyRequestType.StopReplica)
         {
             ControllerId = controllerId;
             ControllerEpoch = controllerEpoch;
             DeletePartitions = deletePartitions;
-            Topics = ImmutableList<Topic>.Empty.AddNotNullRange(topics);
+            Topics = ImmutableList<TopicPartition>.Empty.AddNotNullRange(topics);
         }
 
         /// <summary>
@@ -44,7 +44,7 @@ namespace KafkaClient.Protocol
         /// <summary>
         /// The topic/partitions to be stopped.
         /// </summary>
-        public IImmutableList<Topic> Topics { get; }
+        public IImmutableList<TopicPartition> Topics { get; }
 
         /// <inheritdoc />
         public override bool Equals(object obj)

@@ -28,7 +28,7 @@ namespace KafkaClient
 
         private int _disposeCount;
         private int _ensureOneThread;
-        private MetadataTopic _topic;
+        private MetadataResponse.Topic _topic;
 
         public OldConsumer(ConsumerOptions options, params OffsetPosition[] positions)
         {
@@ -141,7 +141,7 @@ namespace KafkaClient
                             });
 
                             //build a fetch request for partition at offset
-                            var fetch = new Fetch(topic, partitionId, offset, bufferSizeHighWatermark);
+                            var fetch = new FetchRequest.Topic(topic, partitionId, offset, bufferSizeHighWatermark);
                             var fetchRequest = new FetchRequest(fetch, _options.MaxWaitTimeForMinimumBytes, _options.MinimumBytes);
 
                             //make request and post to queue
@@ -198,7 +198,7 @@ namespace KafkaClient
                         {
                             //TODO this turned out really ugly.  Need to fix this section.
                             _options.Log.Error(LogEvent.Create(ex));
-                            await FixOffsetOutOfRangeExceptionAsync(ex.Fetch);
+                            await FixOffsetOutOfRangeExceptionAsync(ex.Topic);
                         }
                         catch (CachedMetadataException ex)
                         {
@@ -226,7 +226,7 @@ namespace KafkaClient
             }, cancellationToken);
         }
 
-        private void HandleResponseErrors(FetchRequest request, FetchTopicResponse response, IConnection connection)
+        private void HandleResponseErrors(FetchRequest request, FetchResponse.Topic response, IConnection connection)
         {
             switch (response.ErrorCode)
             {
@@ -246,27 +246,27 @@ namespace KafkaClient
             }
         }
 
-        private async Task FixOffsetOutOfRangeExceptionAsync(Fetch fetch)
+        private async Task FixOffsetOutOfRangeExceptionAsync(FetchRequest.Topic topic)
         {
-            await _options.Router.GetTopicOffsetsAsync(fetch.TopicName, 2, -1, CancellationToken.None)
+            await _options.Router.GetTopicOffsetsAsync(topic.TopicName, 2, -1, CancellationToken.None)
                    .ContinueWith(t =>
                    {
                        try
                        {
-                           var offsets = t.Result.Where(x => x.PartitionId == fetch.PartitionId).ToList();
+                           var offsets = t.Result.Where(x => x.PartitionId == topic.PartitionId).ToList();
                            if (!offsets.Any()) return;
 
                            var minOffset = offsets.Min(o => o.Offset);
-                           if (minOffset > fetch.Offset)
-                               SetOffsetPosition(new OffsetPosition(fetch.PartitionId, minOffset));
+                           if (minOffset > topic.Offset)
+                               SetOffsetPosition(new OffsetPosition(topic.PartitionId, minOffset));
 
                            var maxOffset = offsets.Max(o => o.Offset);
-                           if (maxOffset < fetch.Offset)
-                               SetOffsetPosition(new OffsetPosition(fetch.PartitionId, maxOffset));
+                           if (maxOffset < topic.Offset)
+                               SetOffsetPosition(new OffsetPosition(topic.PartitionId, maxOffset));
                        }
                        catch (Exception ex)
                        {
-                           _options.Log.Error(LogEvent.Create(ex, $"Failed to fix the offset out of range exception on topic/{fetch.TopicName}/partition/{fetch.PartitionId}: Polling will continue"));
+                           _options.Log.Error(LogEvent.Create(ex, $"Failed to fix the offset out of range exception on topic/{topic.TopicName}/partition/{topic.PartitionId}: Polling will continue"));
                        }
                    });
         }

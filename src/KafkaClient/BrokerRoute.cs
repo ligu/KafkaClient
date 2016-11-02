@@ -3,7 +3,7 @@ using KafkaClient.Protocol;
 
 namespace KafkaClient
 {
-    public class BrokerRoute : Topic
+    public class BrokerRoute : TopicPartition
     {
         public BrokerRoute(string topicName, int partitionId, int brokerId, IConnection connection) : base(topicName, partitionId)
         {

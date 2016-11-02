@@ -17,7 +17,7 @@ namespace KafkaClient
         /// <param name="topicName">The name of the kafka topic to send the messages to.</param>
         /// <param name="cancellationToken"></param>
         /// <returns>List of ProduceTopic response from each partition sent to or empty list if acks = 0.</returns>
-        public static Task<ImmutableList<ProduceTopic>> SendMessagesAsync(this IProducer producer, IEnumerable<Message> messages, string topicName, CancellationToken cancellationToken)
+        public static Task<ImmutableList<ProduceResponse.Topic>> SendMessagesAsync(this IProducer producer, IEnumerable<Message> messages, string topicName, CancellationToken cancellationToken)
         {
             return producer.SendMessagesAsync(messages, topicName, null, null, cancellationToken);
         }
@@ -31,7 +31,7 @@ namespace KafkaClient
         /// <param name="partition">The partition to send messages to</param>
         /// <param name="cancellationToken"></param>
         /// <returns>List of ProduceTopic response from each partition sent to or empty list if acks = 0.</returns>
-        public static Task<ImmutableList<ProduceTopic>> SendMessagesAsync(this IProducer producer, IEnumerable<Message> messages, string topicName, int partition, CancellationToken cancellationToken)
+        public static Task<ImmutableList<ProduceResponse.Topic>> SendMessagesAsync(this IProducer producer, IEnumerable<Message> messages, string topicName, int partition, CancellationToken cancellationToken)
         {
             return producer.SendMessagesAsync(messages, topicName, partition, null, cancellationToken);
         }
@@ -44,7 +44,7 @@ namespace KafkaClient
         /// <param name="topicName">The name of the kafka topic to send the messages to.</param>
         /// <param name="cancellationToken"></param>
         /// <returns>List of ProduceTopic response from each partition sent to or empty list if acks = 0.</returns>
-        public static Task<ProduceTopic> SendMessageAsync(this IProducer producer, Message message, string topicName, CancellationToken cancellationToken)
+        public static Task<ProduceResponse.Topic> SendMessageAsync(this IProducer producer, Message message, string topicName, CancellationToken cancellationToken)
         {
             return producer.SendMessageAsync(message, topicName, null, null, cancellationToken);
         }
@@ -58,7 +58,7 @@ namespace KafkaClient
         /// <param name="partition">The partition to send messages to</param>
         /// <param name="cancellationToken"></param>
         /// <returns>List of ProduceTopic response from each partition sent to or empty list if acks = 0.</returns>
-        public static Task<ProduceTopic> SendMessageAsync(this IProducer producer, Message message, string topicName, int partition, CancellationToken cancellationToken)
+        public static Task<ProduceResponse.Topic> SendMessageAsync(this IProducer producer, Message message, string topicName, int partition, CancellationToken cancellationToken)
         {
             return producer.SendMessageAsync(message, topicName, partition, null, cancellationToken);
         }
@@ -73,7 +73,7 @@ namespace KafkaClient
         /// <param name="configuration">The configuration for sending the messages (ie acks, ack Timeout and codec)</param>
         /// <param name="cancellationToken">The token for cancellation</param>
         /// <returns>List of ProduceTopic response from each partition sent to or empty list if acks = 0.</returns>
-        public static async Task<ProduceTopic> SendMessageAsync(this IProducer producer, Message message, string topicName, int? partition, ISendMessageConfiguration configuration, CancellationToken cancellationToken)
+        public static async Task<ProduceResponse.Topic> SendMessageAsync(this IProducer producer, Message message, string topicName, int? partition, ISendMessageConfiguration configuration, CancellationToken cancellationToken)
         {
             var result = await producer.SendMessagesAsync(new[] { message }, topicName, partition, configuration, cancellationToken).ConfigureAwait(false);
             return result.SingleOrDefault();

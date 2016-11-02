@@ -264,7 +264,7 @@ namespace KafkaClient.Tests.Connections
                     var send = server.SendDataAsync(KafkaDecoder.EncodeResponseBytes(context, new FetchResponse()));
                 };
 
-                await conn.SendAsync(new FetchRequest(new Fetch("Foo", 0, 0)), CancellationToken.None);
+                await conn.SendAsync(new FetchRequest(new FetchRequest.Topic("Foo", 0, 0)), CancellationToken.None);
                 await TaskTest.WaitFor(() => context != null);
 
                 Assert.That(context.ApiVersion.Value, Is.EqualTo(2));

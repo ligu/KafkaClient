@@ -23,10 +23,10 @@ namespace KafkaClient.Tests.Helpers
                 new MetadataResponse(
                     new[] {new Broker(1, "http://localhost", 8990), new Broker(2, "http://localhost", 8991)},
                     new[] {
-                        new MetadataTopic(
+                        new MetadataResponse.Topic(
                             topic,
                             ErrorResponseCode.None,
-                            new[] {new MetadataPartition(0, 0), new MetadataPartition(1, 1)})
+                            new[] {new MetadataResponse.Partition(0, 0), new MetadataResponse.Partition(1, 1)})
                     }));
         }
     }

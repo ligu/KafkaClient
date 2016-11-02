@@ -285,15 +285,15 @@ namespace KafkaClient.Tests
             var key = testCase.ToIntSizedBytes();
             var routerProxy = new BrokerRouterProxy(_kernel);
 
-            _mockPartitionSelector.Setup(x => x.Select(It.IsAny<MetadataTopic>(), key))
-                                  .Returns(() => new MetadataPartition(0, 0, ErrorResponseCode.None, new []{ 1 }, new []{ 1 }));
+            _mockPartitionSelector.Setup(x => x.Select(It.IsAny<MetadataResponse.Topic>(), key))
+                                  .Returns(() => new MetadataResponse.Partition(0, 0, ErrorResponseCode.None, new []{ 1 }, new []{ 1 }));
 
             routerProxy.PartitionSelector = _mockPartitionSelector.Object;
             var router = routerProxy.Create();
             await router.GetTopicMetadataAsync(TestTopic, CancellationToken.None);
             var result = router.GetBrokerRoute(TestTopic, key);
 
-            _mockPartitionSelector.Verify(f => f.Select(It.Is<MetadataTopic>(x => x.TopicName == TestTopic), key), Times.Once());
+            _mockPartitionSelector.Verify(f => f.Select(It.Is<MetadataResponse.Topic>(x => x.TopicName == TestTopic), key), Times.Once());
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]

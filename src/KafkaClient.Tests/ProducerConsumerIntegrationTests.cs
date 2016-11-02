@@ -25,7 +25,7 @@ namespace KafkaClient.Tests
             using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri)))
             using (var producer = new Producer(router, new ProducerConfiguration(maxAsync, amount / 2)))
             {
-                var tasks = new Task<ProduceTopic>[amount];
+                var tasks = new Task<ProduceResponse.Topic>[amount];
 
                 for (var i = 0; i < amount; i++) {
                     tasks[i] = producer.SendMessageAsync(new Message(Guid.NewGuid().ToString()), IntegrationConfig.TopicName(), CancellationToken.None);
@@ -346,7 +346,7 @@ namespace KafkaClient.Tests
         public async Task ProducerShouldUsePartitionIdInsteadOfMessageKeyToChoosePartition()
         {
             var partitionSelector = new Mock<IPartitionSelector>();
-            partitionSelector.Setup(x => x.Select(It.IsAny<MetadataTopic>(), It.IsAny<byte[]>())).Returns((MetadataTopic y, byte[] y1) => { return y.Partitions.Single(p => p.PartitionId == 1); });
+            partitionSelector.Setup(x => x.Select(It.IsAny<MetadataResponse.Topic>(), It.IsAny<byte[]>())).Returns((MetadataResponse.Topic y, byte[] y1) => { return y.Partitions.Single(p => p.PartitionId == 1); });
 
             var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri, partitionSelector: partitionSelector.Object));
             var producer = new Producer(router);

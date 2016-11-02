@@ -28,7 +28,7 @@ namespace KafkaClient.Protocol.Types
         {
             var version = reader.ReadInt16();
 
-            var topics = new List<Topic>();
+            var topics = new List<TopicPartition>();
             var topicCount = reader.ReadInt32();
             for (var t = 0; t < topicCount; t++) {
                 var topicName = reader.ReadString();
@@ -36,7 +36,7 @@ namespace KafkaClient.Protocol.Types
                 var partitionCount = reader.ReadInt32();
                 for (var p = 0; p < partitionCount; p++) {
                     var partitionId = reader.ReadInt32();
-                    topics.Add(new Topic(topicName, partitionId));
+                    topics.Add(new TopicPartition(topicName, partitionId));
                 }
             }
             return new ConsumerMemberAssignment(version, topics);
