@@ -8,7 +8,6 @@ using KafkaClient.Protocol;
 using KafkaClient.Tests.Fakes;
 using KafkaClient.Tests.Helpers;
 using KafkaClient.Tests.Protocol;
-using Ninject.MockingKernel.Moq;
 using Nito.AsyncEx;
 using NUnit.Framework;
 using NUnit.Framework.Internal;
@@ -21,7 +20,6 @@ namespace KafkaClient.Tests.Connections
     {
         private readonly ILog _log;
         private readonly Endpoint _endpoint;
-        private MoqMockingKernel _kernel;
 
         public KafkaConnectionTests()
         {
@@ -32,7 +30,6 @@ namespace KafkaClient.Tests.Connections
         [SetUp]
         public void Setup()
         {
-            _kernel = new MoqMockingKernel();
         }
 
         #region Construct...

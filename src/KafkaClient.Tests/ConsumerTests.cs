@@ -6,8 +6,7 @@ using System.Threading.Tasks;
 using KafkaClient.Protocol;
 using KafkaClient.Tests.Fakes;
 using KafkaClient.Tests.Helpers;
-using Moq;
-using Ninject.MockingKernel.Moq;
+using NSubstitute;
 using NUnit.Framework;
 
 namespace KafkaClient.Tests
@@ -19,9 +18,9 @@ namespace KafkaClient.Tests
         [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void CancellationShouldInterruptConsumption()
         {
-            var routerProxy = new BrokerRouterProxy(new MoqMockingKernel());
+            var routerProxy = new BrokerRouterProxy();
 #pragma warning disable 1998
-            routerProxy.BrokerConn0.FetchResponseFunction = async () => new FetchResponse(new FetchResponse.Topic[] {});
+            routerProxy.Connection1.FetchResponseFunction = async () => new FetchResponse(new FetchResponse.Topic[] {});
 #pragma warning restore 1998
 
             var router = routerProxy.Create();
@@ -35,7 +34,7 @@ namespace KafkaClient.Tests
                 var consumeTask = Task.Run(() => consumer.Consume(tokenSrc.Token).FirstOrDefault());
 
                 //wait until the fake broker is running and requesting fetches
-                var wait = TaskTest.WaitFor(() => routerProxy.BrokerConn0.FetchRequestCallCount > 10);
+                var wait = TaskTest.WaitFor(() => routerProxy.Connection1.FetchRequestCallCount > 10);
 
                 tokenSrc.Cancel();
 
@@ -48,9 +47,9 @@ namespace KafkaClient.Tests
         [Test, Repeat(IntegrationConfig.TestAttempts)]
         public async Task ConsumerWhitelistShouldOnlyConsumeSpecifiedPartition()
         {
-            var routerProxy = new BrokerRouterProxy(new MoqMockingKernel());
+            var routerProxy = new BrokerRouterProxy();
 #pragma warning disable 1998
-            routerProxy.BrokerConn0.FetchResponseFunction = async () => new FetchResponse(new FetchResponse.Topic[] {});
+            routerProxy.Connection1.FetchResponseFunction = async () => new FetchResponse(new FetchResponse.Topic[] {});
 #pragma warning restore 1998
             var router = routerProxy.Create();
             var options = CreateOptions(router);
@@ -60,19 +59,19 @@ namespace KafkaClient.Tests
                 var test = consumer.Consume();
 
                 await TaskTest.WaitFor(() => consumer.ConsumerTaskCount > 0);
-                await TaskTest.WaitFor(() => routerProxy.BrokerConn0.FetchRequestCallCount > 0);
+                await TaskTest.WaitFor(() => routerProxy.Connection1.FetchRequestCallCount > 0);
 
                 Assert.That(consumer.ConsumerTaskCount, Is.EqualTo(1),
                     "Consumer should only create one consuming thread for partition 0.");
-                Assert.That(routerProxy.BrokerConn0.FetchRequestCallCount, Is.GreaterThanOrEqualTo(1));
-                Assert.That(routerProxy.BrokerConn1.FetchRequestCallCount, Is.EqualTo(0));
+                Assert.That(routerProxy.Connection1.FetchRequestCallCount, Is.GreaterThanOrEqualTo(1));
+                Assert.That(routerProxy.Connection2.FetchRequestCallCount, Is.EqualTo(0));
             }
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
         public async Task ConsumerWithEmptyWhitelistShouldConsumeAllPartition()
         {
-            var routerProxy = new BrokerRouterProxy(new MoqMockingKernel());
+            var routerProxy = new BrokerRouterProxy();
 
             var router = routerProxy.Create();
             var options = CreateOptions(router);
@@ -83,24 +82,24 @@ namespace KafkaClient.Tests
                 var test = consumer.Consume();
 
                 await TaskTest.WaitFor(() => consumer.ConsumerTaskCount > 0);
-                await TaskTest.WaitFor(() => routerProxy.BrokerConn0.FetchRequestCallCount > 0);
-                await TaskTest.WaitFor(() => routerProxy.BrokerConn1.FetchRequestCallCount > 0);
+                await TaskTest.WaitFor(() => routerProxy.Connection1.FetchRequestCallCount > 0);
+                await TaskTest.WaitFor(() => routerProxy.Connection2.FetchRequestCallCount > 0);
 
                 Assert.That(consumer.ConsumerTaskCount, Is.EqualTo(2),
                     "Consumer should create one consuming thread for each partition.");
-                Assert.That(routerProxy.BrokerConn0.FetchRequestCallCount, Is.GreaterThanOrEqualTo(1),
-                    "BrokerConn0 not sent FetchRequest");
-                Assert.That(routerProxy.BrokerConn1.FetchRequestCallCount, Is.GreaterThanOrEqualTo(1),
-                    "BrokerConn1 not sent FetchRequest");
+                Assert.That(routerProxy.Connection1.FetchRequestCallCount, Is.GreaterThanOrEqualTo(1),
+                    "Connection1 not sent FetchRequest");
+                Assert.That(routerProxy.Connection2.FetchRequestCallCount, Is.GreaterThanOrEqualTo(1),
+                    "Connection2 not sent FetchRequest");
             }
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void ConsumerShouldCreateTaskForEachBroker()
         {
-            var routerProxy = new BrokerRouterProxy(new MoqMockingKernel());
+            var routerProxy = new BrokerRouterProxy();
 #pragma warning disable 1998
-            routerProxy.BrokerConn0.FetchResponseFunction = async () => new FetchResponse(new FetchResponse.Topic[] {});
+            routerProxy.Connection1.FetchResponseFunction = async () => new FetchResponse(new FetchResponse.Topic[] {});
 #pragma warning restore 1998
             var router = routerProxy.Create();
             var options = CreateOptions(router);
@@ -117,9 +116,9 @@ namespace KafkaClient.Tests
         [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void ConsumerShouldReturnOffset()
         {
-            var routerProxy = new BrokerRouterProxy(new MoqMockingKernel());
+            var routerProxy = new BrokerRouterProxy();
 #pragma warning disable 1998
-            routerProxy.BrokerConn0.FetchResponseFunction = async () => new FetchResponse(new FetchResponse.Topic[] {});
+            routerProxy.Connection1.FetchResponseFunction = async () => new FetchResponse(new FetchResponse.Topic[] {});
 #pragma warning restore 1998
             var router = routerProxy.Create();
             var options = CreateOptions(router);
@@ -136,19 +135,19 @@ namespace KafkaClient.Tests
         [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void EnsureConsumerDisposesRouter()
         {
-            var router = new MoqMockingKernel().GetMock<IBrokerRouter>();
+            var router = Substitute.For<IBrokerRouter>();
             //router.Setup(x => x.Log.DebugFormat(It.IsAny<string>()));
-            var consumer = new OldConsumer(CreateOptions(router.Object));
+            var consumer = new OldConsumer(CreateOptions(router));
             using (consumer) { }
-            router.Verify(x => x.Dispose(), Times.Once());
+            router.Received().Dispose();
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
         public void EnsureConsumerDisposesAllTasks()
         {
-            var routerProxy = new BrokerRouterProxy(new MoqMockingKernel());
+            var routerProxy = new BrokerRouterProxy();
 #pragma warning disable 1998
-            routerProxy.BrokerConn0.FetchResponseFunction = async () => new FetchResponse(new FetchResponse.Topic[] {});
+            routerProxy.Connection1.FetchResponseFunction = async () => new FetchResponse(new FetchResponse.Topic[] {});
 #pragma warning restore 1998
             var router = routerProxy.Create();
             var options = CreateOptions(router);

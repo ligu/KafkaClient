@@ -6,7 +6,6 @@ using KafkaClient.Common;
 using KafkaClient.Connections;
 using KafkaClient.Protocol;
 using KafkaClient.Tests.Helpers;
-using Moq;
 using NSubstitute;
 using NUnit.Framework;
 #pragma warning disable 1998
@@ -38,7 +37,7 @@ namespace KafkaClient.Tests
         {
             var conn = Substitute.For<IConnection>();
 
-            conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>())
+            conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), Arg.Any<CancellationToken>())
                 .Returns(x => CreateMetadataResponse(errorCode), x => CreateMetadataResponse(errorCode));
 
             _brokerRouter.Connections.ReturnsForAnyArgs(new List<IConnection> {conn});
@@ -46,11 +45,11 @@ namespace KafkaClient.Tests
 
             Received.InOrder(() =>
             {
-                conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
+                conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), Arg.Any<CancellationToken>());
                 //_log.OnLogged(LogLevel.Warn, It.Is<LogEvent>(e => e.Message.StartsWith("Failed metadata request on attempt 0: Will retry in")));
-                conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
+                conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), Arg.Any<CancellationToken>());
                 //_log.OnLogged(LogLevel.Warn, It.Is<LogEvent>(e => e.Message.StartsWith("Failed metadata request on attempt 1: Will retry in")));
-                conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
+                conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), Arg.Any<CancellationToken>());
             });
 
             Assert.That(_log.LogEvents.Any(e => e.Item1 == LogLevel.Warn && e.Item2.Message.StartsWith("Failed metadata request on attempt 0: Will retry in")));
@@ -63,7 +62,7 @@ namespace KafkaClient.Tests
         {
             var conn = Substitute.For<IConnection>();
 
-            conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>(), Arg.Any<IRequestContext>())
+            conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), Arg.Any<CancellationToken>(), Arg.Any<IRequestContext>())
                 .Returns(x => CreateMetadataResponse(-1, "123", 1), x => CreateMetadataResponse(ErrorResponseCode.None));
 
             _brokerRouter.Connections.ReturnsForAnyArgs(new List<IConnection> {conn});
@@ -71,9 +70,9 @@ namespace KafkaClient.Tests
 
             Received.InOrder(() =>
             {
-                conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
+                conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), Arg.Any<CancellationToken>());
                 //_log.OnLogged.Invoke(LogLevel.Warn, It.Is<LogEvent>(e => e.Message.StartsWith("Failed metadata request on attempt 0: Will retry in")));
-                conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>());
+                conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), Arg.Any<CancellationToken>());
             });
 
             Assert.That(_log.LogEvents.Any(e => e.Item1 == LogLevel.Warn && e.Item2.Message.StartsWith("Failed metadata request on attempt 0: Will retry in")));
@@ -85,7 +84,7 @@ namespace KafkaClient.Tests
         {
             var conn = Substitute.For<IConnection>();
 
-            conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>())
+            conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), Arg.Any<CancellationToken>())
                 .Returns(x => CreateMetadataResponse(ErrorResponseCode.None));
 
             _brokerRouter.Connections.ReturnsForAnyArgs(new List<IConnection> {conn});
@@ -101,7 +100,7 @@ namespace KafkaClient.Tests
         {
             var conn = Substitute.For<IConnection>();
 
-            conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>())
+            conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), Arg.Any<CancellationToken>())
                 .Returns(x => CreateMetadataResponse(ErrorResponseCode.None));
 
             _brokerRouter.Connections.ReturnsForAnyArgs(new List<IConnection> {conn});
@@ -120,7 +119,7 @@ namespace KafkaClient.Tests
         {
             var conn = Substitute.For<IConnection>();
 
-            conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>()).Returns(x => CreateMetadataResponse(errorCode));
+            conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), Arg.Any<CancellationToken>()).Returns(x => CreateMetadataResponse(errorCode));
 
             _brokerRouter.Connections.ReturnsForAnyArgs(new List<IConnection> {conn});
             Assert.ThrowsAsync<RequestException>(() => _brokerRouter.GetMetadataAsync(new [] { "Test"}, CancellationToken.None));
@@ -133,7 +132,7 @@ namespace KafkaClient.Tests
         {
             var conn = Substitute.For<IConnection>();
 
-            conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>()).Returns(x => CreateMetadataResponse(1, host, 1));
+            conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), Arg.Any<CancellationToken>()).Returns(x => CreateMetadataResponse(1, host, 1));
 
             _brokerRouter.Connections.ReturnsForAnyArgs(new List<IConnection> {conn});
             Assert.ThrowsAsync<ConnectionException>(() => _brokerRouter.GetMetadataAsync(new [] { "Test"}, CancellationToken.None));
@@ -146,7 +145,7 @@ namespace KafkaClient.Tests
         {
             var conn = Substitute.For<IConnection>();
 
-            conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), It.IsAny<CancellationToken>()).Returns(x => CreateMetadataResponse(1, "123", port));
+            conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), Arg.Any<CancellationToken>()).Returns(x => CreateMetadataResponse(1, "123", port));
 
             _brokerRouter.Connections.ReturnsForAnyArgs(new List<IConnection> {conn});
             Assert.ThrowsAsync<ConnectionException>(() => _brokerRouter.GetMetadataAsync(new [] { "Test"}, CancellationToken.None));

@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using KafkaClient.Common;
 using KafkaClient.Protocol;
 using KafkaClient.Tests.Helpers;
-using Moq;
+using NSubstitute;
 using NUnit.Framework;
 
 namespace KafkaClient.Tests
@@ -345,10 +345,11 @@ namespace KafkaClient.Tests
         [Test, Repeat(IntegrationConfig.TestAttempts)]
         public async Task ProducerShouldUsePartitionIdInsteadOfMessageKeyToChoosePartition()
         {
-            var partitionSelector = new Mock<IPartitionSelector>();
-            partitionSelector.Setup(x => x.Select(It.IsAny<MetadataResponse.Topic>(), It.IsAny<byte[]>())).Returns((MetadataResponse.Topic y, byte[] y1) => { return y.Partitions.Single(p => p.PartitionId == 1); });
+            var partitionSelector = Substitute.For<IPartitionSelector>();
+            partitionSelector.Select(null, null)
+                             .ReturnsForAnyArgs(_ => _.Arg<MetadataResponse.Topic>().Partitions.Single(p => p.PartitionId == 1));
 
-            var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri, partitionSelector: partitionSelector.Object));
+            var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri, partitionSelector: partitionSelector));
             var producer = new Producer(router);
 
             var offsets = await producer.BrokerRouter.GetTopicOffsetsAsync(IntegrationConfig.TopicName(), CancellationToken.None);
