@@ -2,7 +2,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.Sockets;
-using System.Threading.Tasks;
 using KafkaClient.Common;
 using System.Linq;
 
