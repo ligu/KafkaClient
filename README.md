@@ -3,7 +3,7 @@ KafkaNetClient
 
 Native C# client for Apache Kafka with full async support.
 
-Kafka versions 0.8, 0.9 & 0.10.
+Kafka versions [0.8, 0.10.1]
 
 License
 -----------
@@ -57,7 +57,8 @@ Provides async methods on a persistent connection to a kafka broker (server).  T
 Provides a high level abstraction for sending batches of messages to a Kafka cluster. Internally, it uses the IBrokerRouter and IConnection.
 
 ##### Consumer
-Provides a high level abstraction for receiving messages from a Kafka cluster. It will consumer messages from a whitelist of partitions from a single topic.  The consumption mechanism is a blocking IEnumerable of messages. If no whitelist is provided then all partitions will be consumed, creating one Connection for each partition leader.
+Provides a mechanism for fetching messages from a Kafka cluster.
+To be extended to surface a high level abstraction for consumer groups.
 
 ##### Partition Selection (`KafkaClint.IPartitionSelector`)
 Provides the logic for routing requests to a particular topic to a partition.  The default selector (PartitionSelector) will use round robin partition selection if the key property on the message is null and a mod/hash of the key value if present.
@@ -68,26 +69,13 @@ Provides routing for topics to partitions, topics and partitions to brokers, and
 ##### Binary Protocol (`KafkaClient.Protocol.*`)
 The protocol has been divided up into concrete classes for each request/response pair. An Encoder class knows how to encode requests and decode responses into/from their appropriate Kafka protocol byte array. One benefit of this is that it allows for a nice generic send method on the Connection.
 
-#### ManualConsumer *
-A class which enables simple manual consuming of messages which encapsulates the Kafka protocol details and enables message fetching, offset fetching, and offset updating. All of these operations are on demand.
-
 Status
 -----------
 [![Build status](https://ci.appveyor.com/api/projects/status/e7ej2g9q77if8mkf/branch/master?svg=true)](https://ci.appveyor.com/project/AndrewRobinson/kafkanetclient/branch/master)
 
-This library is still work in progress and has not yet been deployed to production. We will update when it does.
-
-##### The major items that needs work are:
-* Full support for consumer groups, with consumer coordination and server heartbeats
-* Support for Kafka 0.9.0 and 0.10.0
-* Better handling of options for providing customization of internal behaviour of the base API. (right now the classes pass around option parameters)
-* General structure of the classes is not finalized and breaking changes will occur.
-* Only Gzip compression is implemented, snappy on the todo.
-* Currently only works with .NET Framework 4.5 as it uses the await command.
-* Test coverage.
-* Documentation.
-
-
+** WARNING **
+This library is still work in progress and has not yet been deployed to production. It is also undergoing significant development, and breaking changes will occour.
+This notice will be removed once it's been stabilized and used in production.
 
 [Apache Kafka protocol]:https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol
 [kafka-python]:https://github.com/mumrah/kafka-python

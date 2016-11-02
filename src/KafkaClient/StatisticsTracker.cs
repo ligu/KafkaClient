@@ -15,6 +15,8 @@ namespace KafkaClient
     /// </summary>
     //TODO: remove static StatisticsTracker and create one for each tcp socket
     //TODO:all it's operation need to be on different thread pool with one thread
+    [Obsolete("This is here for reference more than anything else -- hooks are available to make it work, but it needs a rewrite")]
+
     public static class StatisticsTracker
     {
         public static event Action<StatisticsSummary> OnStatisticsHeartbeat;

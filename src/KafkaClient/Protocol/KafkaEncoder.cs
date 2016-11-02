@@ -218,7 +218,7 @@ namespace KafkaClient.Protocol
                 }
 
                 var bytes = writer.ToBytes();
-                StatisticsTracker.RecordProduceRequest(request.Payloads.Sum(x => x.Messages.Count), bytes.Length, totalCompressedBytes);
+                //StatisticsTracker.RecordProduceRequest(request.Payloads.Sum(x => x.Messages.Count), bytes.Length, totalCompressedBytes);
                 return bytes;
             }
         }
