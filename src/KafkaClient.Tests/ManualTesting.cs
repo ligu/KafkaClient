@@ -40,7 +40,7 @@ namespace KafkaClient.Tests
         {
             var topicName = "TestTopicIssue13-3R-1P";
             using (var router = new BrokerRouter(_options)) {
-                var consumer = new Consumer(new BrokerRouter(_options), 10000);
+                var consumer = new Consumer(new BrokerRouter(_options), new ConsumerConfiguration(10000));
                 var offset = await router.GetTopicOffsetAsync(topicName, 0, CancellationToken.None);
 
                 var producer = new Producer(router);

@@ -95,9 +95,11 @@
     <Compile Include="Common\CancellableTask.cs" />
     <Compile Include="Connections\VersionSupport.cs" />
     <Compile Include="Consumer.cs" />
+    <Compile Include="ConsumerConfiguration.cs" />
     <Compile Include="ICacheConfiguration.cs" />
     <Compile Include="IConsumer.cs" />
     <Compile Include="ConsumerExtensions.cs" />
+    <Compile Include="IConsumerConfiguration.cs" />
     <Compile Include="IProducer.cs" />
     <Compile Include="IProducerConfiguration.cs" />
     <Compile Include="ISendMessageConfiguration.cs" />

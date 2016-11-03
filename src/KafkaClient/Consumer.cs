@@ -14,19 +14,18 @@ namespace KafkaClient
     public class Consumer : IConsumer
     {
         private readonly IBrokerRouter _brokerRouter;
-        private readonly int? _maxFetchBytes;
-        private readonly TimeSpan? _maxServerWait;
+        private readonly IConsumerConfiguration _configuration;
 
-        public Consumer(IBrokerRouter brokerRouter, int? maxFetchBytes = null, TimeSpan? maxServerWait = null)
+        public Consumer(IBrokerRouter brokerRouter, IConsumerConfiguration configuration = null)
         {
             _brokerRouter = brokerRouter;
-            _maxServerWait = maxServerWait;
-            _maxFetchBytes = maxFetchBytes;
+            _configuration = configuration ?? new ConsumerConfiguration();
             _localMessages = ImmutableList<Message>.Empty;
         }
 
         private ImmutableList<Message> _localMessages;
 
+        /// <inheritdoc />
         public async Task<IImmutableList<Message>> FetchMessagesAsync(string topicName, int partitionId, long offset, int maxCount, CancellationToken cancellationToken)
         {
             if (offset < 0) throw new ArgumentOutOfRangeException(nameof(offset), offset, "must be >= 0");
@@ -36,7 +35,7 @@ namespace KafkaClient
             if (0 <= localIndex && localIndex + maxCount <= _localMessages.Count) return _localMessages.GetRange(localIndex, maxCount);
 
             var localCount = (0 <= localIndex && localIndex < _localMessages.Count) ? _localMessages.Count - localIndex : 0;
-            var request = new FetchRequest(new FetchRequest.Topic(topicName, partitionId, offset + localCount, _maxFetchBytes), _maxServerWait);
+            var request = new FetchRequest(new FetchRequest.Topic(topicName, partitionId, offset + localCount, _configuration.MaxFetchBytes), _configuration.MaxServerWait);
             var response = await _brokerRouter.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
             var topic = response.Topics.SingleOrDefault();
 
