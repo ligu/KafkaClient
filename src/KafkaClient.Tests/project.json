@@ -1,0 +1,25 @@
+{
+  "version": "1.0.0-*",
+
+  "dependencies": {
+    "KafkaClient": "1.0.0-*",
+    "NETStandard.Library": "1.6.0",
+    "NUnit": "3.5.0"
+  },
+
+  "runtimes": {
+    "win": {}
+  },
+
+  "frameworks": {
+    "netstandard1.6": {
+      "imports": "dnxcore50"
+    },
+    "net462": {
+      "dependencies": {
+        "Nito.AsyncEx": "3.0.1",
+        "System.Collections.Immutable": "1.2.0"
+      }
+    }
+  }
+}
