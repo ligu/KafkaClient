@@ -6904,7 +6904,7 @@
   },
   "projectFileDependencyGroups": {
     "": [
-      "KafkaClient >= 1.0.0-*",
+      "KafkaClient",
       "NSubstitute >= 2.0.0-rc",
       "NUnit >= 3.5.0",
       "System.Collections.Immutable >= 1.2.0",
