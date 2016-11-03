@@ -752,13 +752,14 @@ namespace KafkaClient.Protocol
                     brokers[b] = new Broker(brokerId, host, port, rack);
                 }
 
-                int? controllerId = null;
-                if (context.ApiVersion >= 1) {
-                    controllerId = reader.ReadInt32();
-                }
                 string clusterId = null;
                 if (context.ApiVersion >= 2) {
                     clusterId = reader.ReadString();
+                }
+
+                int? controllerId = null;
+                if (context.ApiVersion >= 1) {
+                    controllerId = reader.ReadInt32();
                 }
 
                 var topics = new MetadataResponse.Topic[reader.ReadInt32()];
