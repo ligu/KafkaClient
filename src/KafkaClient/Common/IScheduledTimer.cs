@@ -7,7 +7,7 @@ namespace KafkaClient.Common
         /// <summary>
         /// Current running status of the timer.
         /// </summary>
-        ScheduledTimerStatus Status { get; }
+        //ScheduledTimerStatus Status { get; }
 
         /// <summary>
         /// Indicates if the timer is running.

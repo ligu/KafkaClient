@@ -138,7 +138,7 @@ namespace KafkaClient.Tests
         {
             //TODO is there a way to communicate back which client failed and which succeeded.
             var routerProxy = new FakeBrokerRouter();
-            routerProxy.BrokerConn1.ProduceResponseFunction = () => { throw new ApplicationException("some exception"); };
+            routerProxy.BrokerConn1.ProduceResponseFunction = () => { throw new Exception("some exception"); };
 
             var router = routerProxy.Create();
             using (var producer = new Producer(router))

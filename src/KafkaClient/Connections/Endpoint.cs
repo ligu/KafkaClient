@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Sockets;
 using KafkaClient.Common;
 using System.Linq;
+using Nito.AsyncEx;
 
 namespace KafkaClient.Connections
 {
@@ -62,7 +63,7 @@ namespace KafkaClient.Connections
         private static IPAddress GetFirstAddress(string hostname, ILog log)
         {
             try {
-                var addresses = Dns.GetHostAddresses(hostname);
+                var addresses = AsyncContext.Run(() => Dns.GetHostAddressesAsync(hostname));
                 if (addresses.Length > 0) {
                     foreach (var address in addresses) {
                         log?.Debug(() => LogEvent.Create($"Found address {address} for {hostname}"));

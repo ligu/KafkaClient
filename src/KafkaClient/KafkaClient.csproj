@@ -76,7 +76,6 @@
     <Compile Include="Common\LilliputianExtensions.cs" />
     <Compile Include="Common\LogLevel.cs" />
     <Compile Include="Common\RetryAttempt.cs" />
-    <Compile Include="Common\ScheduledTimerStatus.cs" />
     <Compile Include="Common\TaskExtensions.cs" />
     <Compile Include="Common\BackoffRetry.cs" />
     <Compile Include="Common\DelayedRetry.cs" />
@@ -169,7 +168,6 @@
     <Compile Include="IKafkaClient.cs" />
     <Compile Include="Connections\ITcpSocket.cs" />
     <Compile Include="BrokerRoute.cs" />
-    <Compile Include="Common\ScheduledTimer.cs" />
     <Compile Include="OldConsumer.cs" />
     <Compile Include="Connections\IConnection.cs" />
     <Compile Include="IBrokerRouter.cs" />

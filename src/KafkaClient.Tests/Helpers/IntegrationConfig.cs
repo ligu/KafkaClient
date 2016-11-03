@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Configuration;
 using System.Runtime.CompilerServices;
 using KafkaClient.Common;
 
@@ -25,14 +24,6 @@ namespace KafkaClient.Tests.Helpers
 
         public static ILog AllLog = new ConsoleLog();
 
-        public static Uri IntegrationUri
-        {
-            get
-            {
-                var url = ConfigurationManager.AppSettings["IntegrationKafkaServerUrl"];
-                if (url == null) throw new ConfigurationErrorsException("IntegrationKafkaServerUrl must be specified in the app.config file.");
-                return new Uri(url);
-            }
-        }
+        public static Uri IntegrationUri { get; } = new Uri("http://kafka1:9092");
     }
 }

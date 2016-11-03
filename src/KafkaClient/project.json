@@ -20,8 +20,13 @@
     },
     "net462": {
       "dependencies": {
-        "Nito.AsyncEx": "3.0.1",
-        "System.Collections.Immutable": "1.2.0"
+        "NETStandard.Library": "1.5.0",
+        "Nito.AsyncEx.Context": "1.1.0",
+        "Nito.AsyncEx.Coordination": "1.0.2",
+        "System.Collections.Immutable": "1.2.0",
+        "System.Diagnostics.TraceSource": "4.0.0",
+        "System.Net.NameResolution": "4.0.0",
+        "System.Threading.Thread": "4.0.0"
       }
     }
   }
