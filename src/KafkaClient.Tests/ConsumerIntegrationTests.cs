@@ -21,12 +21,14 @@ namespace KafkaClient.Tests
         private const int DefaultMaxMessageSetSize = 4096 * 8;
         private readonly int _partitionId = 0;
         private readonly IConnectionConfiguration _config;
+        private readonly IConsumerConfiguration _consumerConfig;
 
         public ConsumerIntegrationTests()
         {
             _kafkaUri = IntegrationConfig.IntegrationUri;
             _config = new ConnectionConfiguration(TimeSpan.FromSeconds(10));
             _options = new KafkaOptions(IntegrationConfig.IntegrationUri, _config, log: new ConsoleLog());
+            _consumerConfig = new ConsumerConfiguration(DefaultMaxMessageSetSize);
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
@@ -57,7 +59,7 @@ namespace KafkaClient.Tests
             var topic = "ManualConsumerTestTopic";
 
             var producer = new Producer(brokerRouter);
-            var consumer = new Consumer(brokerRouter, DefaultMaxMessageSetSize);
+            var consumer = new Consumer(brokerRouter, _consumerConfig);
 
             var offset = await brokerRouter.GetTopicOffsetAsync(topic, _partitionId, CancellationToken.None);
 
@@ -80,7 +82,7 @@ namespace KafkaClient.Tests
 
             var producer = new Producer(brokerRouter);
             var topic = IntegrationConfig.TopicName();
-            var consumer = new Consumer(brokerRouter, DefaultMaxMessageSetSize);
+            var consumer = new Consumer(brokerRouter, _consumerConfig);
 
             var offset = await brokerRouter.GetTopicOffsetAsync(topic, _partitionId, CancellationToken.None);
 
@@ -108,7 +110,7 @@ namespace KafkaClient.Tests
 
             var producer = new Producer(brokerRouter);
             var topic = IntegrationConfig.TopicName();
-            var consumer = new Consumer(brokerRouter, DefaultMaxMessageSetSize);
+            var consumer = new Consumer(brokerRouter, _consumerConfig);
 
             var offset = await brokerRouter.GetTopicOffsetAsync(topic, _partitionId, CancellationToken.None);
 
@@ -136,7 +138,7 @@ namespace KafkaClient.Tests
 
             var producer = new Producer(brokerRouter);
             var topic = IntegrationConfig.TopicName();
-            var consumer = new Consumer(brokerRouter, DefaultMaxMessageSetSize);
+            var consumer = new Consumer(brokerRouter, _consumerConfig);
 
             var offset = await brokerRouter.GetTopicOffsetAsync(topic, _partitionId, CancellationToken.None);
 
@@ -162,7 +164,7 @@ namespace KafkaClient.Tests
             // Creating a broker router and a protocol gateway for the producer and consumer
             var brokerRouter = new BrokerRouter(_kafkaUri, new ConnectionFactory(), _config);
 
-            var consumer = new Consumer(brokerRouter, DefaultMaxMessageSetSize);
+            var consumer = new Consumer(brokerRouter, _consumerConfig);
 
             var offset = await brokerRouter.GetTopicOffsetAsync(IntegrationConfig.TopicName(), _partitionId, CancellationToken.None);
 
@@ -178,7 +180,7 @@ namespace KafkaClient.Tests
             // Creating a broker router and a protocol gateway for the producer and consumer
             var brokerRouter = new BrokerRouter(_kafkaUri, new ConnectionFactory(), _config, log: new ConsoleLog());
 
-            var consumer = new Consumer(brokerRouter, DefaultMaxMessageSetSize);
+            var consumer = new Consumer(brokerRouter, _consumerConfig);
 
             var offset = await brokerRouter.GetTopicOffsetAsync(IntegrationConfig.TopicName(), _partitionId, CancellationToken.None);
 
@@ -197,7 +199,7 @@ namespace KafkaClient.Tests
             // Creating a broker router and a protocol gateway for the producer and consumer
             var brokerRouter = new BrokerRouter(_kafkaUri, new ConnectionFactory(), _config);
 
-            var consumer = new Consumer(brokerRouter, DefaultMaxMessageSetSize);
+            var consumer = new Consumer(brokerRouter, _consumerConfig);
 
             var offset = -1;
 
@@ -213,7 +215,7 @@ namespace KafkaClient.Tests
 
             var topic = IntegrationConfig.TopicName();
 
-            var consumer = new Consumer(brokerRouter, DefaultMaxMessageSetSize * 2);
+            var consumer = new Consumer(brokerRouter, new ConsumerConfiguration(DefaultMaxMessageSetSize * 2));
 
             var offset = 0;
 
@@ -229,7 +231,7 @@ namespace KafkaClient.Tests
             var partitionId = 100;
             var topic = IntegrationConfig.TopicName();
 
-            var consumer = new Consumer(brokerRouter, DefaultMaxMessageSetSize * 2);
+            var consumer = new Consumer(brokerRouter, new ConsumerConfiguration(DefaultMaxMessageSetSize * 2));
 
             var offset = 0;
 
@@ -246,7 +248,7 @@ namespace KafkaClient.Tests
 
             var producer = new Producer(brokerRouter);
             var topic = IntegrationConfig.TopicName();
-            var consumer = new Consumer(brokerRouter, smallMessageSet);
+            var consumer = new Consumer(brokerRouter, new ConsumerConfiguration(smallMessageSet));
 
             var offset = await brokerRouter.GetTopicOffsetAsync(topic, _partitionId, CancellationToken.None);
 
