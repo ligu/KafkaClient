@@ -23,7 +23,7 @@ namespace KafkaClient.Tests
             return new Connection(new TcpSocket(endpoint, configuration), configuration, _options.Log);
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task EnsureGzipCompressedMessageCanSend()
         {
             var topicName = IntegrationConfig.TopicName();
@@ -52,7 +52,7 @@ namespace KafkaClient.Tests
             IntegrationConfig.NoDebugLog.Info(() => LogEvent.Create(">> End EnsureGzipCompressedMessageCanSend"));
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task EnsureGzipCanDecompressMessageFromKafka()
         {
             var numberOfMessages = 3;

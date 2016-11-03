@@ -6,7 +6,6 @@ using KafkaClient.Common;
 using KafkaClient.Connections;
 using KafkaClient.Protocol;
 using KafkaClient.Tests.Fakes;
-using KafkaClient.Tests.Helpers;
 using NUnit.Framework;
 #pragma warning disable 1998
 
@@ -22,7 +21,7 @@ namespace KafkaClient.Tests
         [TestCase(ErrorResponseCode.LeaderNotAvailable)]
         [TestCase(ErrorResponseCode.GroupCoordinatorNotAvailable)]
         [TestCase(ErrorResponseCode.UnknownTopicOrPartition)]
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task ShouldTryToRefreshMataDataIfCanRecoverByRefreshMetadata(ErrorResponseCode code)
         {
             var routerProxy = new BrokerRouterProxy();
@@ -38,7 +37,7 @@ namespace KafkaClient.Tests
             Assert.That(routerProxy.Connection1.FetchRequestCallCount, Is.EqualTo(2));
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         [TestCase(typeof(ConnectionException))]
         [TestCase(typeof(FetchOutOfRangeException))]
         [TestCase(typeof(CachedMetadataException))]
@@ -70,7 +69,7 @@ namespace KafkaClient.Tests
             Assert.ThrowsAsync(exceptionType, async () => await router.SendAsync(new FetchRequest(), BrokerRouterProxy.TestTopic, PartitionId, CancellationToken.None));
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         [TestCase(ErrorResponseCode.InvalidFetchSize)]
         [TestCase(ErrorResponseCode.MessageTooLarge)]
         [TestCase(ErrorResponseCode.OffsetMetadataTooLarge)]
@@ -90,7 +89,7 @@ namespace KafkaClient.Tests
             Assert.ThrowsAsync<RequestException>(async () => await router.SendAsync(new FetchRequest(), BrokerRouterProxy.TestTopic, PartitionId, CancellationToken.None));
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task ShouldUpdateMetadataOnce()
         {
             var routerProxy = new BrokerRouterProxy();
@@ -117,7 +116,7 @@ namespace KafkaClient.Tests
             Assert.That(routerProxy.Connection1.MetadataRequestCallCount, Is.EqualTo(1));
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task ShouldRecoverUpdateMetadataForNewTopic()
         {
             var routerProxy = new BrokerRouterProxy();
@@ -151,7 +150,7 @@ namespace KafkaClient.Tests
             Assert.That(routerProxy.Connection1.MetadataRequestCallCount, Is.EqualTo(2));
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task ShouldRecoverFromFailureByUpdateMetadataOnce() //Do not debug this test !!
         {
             var log = new ConsoleLog();
@@ -204,14 +203,14 @@ namespace KafkaClient.Tests
             Assert.That(routerProxy.Connection1.MetadataRequestCallCount, Is.EqualTo(2), "MetadataRequestCallCount");
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task ShouldRecoverFromConnectionExceptionByUpdateMetadataOnceFullScenario() //Do not debug this test !!
         {
             await ShouldRecoverByUpdateMetadataOnceFullScenario(
                 FailedInFirstMessageException(typeof(ConnectionException), TimeSpan.Zero));
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task ShouldRecoverFromFetchErrorByUpdateMetadataOnceFullScenario1()
         {
             await ShouldRecoverByUpdateMetadataOnceFullScenario(

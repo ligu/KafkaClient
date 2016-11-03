@@ -1,5 +1,4 @@
-﻿using System;
-using System.Linq;
+﻿using System.Linq;
 using System.Text;
 using KafkaClient.Common;
 using KafkaClient.Protocol;
@@ -12,7 +11,7 @@ namespace KafkaClient.Tests.Protocol
     [Category("Unit")]
     public class ProtocolMessageTests
     {
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public void DecodeMessageShouldThrowWhenCrcFails()
         {
             var testMessage = new Message(value: "kafka test message.", key: "test");
@@ -27,7 +26,7 @@ namespace KafkaClient.Tests.Protocol
             }
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         [TestCase("test key", "test message")]
         [TestCase(null, "test message")]
         [TestCase("test key", null)]
@@ -48,7 +47,7 @@ namespace KafkaClient.Tests.Protocol
             }
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public void EncodeMessageSetEncodesMultipleMessages()
         {
             //expected generated from python library
@@ -73,7 +72,7 @@ namespace KafkaClient.Tests.Protocol
             }
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public void DecodeMessageSetShouldHandleResponseWithMaxBufferSizeHit()
         {
             using (var reader = new BigEndianBinaryReader(MessageHelper.FetchResponseMaxBytesOverflow)) {
@@ -87,12 +86,12 @@ namespace KafkaClient.Tests.Protocol
             }
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public void WhenMessageIsTruncatedThenBufferUnderRunExceptionIsThrown()
         {
             // arrange
-            var offset = (Int64)0;
-            var message = new Byte[] { };
+            var offset = (long)0;
+            var message = new byte[] { };
             var messageSize = message.Length + 1;
             using (var writer = new KafkaWriter()) {
                 writer.Write(offset)
@@ -106,12 +105,12 @@ namespace KafkaClient.Tests.Protocol
             }
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public void WhenMessageIsExactlyTheSizeOfBufferThenMessageIsDecoded()
         {
             // arrange
-            var expectedPayloadBytes = new Byte[] { 1, 2, 3, 4 };
-            var payload = MessageHelper.CreateMessage(0, new Byte[] { 0 }, expectedPayloadBytes);
+            var expectedPayloadBytes = new byte[] { 1, 2, 3, 4 };
+            var payload = MessageHelper.CreateMessage(0, new byte[] { 0 }, expectedPayloadBytes);
 
             // act/assert
             using (var reader = new BigEndianBinaryReader(payload)) {
@@ -119,7 +118,7 @@ namespace KafkaClient.Tests.Protocol
                 var actualPayload = messages.First().Value;
 
                 // assert
-                var expectedPayload = new Byte[] { 1, 2, 3, 4 };
+                var expectedPayload = new byte[] { 1, 2, 3, 4 };
                 CollectionAssert.AreEqual(expectedPayload, actualPayload);
             }
         }

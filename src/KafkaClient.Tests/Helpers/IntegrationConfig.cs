@@ -6,8 +6,6 @@ namespace KafkaClient.Tests.Helpers
 {
     public static class IntegrationConfig
     {
-        public const int TestAttempts = 1;
-
         public static string TopicName([CallerMemberName] string name = null)
         {
             return $"{Environment.MachineName}-Topic-{name}";

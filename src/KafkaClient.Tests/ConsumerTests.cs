@@ -15,7 +15,7 @@ namespace KafkaClient.Tests
     [Category("Unit")]
     public class ConsumerTests
     {
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public void CancellationShouldInterruptConsumption()
         {
             var routerProxy = new BrokerRouterProxy();
@@ -44,7 +44,7 @@ namespace KafkaClient.Tests
             }
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task ConsumerWhitelistShouldOnlyConsumeSpecifiedPartition()
         {
             var routerProxy = new BrokerRouterProxy();
@@ -68,7 +68,7 @@ namespace KafkaClient.Tests
             }
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task ConsumerWithEmptyWhitelistShouldConsumeAllPartition()
         {
             var routerProxy = new BrokerRouterProxy();
@@ -94,7 +94,7 @@ namespace KafkaClient.Tests
             }
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public void ConsumerShouldCreateTaskForEachBroker()
         {
             var routerProxy = new BrokerRouterProxy();
@@ -113,7 +113,7 @@ namespace KafkaClient.Tests
             }
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public void ConsumerShouldReturnOffset()
         {
             var routerProxy = new BrokerRouterProxy();
@@ -132,7 +132,7 @@ namespace KafkaClient.Tests
             }
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public void EnsureConsumerDisposesRouter()
         {
             var router = Substitute.For<IBrokerRouter>();
@@ -142,7 +142,7 @@ namespace KafkaClient.Tests
             router.Received().Dispose();
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public void EnsureConsumerDisposesAllTasks()
         {
             var routerProxy = new BrokerRouterProxy();

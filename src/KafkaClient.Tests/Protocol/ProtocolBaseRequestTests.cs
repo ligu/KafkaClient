@@ -1,6 +1,5 @@
 ﻿using System;
 using KafkaClient.Protocol;
-using KafkaClient.Tests.Helpers;
 using NUnit.Framework;
 
 namespace KafkaClient.Tests.Protocol
@@ -9,7 +8,7 @@ namespace KafkaClient.Tests.Protocol
     [Category("Unit")]
     public class ProtocolBaseRequestTests
     {
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public void EnsureHeaderShouldPackCorrectByteLengths()
         {
             var result = KafkaEncoder.EncodeRequestBytes(new RequestContext(123456789, clientId: "test"), new ApiVersionsRequest());

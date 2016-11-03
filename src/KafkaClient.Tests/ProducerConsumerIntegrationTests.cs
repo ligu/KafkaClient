@@ -16,7 +16,7 @@ namespace KafkaClient.Tests
     [Category("Integration")]
     public class ProducerConsumerTests
     {
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         [TestCase(10, 1000)]
         [TestCase(100, 1000)]
         [TestCase(1000, 1000)]
@@ -41,7 +41,7 @@ namespace KafkaClient.Tests
             }
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task ProducerAckLevel()
         {
             using (var router = new BrokerRouter(IntegrationConfig.IntegrationUri, log: IntegrationConfig.NoDebugLog ))
@@ -54,7 +54,7 @@ namespace KafkaClient.Tests
             }
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task ProducerAckLevel1ResponseOffsetShouldBeEqualToLastOffset()
         {
             using (var router = new BrokerRouter(IntegrationConfig.IntegrationUri, log: IntegrationConfig.NoDebugLog ))
@@ -67,7 +67,7 @@ namespace KafkaClient.Tests
             }
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task ProducerLastResposeOffsetAckLevel1ShouldBeEqualsToLastOffset()
         {
             using (var router = new BrokerRouter(IntegrationConfig.IntegrationUri, log: IntegrationConfig.NoDebugLog ))
@@ -81,7 +81,7 @@ namespace KafkaClient.Tests
             }
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task ConsumeByOffsetShouldGetSameMessageProducedAtSameOffset()
         {
             long offsetResponse;
@@ -101,7 +101,7 @@ namespace KafkaClient.Tests
             }
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public void ConsumerShouldConsumeInSameOrderAsProduced()
         {
             var expected = new List<string> { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19" };
@@ -187,7 +187,7 @@ namespace KafkaClient.Tests
             router.Dispose();
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         [TestCase(1, 70)]
         [TestCase(1000, 70)]
         [TestCase(30000, 550)]
@@ -268,7 +268,7 @@ namespace KafkaClient.Tests
             router.Dispose();
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public void ConsumerShouldBeAbleToSeekBackToEarlierOffset()
         {
             var expected = new List<string> { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19" };
@@ -311,7 +311,7 @@ namespace KafkaClient.Tests
             }
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public void ConsumerShouldBeAbleToGetCurrentOffsetInformation()
         {
             using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri)))
@@ -342,7 +342,7 @@ namespace KafkaClient.Tests
             }
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task ProducerShouldUsePartitionIdInsteadOfMessageKeyToChoosePartition()
         {
             var partitionSelector = Substitute.For<IPartitionSelector>();
@@ -375,7 +375,7 @@ namespace KafkaClient.Tests
             producer.Dispose();
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public void ConsumerShouldNotLoseMessageWhenBlocked()
         {
             var testId = Guid.NewGuid().ToString();
@@ -404,7 +404,7 @@ namespace KafkaClient.Tests
             }
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task ConsumerShouldMoveToNextAvailableOffsetWhenQueryingForNextMessage()
         {
             const int expectedCount = 1000;

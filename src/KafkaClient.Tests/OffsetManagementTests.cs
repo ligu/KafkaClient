@@ -19,7 +19,7 @@ namespace KafkaClient.Tests
         {
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task OffsetFetchRequestOfNonExistingGroupShouldReturnNoError()
         {
             //From documentation: https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+ProtocolTests#AGuideToTheKafkaProtocol-OffsetFetchRequest
@@ -41,7 +41,7 @@ namespace KafkaClient.Tests
             router.Dispose();
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task OffsetCommitShouldStoreAndReturnSuccess()
         {
             const int partitionId = 0;
@@ -66,7 +66,7 @@ namespace KafkaClient.Tests
             router.Dispose();
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task OffsetCommitShouldStoreOffsetValue()
         {
             const int partitionId = 0;
@@ -100,7 +100,7 @@ namespace KafkaClient.Tests
             router.Dispose();
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task OffsetCommitShouldStoreMetadata()
         {
             const int partitionId = 0;
@@ -135,7 +135,7 @@ namespace KafkaClient.Tests
             router.Dispose();
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task ConsumerMetadataRequestShouldReturnWithoutError()
         {
             using (var router = new BrokerRouter(_options))

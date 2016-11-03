@@ -28,7 +28,7 @@ namespace KafkaClient.Tests.Connections
             _conn = new Connection(new TcpSocket(endpoint, options.ConnectionConfiguration), options.ConnectionConfiguration, IntegrationConfig.NoDebugLog);
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task EnsureTwoRequestsCanCallOneAfterAnother()
         {
             var result1 = await _conn.SendAsync(new MetadataRequest(), CancellationToken.None);
@@ -37,7 +37,7 @@ namespace KafkaClient.Tests.Connections
             Assert.That(result2.Errors.Count(code => code != ErrorResponseCode.None), Is.EqualTo(0));
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task EnsureAsyncRequestResponsesCorrelate()
         {
             var result1 = _conn.SendAsync(new MetadataRequest(), CancellationToken.None);
@@ -51,7 +51,7 @@ namespace KafkaClient.Tests.Connections
             Assert.That(result3.Result.Errors.Count(code => code != ErrorResponseCode.None), Is.EqualTo(0));
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task EnsureMultipleAsyncRequestsCanReadResponses([Values(1, 5)] int senders, [Values(10, 50, 200)] int totalRequests)
         {
             var requestsSoFar = 0;
@@ -79,7 +79,7 @@ namespace KafkaClient.Tests.Connections
             Assert.That(results.Count, Is.EqualTo(totalRequests));
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task EnsureDifferentTypesOfResponsesCanBeReadAsync()
         {
             //just ensure the topic exists for this test

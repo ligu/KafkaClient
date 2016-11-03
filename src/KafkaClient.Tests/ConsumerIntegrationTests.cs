@@ -29,7 +29,7 @@ namespace KafkaClient.Tests
             _options = new KafkaOptions(IntegrationConfig.IntegrationUri, _config, log: new ConsoleLog());
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task CanFetch()
         {
             int partitionId = 0;
