@@ -18,8 +18,8 @@ namespace KafkaClient.Protocol
     ///   Host => string               -- The hostname of the broker.
     ///   Port => int32                -- The port on which the broker accepts requests.
     ///   Rack => string               -- The rack of the broker.
-    ///  ControllerId => int32         -- The broker id of the controller broker
     ///  ClusterId => string           -- The cluster id that this broker belongs to.
+    ///  ControllerId => int32         -- The broker id of the controller broker
     /// 
     ///  TopicMetadata => TopicErrorCode TopicName *IsInternal [PartitionMetadata]
     ///   *IsInternal is only version 1 (0.10.0) and above

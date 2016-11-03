@@ -515,11 +515,11 @@ namespace KafkaClient.Tests.Protocol
                 }
             }
 
-            if (context.ApiVersion >= 1) {
-                writer.Write(response.ControllerId.GetValueOrDefault());
-            }
             if (context.ApiVersion >= 2) {
                 writer.Write(response.ClusterId);
+            }
+            if (context.ApiVersion >= 1) {
+                writer.Write(response.ControllerId.GetValueOrDefault());
             }
 
             var groupedTopics = response.Topics.GroupBy(t => new { t.TopicName, t.ErrorCode, t.IsInternal }).ToList();

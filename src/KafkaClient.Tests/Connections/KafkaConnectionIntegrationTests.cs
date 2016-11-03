@@ -29,20 +29,22 @@ namespace KafkaClient.Tests.Connections
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
-        public void EnsureTwoRequestsCanCallOneAfterAnother()
+        public async Task EnsureTwoRequestsCanCallOneAfterAnother()
         {
-            var result1 = _conn.SendAsync(new MetadataRequest(), CancellationToken.None).Result;
-            var result2 = _conn.SendAsync(new MetadataRequest(), CancellationToken.None).Result;
+            var result1 = await _conn.SendAsync(new MetadataRequest(), CancellationToken.None);
+            var result2 = await _conn.SendAsync(new MetadataRequest(), CancellationToken.None);
             Assert.That(result1.Errors.Count(code => code != ErrorResponseCode.None), Is.EqualTo(0));
             Assert.That(result2.Errors.Count(code => code != ErrorResponseCode.None), Is.EqualTo(0));
         }
 
         [Test, Repeat(IntegrationConfig.TestAttempts)]
-        public void EnsureAsyncRequestResponsesCorrelate()
+        public async Task EnsureAsyncRequestResponsesCorrelate()
         {
             var result1 = _conn.SendAsync(new MetadataRequest(), CancellationToken.None);
             var result2 = _conn.SendAsync(new MetadataRequest(), CancellationToken.None);
             var result3 = _conn.SendAsync(new MetadataRequest(), CancellationToken.None);
+
+            await Task.WhenAll(result1, result2, result3);
 
             Assert.That(result1.Result.Errors.Count(code => code != ErrorResponseCode.None), Is.EqualTo(0));
             Assert.That(result2.Result.Errors.Count(code => code != ErrorResponseCode.None), Is.EqualTo(0));
