@@ -12,9 +12,6 @@
     "dotnet-test-nunit": "3.4.0-beta-3"
   },
   "testRunner": "nunit",
-  "runtimes": {
-    "win": {}
-  },
 
   "frameworks": {
     "net462": {
