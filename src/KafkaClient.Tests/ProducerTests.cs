@@ -382,9 +382,19 @@ namespace KafkaClient.Tests
         {
             var router = Substitute.For<IBrokerRouter>();
 
-            var producer = new Producer(router);
+            var producer = new Producer(router, leaveRouterOpen: false);
             using (producer) { }
             router.Received(1).Dispose();
+        }
+
+        [Test]
+        public void EnsureProducerDoesNotDisposeRouter()
+        {
+            var router = Substitute.For<IBrokerRouter>();
+
+            var producer = new Producer(router);
+            using (producer) { }
+            router.DidNotReceive().Dispose();
         }
 
         [Test]

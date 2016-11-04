@@ -8,13 +8,13 @@ namespace KafkaClient
 {
     public class KafkaOptions
     {
-        public KafkaOptions(
-            IEnumerable<Uri> kafkaServerUris = null, 
+        public KafkaOptions(IEnumerable<Uri> kafkaServerUris = null, 
             IConnectionConfiguration connectionConfiguration = null, 
             ICacheConfiguration cacheConfiguration = null,
             IConnectionFactory connectionFactory = null,
             IPartitionSelector partitionSelector = null,
             IProducerConfiguration producerConfiguration = null, 
+            IConsumerConfiguration consumerConfiguration = null, 
             ILog log = null)
         {
             ServerUris = ImmutableList<Uri>.Empty.AddNotNullRange(kafkaServerUris);
@@ -23,18 +23,19 @@ namespace KafkaClient
             ConnectionFactory = connectionFactory ?? new ConnectionFactory();
             PartitionSelector = partitionSelector ?? new PartitionSelector();
             ProducerConfiguration = producerConfiguration ?? new ProducerConfiguration();
+            ConsumerConfiguration = consumerConfiguration ?? new ConsumerConfiguration();
             Log = log ?? TraceLog.Log;
         }
 
-        public KafkaOptions(
-            Uri kafkaServerUri = null, 
+        public KafkaOptions(Uri kafkaServerUri = null, 
             IConnectionConfiguration connectionConfiguration = null, 
             ICacheConfiguration cacheConfiguration = null,
             IConnectionFactory connectionFactory = null,
             IPartitionSelector partitionSelector = null,
             IProducerConfiguration producerConfiguration = null, 
+            IConsumerConfiguration consumerConfiguration = null, 
             ILog log = null)
-            : this (ImmutableList<Uri>.Empty.AddNotNull(kafkaServerUri), connectionConfiguration, cacheConfiguration, connectionFactory, partitionSelector, producerConfiguration, log)
+            : this (ImmutableList<Uri>.Empty.AddNotNull(kafkaServerUri), connectionConfiguration, cacheConfiguration, connectionFactory, partitionSelector, producerConfiguration, consumerConfiguration, log)
         {
         }
 
@@ -67,6 +68,11 @@ namespace KafkaClient
         /// BatchSize and delay settings.
         /// </summary>
         public IProducerConfiguration ProducerConfiguration { get; }
+
+        /// <summary>
+        /// Retry and timeout settings.
+        /// </summary>
+        public IConsumerConfiguration ConsumerConfiguration { get; }
 
         /// <summary>
         /// Log object to record operational messages.

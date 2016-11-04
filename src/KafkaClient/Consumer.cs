@@ -11,14 +11,23 @@ namespace KafkaClient
     /// <summary>
     /// Simple consumer with access to a single topic
     /// </summary>
-    public class Consumer : IConsumer
+    public class Consumer : IConsumer, IDisposable
     {
         private readonly IBrokerRouter _brokerRouter;
+        private readonly bool _leaveRouterOpen;
         private readonly IConsumerConfiguration _configuration;
+        private readonly CancellationTokenSource _stopToken;
 
-        public Consumer(IBrokerRouter brokerRouter, IConsumerConfiguration configuration = null)
+        public Consumer(KafkaOptions options)
+            : this(new BrokerRouter(options), options.ConsumerConfiguration, false)
         {
+        }
+
+        public Consumer(IBrokerRouter brokerRouter, IConsumerConfiguration configuration = null, bool leaveRouterOpen = true)
+        {
+            _stopToken = new CancellationTokenSource();
             _brokerRouter = brokerRouter;
+            _leaveRouterOpen = leaveRouterOpen;
             _configuration = configuration ?? new ConsumerConfiguration();
             _localMessages = ImmutableList<Message>.Empty;
         }
@@ -49,6 +58,17 @@ namespace KafkaClient
                 _localMessages = topic?.Messages?.ToImmutableList() ?? ImmutableList<Message>.Empty;
             }
             return _localMessages.GetRange(localIndex, Math.Min(maxCount, _localMessages.Count));
+        }
+
+        public void Dispose()
+        {
+            using (_stopToken) {
+                if (!_leaveRouterOpen) {
+                    using (_brokerRouter)
+                    {
+                    }
+                }
+            }
         }
     }
 }
