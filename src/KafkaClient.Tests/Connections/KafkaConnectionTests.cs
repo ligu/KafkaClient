@@ -238,10 +238,11 @@ namespace KafkaClient.Tests.Connections
                         AsyncContext.Run(async () => await server.SendDataAsync(MessageHelper.CreateMetadataResponse(1, "Test")));
                     };
 
-                    await Task.WhenAny(taskResult, Task.Delay(TimeSpan.FromSeconds(15)));
+                    await Task.WhenAny(taskResult, Task.Delay(TimeSpan.FromSeconds(10)));
 
                     Assert.That(taskResult.IsFaulted, Is.False);
                     Assert.That(taskResult.IsCanceled, Is.False);
+                    await taskResult;
                     Assert.That(taskResult.Status, Is.EqualTo(TaskStatus.RanToCompletion));
                 }
             }

@@ -16,11 +16,11 @@ namespace KafkaClient.Tests.Helpers
             return $"{Environment.MachineName}-Consumer-{name}";
         }
 
-        // Some of the tests measured performance.my log is too slow so i change the log level to
-        // only critical message
-        public static ILog NoDebugLog = new ConsoleLog(LogLevel.Info);
+        public static ILog WarnLog = new ConsoleLog(LogLevel.Warn);
 
-        public static ILog AllLog = new ConsoleLog();
+        public static ILog InfoLog = new ConsoleLog(LogLevel.Info);
+
+        public static ILog DebugLog = new ConsoleLog();
 
         public static Uri IntegrationUri { get; } = new Uri("http://kafka1:9092");
     }
