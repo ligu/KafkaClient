@@ -15,7 +15,6 @@ namespace KafkaClient
     {
         private readonly IBrokerRouter _brokerRouter;
         private readonly bool _leaveRouterOpen;
-        private readonly IConsumerConfiguration _configuration;
         private readonly CancellationTokenSource _stopToken;
 
         public Consumer(KafkaOptions options)
@@ -28,9 +27,11 @@ namespace KafkaClient
             _stopToken = new CancellationTokenSource();
             _brokerRouter = brokerRouter;
             _leaveRouterOpen = leaveRouterOpen;
-            _configuration = configuration ?? new ConsumerConfiguration();
+            Configuration = configuration ?? new ConsumerConfiguration();
             _localMessages = ImmutableList<Message>.Empty;
         }
+
+        public IConsumerConfiguration Configuration { get; }
 
         private ImmutableList<Message> _localMessages;
 
@@ -44,7 +45,8 @@ namespace KafkaClient
             if (0 <= localIndex && localIndex + maxCount <= _localMessages.Count) return _localMessages.GetRange(localIndex, maxCount);
 
             var localCount = (0 <= localIndex && localIndex < _localMessages.Count) ? _localMessages.Count - localIndex : 0;
-            var request = new FetchRequest(new FetchRequest.Topic(topicName, partitionId, offset + localCount, _configuration.MaxFetchBytes), _configuration.MaxServerWait);
+            var request = new FetchRequest(new FetchRequest.Topic(topicName, partitionId, offset + localCount, Configuration.MaxPartitionFetchBytes), 
+                Configuration.MaxFetchServerWait, Configuration.MinFetchBytes, Configuration.MaxFetchBytes);
             var response = await _brokerRouter.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
             var topic = response.Topics.SingleOrDefault();
 
@@ -63,10 +65,9 @@ namespace KafkaClient
         public void Dispose()
         {
             using (_stopToken) {
-                if (!_leaveRouterOpen) {
-                    using (_brokerRouter)
-                    {
-                    }
+                if (_leaveRouterOpen) return;
+                using (_brokerRouter)
+                {
                 }
             }
         }

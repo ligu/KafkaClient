@@ -28,7 +28,7 @@ namespace KafkaClient.Tests
             _kafkaUri = IntegrationConfig.IntegrationUri;
             _config = new ConnectionConfiguration(TimeSpan.FromSeconds(10));
             _options = new KafkaOptions(IntegrationConfig.IntegrationUri, _config, log: new ConsoleLog());
-            _consumerConfig = new ConsumerConfiguration(DefaultMaxMessageSetSize);
+            _consumerConfig = new ConsumerConfiguration(maxPartitionFetchBytes: DefaultMaxMessageSetSize);
         }
 
         [Test]
@@ -215,7 +215,7 @@ namespace KafkaClient.Tests
 
             var topic = IntegrationConfig.TopicName();
 
-            var consumer = new Consumer(brokerRouter, new ConsumerConfiguration(DefaultMaxMessageSetSize * 2));
+            var consumer = new Consumer(brokerRouter, new ConsumerConfiguration(maxPartitionFetchBytes: DefaultMaxMessageSetSize * 2));
 
             var offset = 0;
 
@@ -231,7 +231,7 @@ namespace KafkaClient.Tests
             var partitionId = 100;
             var topic = IntegrationConfig.TopicName();
 
-            var consumer = new Consumer(brokerRouter, new ConsumerConfiguration(DefaultMaxMessageSetSize * 2));
+            var consumer = new Consumer(brokerRouter, new ConsumerConfiguration(maxPartitionFetchBytes: DefaultMaxMessageSetSize * 2));
 
             var offset = 0;
 
@@ -248,7 +248,7 @@ namespace KafkaClient.Tests
 
             var producer = new Producer(brokerRouter);
             var topic = IntegrationConfig.TopicName();
-            var consumer = new Consumer(brokerRouter, new ConsumerConfiguration(smallMessageSet));
+            var consumer = new Consumer(brokerRouter, new ConsumerConfiguration(maxPartitionFetchBytes: smallMessageSet));
 
             var offset = await brokerRouter.GetTopicOffsetAsync(topic, _partitionId, CancellationToken.None);
 
