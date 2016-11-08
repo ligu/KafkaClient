@@ -6,10 +6,9 @@ before_build:
 
 build_script:
   - cmd: dotnet build -c Release src\KafkaClient --no-dependencies --no-incremental
-  - cmd: dotnet build -c Release src\KafkaClient.Tests --no-dependencies --no-incremental
-
+ 
 test_script:
-  - cmd: dotnet test src\KafkaClient.Tests
+  - cmd: dotnet test src\KafkaClient.Tests --where "cat == Unit"
 
 notifications:
 - provider: Email
