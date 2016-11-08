@@ -73,7 +73,6 @@ namespace KafkaClient.Tests.Fakes
         {
             if (_client != null) {
                 using (_client) {
-                    _client.Close();
                 }
 
                 _client = null;

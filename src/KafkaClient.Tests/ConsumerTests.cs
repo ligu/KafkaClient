@@ -15,158 +15,165 @@ namespace KafkaClient.Tests
     [Category("Unit")]
     public class ConsumerTests
     {
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
-        public void CancellationShouldInterruptConsumption()
-        {
-            var routerProxy = new BrokerRouterProxy();
-#pragma warning disable 1998
-            routerProxy.Connection1.FetchResponseFunction = async () => new FetchResponse(new FetchResponse.Topic[] {});
-#pragma warning restore 1998
+        //        [Test]
+        //        public async Task CancellationShouldInterruptConsumption()
+        //        {
+        //            var routerProxy = new BrokerRouterProxy();
+        //#pragma warning disable 1998
+        //            routerProxy.Connection1.FetchResponseFunction = async () => new FetchResponse(new FetchResponse.Topic[] {});
+        //#pragma warning restore 1998
 
-            var router = routerProxy.Create();
+        //            var router = routerProxy.Create();
+        //            var consumer = new Consumer(router);
+        //            var tokenSrc = new CancellationTokenSource();
 
-            var options = CreateOptions(router);
+        //            var consumeTask = consumer.FetchMessagesAsync("TestTopic", 0, 0, 2048, tokenSrc.Token);
 
-            using (var consumer = new OldConsumer(options))
-            {
-                var tokenSrc = new CancellationTokenSource();
+        //                //wait until the fake broker is running and requesting fetches
+        //            var wait = await TaskTest.WaitFor(() => routerProxy.Connection1.FetchRequestCallCount > 10);
 
-                var consumeTask = Task.Run(() => consumer.Consume(tokenSrc.Token).FirstOrDefault());
+        //            tokenSrc.Cancel();
 
-                //wait until the fake broker is running and requesting fetches
-                var wait = TaskTest.WaitFor(() => routerProxy.Connection1.FetchRequestCallCount > 10);
+        //            try {
+        //                await consumeTask;
+        //                Assert.Fail("Should throw OperationFailedException");
+        //            } catch (AggregateException ex) when (ex.InnerException is OperationCanceledException) {
+        //            }
+        //        }
 
-                tokenSrc.Cancel();
+        //        [Test]
+        //        public async Task ConsumerWhitelistShouldOnlyConsumeSpecifiedPartition()
+        //        {
+        //            var routerProxy = new BrokerRouterProxy();
+        //#pragma warning disable 1998
+        //            routerProxy.Connection1.FetchResponseFunction = async () => new FetchResponse(new FetchResponse.Topic[] {});
+        //#pragma warning restore 1998
+        //            var router = routerProxy.Create();
+        //            var options = CreateOptions(router);
+        //            options.PartitionWhitelist = new List<int> { 0 };
+        //            using (var consumer = new OldConsumer(options))
+        //            {
+        //                var test = consumer.Consume();
 
-                Assert.That(
-                    Assert.Throws<AggregateException>(consumeTask.Wait).InnerException,
-                    Is.TypeOf<OperationCanceledException>());
-            }
-        }
+        //                await TaskTest.WaitFor(() => consumer.ConsumerTaskCount > 0);
+        //                await TaskTest.WaitFor(() => routerProxy.Connection1.FetchRequestCallCount > 0);
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
-        public async Task ConsumerWhitelistShouldOnlyConsumeSpecifiedPartition()
-        {
-            var routerProxy = new BrokerRouterProxy();
-#pragma warning disable 1998
-            routerProxy.Connection1.FetchResponseFunction = async () => new FetchResponse(new FetchResponse.Topic[] {});
-#pragma warning restore 1998
-            var router = routerProxy.Create();
-            var options = CreateOptions(router);
-            options.PartitionWhitelist = new List<int> { 0 };
-            using (var consumer = new OldConsumer(options))
-            {
-                var test = consumer.Consume();
+        //                Assert.That(consumer.ConsumerTaskCount, Is.EqualTo(1),
+        //                    "Consumer should only create one consuming thread for partition 0.");
+        //                Assert.That(routerProxy.Connection1.FetchRequestCallCount, Is.GreaterThanOrEqualTo(1));
+        //                Assert.That(routerProxy.Connection2.FetchRequestCallCount, Is.EqualTo(0));
+        //            }
+        //        }
 
-                await TaskTest.WaitFor(() => consumer.ConsumerTaskCount > 0);
-                await TaskTest.WaitFor(() => routerProxy.Connection1.FetchRequestCallCount > 0);
+        //        [Test]
+        //        public async Task ConsumerWithEmptyWhitelistShouldConsumeAllPartition()
+        //        {
+        //            var routerProxy = new BrokerRouterProxy();
 
-                Assert.That(consumer.ConsumerTaskCount, Is.EqualTo(1),
-                    "Consumer should only create one consuming thread for partition 0.");
-                Assert.That(routerProxy.Connection1.FetchRequestCallCount, Is.GreaterThanOrEqualTo(1));
-                Assert.That(routerProxy.Connection2.FetchRequestCallCount, Is.EqualTo(0));
-            }
-        }
+        //            var router = routerProxy.Create();
+        //            var options = CreateOptions(router);
+        //            options.PartitionWhitelist = new List<int>();
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
-        public async Task ConsumerWithEmptyWhitelistShouldConsumeAllPartition()
-        {
-            var routerProxy = new BrokerRouterProxy();
+        //            using (var consumer = new OldConsumer(options))
+        //            {
+        //                var test = consumer.Consume();
 
-            var router = routerProxy.Create();
-            var options = CreateOptions(router);
-            options.PartitionWhitelist = new List<int>();
+        //                await TaskTest.WaitFor(() => consumer.ConsumerTaskCount > 0);
+        //                await TaskTest.WaitFor(() => routerProxy.Connection1.FetchRequestCallCount > 0);
+        //                await TaskTest.WaitFor(() => routerProxy.Connection2.FetchRequestCallCount > 0);
 
-            using (var consumer = new OldConsumer(options))
-            {
-                var test = consumer.Consume();
+        //                Assert.That(consumer.ConsumerTaskCount, Is.EqualTo(2),
+        //                    "Consumer should create one consuming thread for each partition.");
+        //                Assert.That(routerProxy.Connection1.FetchRequestCallCount, Is.GreaterThanOrEqualTo(1),
+        //                    "Connection1 not sent FetchRequest");
+        //                Assert.That(routerProxy.Connection2.FetchRequestCallCount, Is.GreaterThanOrEqualTo(1),
+        //                    "Connection2 not sent FetchRequest");
+        //            }
+        //        }
 
-                await TaskTest.WaitFor(() => consumer.ConsumerTaskCount > 0);
-                await TaskTest.WaitFor(() => routerProxy.Connection1.FetchRequestCallCount > 0);
-                await TaskTest.WaitFor(() => routerProxy.Connection2.FetchRequestCallCount > 0);
+        //        [Test]
+        //        public void ConsumerShouldCreateTaskForEachBroker()
+        //        {
+        //            var routerProxy = new BrokerRouterProxy();
+        //#pragma warning disable 1998
+        //            routerProxy.Connection1.FetchResponseFunction = async () => new FetchResponse(new FetchResponse.Topic[] {});
+        //#pragma warning restore 1998
+        //            var router = routerProxy.Create();
+        //            var options = CreateOptions(router);
+        //            options.PartitionWhitelist = new List<int>();
+        //            using (var consumer = new OldConsumer(options))
+        //            {
+        //                var test = consumer.Consume();
+        //                var wait = TaskTest.WaitFor(() => consumer.ConsumerTaskCount >= 2);
 
-                Assert.That(consumer.ConsumerTaskCount, Is.EqualTo(2),
-                    "Consumer should create one consuming thread for each partition.");
-                Assert.That(routerProxy.Connection1.FetchRequestCallCount, Is.GreaterThanOrEqualTo(1),
-                    "Connection1 not sent FetchRequest");
-                Assert.That(routerProxy.Connection2.FetchRequestCallCount, Is.GreaterThanOrEqualTo(1),
-                    "Connection2 not sent FetchRequest");
-            }
-        }
+        //                Assert.That(consumer.ConsumerTaskCount, Is.EqualTo(2));
+        //            }
+        //        }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
-        public void ConsumerShouldCreateTaskForEachBroker()
-        {
-            var routerProxy = new BrokerRouterProxy();
-#pragma warning disable 1998
-            routerProxy.Connection1.FetchResponseFunction = async () => new FetchResponse(new FetchResponse.Topic[] {});
-#pragma warning restore 1998
-            var router = routerProxy.Create();
-            var options = CreateOptions(router);
-            options.PartitionWhitelist = new List<int>();
-            using (var consumer = new OldConsumer(options))
-            {
-                var test = consumer.Consume();
-                var wait = TaskTest.WaitFor(() => consumer.ConsumerTaskCount >= 2);
+        //        [Test]
+        //        public void ConsumerShouldReturnOffset()
+        //        {
+        //            var routerProxy = new BrokerRouterProxy();
+        //#pragma warning disable 1998
+        //            routerProxy.Connection1.FetchResponseFunction = async () => new FetchResponse(new FetchResponse.Topic[] {});
+        //#pragma warning restore 1998
+        //            var router = routerProxy.Create();
+        //            var options = CreateOptions(router);
+        //            options.PartitionWhitelist = new List<int>();
+        //            using (var consumer = new OldConsumer(options))
+        //            {
+        //                var test = consumer.Consume();
+        //                var wait = TaskTest.WaitFor(() => consumer.ConsumerTaskCount >= 2);
 
-                Assert.That(consumer.ConsumerTaskCount, Is.EqualTo(2));
-            }
-        }
+        //                Assert.That(consumer.ConsumerTaskCount, Is.EqualTo(2));
+        //            }
+        //        }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
-        public void ConsumerShouldReturnOffset()
-        {
-            var routerProxy = new BrokerRouterProxy();
-#pragma warning disable 1998
-            routerProxy.Connection1.FetchResponseFunction = async () => new FetchResponse(new FetchResponse.Topic[] {});
-#pragma warning restore 1998
-            var router = routerProxy.Create();
-            var options = CreateOptions(router);
-            options.PartitionWhitelist = new List<int>();
-            using (var consumer = new OldConsumer(options))
-            {
-                var test = consumer.Consume();
-                var wait = TaskTest.WaitFor(() => consumer.ConsumerTaskCount >= 2);
-
-                Assert.That(consumer.ConsumerTaskCount, Is.EqualTo(2));
-            }
-        }
-
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public void EnsureConsumerDisposesRouter()
         {
             var router = Substitute.For<IBrokerRouter>();
-            //router.Setup(x => x.Log.DebugFormat(It.IsAny<string>()));
-            var consumer = new OldConsumer(CreateOptions(router));
+
+            var consumer = new Consumer(router, leaveRouterOpen: false);
             using (consumer) { }
-            router.Received().Dispose();
+            router.Received(1).Dispose();
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
-        public void EnsureConsumerDisposesAllTasks()
+        [Test]
+        public void EnsureConsumerDoesNotDisposeRouter()
         {
-            var routerProxy = new BrokerRouterProxy();
-#pragma warning disable 1998
-            routerProxy.Connection1.FetchResponseFunction = async () => new FetchResponse(new FetchResponse.Topic[] {});
-#pragma warning restore 1998
-            var router = routerProxy.Create();
-            var options = CreateOptions(router);
-            options.PartitionWhitelist = new List<int>();
+            var router = Substitute.For<IBrokerRouter>();
 
-            var consumer = new OldConsumer(options);
-            using (consumer)
-            {
-                var test = consumer.Consume();
-                var wait = TaskTest.WaitFor(() => consumer.ConsumerTaskCount >= 2);
-            }
-
-            var wait2 = TaskTest.WaitFor(() => consumer.ConsumerTaskCount <= 0);
-            Assert.That(consumer.ConsumerTaskCount, Is.EqualTo(0));
+            var consumer = new Consumer(router);
+            using (consumer) { }
+            router.DidNotReceive().Dispose();
         }
 
-        private ConsumerOptions CreateOptions(IBrokerRouter router)
-        {
-            return new ConsumerOptions(BrokerRouterProxy.TestTopic, router);
-        }
+        //        [Test]
+        //        public void EnsureConsumerDisposesAllTasks()
+        //        {
+        //            var routerProxy = new BrokerRouterProxy();
+        //#pragma warning disable 1998
+        //            routerProxy.Connection1.FetchResponseFunction = async () => new FetchResponse(new FetchResponse.Topic[] {});
+        //#pragma warning restore 1998
+        //            var router = routerProxy.Create();
+        //            var options = CreateOptions(router);
+        //            options.PartitionWhitelist = new List<int>();
+
+        //            var consumer = new OldConsumer(options);
+        //            using (consumer)
+        //            {
+        //                var test = consumer.Consume();
+        //                var wait = TaskTest.WaitFor(() => consumer.ConsumerTaskCount >= 2);
+        //            }
+
+        //            var wait2 = TaskTest.WaitFor(() => consumer.ConsumerTaskCount <= 0);
+        //            Assert.That(consumer.ConsumerTaskCount, Is.EqualTo(0));
+        //        }
+
+        //        private ConsumerOptions CreateOptions(IBrokerRouter router)
+        //        {
+        //            return new ConsumerOptions(BrokerRouterProxy.TestTopic, router);
+        //        }
     }
 }

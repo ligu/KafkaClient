@@ -21,7 +21,7 @@ namespace KafkaClient.Tests.Connections
             _fakeServerUrl = new Uri("http://localhost:8999");
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task FakeShouldBeAbleToReconnect()
         {
             using (var server = new FakeTcpServer(_ilog, 8999))
@@ -30,14 +30,14 @@ namespace KafkaClient.Tests.Connections
                 server.OnBytesReceived += data => received = data;
 
                 var t1 = new TcpClient();
-                t1.Connect(_fakeServerUrl.Host, _fakeServerUrl.Port);
+                await t1.ConnectAsync(_fakeServerUrl.Host, _fakeServerUrl.Port);
                 await TaskTest.WaitFor(() => server.ConnectionEventcount == 1);
 
                 server.DropConnection();
                 await TaskTest.WaitFor(() => server.DisconnectionEventCount == 1);
 
                 var t2 = new TcpClient();
-                t2.Connect(_fakeServerUrl.Host, _fakeServerUrl.Port);
+                await t2.ConnectAsync(_fakeServerUrl.Host, _fakeServerUrl.Port);
                 await TaskTest.WaitFor(() => server.ConnectionEventcount == 2);
 
                 t2.GetStream().Write(99.ToBytes(), 0, 4);
@@ -47,7 +47,7 @@ namespace KafkaClient.Tests.Connections
             }
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public void ShouldDisposeEvenWhenTryingToSendWithoutExceptionThrown()
         {
             using (var server = new FakeTcpServer(_ilog, 8999))
@@ -57,7 +57,7 @@ namespace KafkaClient.Tests.Connections
             }
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public void ShouldDisposeWithoutExecptionThrown()
         {
             using (var server = new FakeTcpServer(_ilog, 8999))
@@ -66,8 +66,8 @@ namespace KafkaClient.Tests.Connections
             }
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
-        public void SendAsyncShouldWaitUntilClientIsConnected()
+        [Test]
+        public async Task SendAsyncShouldWaitUntilClientIsConnected()
         {
             const int testData = 99;
             using (var server = new FakeTcpServer(_ilog, 8999))
@@ -75,7 +75,7 @@ namespace KafkaClient.Tests.Connections
             {
                 var send = server.SendDataAsync(testData.ToBytes());
                 Thread.Sleep(1000);
-                client.Connect(_fakeServerUrl.Host, _fakeServerUrl.Port);
+                await client.ConnectAsync(_fakeServerUrl.Host, _fakeServerUrl.Port);
 
                 var buffer = new byte[4];
                 client.GetStream().ReadAsync(buffer, 0, 4).Wait(TimeSpan.FromSeconds(5));

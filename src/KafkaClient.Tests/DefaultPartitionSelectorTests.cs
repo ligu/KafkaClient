@@ -5,7 +5,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using KafkaClient.Common;
 using KafkaClient.Protocol;
-using KafkaClient.Tests.Helpers;
 using NUnit.Framework;
 
 namespace KafkaClient.Tests
@@ -30,7 +29,7 @@ namespace KafkaClient.Tests
                                         });
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public void RoundRobinShouldRollOver()
         {
             var selector = new PartitionSelector();
@@ -44,7 +43,7 @@ namespace KafkaClient.Tests
             Assert.That(third.PartitionId, Is.EqualTo(0));
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public void RoundRobinShouldHandleMultiThreadedRollOver()
         {
             var selector = new PartitionSelector();
@@ -56,7 +55,7 @@ namespace KafkaClient.Tests
             Assert.That(bag.Count(x => x.PartitionId == 1), Is.EqualTo(50));
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public void RoundRobinShouldTrackEachTopicSeparately()
         {
             var selector = new PartitionSelector();
@@ -73,7 +72,7 @@ namespace KafkaClient.Tests
             Assert.That(b2.PartitionId, Is.EqualTo(1));
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public void RoundRobinShouldEvenlyDistributeAcrossManyPartitions()
         {
             const int TotalPartitions = 100;
@@ -93,7 +92,7 @@ namespace KafkaClient.Tests
             Assert.That(eachPartitionHasThree, Is.EqualTo(TotalPartitions), "Each partition should have received three selections.");
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public void KeyHashShouldSelectEachPartitionType()
         {
             var selector = new PartitionSelector();
@@ -115,7 +114,7 @@ namespace KafkaClient.Tests
             }
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public void KeyHashShouldThrowExceptionWhenChoosesAPartitionIdThatDoesNotExist()
         {
             var selector = new PartitionSelector();
@@ -127,7 +126,7 @@ namespace KafkaClient.Tests
             Assert.Throws<CachedMetadataException>(() => selector.Select(topic, CreateKeyForPartition(1)));
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public void SelectorShouldThrowExceptionWhenPartitionsAreEmpty()
         {
             var selector = new PartitionSelector();

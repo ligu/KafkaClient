@@ -34,7 +34,7 @@ namespace KafkaClient.Tests.Connections
 
         #region Construct...
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task ShouldStartReadPollingOnConstruction()
         {
             using (var socket = new TcpSocket(_endpoint, log: _log))
@@ -45,7 +45,7 @@ namespace KafkaClient.Tests.Connections
             }
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public void ShouldReportServerUriOnConstruction()
         {
             var expectedUrl = _endpoint;
@@ -60,7 +60,7 @@ namespace KafkaClient.Tests.Connections
 
         #region Dispose Tests...
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task ShouldDisposeWithoutExceptionThrown()
         {
             using (var server = new FakeTcpServer(_log, 8999))
@@ -72,7 +72,7 @@ namespace KafkaClient.Tests.Connections
             }
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public void ShouldDisposeWithoutExceptionEvenWhileCallingSendAsync()
         {
             using (var socket = new TcpSocket(_endpoint, log: _log))
@@ -88,7 +88,7 @@ namespace KafkaClient.Tests.Connections
 
         #region Read Tests...
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task KafkaConnectionShouldLogDisconnectAndRecover()
         {
             var mockLog = new MemoryLog();
@@ -125,7 +125,7 @@ namespace KafkaClient.Tests.Connections
             }
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task KafkaConnectionShouldSkipPartiallyReadMessage()
         {
             var mockLog = new MemoryLog();
@@ -166,7 +166,7 @@ namespace KafkaClient.Tests.Connections
             }
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task ReadShouldIgnoreMessageWithUnknownCorrelationId()
         {
             const int correlationId = 99;
@@ -197,7 +197,7 @@ namespace KafkaClient.Tests.Connections
 
         #region Send Tests...
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task SendAsyncShouldTimeoutWhenSendAsyncTakesTooLong()
         {
             using (var server = new FakeTcpServer(_log, 8999))
@@ -216,7 +216,7 @@ namespace KafkaClient.Tests.Connections
             }
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task SendAsyncShouldNotAllowResponseToTimeoutWhileAwaitingKafkaToEstableConnection()
         {
             using (var socket = new TcpSocket(_endpoint, log: _log))
@@ -238,16 +238,17 @@ namespace KafkaClient.Tests.Connections
                         AsyncContext.Run(async () => await server.SendDataAsync(MessageHelper.CreateMetadataResponse(1, "Test")));
                     };
 
-                    await Task.WhenAny(taskResult, Task.Delay(TimeSpan.FromSeconds(15)));
+                    await Task.WhenAny(taskResult, Task.Delay(TimeSpan.FromSeconds(10)));
 
                     Assert.That(taskResult.IsFaulted, Is.False);
                     Assert.That(taskResult.IsCanceled, Is.False);
+                    await taskResult;
                     Assert.That(taskResult.Status, Is.EqualTo(TaskStatus.RanToCompletion));
                 }
             }
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task SendAsyncShouldUseStatictVersionInfo()
         {
             IRequestContext context = null;
@@ -268,7 +269,7 @@ namespace KafkaClient.Tests.Connections
             }
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task SendAsyncShouldTimeoutMultipleMessagesAtATime()
         {
             using (var server = new FakeTcpServer(_log, 8999))

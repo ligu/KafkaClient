@@ -29,7 +29,7 @@ namespace KafkaClient.Tests
             _brokerRouter.Configuration.ReturnsForAnyArgs(new CacheConfiguration());
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         [TestCase(ErrorResponseCode.LeaderNotAvailable)]
         [TestCase(ErrorResponseCode.GroupLoadInProgress)]
         [TestCase(ErrorResponseCode.GroupCoordinatorNotAvailable)]
@@ -57,7 +57,7 @@ namespace KafkaClient.Tests
             Assert.That(_log.LogEvents.Count(e => e.Item1 == LogLevel.Warn && e.Item2.Message.StartsWith("Failed metadata request on attempt")), Is.EqualTo(2));
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task ShouldRetryWhenReceiveBrokerIdNegativeOne()
         {
             var conn = Substitute.For<IConnection>();
@@ -79,7 +79,7 @@ namespace KafkaClient.Tests
             Assert.That(_log.LogEvents.Count(e => e.Item1 == LogLevel.Warn && e.Item2.Message.StartsWith("Failed metadata request on attempt")), Is.EqualTo(1));
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public void ShouldReturnWhenNoErrorReceived()
         {
             var conn = Substitute.For<IConnection>();
@@ -95,7 +95,7 @@ namespace KafkaClient.Tests
             conn.Received(1).SendAsync(Arg.Any<IRequest<MetadataResponse>>(), Arg.Any<CancellationToken>());
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public void ShouldReturnWhenNoErrorReceivedAndTopicsNotSpecified()
         {
             var conn = Substitute.For<IConnection>();
@@ -111,7 +111,7 @@ namespace KafkaClient.Tests
             conn.Received(1).SendAsync(Arg.Any<IRequest<MetadataResponse>>(), Arg.Any<CancellationToken>());
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         [TestCase(ErrorResponseCode.Unknown)]
         [TestCase(ErrorResponseCode.InvalidTopic)]
         [TestCase(ErrorResponseCode.InvalidRequiredAcks)]
@@ -125,7 +125,7 @@ namespace KafkaClient.Tests
             Assert.ThrowsAsync<RequestException>(() => _brokerRouter.GetMetadataAsync(new [] { "Test"}, CancellationToken.None));
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         [TestCase(null)]
         [TestCase("")]
         public void ShouldThrowExceptionWhenHostIsMissing(string host)
@@ -138,7 +138,7 @@ namespace KafkaClient.Tests
             Assert.ThrowsAsync<ConnectionException>(() => _brokerRouter.GetMetadataAsync(new [] { "Test"}, CancellationToken.None));
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         [TestCase(0)]
         [TestCase(-1)]
         public void ShouldThrowExceptionWhenPortIsMissing(int port)

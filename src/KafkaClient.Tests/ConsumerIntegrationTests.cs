@@ -31,7 +31,7 @@ namespace KafkaClient.Tests
             _consumerConfig = new ConsumerConfiguration(DefaultMaxMessageSetSize);
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task CanFetch()
         {
             int partitionId = 0;

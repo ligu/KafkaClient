@@ -16,6 +16,7 @@ namespace KafkaClient
     /// </summary>
     public class Producer : IProducer
     {
+        private readonly bool _leaveRouterOpen;
         private int _stopCount = 0;
         private readonly CancellationTokenSource _stopToken;
         private readonly AsyncProducerConsumerQueue<ProduceTopicTask> _produceMessageQueue;
@@ -45,26 +46,33 @@ namespace KafkaClient
 
         public IProducerConfiguration Configuration { get; }
 
-        /// <summary>
-        /// Construct a Producer class.
-        /// </summary>
-        /// <param name="brokerRouter">The router used to direct produced messages to the correct partition.</param>
-        /// <param name="configuration">The configuration parameters.</param>
-        /// <remarks>
-        /// The <see cref="IProducerConfiguration.RequestParallelization"/> parameter provides a mechanism for minimizing the amount of 
-        /// async requests in flight at any one time by blocking the caller requesting the async call. This effectively puts an upper 
-        /// limit on the amount of times a caller can call SendMessagesAsync before the caller is blocked.
-        ///
-        /// The <see cref="IProducerConfiguration.BatchSize"/> parameter provides a way to limit the max amount of memory the driver uses 
-        /// should the send pipeline get overwhelmed and the buffer starts to fill up.  This is an inaccurate limiting memory use as the 
-        /// amount of memory actually used is dependant on the general message size being buffered.
-        ///
-        /// A message will start its timeout countdown as soon as it is added to the producer async queue. If there are a large number of
-        /// messages sitting in the async queue then a message may spend its entire timeout cycle waiting in this queue and never getting
-        /// attempted to send to Kafka before a timeout exception is thrown.
-        /// </remarks>
-        public Producer(IBrokerRouter brokerRouter, IProducerConfiguration configuration = null)
+        public Producer(KafkaOptions options)
+            : this(new BrokerRouter(options), options.ProducerConfiguration, false)
         {
+        }
+
+        ///  <summary>
+        ///  Construct a Producer class.
+        ///  </summary>
+        ///  <param name="brokerRouter">The router used to direct produced messages to the correct partition.</param>
+        ///  <param name="configuration">The configuration parameters.</param>
+        /// <param name="leaveRouterOpen">Whether to dispose the router when the producer is disposed.</param>
+        /// <remarks>
+        ///  The <see cref="IProducerConfiguration.RequestParallelization"/> parameter provides a mechanism for minimizing the amount of 
+        ///  async requests in flight at any one time by blocking the caller requesting the async call. This effectively puts an upper 
+        ///  limit on the amount of times a caller can call SendMessagesAsync before the caller is blocked.
+        /// 
+        ///  The <see cref="IProducerConfiguration.BatchSize"/> parameter provides a way to limit the max amount of memory the driver uses 
+        ///  should the send pipeline get overwhelmed and the buffer starts to fill up.  This is an inaccurate limiting memory use as the 
+        ///  amount of memory actually used is dependant on the general message size being buffered.
+        /// 
+        ///  A message will start its timeout countdown as soon as it is added to the producer async queue. If there are a large number of
+        ///  messages sitting in the async queue then a message may spend its entire timeout cycle waiting in this queue and never getting
+        ///  attempted to send to Kafka before a timeout exception is thrown.
+        ///  </remarks>
+        public Producer(IBrokerRouter brokerRouter, IProducerConfiguration configuration = null, bool leaveRouterOpen = true)
+        {
+            _leaveRouterOpen = leaveRouterOpen;
             BrokerRouter = brokerRouter;
             Configuration = configuration ?? new ProducerConfiguration();
             _produceMessageQueue = new AsyncProducerConsumerQueue<ProduceTopicTask>();
@@ -265,8 +273,10 @@ namespace KafkaClient
 
             // cleanup
             using (_stopToken) {
-                using (BrokerRouter)
-                {
+                if (!_leaveRouterOpen) {
+                    using (BrokerRouter)
+                    {
+                    }
                 }
             }
         }

@@ -9,7 +9,7 @@ namespace KafkaClient.Tests.Protocol
     [Category("Unit")]
     public class ProtocolTests
     {
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public void MetadataResponseShouldDecode()
         {
             var response = KafkaEncoder.Decode<MetadataResponse>(new RequestContext(1), MessageHelper.CreateMetadataResponse(1, "Test").Skip(4).ToArray());

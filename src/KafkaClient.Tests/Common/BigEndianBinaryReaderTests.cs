@@ -1,7 +1,5 @@
-﻿using System;
-using System.IO;
+﻿using System.IO;
 using KafkaClient.Common;
-using KafkaClient.Tests.Helpers;
 using NUnit.Framework;
 
 namespace KafkaClient.Tests.Common
@@ -16,14 +14,13 @@ namespace KafkaClient.Tests.Common
     public class BigEndianBinaryReaderTests
     {
         // validates my assumptions about the default implementation doing the opposite of this implementation
-        [Theory]
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
-        [TestCase((Int32)0, new Byte[] { 0x00, 0x00, 0x00, 0x00 })]
-        [TestCase((Int32)1, new Byte[] { 0x01, 0x00, 0x00, 0x00 })]
-        [TestCase((Int32)(-1), new Byte[] { 0xFF, 0xFF, 0xFF, 0xFF })]
-        [TestCase(Int32.MinValue, new Byte[] { 0x00, 0x00, 0x00, 0x80 })]
-        [TestCase(Int32.MaxValue, new Byte[] { 0xFF, 0xFF, 0xFF, 0x7F })]
-        public void NativeBinaryWriterTests(Int32 expectedValue, Byte[] givenBytes)
+        [Test]
+        [TestCase((int)0, new byte[] { 0x00, 0x00, 0x00, 0x00 })]
+        [TestCase((int)1, new byte[] { 0x01, 0x00, 0x00, 0x00 })]
+        [TestCase((int)(-1), new byte[] { 0xFF, 0xFF, 0xFF, 0xFF })]
+        [TestCase(int.MinValue, new byte[] { 0x00, 0x00, 0x00, 0x80 })]
+        [TestCase(int.MaxValue, new byte[] { 0xFF, 0xFF, 0xFF, 0x7F })]
+        public void NativeBinaryWriterTests(int expectedValue, byte[] givenBytes)
         {
             // arrange
             var binaryReader = new BinaryReader(new MemoryStream(givenBytes));
@@ -35,14 +32,13 @@ namespace KafkaClient.Tests.Common
             Assert.That(expectedValue, Is.EqualTo(actualValue));
         }
 
-        [Theory]
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
-        [TestCase((Int32)0, new Byte[] { 0x00, 0x00, 0x00, 0x00 })]
-        [TestCase((Int32)1, new Byte[] { 0x00, 0x00, 0x00, 0x01 })]
-        [TestCase((Int32)(-1), new Byte[] { 0xFF, 0xFF, 0xFF, 0xFF })]
-        [TestCase(Int32.MinValue, new Byte[] { 0x80, 0x00, 0x00, 0x00 })]
-        [TestCase(Int32.MaxValue, new Byte[] { 0x7F, 0xFF, 0xFF, 0xFF })]
-        public void Int32Tests(Int32 expectedValue, Byte[] givenBytes)
+        [Test]
+        [TestCase((int)0, new byte[] { 0x00, 0x00, 0x00, 0x00 })]
+        [TestCase((int)1, new byte[] { 0x00, 0x00, 0x00, 0x01 })]
+        [TestCase((int)(-1), new byte[] { 0xFF, 0xFF, 0xFF, 0xFF })]
+        [TestCase(int.MinValue, new byte[] { 0x80, 0x00, 0x00, 0x00 })]
+        [TestCase(int.MaxValue, new byte[] { 0x7F, 0xFF, 0xFF, 0xFF })]
+        public void Int32Tests(int expectedValue, byte[] givenBytes)
         {
             // arrange
             var binaryReader = new BigEndianBinaryReader(givenBytes);
@@ -54,14 +50,13 @@ namespace KafkaClient.Tests.Common
             Assert.That(expectedValue, Is.EqualTo(actualValue));
         }
 
-        [Theory]
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
-        [TestCase((UInt32)0, new Byte[] { 0x00, 0x00, 0x00, 0x00 })]
-        [TestCase((UInt32)1, new Byte[] { 0x00, 0x00, 0x00, 0x01 })]
-        [TestCase((UInt32)123456789, new Byte[] { 0x07, 0x5B, 0xCD, 0x15 })]
-        [TestCase(UInt32.MinValue, new Byte[] { 0x00, 0x00, 0x00, 0x00 })]
-        [TestCase(UInt32.MaxValue, new Byte[] { 0xFF, 0xFF, 0xFF, 0xFF })]
-        public void UInt32Tests(UInt32 expectedValue, Byte[] givenBytes)
+        [Test]
+        [TestCase((uint)0, new byte[] { 0x00, 0x00, 0x00, 0x00 })]
+        [TestCase((uint)1, new byte[] { 0x00, 0x00, 0x00, 0x01 })]
+        [TestCase((uint)123456789, new byte[] { 0x07, 0x5B, 0xCD, 0x15 })]
+        [TestCase(uint.MinValue, new byte[] { 0x00, 0x00, 0x00, 0x00 })]
+        [TestCase(uint.MaxValue, new byte[] { 0xFF, 0xFF, 0xFF, 0xFF })]
+        public void UInt32Tests(uint expectedValue, byte[] givenBytes)
         {
             // arrange
             var binaryReader = new BigEndianBinaryReader(givenBytes);
@@ -73,17 +68,16 @@ namespace KafkaClient.Tests.Common
             Assert.That(expectedValue, Is.EqualTo(actualValue));
         }
 
-        [Theory]
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
-        [TestCase((Single)(0), new Byte[] { 0x00, 0x00, 0x00, 0x00 })]
-        [TestCase((Single)(1), new Byte[] { 0x3F, 0x80, 0x00, 0x00 })]
-        [TestCase((Single)(-1), new Byte[] { 0xBF, 0x80, 0x00, 0x00 })]
-        [TestCase(Single.MinValue, new Byte[] { 0xFF, 0x7F, 0xFF, 0xFF })]
-        [TestCase(Single.MaxValue, new Byte[] { 0x7F, 0x7F, 0xFF, 0xFF })]
-        [TestCase(Single.PositiveInfinity, new Byte[] { 0x7F, 0x80, 0x00, 0x00 })]
-        [TestCase(Single.NegativeInfinity, new Byte[] { 0xFF, 0x80, 0x00, 0x00 })]
-        [TestCase(Single.NaN, new Byte[] { 0xFF, 0xC0, 0x00, 0x00 })]
-        public void SingleTests(Single expectedValue, Byte[] givenBytes)
+        [Test]
+        [TestCase((float)(0), new byte[] { 0x00, 0x00, 0x00, 0x00 })]
+        [TestCase((float)(1), new byte[] { 0x3F, 0x80, 0x00, 0x00 })]
+        [TestCase((float)(-1), new byte[] { 0xBF, 0x80, 0x00, 0x00 })]
+        [TestCase(float.MinValue, new byte[] { 0xFF, 0x7F, 0xFF, 0xFF })]
+        [TestCase(float.MaxValue, new byte[] { 0x7F, 0x7F, 0xFF, 0xFF })]
+        [TestCase(float.PositiveInfinity, new byte[] { 0x7F, 0x80, 0x00, 0x00 })]
+        [TestCase(float.NegativeInfinity, new byte[] { 0xFF, 0x80, 0x00, 0x00 })]
+        [TestCase(float.NaN, new byte[] { 0xFF, 0xC0, 0x00, 0x00 })]
+        public void SingleTests(float expectedValue, byte[] givenBytes)
         {
             // arrange
             var binaryReader = new BigEndianBinaryReader(givenBytes);
@@ -95,17 +89,16 @@ namespace KafkaClient.Tests.Common
             Assert.That(expectedValue, Is.EqualTo(actualValue));
         }
 
-        [Theory]
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
-        [TestCase((Double)(0), new Byte[] { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 })]
-        [TestCase((Double)(1), new Byte[] { 0x3F, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 })]
-        [TestCase((Double)(-1), new Byte[] { 0xBF, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 })]
-        [TestCase(Double.MinValue, new Byte[] { 0xFF, 0xEF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF })]
-        [TestCase(Double.MaxValue, new Byte[] { 0x7F, 0xEF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF })]
-        [TestCase(Double.PositiveInfinity, new Byte[] { 0x7F, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 })]
-        [TestCase(Double.NegativeInfinity, new Byte[] { 0xFF, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 })]
-        [TestCase(Double.NaN, new Byte[] { 0xFF, 0xF8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 })]
-        public void DoubleTests(Double expectedValue, Byte[] givenBytes)
+        [Test]
+        [TestCase((double)(0), new byte[] { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 })]
+        [TestCase((double)(1), new byte[] { 0x3F, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 })]
+        [TestCase((double)(-1), new byte[] { 0xBF, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 })]
+        [TestCase(double.MinValue, new byte[] { 0xFF, 0xEF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF })]
+        [TestCase(double.MaxValue, new byte[] { 0x7F, 0xEF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF })]
+        [TestCase(double.PositiveInfinity, new byte[] { 0x7F, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 })]
+        [TestCase(double.NegativeInfinity, new byte[] { 0xFF, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 })]
+        [TestCase(double.NaN, new byte[] { 0xFF, 0xF8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 })]
+        public void DoubleTests(double expectedValue, byte[] givenBytes)
         {
             // arrange
             var binaryReader = new BigEndianBinaryReader(givenBytes);
@@ -117,13 +110,12 @@ namespace KafkaClient.Tests.Common
             Assert.That(expectedValue, Is.EqualTo(actualValue));
         }
 
-        [Theory]
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
-        [TestCase("0000", new Byte[] { 0x00, 0x04, 0x30, 0x30, 0x30, 0x30 })]
-        [TestCase("€€€€", new Byte[] { 0x00, 0x0C, 0xE2, 0x82, 0xAC, 0xE2, 0x82, 0xAC, 0xE2, 0x82, 0xAC, 0xE2, 0x82, 0xAC })]
-        [TestCase("", new Byte[] { 0x00, 0x00 })]
-        [TestCase(null, new Byte[] { 0xFF, 0xFF })]
-        public void StringTests(String expectedValue, Byte[] givenBytes)
+        [Test]
+        [TestCase("0000", new byte[] { 0x00, 0x04, 0x30, 0x30, 0x30, 0x30 })]
+        [TestCase("€€€€", new byte[] { 0x00, 0x0C, 0xE2, 0x82, 0xAC, 0xE2, 0x82, 0xAC, 0xE2, 0x82, 0xAC, 0xE2, 0x82, 0xAC })]
+        [TestCase("", new byte[] { 0x00, 0x00 })]
+        [TestCase(null, new byte[] { 0xFF, 0xFF })]
+        public void StringTests(string expectedValue, byte[] givenBytes)
         {
             // arrange
             var binaryReader = new BigEndianBinaryReader(givenBytes);
@@ -135,11 +127,10 @@ namespace KafkaClient.Tests.Common
             Assert.That(expectedValue, Is.EqualTo(actualValue));
         }
 
-        [Theory]
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
-        [TestCase('0', new Byte[] { 0x30 })]
-        [TestCase('€', new Byte[] { 0xE2, 0x82, 0xAC })]
-        public void CharTests(Char expectedValue, Byte[] givenBytes)
+        [Test]
+        [TestCase('0', new byte[] { 0x30 })]
+        [TestCase('€', new byte[] { 0xE2, 0x82, 0xAC })]
+        public void CharTests(char expectedValue, byte[] givenBytes)
         {
             // arrange
             var binaryReader = new BigEndianBinaryReader(givenBytes);
@@ -151,11 +142,10 @@ namespace KafkaClient.Tests.Common
             Assert.That(expectedValue, Is.EqualTo(actualValue));
         }
 
-        [Theory]
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
-        [TestCase(new Char[] { '0', '0', '0', '0' }, new Byte[] { 0x30, 0x30, 0x30, 0x30 })]
-        [TestCase(new Char[] { '€', '€', '€', '€' }, new Byte[] { 0xE2, 0x82, 0xAC, 0xE2, 0x82, 0xAC, 0xE2, 0x82, 0xAC, 0xE2, 0x82, 0xAC })]
-        public void CharArrayTests(Char[] expectedValue, Byte[] givenBytes)
+        [Test]
+        [TestCase(new char[] { '0', '0', '0', '0' }, new byte[] { 0x30, 0x30, 0x30, 0x30 })]
+        [TestCase(new char[] { '€', '€', '€', '€' }, new byte[] { 0xE2, 0x82, 0xAC, 0xE2, 0x82, 0xAC, 0xE2, 0x82, 0xAC, 0xE2, 0x82, 0xAC })]
+        public void CharArrayTests(char[] expectedValue, byte[] givenBytes)
         {
             // arrange
             var binaryReader = new BigEndianBinaryReader(givenBytes);

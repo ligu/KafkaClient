@@ -19,7 +19,7 @@ namespace KafkaClient.Tests
     {
         #region SendMessagesAsync Tests...
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task ProducerShouldGroupMessagesByBroker()
         {
             var routerProxy = new FakeBrokerRouter();
@@ -39,7 +39,7 @@ namespace KafkaClient.Tests
             }
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public void ShouldSendAsyncToAllConnectionsEvenWhenExceptionOccursOnOne()
         {
             var routerProxy = new FakeBrokerRouter();
@@ -58,7 +58,7 @@ namespace KafkaClient.Tests
             }
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task ProducerShouldReportCorrectNumberOfAsyncRequests()
         {
             // var log = new ConsoleLog(); for (int i = 0; i < 100; i++) {
@@ -94,7 +94,7 @@ namespace KafkaClient.Tests
 
         private readonly ILog _log = new ConsoleLog();
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task SendAsyncShouldBlockWhenMaximumAsyncQueueReached()
         {
             _log.Info(() => LogEvent.Create("Start SendAsyncShouldBlockWhenMaximumAsyncQueueReached"));
@@ -132,13 +132,13 @@ namespace KafkaClient.Tests
             }
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         [Ignore("is there a way to communicate back which client failed and which succeeded.")]
         public void ConnectionExceptionOnOneShouldCommunicateBackWhichMessagesFailed()
         {
             //TODO is there a way to communicate back which client failed and which succeeded.
             var routerProxy = new FakeBrokerRouter();
-            routerProxy.BrokerConn1.ProduceResponseFunction = () => { throw new ApplicationException("some exception"); };
+            routerProxy.BrokerConn1.ProduceResponseFunction = () => { throw new Exception("some exception"); };
 
             var router = routerProxy.Create();
             using (var producer = new Producer(router))
@@ -160,7 +160,7 @@ namespace KafkaClient.Tests
 
         #region Nagle Tests...
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task ProducesShouldBatchAndOnlySendOneProduceRequest()
         {
             var routerProxy = new FakeBrokerRouter();
@@ -180,7 +180,7 @@ namespace KafkaClient.Tests
             }
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task ProducesShouldSendOneProduceRequestForEachBatchSize()
         {
             var routerProxy = new FakeBrokerRouter();
@@ -206,7 +206,7 @@ namespace KafkaClient.Tests
             }
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         [TestCase(1, 2, 100, 100, 2)]
         [TestCase(1, 1, 100, 200, 2)]
         [TestCase(1, 1, 100, 100, 1)]
@@ -229,7 +229,7 @@ namespace KafkaClient.Tests
             }
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         [TestCase(MessageCodec.CodecGzip, MessageCodec.CodecNone, 2)]
         [TestCase(MessageCodec.CodecGzip, MessageCodec.CodecGzip, 1)]
         [TestCase(MessageCodec.CodecNone, MessageCodec.CodecNone, 1)]
@@ -252,7 +252,7 @@ namespace KafkaClient.Tests
             }
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task ProducerShouldAllowFullBatchSizeOfMessagesToQueue()
         {
             var routerProxy = new FakeBrokerRouter();
@@ -275,7 +275,7 @@ namespace KafkaClient.Tests
             }
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         //someTime failed
         public async Task ProducerShouldBlockWhenFullBufferReached()
         {
@@ -309,7 +309,7 @@ namespace KafkaClient.Tests
             }
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         [Ignore("Removed the max message limit.  Caused performance problems.  Will find a better way.")]
         public void ProducerShouldBlockEvenOnMessagesInTransit()
         {
@@ -338,7 +338,7 @@ namespace KafkaClient.Tests
 
         #region Dispose Tests...
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task SendingMessageWhenDisposedShouldThrow()
         {
             var router = Substitute.For<IBrokerRouter>();
@@ -347,7 +347,7 @@ namespace KafkaClient.Tests
             Assert.ThrowsAsync<ObjectDisposedException>(async () => await producer.SendMessageAsync(new Message("1"), "Test", CancellationToken.None));
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task SendingMessageWhenStoppedShouldThrow()
         {
             var router = Substitute.For<IBrokerRouter>();
@@ -377,17 +377,27 @@ namespace KafkaClient.Tests
         //    }
         //}
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public void EnsureProducerDisposesRouter()
+        {
+            var router = Substitute.For<IBrokerRouter>();
+
+            var producer = new Producer(router, leaveRouterOpen: false);
+            using (producer) { }
+            router.Received(1).Dispose();
+        }
+
+        [Test]
+        public void EnsureProducerDoesNotDisposeRouter()
         {
             var router = Substitute.For<IBrokerRouter>();
 
             var producer = new Producer(router);
             using (producer) { }
-            router.Received(1).Dispose();
+            router.DidNotReceive().Dispose();
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public void ProducerShouldInterruptWaitOnEmptyCollection()
         {
             //use the fake to actually cause loop to execute

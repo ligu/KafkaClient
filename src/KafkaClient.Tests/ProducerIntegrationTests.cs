@@ -12,7 +12,7 @@ namespace KafkaClient.Tests
     [Category("Integration")]
     public class ProducerIntegrationTests
     {
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public void ProducerShouldNotExpectResponseWhenAckIsZero()
         {
             using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri)))
@@ -26,7 +26,7 @@ namespace KafkaClient.Tests
             }
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task SendAsyncShouldGetOneResultForMessage()
         {
             using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri)))
@@ -38,7 +38,7 @@ namespace KafkaClient.Tests
             }
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task SendAsyncShouldGetAResultForEachPartitionSentTo()
         {
             using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri)))
@@ -53,7 +53,7 @@ namespace KafkaClient.Tests
             }
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task SendAsyncShouldGetOneResultForEachPartitionThroughBatching()
         {
             using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri)))

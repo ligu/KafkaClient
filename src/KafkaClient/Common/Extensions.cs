@@ -84,6 +84,13 @@ namespace KafkaClient.Common
             }
         }
 
+        public static IEnumerable<T> Repeat<T>(this int count, Func<int, T> producer)
+        {
+            for (var i = 0; i < count; i++) {
+                yield return producer(i);
+            }
+        }
+
         public static async Task AttemptAsync(
             this IRetry policy, 
             Func<int, Task> action, 

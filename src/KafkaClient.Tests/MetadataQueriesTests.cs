@@ -2,7 +2,6 @@
 using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Tests.Fakes;
-using KafkaClient.Tests.Helpers;
 using NUnit.Framework;
 
 namespace KafkaClient.Tests
@@ -14,7 +13,7 @@ namespace KafkaClient.Tests
 
         #region GetTopicOffset Tests...
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public void GetTopicOffsetShouldQueryEachBroker()
         {
             var routerProxy = new BrokerRouterProxy();
@@ -25,11 +24,11 @@ namespace KafkaClient.Tests
             Assert.That(routerProxy.Connection2.OffsetRequestCallCount, Is.EqualTo(1));
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public void GetTopicOffsetShouldThrowAnyException()
         {
             var routerProxy = new BrokerRouterProxy();
-            routerProxy.Connection1.OffsetResponseFunction = () => { throw new ApplicationException("test 99"); };
+            routerProxy.Connection1.OffsetResponseFunction = () => { throw new Exception("test 99"); };
             var router = routerProxy.Create();
 
             router.GetTopicOffsetsAsync(BrokerRouterProxy.TestTopic, 2,  -1, CancellationToken.None).ContinueWith(t =>
@@ -43,7 +42,7 @@ namespace KafkaClient.Tests
 
         #region GetTopic Tests...
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public async Task GetTopicShouldReturnTopic()
         {
             var routerProxy = new BrokerRouterProxy();
@@ -54,7 +53,7 @@ namespace KafkaClient.Tests
             Assert.That(result.TopicName, Is.EqualTo(BrokerRouterProxy.TestTopic));
         }
 
-        [Test, Repeat(IntegrationConfig.TestAttempts)]
+        [Test]
         public void EmptyTopicMetadataShouldThrowException()
         {
             var routerProxy = new BrokerRouterProxy();
