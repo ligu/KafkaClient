@@ -34,19 +34,10 @@ using (var router = new BrokerRouter(options)) {
 	var offset = await router.GetTopicOffsetAsync("TestTopic", 0, CancellationToken.None);
 
 	using (var consumer = new Consumer(router)) {
-		while (!cancellationToken.IsCancellationRequested) {
-			foreach (var message in await consumer.FetchMessagesAsync(offset, 10, cancellationToken)) {
-			    Console.WriteLine("Response: P{0},O{1} : {2}", message.Meta.PartitionId, message.Meta.Offset, message.Value);  
-			}
-		}
+		await consumer.FetchAsync(offset, 10, message => Console.WriteLine("Response: P{0},O{1} : {2}", message.Meta.PartitionId, message.Meta.Offset, message.Value), cancellationToken);
 	}
 }
 ```
-
-##### ExampleApp
-The ExampleApp project it a simple example console application that will read message from a kafka server and write them to the screen.  It will also take anything typed in the console and send this as a message to the kafka servers.  
-
-Simply modify the kafka server Uri in the code to point to a functioning test server.
 
 
 Key Components
