@@ -20,9 +20,7 @@ Code Examples
 ##### Producer
 ```sh
 var options = new KafkaOptions(new Uri("http://SERVER1:9092"), new Uri("http://SERVER2:9092"));
-var router = new BrokerRouter(options);
-using(var client = new Producer(router))
-{
+using(var client = new Producer(options)) {
      await client.SendMessageAsync("TestTopic", new Message("hello world"));
 }
 
@@ -31,14 +29,17 @@ using(var client = new Producer(router))
 ##### Consumer
 ```sh
 var options = new KafkaOptions(new Uri("http://SERVER1:9092"), new Uri("http://SERVER2:9092"));
-var router = new BrokerRouter(options);
-var consumer = new Consumer(new ConsumerOptions("TestHarness", new BrokerRouter(options)));
 
-//Consume returns a blocking IEnumerable (ie: never ending stream)
-foreach (var message in consumer.Consume())
-{
-    Console.WriteLine("Response: P{0},O{1} : {2}",
-        message.Meta.PartitionId, message.Meta.Offset, message.Value);  
+using (var router = new BrokerRouter(options)) {
+	var offset = await router.GetTopicOffsetAsync("TestTopic", 0, CancellationToken.None);
+
+	using (var consumer = new Consumer(router)) {
+		while (!cancellationToken.IsCancellationRequested) {
+			foreach (var message in await consumer.FetchMessagesAsync(offset, 10, cancellationToken)) {
+			    Console.WriteLine("Response: P{0},O{1} : {2}", message.Meta.PartitionId, message.Meta.Offset, message.Value);  
+			}
+		}
+	}
 }
 ```
 
@@ -58,9 +59,9 @@ Provides a high level abstraction for sending batches of messages to a Kafka clu
 
 ##### Consumer
 Provides a mechanism for fetching messages from a Kafka cluster.
-To be extended to surface a high level abstraction for consumer groups.
+(To be extended to include functionality for consumer groups.)
 
-##### Partition Selection (`KafkaClint.IPartitionSelector`)
+##### Partition Selection (`KafkaClient.IPartitionSelector`)
 Provides the logic for routing requests to a particular topic to a partition.  The default selector (PartitionSelector) will use round robin partition selection if the key property on the message is null and a mod/hash of the key value if present.
 
 ##### BrokerRouter (`KafkaClient.IBrokerRouter`)
