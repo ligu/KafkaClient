@@ -5,7 +5,8 @@ before_build:
   - cmd: dotnet restore
 
 build_script:
-  - cmd: dotnet build -c Release KafkaClient.sln
+  - cmd: dotnet build -c Release src\KafkaClient --no-dependencies --no-incremental
+  - cmd: dotnet build -c Release src\KafkaClient.Tests --no-dependencies --no-incremental
 
 test_script:
   - cmd: dotnet test src\KafkaClient.Tests
