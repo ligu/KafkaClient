@@ -36,17 +36,17 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class FetchRequest : Request, IRequest<FetchResponse>, IEquatable<FetchRequest>
     {
-        public FetchRequest(Topic topic, TimeSpan? maxWaitTime = null, int? minBytes = null, int maxBytes = 0) 
+        public FetchRequest(Topic topic, TimeSpan? maxWaitTime = null, int? minBytes = null, int? maxBytes = null) 
             : this (new []{ topic }, maxWaitTime, minBytes, maxBytes)
         {
         }
 
-        public FetchRequest(IEnumerable<Topic> fetches = null, TimeSpan? maxWaitTime = null, int? minBytes = null, int maxBytes = 0) 
+        public FetchRequest(IEnumerable<Topic> fetches = null, TimeSpan? maxWaitTime = null, int? minBytes = null, int? maxBytes = null) 
             : base(ApiKeyRequestType.Fetch)
         {
             MaxWaitTime = maxWaitTime ?? TimeSpan.FromMilliseconds(DefaultMaxBlockingWaitTime);
             MinBytes = minBytes.GetValueOrDefault(DefaultMinBlockingByteBufferSize);
-            MaxBytes = maxBytes;
+            MaxBytes = maxBytes.GetValueOrDefault();
             Topics = ImmutableList<Topic>.Empty.AddNotNullRange(fetches);
         }
 

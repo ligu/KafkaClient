@@ -7,8 +7,8 @@ namespace KafkaClient
         public ConsumerConfiguration(
             TimeSpan? maxServerWait = null, 
             int? minFetchBytes = null, 
-            int maxFetchBytes = 0, 
-            int maxPartitionFetchBytes = 0)
+            int? maxFetchBytes = null, 
+            int? maxPartitionFetchBytes = null)
         {
             MaxFetchServerWait = maxServerWait;
             MinFetchBytes = minFetchBytes;
@@ -17,9 +17,9 @@ namespace KafkaClient
         }
 
         /// <inheritdoc/>
-        public int MaxFetchBytes { get; }
+        public int? MaxFetchBytes { get; }
         /// <inheritdoc/>
-        public int MaxPartitionFetchBytes { get; }
+        public int? MaxPartitionFetchBytes { get; }
         /// <inheritdoc/>
         public int? MinFetchBytes { get; }
         /// <inheritdoc/>

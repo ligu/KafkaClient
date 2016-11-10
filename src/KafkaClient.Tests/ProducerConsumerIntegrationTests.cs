@@ -267,30 +267,31 @@ namespace KafkaClient.Tests
             partitionSelector.Select(null, null)
                              .ReturnsForAnyArgs(_ => _.Arg<MetadataResponse.Topic>().Partitions.Single(p => p.PartitionId == 1));
 
-            var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri, partitionSelector: partitionSelector));
-            var producer = new Producer(router);
+            using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri, partitionSelector: partitionSelector))) {
+                var offset = await router.GetTopicOffsetAsync(IntegrationConfig.TopicName(), 0, CancellationToken.None);
+                using (var producer = new Producer(router)) {
 
-            var offsets = await producer.BrokerRouter.GetTopicOffsetsAsync(IntegrationConfig.TopicName(), CancellationToken.None);
-            var partitionId = 0;
+                    //message should send to PartitionId and not use the key to Select Broker Route !!
+                    for (var i = 0; i < 20; i++) {
+                        await producer.SendMessageAsync(new Message(i.ToString(), "key"), offset.TopicName, offset.PartitionId, CancellationToken.None);
+                    }
+                }
 
-            //message should send to PartitionId and not use the key to Select Broker Route !!
-            for (var i = 0; i < 20; i++)
-            {
-                await producer.SendMessageAsync(new Message(i.ToString(), "key"), IntegrationConfig.TopicName(), partitionId, new SendMessageConfiguration(acks: 1, codec: MessageCodec.CodecNone), CancellationToken.None);
+                using (var consumer = new Consumer(router)) {
+                    using (var source = new CancellationTokenSource()) {
+                        var i = 0;
+                        await consumer.FetchAsync(
+                            offset, 20, message =>
+                            {
+                                Assert.That(message.Value.ToUtf8String(), Is.EqualTo(i++.ToString()));
+                                if (i >= 20) {
+                                    source.Cancel();
+                                }
+                                return Task.FromResult(0);
+                            }, source.Token);
+                    }
+                }
             }
-
-            //consume form partitionId to verify that date is send to currect partion !!.
-            var consumer = new OldConsumer(new ConsumerOptions(IntegrationConfig.TopicName(), router) { PartitionWhitelist = { partitionId } }, offsets.Select(x => new OffsetPosition(x.PartitionId, x.Offset)).ToArray());
-
-            for (var i = 0; i < 20; i++)
-            {
-                Message result = null;// = consumer.Consume().Take(1).First();
-                await Task.Run(() => result = consumer.Consume().Take(1).First());
-                Assert.That(result.Value.ToUtf8String(), Is.EqualTo(i.ToString()));
-            }
-
-            consumer.Dispose();
-            producer.Dispose();
         }
 
         [Test]

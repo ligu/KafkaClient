@@ -9,12 +9,12 @@ namespace KafkaClient
         /// Maximum bytes to accumulate in the response to a a FetchRequest (<see cref="FetchRequest.MaxBytes"/>). Note that this is not an absolute maximum, if the first message in the 
         /// first non-empty partition of the fetch is larger than this value, the message will still be returned to ensure that progress can be made.
         /// </summary>
-        int MaxFetchBytes { get; }
+        int? MaxFetchBytes { get; }
 
         /// <summary>
         /// The maximum bytes to include in the message set for a particular partition in a FetchRequest (<see cref="FetchRequest.Topic.MaxBytes"/>). This helps bound the size of the response.
         /// </summary>
-        int MaxPartitionFetchBytes { get; }
+        int? MaxPartitionFetchBytes { get; }
 
         /// <summary>
         /// This is the minimum number of bytes of messages that must be available to give a response.
