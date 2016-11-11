@@ -1,5 +1,7 @@
 using System.Collections.Immutable;
+using KafkaClient.Connections;
 using KafkaClient.Protocol.Types;
+using KafkaClient.Telemetry;
 
 namespace KafkaClient.Protocol
 {
@@ -29,5 +31,10 @@ namespace KafkaClient.Protocol
         /// The protocol type, used for custom <see cref="IProtocolTypeEncoder"/>
         /// </summary>
         string ProtocolType { get; }
+
+        /// <summary>
+        /// Triggered when encoding ProduceRequest messages.
+        /// </summary>
+        ProduceRequestMessages OnProduceRequestMessages { get; }
     }
 }

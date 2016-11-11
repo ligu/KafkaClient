@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using KafkaClient.Common;
 using KafkaClient.Protocol.Types;
+using KafkaClient.Telemetry;
 
 namespace KafkaClient.Connections
 {
@@ -17,6 +18,32 @@ namespace KafkaClient.Connections
         /// <param name="connectionTimeout">The total timeout to use for the connection attempts.</param>
         public ConnectionConfiguration(TimeSpan connectionTimeout)
             : this(Defaults.ConnectionRetry(connectionTimeout))
+        {
+        }
+
+        /// <summary>
+        /// Configuration for the tcp connection.
+        /// </summary>
+        /// <param name="tracker">Mechanism for tracking telemetry.</param>
+        /// <param name="connectionRetry">Retry details for (re)establishing the connection.</param>
+        /// <param name="versionSupport">Support for different protocol versions for Kakfa requests and responses.</param>
+        /// <param name="requestTimeout">The maximum time to wait for requests.</param>
+        /// <param name="encoders">Custom Encoding support for different protocol types</param>
+        public ConnectionConfiguration(ITrackEvents tracker, IRetry connectionRetry = null, IVersionSupport versionSupport = null, TimeSpan? requestTimeout = null, IEnumerable<IProtocolTypeEncoder> encoders = null)
+            : this(connectionRetry, versionSupport, requestTimeout, encoders, 
+                  tracker != null ? (ConnectError)tracker.Disconnected : null, 
+                  tracker != null ? (Connecting)tracker.Connecting : null, 
+                  tracker != null ? (Connecting)tracker.Connected : null, 
+                  tracker != null ? (Writing)tracker.WriteEnqueued : null, 
+                  tracker != null ? (Writing)tracker.Writing : null, 
+                  tracker != null ? (WriteSuccess)tracker.Written : null, 
+                  tracker != null ? (WriteError)tracker.WriteFailed : null, 
+                  tracker != null ? (Reading)tracker.Reading : null, 
+                  tracker != null ? (ReadingChunk)tracker.ReadingChunk : null, 
+                  tracker != null ? (ReadChunk)tracker.ReadChunk : null, 
+                  tracker != null ? (Read)tracker.Read : null, 
+                  tracker != null ? (ReadError)tracker.ReadFailed: null, 
+                  tracker != null ? (ProduceRequestMessages)tracker.ProduceRequestMessages : null)
         {
         }
 
@@ -39,6 +66,7 @@ namespace KafkaClient.Connections
         /// <param name="onReadChunk">Triggered after successfully reading a chunk of bytes from the tcp stream.</param>
         /// <param name="onRead">Triggered after having successfully read a message's bytes from the tcp stream.</param>
         /// <param name="onReadFailed">Triggered after failing to read from the tcp stream.</param>
+        /// <param name="onProduceRequestMessages">Triggered when encoding ProduceRequest messages.</param>
         public ConnectionConfiguration(
             IRetry connectionRetry = null, 
             IVersionSupport versionSupport = null,
@@ -55,7 +83,8 @@ namespace KafkaClient.Connections
             ReadingChunk onReadingChunk = null, 
             ReadChunk onReadChunk = null, 
             Read onRead = null, 
-            ReadError onReadFailed = null
+            ReadError onReadFailed = null,
+            ProduceRequestMessages onProduceRequestMessages = null
             )
         {
             ConnectionRetry = connectionRetry ?? Defaults.ConnectionRetry();
@@ -76,6 +105,7 @@ namespace KafkaClient.Connections
             OnReadChunk = onReadChunk;
             OnRead = onRead;
             OnReadFailed = onReadFailed;
+            OnProduceRequestMessages = onProduceRequestMessages;
         }
 
         /// <inheritdoc />
@@ -125,6 +155,9 @@ namespace KafkaClient.Connections
 
         /// <inheritdoc />
         public ReadError OnReadFailed { get; }
+
+        /// <inheritdoc />
+        public ProduceRequestMessages OnProduceRequestMessages { get; }
 
         public static class Defaults
         {

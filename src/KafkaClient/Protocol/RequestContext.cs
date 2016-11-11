@@ -1,5 +1,7 @@
 using System.Collections.Immutable;
+using KafkaClient.Connections;
 using KafkaClient.Protocol.Types;
+using KafkaClient.Telemetry;
 
 namespace KafkaClient.Protocol
 {
@@ -7,13 +9,14 @@ namespace KafkaClient.Protocol
     {
         public static string DefaultClientId = "Net";
 
-        public RequestContext(int? correlationId = null, short? version = null, string clientId = null, IImmutableDictionary<string, IProtocolTypeEncoder> encoders = null, string protocolType = null)
+        public RequestContext(int? correlationId = null, short? version = null, string clientId = null, IImmutableDictionary<string, IProtocolTypeEncoder> encoders = null, string protocolType = null, ProduceRequestMessages onProduceRequestMessages = null)
         {
             CorrelationId = correlationId.GetValueOrDefault(1);
             ApiVersion = version;
             ClientId = clientId ?? DefaultClientId;
             Encoders = encoders ?? ImmutableDictionary<string, IProtocolTypeEncoder>.Empty;
             ProtocolType = protocolType;
+            OnProduceRequestMessages = onProduceRequestMessages;
         }
 
         /// <summary>
@@ -39,5 +42,8 @@ namespace KafkaClient.Protocol
 
         /// <inheritdoc />
         public string ProtocolType { get; }
+
+        /// <inheritdoc />
+        public ProduceRequestMessages OnProduceRequestMessages { get; }
     }
 }
