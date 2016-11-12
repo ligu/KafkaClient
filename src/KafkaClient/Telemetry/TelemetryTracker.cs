@@ -117,9 +117,9 @@ namespace KafkaClient.Telemetry
             GetTcpRead().Failure(elapsed);
         }
 
-        public void ProduceRequestMessages(int messages, int requestBytes, int compressionDiffBytes)
+        public void ProduceRequestMessages(int messages, int requestBytes, int compressedBytes)
         {
-            GetApiRequests().Produce(messages, requestBytes, compressionDiffBytes);
+            GetApiRequests().Produce(messages, requestBytes, compressedBytes);
         }
     }
 }

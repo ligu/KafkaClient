@@ -41,18 +41,18 @@ namespace KafkaClient.Telemetry
             Interlocked.Add(ref _duration, duration.Ticks);
         }
 
-        private int _messagesProduced = 0;
-        public int MessagesProduced => _messagesProduced;
-        private int _bytesProduced = 0;
-        public int BytesProduced => _bytesProduced;
-        private int _bytesCompressed = 0;
-        public int BytesCompressed => _bytesCompressed;
+        private int _messages = 0;
+        public int Messages => _messages;
+        private int _messageBytes = 0;
+        public int MessageBytes => _messageBytes;
+        private int _messageTcpBytes = 0;
+        public int MessageTcpBytes => _messageTcpBytes;
 
-        public void Produce(int messages, int bytes, int bytesCompressedAway)
+        public void Produce(int messages, int wireBytes, int bytesCompressed)
         {
-            Interlocked.Add(ref _messagesProduced, messages);
-            Interlocked.Add(ref _bytesProduced, bytes);
-            Interlocked.Add(ref _bytesCompressed, bytesCompressedAway);
+            Interlocked.Add(ref _messages, messages);
+            Interlocked.Add(ref _messageTcpBytes, wireBytes);
+            Interlocked.Add(ref _messageBytes, wireBytes + bytesCompressed);
         }
     }
 }

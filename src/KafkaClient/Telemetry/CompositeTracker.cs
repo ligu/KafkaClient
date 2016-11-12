@@ -98,10 +98,10 @@ namespace KafkaClient.Telemetry
             }
         }
 
-        public void ProduceRequestMessages(int messages, int requestBytes, int compressionDiffBytes)
+        public void ProduceRequestMessages(int messages, int requestBytes, int compressedBytes)
         {
             foreach (var tracker in _trackers) {
-                tracker.ProduceRequestMessages(messages, requestBytes, compressionDiffBytes);
+                tracker.ProduceRequestMessages(messages, requestBytes, compressedBytes);
             }
         }
     }

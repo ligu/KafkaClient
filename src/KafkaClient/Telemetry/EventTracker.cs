@@ -113,9 +113,9 @@ namespace KafkaClient.Telemetry
         }
 
         public ConcurrentQueue<Tuple<DateTime, int, int, int>> ProduceRequestMessageEvents { get; } = new ConcurrentQueue<Tuple<DateTime, int, int, int>>();
-        public void ProduceRequestMessages(int messages, int requestBytes, int compressionDiffBytes)
+        public void ProduceRequestMessages(int messages, int requestBytes, int compressedBytes)
         {
-            Enqueue(ProduceRequestMessageEvents, messages, requestBytes, compressionDiffBytes);
+            Enqueue(ProduceRequestMessageEvents, messages, requestBytes, compressedBytes);
         }
     }
 }

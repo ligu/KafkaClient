@@ -17,6 +17,6 @@ namespace KafkaClient.Telemetry
         void ReadChunk(Endpoint endpoint, int size, int remaining, int read, TimeSpan elapsed);
         void Read(Endpoint endpoint, byte[] buffer, TimeSpan elapsed);
         void ReadFailed(Endpoint endpoint, int size, TimeSpan elapsed, Exception exception);
-        void ProduceRequestMessages(int messages, int requestBytes, int compressionDiffBytes);
+        void ProduceRequestMessages(int messages, int requestBytes, int compressedBytes);
     }
 }
