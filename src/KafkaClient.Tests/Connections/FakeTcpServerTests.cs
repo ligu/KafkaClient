@@ -13,31 +13,26 @@ namespace KafkaClient.Tests.Connections
     [Category("Unit")]
     public class FakeTcpServerTests
     {
-        private readonly Uri _fakeServerUrl;
         private readonly ILog _ilog = new ConsoleLog(LogLevel.Warn);
-
-        public FakeTcpServerTests()
-        {
-            _fakeServerUrl = new Uri("http://localhost:8999");
-        }
 
         [Test]
         public async Task FakeShouldBeAbleToReconnect()
         {
-            using (var server = new FakeTcpServer(_ilog, 8999))
+            var serverUri = UnitConfig.ServerUri();
+            using (var server = new FakeTcpServer(_ilog, serverUri.Port))
             {
                 byte[] received = null;
                 server.OnBytesReceived += data => received = data;
 
                 var t1 = new TcpClient();
-                await t1.ConnectAsync(_fakeServerUrl.Host, _fakeServerUrl.Port);
+                await t1.ConnectAsync(serverUri.Host, serverUri.Port);
                 await TaskTest.WaitFor(() => server.ConnectionEventcount == 1);
 
                 server.DropConnection();
                 await TaskTest.WaitFor(() => server.DisconnectionEventCount == 1);
 
                 var t2 = new TcpClient();
-                await t2.ConnectAsync(_fakeServerUrl.Host, _fakeServerUrl.Port);
+                await t2.ConnectAsync(serverUri.Host, serverUri.Port);
                 await TaskTest.WaitFor(() => server.ConnectionEventcount == 2);
 
                 t2.GetStream().Write(99.ToBytes(), 0, 4);
@@ -50,7 +45,7 @@ namespace KafkaClient.Tests.Connections
         [Test]
         public void ShouldDisposeEvenWhenTryingToSendWithoutExceptionThrown()
         {
-            using (var server = new FakeTcpServer(_ilog, 8999))
+            using (var server = new FakeTcpServer(_ilog, UnitConfig.ServerPort()))
             {
                 server.SendDataAsync("test");
                 Thread.Sleep(500);
@@ -60,7 +55,7 @@ namespace KafkaClient.Tests.Connections
         [Test]
         public void ShouldDisposeWithoutExecptionThrown()
         {
-            using (var server = new FakeTcpServer(_ilog, 8999))
+            using (var server = new FakeTcpServer(_ilog, UnitConfig.ServerPort()))
             {
                 Thread.Sleep(500);
             }
@@ -70,12 +65,13 @@ namespace KafkaClient.Tests.Connections
         public async Task SendAsyncShouldWaitUntilClientIsConnected()
         {
             const int testData = 99;
-            using (var server = new FakeTcpServer(_ilog, 8999))
+            var serverUri = UnitConfig.ServerUri();
+            using (var server = new FakeTcpServer(_ilog, serverUri.Port))
             using (var client = new TcpClient())
             {
                 var send = server.SendDataAsync(testData.ToBytes());
                 Thread.Sleep(1000);
-                await client.ConnectAsync(_fakeServerUrl.Host, _fakeServerUrl.Port);
+                await client.ConnectAsync(serverUri.Host, serverUri.Port);
 
                 var buffer = new byte[4];
                 client.GetStream().ReadAsync(buffer, 0, 4).Wait(TimeSpan.FromSeconds(5));

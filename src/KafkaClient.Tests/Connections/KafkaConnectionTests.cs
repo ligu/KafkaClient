@@ -18,27 +18,14 @@ namespace KafkaClient.Tests.Connections
     [TestFixture]
     public class KafkaConnectionTests
     {
-        private readonly ILog _log;
-        private readonly Endpoint _endpoint;
-
-        public KafkaConnectionTests()
-        {
-            _log = new ConsoleLog();
-            _endpoint = new ConnectionFactory().Resolve(new Uri("http://localhost:8999"), _log);
-        }
-
-        [SetUp]
-        public void Setup()
-        {
-        }
-
         #region Construct...
 
         [Test]
         public async Task ShouldStartReadPollingOnConstruction()
         {
-            using (var socket = new TcpSocket(_endpoint, log: _log))
-            using (var conn = new Connection(socket, log: _log))
+            var endpoint = Endpoint.Resolve(UnitConfig.ServerUri(), ConsoleLog.Singleton);
+            using (var socket = new TcpSocket(endpoint, log: ConsoleLog.Singleton))
+            using (var conn = new Connection(socket, log: ConsoleLog.Singleton))
             {
                 await TaskTest.WaitFor(() => conn.IsReaderAlive);
                 Assert.That(conn.IsReaderAlive, Is.True);
@@ -48,11 +35,11 @@ namespace KafkaClient.Tests.Connections
         [Test]
         public void ShouldReportServerUriOnConstruction()
         {
-            var expectedUrl = _endpoint;
-            using (var socket = new TcpSocket(expectedUrl, log: _log))
-            using (var conn = new Connection(socket, log: _log))
+            var endpoint = Endpoint.Resolve(UnitConfig.ServerUri(), ConsoleLog.Singleton);
+            using (var socket = new TcpSocket(endpoint, log: ConsoleLog.Singleton))
+            using (var conn = new Connection(socket, log: ConsoleLog.Singleton))
             {
-                Assert.That(conn.Endpoint, Is.EqualTo(expectedUrl));
+                Assert.That(conn.Endpoint, Is.EqualTo(endpoint));
             }
         }
 
@@ -63,10 +50,11 @@ namespace KafkaClient.Tests.Connections
         [Test]
         public async Task ShouldDisposeWithoutExceptionThrown()
         {
-            using (var server = new FakeTcpServer(_log, 8999))
-            using (var socket = new TcpSocket(_endpoint, log: _log))
+            var endpoint = Endpoint.Resolve(UnitConfig.ServerUri(), ConsoleLog.Singleton);
+            using (var server = new FakeTcpServer(ConsoleLog.Singleton, endpoint.IP.Port))
+            using (var socket = new TcpSocket(endpoint, log: ConsoleLog.Singleton))
             {
-                var conn = new Connection(socket, log: _log);
+                var conn = new Connection(socket, log: ConsoleLog.Singleton);
                 await TaskTest.WaitFor(() => server.ConnectionEventcount > 0);
                 using (conn) { }
             }
@@ -75,8 +63,9 @@ namespace KafkaClient.Tests.Connections
         [Test]
         public void ShouldDisposeWithoutExceptionEvenWhileCallingSendAsync()
         {
-            using (var socket = new TcpSocket(_endpoint, log: _log))
-            using (var conn = new Connection(socket, log: _log))
+            var endpoint = Endpoint.Resolve(UnitConfig.ServerUri(), ConsoleLog.Singleton);
+            using (var socket = new TcpSocket(endpoint, log: ConsoleLog.Singleton))
+            using (var conn = new Connection(socket, log: ConsoleLog.Singleton))
             {
                 var task = conn.SendAsync(new MetadataRequest(), CancellationToken.None);
                 task.Wait(TimeSpan.FromMilliseconds(1000));
@@ -89,34 +78,37 @@ namespace KafkaClient.Tests.Connections
         #region Read Tests...
 
         [Test]
-        public async Task KafkaConnectionShouldLogDisconnectAndRecover()
+        public async Task KafkaConnectionShouldLogDisconnectAndRecover([Values(3, 4)] int connectionAttempts)
         {
             var mockLog = new MemoryLog();
             var disconnected = 0;
             var connected = 0;
 
             var config = new ConnectionConfiguration(
-                onDisconnected: (endpoint, exception) => {
+                onDisconnected: (e, exception) => {
                     Interlocked.Increment(ref disconnected);
                 },
-                onConnected: (endpoint, attempt, elapsed) => {
+                onConnected: (e, attempt, elapsed) => {
                     Interlocked.Increment(ref connected);
                 });
 
-            using (var server = new FakeTcpServer(new ConsoleLog(), 8999))
-            using (var socket = new TcpSocket(_endpoint, config, log: new ConsoleLog()))
+            var endpoint = Endpoint.Resolve(UnitConfig.ServerUri(), ConsoleLog.Singleton);
+            using (var server = new FakeTcpServer(ConsoleLog.Singleton, endpoint.IP.Port))
+            using (var socket = new TcpSocket(endpoint, config, ConsoleLog.Singleton))
             using (new Connection(socket, config, log: mockLog))
             {
-                for (var connectionAttempt = 1; connectionAttempt < 4; connectionAttempt++)
+                for (var connectionAttempt = 1; connectionAttempt <= connectionAttempts; connectionAttempt++)
                 {
                     var currentAttempt = connectionAttempt;
                     await TaskTest.WaitFor(() => server.ConnectionEventcount == currentAttempt);
                     Assert.That(server.ConnectionEventcount, Is.EqualTo(connectionAttempt));
-                    server.SendDataAsync(CreateCorrelationMessage(1)).Wait(TimeSpan.FromSeconds(5));
-                    await TaskTest.WaitFor(() => connected == disconnected);
+                    await server.SendDataAsync(CreateCorrelationMessage(connectionAttempt));
+                    ConsoleLog.Singleton.Write(LogLevel.Info, () => LogEvent.Create($"Sent CONNECTION attempt {connectionAttempt}"));
+                    await TaskTest.WaitFor(() => connected == disconnected, 200);
 
                     Assert.That(mockLog.LogEvents.Count(e => e.Item1 == LogLevel.Info && e.Item2.Message.StartsWith("Polling receive thread has recovered on ")), Is.EqualTo(currentAttempt-1));
 
+                    ConsoleLog.Singleton.Write(LogLevel.Info, () => LogEvent.Create($"Dropping CONNECTION attempt {connectionAttempt}"));
                     server.DropConnection();
                     await TaskTest.WaitFor(() => disconnected == currentAttempt);
 
@@ -131,10 +123,11 @@ namespace KafkaClient.Tests.Connections
             var mockLog = new MemoryLog();
             var bytesRead = 0;
 
-            var config = new ConnectionConfiguration(onReadChunk: (endpoint, size, remaining, read, elapsed) => Interlocked.Add(ref bytesRead, read));
+            var config = new ConnectionConfiguration(onReadChunk: (e, size, remaining, read, elapsed) => Interlocked.Add(ref bytesRead, read));
 
-            using (var server = new FakeTcpServer(new ConsoleLog(), 8999))
-            using (var socket = new TcpSocket(_endpoint, config, log: new ConsoleLog()))
+            var endpoint = Endpoint.Resolve(UnitConfig.ServerUri(), ConsoleLog.Singleton);
+            using (var server = new FakeTcpServer(ConsoleLog.Singleton, endpoint.IP.Port))
+            using (var socket = new TcpSocket(endpoint, config, ConsoleLog.Singleton))
             using (new Connection(socket, config, log: mockLog))
             {
                 // send size
@@ -142,7 +135,8 @@ namespace KafkaClient.Tests.Connections
                 await server.SendDataAsync(size.ToBytes());
                 var randomizer = Randomizer.CreateRandomizer();
                 var firstBytes = new byte[99];
-                for (var i = 0; i < firstBytes.Length; i++) {
+                for (var i = 0; i < firstBytes.Length; i++)
+                {
                     firstBytes[i] = randomizer.NextByte();
                 }
 
@@ -156,7 +150,8 @@ namespace KafkaClient.Tests.Connections
 
                 // send half of payload should be skipped
                 var lastBytes = new byte[size];
-                for (var i = 0; i < lastBytes.Length; i++) {
+                for (var i = 0; i < lastBytes.Length; i++)
+                {
                     lastBytes[i] = randomizer.NextByte();
                 }
                 await server.SendDataAsync(lastBytes);
@@ -174,9 +169,10 @@ namespace KafkaClient.Tests.Connections
 
             var mockLog = new MemoryLog();
 
-            var config = new ConnectionConfiguration(onRead: (endpoint, buffer, elapsed) => receivedData = true);
-            using (var server = new FakeTcpServer(_log, 8999))
-            using (var socket = new TcpSocket(_endpoint, config, log: mockLog))
+            var config = new ConnectionConfiguration(onRead: (e, buffer, elapsed) => receivedData = true);
+            var endpoint = Endpoint.Resolve(UnitConfig.ServerUri(), ConsoleLog.Singleton);
+            using (var server = new FakeTcpServer(ConsoleLog.Singleton, endpoint.IP.Port))
+            using (var socket = new TcpSocket(endpoint, config, mockLog))
             using (var conn = new Connection(socket, config, log: mockLog))
             {
                 //send correlation message
@@ -189,7 +185,7 @@ namespace KafkaClient.Tests.Connections
                 await TaskTest.WaitFor(() => receivedData);
 
                 // shortly after receivedData, but still after
-                await TaskTest.WaitFor(() => mockLog.LogEvents.Any(e => e.Item1 == LogLevel.Warn && e.Item2.Message == $"Unexpected response from {_endpoint} with correlation id {correlationId} (not in request queue)."));
+                await TaskTest.WaitFor(() => mockLog.LogEvents.Any(e => e.Item1 == LogLevel.Warn && e.Item2.Message == $"Unexpected response from {endpoint} with correlation id {correlationId} (not in request queue)."));
             }
         }
 
@@ -200,9 +196,10 @@ namespace KafkaClient.Tests.Connections
         [Test]
         public async Task SendAsyncShouldTimeoutWhenSendAsyncTakesTooLong()
         {
-            using (var server = new FakeTcpServer(_log, 8999))
-            using (var socket = new TcpSocket(_endpoint, log: _log))
-            using (var conn = new Connection(socket, new ConnectionConfiguration(requestTimeout: TimeSpan.FromMilliseconds(1)), log: _log))
+            var endpoint = Endpoint.Resolve(UnitConfig.ServerUri(), ConsoleLog.Singleton);
+            using (var server = new FakeTcpServer(ConsoleLog.Singleton, endpoint.IP.Port))
+            using (var socket = new TcpSocket(endpoint, log: ConsoleLog.Singleton))
+            using (var conn = new Connection(socket, new ConnectionConfiguration(requestTimeout: TimeSpan.FromMilliseconds(1)), log: ConsoleLog.Singleton))
             {
                 await TaskTest.WaitFor(() => server.ConnectionEventcount > 0);
                 Assert.That(server.ConnectionEventcount, Is.EqualTo(1));
@@ -216,11 +213,12 @@ namespace KafkaClient.Tests.Connections
             }
         }
 
-        [Test]
+        [Test, Timeout(15000)]
         public async Task SendAsyncShouldNotAllowResponseToTimeoutWhileAwaitingKafkaToEstableConnection()
         {
-            using (var socket = new TcpSocket(_endpoint, log: _log))
-            using (var conn = new Connection(socket, new ConnectionConfiguration(requestTimeout: TimeSpan.FromSeconds(1000)), log: _log))
+            var endpoint = Endpoint.Resolve(UnitConfig.ServerUri(), ConsoleLog.Singleton);
+            using (var socket = new TcpSocket(endpoint, log: ConsoleLog.Singleton))
+            using (var conn = new Connection(socket, new ConnectionConfiguration(requestTimeout: TimeSpan.FromSeconds(1000)), log: ConsoleLog.Singleton))
             {
                 Console.WriteLine("SendAsync blocked by reconnection attempts...");
                 var taskResult = conn.SendAsync(new MetadataRequest(), CancellationToken.None);
@@ -230,7 +228,7 @@ namespace KafkaClient.Tests.Connections
                 Assert.That(taskResult.Status, Is.EqualTo(TaskStatus.WaitingForActivation));
 
                 Console.WriteLine("Starting server to establish connection...");
-                using (var server = new FakeTcpServer(_log, 8999))
+                using (var server = new FakeTcpServer(ConsoleLog.Singleton, endpoint.IP.Port))
                 {
                     server.OnClientConnected += () => Console.WriteLine("Client connected...");
                     server.OnBytesReceived += (b) =>
@@ -252,9 +250,10 @@ namespace KafkaClient.Tests.Connections
         public async Task SendAsyncShouldUseStatictVersionInfo()
         {
             IRequestContext context = null;
-            using (var server = new FakeTcpServer(_log, 8999))
-            using (var socket = new TcpSocket(_endpoint, log: _log))
-            using (var conn = new Connection(socket, new ConnectionConfiguration(requestTimeout: TimeSpan.FromSeconds(1000), versionSupport: VersionSupport.Kafka10), log: _log))
+            var endpoint = Endpoint.Resolve(UnitConfig.ServerUri(), ConsoleLog.Singleton);
+            using (var server = new FakeTcpServer(ConsoleLog.Singleton, endpoint.IP.Port))
+            using (var socket = new TcpSocket(endpoint, log: ConsoleLog.Singleton))
+            using (var conn = new Connection(socket, new ConnectionConfiguration(requestTimeout: TimeSpan.FromSeconds(1000), versionSupport: VersionSupport.Kafka10), log: ConsoleLog.Singleton))
             {
                 server.OnBytesReceived += data =>
                 {
@@ -272,9 +271,10 @@ namespace KafkaClient.Tests.Connections
         [Test]
         public async Task SendAsyncShouldTimeoutMultipleMessagesAtATime()
         {
-            using (var server = new FakeTcpServer(_log, 8999))
-            using (var socket = new TcpSocket(_endpoint, log: _log))
-            using (var conn = new Connection(socket, new ConnectionConfiguration(requestTimeout: TimeSpan.FromMilliseconds(100)), log: _log))
+            var endpoint = Endpoint.Resolve(UnitConfig.ServerUri(), ConsoleLog.Singleton);
+            using (var server = new FakeTcpServer(ConsoleLog.Singleton, endpoint.IP.Port))
+            using (var socket = new TcpSocket(endpoint, log: ConsoleLog.Singleton))
+            using (var conn = new Connection(socket, new ConnectionConfiguration(requestTimeout: TimeSpan.FromMilliseconds(100)), log: ConsoleLog.Singleton))
             {
                 server.HasClientConnected.Wait(TimeSpan.FromSeconds(3));
                 Assert.That(server.ConnectionEventcount, Is.EqualTo(1));

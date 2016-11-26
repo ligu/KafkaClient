@@ -47,14 +47,14 @@ namespace KafkaClient.Tests.Fakes
                 _clientConnectedTrigger = new TaskCompletionSource<bool>();
             };
 
-            _clientConnectionHandlerTask = StartHandlingClientRequestAsync();
+            _clientConnectionHandlerTask = Task.Run(StartHandlingClientRequestAsync, _disposeToken.Token);
         }
 
         public async Task SendDataAsync(byte[] data)
         {
             try {
                 await _semaphoreSlim.WaitAsync();
-                _log.Debug(() => LogEvent.Create($"FakeTcpServer: writing {data.Length} bytes."));
+                _log.Debug(() => LogEvent.Create($"FAKE Server: writing {data.Length} bytes."));
                 await _client.GetStream().WriteAsync(data, 0, data.Length).ConfigureAwait(false);
             } catch (Exception ex) {
                 _log.Error(LogEvent.Create(ex));
@@ -82,10 +82,10 @@ namespace KafkaClient.Tests.Fakes
         private async Task StartHandlingClientRequestAsync()
         {
             while (_disposeToken.IsCancellationRequested == false) {
-                _log.Info(() => LogEvent.Create("FakeTcpServer: Accepting clients."));
+                _log.Info(() => LogEvent.Create("FAKE Server: Accepting clients."));
                 _client = await _listener.AcceptTcpClientAsync();
 
-                _log.Info(() => LogEvent.Create("FakeTcpServer: Connected client"));
+                _log.Info(() => LogEvent.Create("FAKE Server: Connected client"));
                 OnClientConnected?.Invoke();
                 _semaphoreSlim.Release();
 
@@ -102,10 +102,10 @@ namespace KafkaClient.Tests.Fakes
                         }
                     }
                 } catch (Exception ex) {
-                    _log.Error(LogEvent.Create(ex, "FakeTcpServer: Client exception..."));
+                    _log.Error(LogEvent.Create(ex, "FAKE Server: Client exception..."));
                 }
 
-                _log.Error(LogEvent.Create("FakeTcpServer: Client Disconnected."));
+                _log.Error(LogEvent.Create("FAKE Server: Client Disconnected."));
                 await _semaphoreSlim.WaitAsync(); //remove the one client
                 OnClientDisconnected?.Invoke();
             }
