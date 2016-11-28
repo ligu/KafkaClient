@@ -545,9 +545,10 @@ namespace KafkaClient.Tests.Connections
             AutoResetEvent allEventAreArrived = new AutoResetEvent(false);
             var write = new ConcurrentBag<int>();
             int percent = 0;
-            var endpoint = Endpoint.Resolve(UnitConfig.ServerUri(), new ConsoleLog(LogLevel.Warn));
-            using (var server = new FakeTcpServer(ConsoleLog.Singleton, endpoint.IP.Port))
-            using (var test = new TcpSocket(endpoint, log: ConsoleLog.Singleton))
+            var log = new ConsoleLog(LogLevel.Warn);
+            var endpoint = Endpoint.Resolve(UnitConfig.ServerUri(), log);
+            using (var server = new FakeTcpServer(log, endpoint.IP.Port))
+            using (var test = new TcpSocket(endpoint, log: log))
             {
                 int numberOfWrite = 10000;
                 server.OnBytesReceived += data =>
@@ -568,7 +569,7 @@ namespace KafkaClient.Tests.Connections
                         allEventAreArrived.Set();
                     }
                 };
-                var tasks = Enumerable.Range(1, 10000).SelectMany(i => new[] { test.WriteAsync(new DataPayload(i.ToBytes()), CancellationToken.None), }).ToArray();
+                var tasks = Enumerable.Range(1, 10000).SelectMany(i => new[] { test.WriteAsync(new DataPayload(i.ToBytes()), CancellationToken.None)}).ToArray();
 
                 Task.WaitAll(tasks);
                 Assert.IsTrue(allEventAreArrived.WaitOne(2000), "not get all event on time");
