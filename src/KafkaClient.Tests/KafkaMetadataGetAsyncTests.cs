@@ -17,16 +17,16 @@ namespace KafkaClient.Tests
     public class KafkaMetadataGetAsyncTests
     {
         private MemoryLog _log;
-        private IBrokerRouter _brokerRouter;
+        private IRouter _brokerRouter;
 
         [SetUp]
         public void Setup()
         {
             _log = new MemoryLog();
             //_log = Substitute.ForPartsOf<MemoryLog>();
-            _brokerRouter = Substitute.For<IBrokerRouter>();
+            _brokerRouter = Substitute.For<IRouter>();
             _brokerRouter.Log.ReturnsForAnyArgs(_log);
-            _brokerRouter.Configuration.ReturnsForAnyArgs(new CacheConfiguration());
+            _brokerRouter.Configuration.ReturnsForAnyArgs(new RouterConfiguration());
         }
 
         [Test]

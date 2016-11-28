@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Common;
 using KafkaClient.Protocol;
+using KafkaClient.Protocol.Types;
 
 namespace KafkaClient
 {
@@ -13,23 +14,26 @@ namespace KafkaClient
     /// </summary>
     public class Consumer : IConsumer, IDisposable
     {
-        private readonly IBrokerRouter _brokerRouter;
+        private readonly IRouter _router;
         private readonly bool _leaveRouterOpen;
         private readonly CancellationTokenSource _stopToken;
 
         public Consumer(KafkaOptions options)
-            : this(new BrokerRouter(options), options.ConsumerConfiguration, false)
+            : this(new Router(options), options.ConsumerConfiguration, options.ConnectionConfiguration.Encoders, false)
         {
         }
 
-        public Consumer(IBrokerRouter brokerRouter, IConsumerConfiguration configuration = null, bool leaveRouterOpen = true)
+        public Consumer(IRouter router, IConsumerConfiguration configuration = null, IImmutableDictionary<string, IProtocolTypeEncoder> encoders = null, bool leaveRouterOpen = true)
         {
             _stopToken = new CancellationTokenSource();
-            _brokerRouter = brokerRouter;
+            _router = router;
             _leaveRouterOpen = leaveRouterOpen;
             Configuration = configuration ?? new ConsumerConfiguration();
             _localMessages = ImmutableList<Message>.Empty;
+            Encoders = encoders ?? ImmutableDictionary<string, IProtocolTypeEncoder>.Empty;
         }
+
+        public IImmutableDictionary<string, IProtocolTypeEncoder> Encoders { get; }
 
         public IConsumerConfiguration Configuration { get; }
 
@@ -47,7 +51,7 @@ namespace KafkaClient
             var localCount = (0 <= localIndex && localIndex < _localMessages.Count) ? _localMessages.Count - localIndex : 0;
             var request = new FetchRequest(new FetchRequest.Topic(topicName, partitionId, offset + localCount, Configuration.MaxPartitionFetchBytes), 
                 Configuration.MaxFetchServerWait, Configuration.MinFetchBytes, Configuration.MaxFetchBytes);
-            var response = await _brokerRouter.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
+            var response = await _router.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
             var topic = response.Topics.SingleOrDefault();
 
             if (topic?.Messages?.Count == 0) return ImmutableList<Message>.Empty;
@@ -66,10 +70,15 @@ namespace KafkaClient
         {
             using (_stopToken) {
                 if (_leaveRouterOpen) return;
-                using (_brokerRouter)
+                using (_router)
                 {
                 }
             }
+        }
+
+        public Task<IConsumerGroupMember> JoinConsumerGroupAsync(string groupId, IProtocolTypeEncoder protocol, CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
         }
     }
 }

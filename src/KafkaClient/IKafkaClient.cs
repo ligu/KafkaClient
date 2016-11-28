@@ -10,6 +10,6 @@ namespace KafkaClient
         /// <summary>
         /// The broker router used to route requests.
         /// </summary>
-        IBrokerRouter BrokerRouter { get; }
+        IRouter Router { get; }
     }
 }

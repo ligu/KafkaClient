@@ -29,7 +29,7 @@ namespace KafkaClient
         /// <summary>
         /// The broker router used to provide connection to each partition server.
         /// </summary>
-        public IBrokerRouter Router { get; set; }
+        public IRouter Router { get; set; }
 
         /// <summary>
         /// The time in milliseconds between queries to look for any new partitions being created.
@@ -69,7 +69,7 @@ namespace KafkaClient
         /// </summary>
         public double FetchBufferMultiplier { get; set; }
 
-        public ConsumerOptions(string topic, IBrokerRouter router)
+        public ConsumerOptions(string topic, IRouter router)
         {
             Topic = topic;
             Router = router;

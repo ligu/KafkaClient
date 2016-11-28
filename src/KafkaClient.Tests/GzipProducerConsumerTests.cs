@@ -32,7 +32,7 @@ namespace KafkaClient.Tests
                 await conn.SendAsync(new MetadataRequest(topicName), CancellationToken.None);
             }
 
-            using (var router = new BrokerRouter(_options)) {
+            using (var router = new Router(_options)) {
                 TestConfig.InfoLog.Info(() => LogEvent.Create(">> Start GetTopicMetadataAsync"));
                 await router.GetTopicMetadataAsync(topicName, CancellationToken.None);
                 TestConfig.InfoLog.Info(() => LogEvent.Create(">> End GetTopicMetadataAsync"));
@@ -60,10 +60,10 @@ namespace KafkaClient.Tests
             var partitionId = 0;
 
             TestConfig.InfoLog.Info(() => LogEvent.Create(">> Start EnsureGzipCanDecompressMessageFromKafka"));
-            using (var router = new BrokerRouter(_options)) {
+            using (var router = new Router(_options)) {
                 using (var producer = new Producer(router, new ProducerConfiguration(batchSize: numberOfMessages)))
                 {
-                    var offset = await producer.BrokerRouter.GetTopicOffsetAsync(topicName, 0, CancellationToken.None);
+                    var offset = await producer.Router.GetTopicOffsetAsync(topicName, 0, CancellationToken.None);
                     var consumer = new Consumer(router);
                     var messages = new List<Message>();
                     for (var i = 0; i < numberOfMessages; i++) {

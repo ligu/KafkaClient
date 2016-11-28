@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using KafkaClient.Common;
@@ -6,8 +7,14 @@ namespace KafkaClient.Protocol.Types
 {
     public class ConsumerEncoder : ProtocolTypeEncoder<ConsumerProtocolMetadata, ConsumerMemberAssignment>
     {
+        public const string ProtocolType = "consumer";
+
+        // ReSharper disable once InconsistentNaming
+        private static readonly Lazy<ConsumerEncoder> _singleton = new Lazy<ConsumerEncoder>();
+        public static ConsumerEncoder Singleton => _singleton.Value;
+
         /// <inheritdoc />
-        public ConsumerEncoder() : base("consumer")
+        public ConsumerEncoder() : base(ProtocolType)
         {
         }
 

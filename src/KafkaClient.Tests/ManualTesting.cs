@@ -23,7 +23,7 @@ namespace KafkaClient.Tests
         public async Task NewlyCreatedTopicShouldRetryUntilBrokerIsAssigned()
         {
             var expectedTopic = Guid.NewGuid().ToString();
-            var router = new BrokerRouter(_options);
+            var router = new Router(_options);
             var response = router.GetMetadataAsync(new []{ expectedTopic }, CancellationToken.None);
             var topic = (await response).Topics.FirstOrDefault();
 
@@ -37,8 +37,8 @@ namespace KafkaClient.Tests
         public async Task ManualConsumerFailure()
         {
             var topicName = "TestTopicIssue13-3R-1P";
-            using (var router = new BrokerRouter(_options)) {
-                var consumer = new Consumer(new BrokerRouter(_options), new ConsumerConfiguration(maxPartitionFetchBytes: 10000));
+            using (var router = new Router(_options)) {
+                var consumer = new Consumer(new Router(_options), new ConsumerConfiguration(maxPartitionFetchBytes: 10000));
                 var offset = await router.GetTopicOffsetAsync(topicName, 0, CancellationToken.None);
 
                 var producer = new Producer(router);

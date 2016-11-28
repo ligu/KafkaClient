@@ -3,7 +3,7 @@ using KafkaClient.Common;
 
 namespace KafkaClient
 {
-    public interface ICacheConfiguration
+    public interface IRouterConfiguration
     {
         /// <summary>
         /// Retry configuration for refreshing the cache.

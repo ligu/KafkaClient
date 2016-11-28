@@ -63,13 +63,13 @@ namespace KafkaClient.Tests.Fakes
             KafkaConnectionFactory = kafkaConnectionFactory;
         }
 
-        public IBrokerRouter Create()
+        public IRouter Create()
         {
-            return new BrokerRouter(
+            return new Router(
                 new [] { new Uri("http://localhost:1"), new Uri("http://localhost:2") },
                 KafkaConnectionFactory,
                 partitionSelector: PartitionSelector,
-                cacheConfiguration: new CacheConfiguration(cacheExpiration: CacheExpiration));
+                routerConfiguration: new RouterConfiguration(cacheExpiration: CacheExpiration));
         }
 
 #pragma warning disable 1998

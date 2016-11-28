@@ -7,9 +7,9 @@ using KafkaClient.Protocol;
 
 namespace KafkaClient
 {
-    internal class BrokeredRequest<T> where T : class, IResponse
+    internal class RoutedRequest<T> where T : class, IResponse
     {
-        public BrokeredRequest(IRequest<T> request, string topicName, int partitionId, ILog log)
+        public RoutedRequest(IRequest<T> request, string topicName, int partitionId, ILog log)
         {
             _request = request;
             _topicName = topicName;
@@ -22,13 +22,13 @@ namespace KafkaClient
         private readonly string _topicName;
         private readonly int _partitionId;
 
-        private BrokerRoute _route;
+        private RouteToBroker _route;
         private T _response;
 
-        public async Task SendAsync(IBrokerRouter brokerRouter, CancellationToken cancellationToken, IRequestContext context = null)
+        public async Task SendAsync(IRouter router, CancellationToken cancellationToken, IRequestContext context = null)
         {
             _response = null;
-            _route = await brokerRouter.GetBrokerRouteAsync(_topicName, _partitionId, cancellationToken).ConfigureAwait(false);
+            _route = await router.GetBrokerRouteAsync(_topicName, _partitionId, cancellationToken).ConfigureAwait(false);
             _response = await _route.Connection.SendAsync(_request, cancellationToken, context).ConfigureAwait(false);
         }
 

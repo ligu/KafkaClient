@@ -12,7 +12,7 @@ namespace KafkaClient
     /// <summary>
     /// Provides access to Brokers for a topic (and partition) as well as topic metadata.
     /// </summary>
-    public interface IBrokerRouter : IDisposable
+    public interface IRouter : IDisposable
     {
         /// <summary>
         /// Get a broker for a specific topic and partitionId, from the cache.
@@ -24,7 +24,7 @@ namespace KafkaClient
         /// This function does not use any selector criteria. If the given partitionId does not exist an exception will be thrown.
         /// </remarks>
         /// <exception cref="CachedMetadataException">Thrown if the given topic or partitionId does not exist for the given topic.</exception>
-        BrokerRoute GetBrokerRoute(string topicName, int partitionId);
+        RouteToBroker GetBrokerRoute(string topicName, int partitionId);
 
         /// <summary>
         /// Get a broker for a given topic using the IPartitionSelector function, from the cache.
@@ -33,7 +33,7 @@ namespace KafkaClient
         /// <param name="key">The key used by the IPartitionSelector to collate to a consistent partition. Null value means key will be ignored in selection process.</param>
         /// <returns>A broker route for the given topic.</returns>
         /// <exception cref="CachedMetadataException">Thrown if the topic metadata does not exist in the cache.</exception>
-        BrokerRoute GetBrokerRoute(string topicName, byte[] key = null);
+        RouteToBroker GetBrokerRoute(string topicName, byte[] key = null);
 
         /// <summary>
         /// Get a broker for a specific topic and partitionId.
@@ -47,7 +47,7 @@ namespace KafkaClient
         /// is missing it will initiate a call to the kafka servers, updating the cache with the resulting metadata.
         /// </remarks>
         /// <exception cref="CachedMetadataException">Thrown if the given topic or partitionId does not exist for the given topic even after a refresh.</exception>
-        Task<BrokerRoute> GetBrokerRouteAsync(string topicName, int partitionId, CancellationToken cancellationToken);
+        Task<RouteToBroker> GetBrokerRouteAsync(string topicName, int partitionId, CancellationToken cancellationToken);
 
         /// <summary>
         /// Returns Topic metadata for the given topic.
@@ -132,7 +132,7 @@ namespace KafkaClient
         /// <summary>
         /// The configuration for cache expiry and refresh
         /// </summary>
-        ICacheConfiguration Configuration { get; }
+        IRouterConfiguration Configuration { get; }
 
         /// <summary>
         /// The list of currently configured connections.

@@ -132,7 +132,7 @@ namespace KafkaClient.Tests
         [Test]
         public void EnsureConsumerDisposesRouter()
         {
-            var router = Substitute.For<IBrokerRouter>();
+            var router = Substitute.For<IRouter>();
 
             var consumer = new Consumer(router, leaveRouterOpen: false);
             using (consumer) { }
@@ -142,7 +142,7 @@ namespace KafkaClient.Tests
         [Test]
         public void EnsureConsumerDoesNotDisposeRouter()
         {
-            var router = Substitute.For<IBrokerRouter>();
+            var router = Substitute.For<IRouter>();
 
             var consumer = new Consumer(router);
             using (consumer) { }
@@ -171,7 +171,7 @@ namespace KafkaClient.Tests
         //            Assert.That(consumer.ConsumerTaskCount, Is.EqualTo(0));
         //        }
 
-        //        private ConsumerOptions CreateOptions(IBrokerRouter router)
+        //        private ConsumerOptions CreateOptions(IRouter router)
         //        {
         //            return new ConsumerOptions(BrokerRouterProxy.TestTopic, router);
         //        }

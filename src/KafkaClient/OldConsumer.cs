@@ -39,7 +39,7 @@ namespace KafkaClient
             SetOffsetPosition(positions);
         }
 
-        public IBrokerRouter BrokerRouter => _options.Router;
+        public IRouter Router => _options.Router;
 
         /// <summary>
         /// Get the number of tasks created for consuming each partition.

@@ -339,7 +339,7 @@ namespace KafkaClient.Tests
         [Test]
         public async Task SendingMessageWhenDisposedShouldThrow()
         {
-            var router = Substitute.For<IBrokerRouter>();
+            var router = Substitute.For<IRouter>();
             var producer = new Producer(router);
             using (producer) { }
             Assert.ThrowsAsync<ObjectDisposedException>(async () => await producer.SendMessageAsync(new Message("1"), "Test", CancellationToken.None));
@@ -348,7 +348,7 @@ namespace KafkaClient.Tests
         [Test]
         public async Task SendingMessageWhenStoppedShouldThrow()
         {
-            var router = Substitute.For<IBrokerRouter>();
+            var router = Substitute.For<IRouter>();
             using (var producer = new Producer(router, new ProducerConfiguration(stopTimeout: TimeSpan.FromMilliseconds(200))))
             {
                 await producer.StopAsync(CancellationToken.None);
@@ -378,7 +378,7 @@ namespace KafkaClient.Tests
         [Test]
         public void EnsureProducerDisposesRouter()
         {
-            var router = Substitute.For<IBrokerRouter>();
+            var router = Substitute.For<IRouter>();
 
             var producer = new Producer(router, leaveRouterOpen: false);
             using (producer) { }
@@ -388,7 +388,7 @@ namespace KafkaClient.Tests
         [Test]
         public void EnsureProducerDoesNotDisposeRouter()
         {
-            var router = Substitute.For<IBrokerRouter>();
+            var router = Substitute.For<IRouter>();
 
             var producer = new Producer(router);
             using (producer) { }

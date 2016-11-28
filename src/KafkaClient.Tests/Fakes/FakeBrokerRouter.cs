@@ -57,13 +57,13 @@ namespace KafkaClient.Tests.Fakes
                                        .Returns(info => new Endpoint((Uri)info[0], new IPEndPoint(IPAddress.Parse("127.0.0.1"), ((Uri)info[0]).Port)));
         }
 
-        public IBrokerRouter Create()
+        public IRouter Create()
         {
-            return new BrokerRouter(
+            return new Router(
                 new [] { new Uri("http://localhost:1"), new Uri("http://localhost:2") },
                 _mockConnectionFactory,
                 partitionSelector: PartitionSelector,
-                cacheConfiguration: new CacheConfiguration(cacheExpiration: _cacheExpiration));
+                routerConfiguration: new RouterConfiguration(cacheExpiration: _cacheExpiration));
         }
 
         public static MetadataResponse DefaultMetadataResponse()

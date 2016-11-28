@@ -22,7 +22,7 @@ namespace KafkaClient
     /// The metadata will stay in cache until an error condition is received indicating the metadata is out of data.  This error
     /// can be in the form of a socket disconnect or an error code from a response indicating a broker no longer hosts a partition.
     /// </summary>
-    public class BrokerRouter : IBrokerRouter
+    public class Router : IRouter
     {
         private readonly IConnectionFactory _connectionFactory;
         private readonly IPartitionSelector _partitionSelector;
@@ -34,19 +34,19 @@ namespace KafkaClient
         private readonly AsyncLock _lock = new AsyncLock();
 
         /// <exception cref="ConnectionException">None of the provided Kafka servers are resolvable.</exception>
-        public BrokerRouter(KafkaOptions options)
-            : this(options.ServerUris, options.ConnectionFactory, options.ConnectionConfiguration, options.PartitionSelector, options.CacheConfiguration, options.Log)
+        public Router(KafkaOptions options)
+            : this(options.ServerUris, options.ConnectionFactory, options.ConnectionConfiguration, options.PartitionSelector, options.RouterConfiguration, options.Log)
         {
         }
 
         /// <exception cref="ConnectionException">None of the provided Kafka servers are resolvable.</exception>
-        public BrokerRouter(Uri serverUri, IConnectionFactory connectionFactory = null, IConnectionConfiguration connectionConfiguration = null, IPartitionSelector partitionSelector = null, ICacheConfiguration cacheConfiguration = null, ILog log = null)
-            : this (new []{ serverUri }, connectionFactory, connectionConfiguration, partitionSelector, cacheConfiguration, log)
+        public Router(Uri serverUri, IConnectionFactory connectionFactory = null, IConnectionConfiguration connectionConfiguration = null, IPartitionSelector partitionSelector = null, IRouterConfiguration routerConfiguration = null, ILog log = null)
+            : this (new []{ serverUri }, connectionFactory, connectionConfiguration, partitionSelector, routerConfiguration, log)
         {
         }
 
         /// <exception cref="ConnectionException">None of the provided Kafka servers are resolvable.</exception>
-        public BrokerRouter(IEnumerable<Uri> serverUris, IConnectionFactory connectionFactory = null, IConnectionConfiguration connectionConfiguration = null, IPartitionSelector partitionSelector = null, ICacheConfiguration cacheConfiguration = null, ILog log = null)
+        public Router(IEnumerable<Uri> serverUris, IConnectionFactory connectionFactory = null, IConnectionConfiguration connectionConfiguration = null, IPartitionSelector partitionSelector = null, IRouterConfiguration routerConfiguration = null, ILog log = null)
         {
             Log = log ?? TraceLog.Log;
             ConnectionConfiguration = connectionConfiguration ?? new ConnectionConfiguration();
@@ -64,23 +64,23 @@ namespace KafkaClient
 
             if (_allConnections.IsEmpty) throw new ConnectionException("None of the provided Kafka servers are resolvable.");
 
-            Configuration = cacheConfiguration ?? new CacheConfiguration();
+            Configuration = routerConfiguration ?? new RouterConfiguration();
             _partitionSelector = partitionSelector ?? new PartitionSelector();
         }
 
         public IConnectionConfiguration ConnectionConfiguration { get; }
-        public ICacheConfiguration Configuration { get; }
+        public IRouterConfiguration Configuration { get; }
 
         /// <inheritdoc />
         public IEnumerable<IConnection> Connections => _allConnections.Values;
 
         /// <inheritdoc />
-        public BrokerRoute GetBrokerRoute(string topicName, int partitionId)
+        public RouteToBroker GetBrokerRoute(string topicName, int partitionId)
         {
             return GetBrokerRoute(topicName, partitionId, GetCachedTopic(topicName));
         }
 
-        private BrokerRoute GetBrokerRoute(string topicName, int partitionId, MetadataResponse.Topic topic)
+        private RouteToBroker GetBrokerRoute(string topicName, int partitionId, MetadataResponse.Topic topic)
         {
             var partition = topic.Partitions.FirstOrDefault(x => x.PartitionId == partitionId);
             if (partition == null)
@@ -93,14 +93,14 @@ namespace KafkaClient
         }
 
         /// <inheritdoc />
-        public BrokerRoute GetBrokerRoute(string topicName, byte[] key = null)
+        public RouteToBroker GetBrokerRoute(string topicName, byte[] key = null)
         {
             var topic = GetCachedTopic(topicName);
             return GetCachedRoute(topicName, _partitionSelector.Select(topic, key));
         }
 
         /// <inheritdoc />
-        public async Task<BrokerRoute> GetBrokerRouteAsync(string topicName, int partitionId, CancellationToken cancellationToken)
+        public async Task<RouteToBroker> GetBrokerRouteAsync(string topicName, int partitionId, CancellationToken cancellationToken)
         {
             return GetBrokerRoute(topicName, partitionId, await GetTopicMetadataAsync(topicName, cancellationToken));
         }
@@ -236,7 +236,7 @@ namespace KafkaClient
             return null;
         }
 
-        private BrokerRoute GetCachedRoute(string topicName, MetadataResponse.Partition partition)
+        private RouteToBroker GetCachedRoute(string topicName, MetadataResponse.Partition partition)
         {
             var route = TryGetCachedRoute(topicName, partition);
             if (route != null) return route;
@@ -247,11 +247,11 @@ namespace KafkaClient
             };
         }
 
-        private BrokerRoute TryGetCachedRoute(string topicName, MetadataResponse.Partition partition)
+        private RouteToBroker TryGetCachedRoute(string topicName, MetadataResponse.Partition partition)
         {
             IConnection conn;
             return _brokerConnections.TryGetValue(partition.LeaderId, out conn)
-                ? new BrokerRoute(topicName, partition.PartitionId, partition.LeaderId, conn) 
+                ? new RouteToBroker(topicName, partition.PartitionId, partition.LeaderId, conn) 
                 : null;
         }
 

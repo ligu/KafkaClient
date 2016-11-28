@@ -15,7 +15,7 @@ namespace KafkaClient.Tests
         [Test]
         public void ProducerShouldNotExpectResponseWhenAckIsZero()
         {
-            using (var router = new BrokerRouter(new KafkaOptions(TestConfig.IntegrationUri)))
+            using (var router = new Router(new KafkaOptions(TestConfig.IntegrationUri)))
             using (var producer = new Producer(router))
             {
                 var sendTask = producer.SendMessageAsync(new Message(Guid.NewGuid().ToString()), TestConfig.TopicName(), null, new SendMessageConfiguration(acks: 0), CancellationToken.None);
@@ -29,7 +29,7 @@ namespace KafkaClient.Tests
         [Test]
         public async Task SendAsyncShouldGetOneResultForMessage()
         {
-            using (var router = new BrokerRouter(new KafkaOptions(TestConfig.IntegrationUri)))
+            using (var router = new Router(new KafkaOptions(TestConfig.IntegrationUri)))
             using (var producer = new Producer(router))
             {
                 var result = await producer.SendMessagesAsync(new[] { new Message(Guid.NewGuid().ToString()) }, TestConfig.TopicName(), CancellationToken.None);
@@ -41,7 +41,7 @@ namespace KafkaClient.Tests
         [Test]
         public async Task SendAsyncShouldGetAResultForEachPartitionSentTo()
         {
-            using (var router = new BrokerRouter(new KafkaOptions(TestConfig.IntegrationUri)))
+            using (var router = new Router(new KafkaOptions(TestConfig.IntegrationUri)))
             using (var producer = new Producer(router))
             {
                 var messages = new[] { new Message("1"), new Message("2"), new Message("3") };
@@ -56,7 +56,7 @@ namespace KafkaClient.Tests
         [Test]
         public async Task SendAsyncShouldGetOneResultForEachPartitionThroughBatching()
         {
-            using (var router = new BrokerRouter(new KafkaOptions(TestConfig.IntegrationUri)))
+            using (var router = new Router(new KafkaOptions(TestConfig.IntegrationUri)))
             using (var producer = new Producer(router))
             {
                 var tasks = new[] {

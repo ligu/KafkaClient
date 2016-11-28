@@ -26,7 +26,7 @@ namespace KafkaClient.Tests
             //Note that if there is no offset associated with a topic-partition under that consumer group the broker does not set an error code
             //(since it is not really an error), but returns empty metadata and sets the offset field to -1.
             const int partitionId = 0;
-            var router = new BrokerRouter(_options);
+            var router = new Router(_options);
 
             var request = new OffsetFetchRequest(Guid.NewGuid().ToString(), new TopicPartition(TestConfig.TopicName(), partitionId));
             await router.GetTopicMetadataAsync(TestConfig.TopicName(), CancellationToken.None);
@@ -45,7 +45,7 @@ namespace KafkaClient.Tests
         public async Task OffsetCommitShouldStoreAndReturnSuccess()
         {
             const int partitionId = 0;
-            var router = new BrokerRouter(_options);
+            var router = new Router(_options);
 
             await router.GetTopicMetadataAsync(TestConfig.TopicName(), CancellationToken.None);
             var conn = router.GetBrokerRoute(TestConfig.TopicName(), partitionId);
@@ -72,7 +72,7 @@ namespace KafkaClient.Tests
             const int partitionId = 0;
             const long offset = 99;
 
-            var router = new BrokerRouter(_options);
+            var router = new Router(_options);
 
             await router.GetTopicMetadataAsync(TestConfig.TopicName(), CancellationToken.None);
             var conn = router.GetBrokerRoute(TestConfig.TopicName(), partitionId);
@@ -107,7 +107,7 @@ namespace KafkaClient.Tests
             const long offset = 101;
             const string metadata = "metadata";
 
-            var router = new BrokerRouter(_options);
+            var router = new Router(_options);
 
             var conn = await router.GetBrokerRouteAsync(TestConfig.TopicName(), partitionId, CancellationToken.None);
 
@@ -138,7 +138,7 @@ namespace KafkaClient.Tests
         [Test]
         public async Task ConsumerMetadataRequestShouldReturnWithoutError()
         {
-            using (var router = new BrokerRouter(_options))
+            using (var router = new Router(_options))
             {
                 var conn = await router.GetBrokerRouteAsync(TestConfig.TopicName(), 0, CancellationToken.None);
 

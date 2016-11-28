@@ -38,7 +38,7 @@ namespace KafkaClient.Tests
         [Test]
         public void BrokerRouterCanConstruct()
         {
-            var result = new BrokerRouter(new Uri("http://localhost:1"), _connectionFactory);
+            var result = new Router(new Uri("http://localhost:1"), _connectionFactory);
 
             Assert.That(result, Is.Not.Null);
         }
@@ -46,19 +46,19 @@ namespace KafkaClient.Tests
         [Test]
         public void BrokerRouterConstructorThrowsException()
         {
-            Assert.Throws<ConnectionException>(() => new BrokerRouter(new Uri("http://noaddress:1")));
+            Assert.Throws<ConnectionException>(() => new Router(new Uri("http://noaddress:1")));
         }
 
         [Test]
         public void BrokerRouterConstructorShouldIgnoreUnresolvableUriWhenAtLeastOneIsGood()
         {
-            var result = new BrokerRouter(new [] { new Uri("http://noaddress:1"), new Uri("http://localhost:1") });
+            var result = new Router(new [] { new Uri("http://noaddress:1"), new Uri("http://localhost:1") });
         }
 
         [Test]
         public async Task BrokerRouterUsesFactoryToAddNewBrokers()
         {
-            var router = new BrokerRouter(new Uri("http://localhost:1"), _connectionFactory);
+            var router = new Router(new Uri("http://localhost:1"), _connectionFactory);
 
             _connection
                 .SendAsync(Arg.Any<IRequest<MetadataResponse>>(), Arg.Any<CancellationToken>(), Arg.Any<IRequestContext>())

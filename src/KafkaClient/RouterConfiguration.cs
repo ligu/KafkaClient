@@ -3,9 +3,9 @@ using KafkaClient.Common;
 
 namespace KafkaClient
 {
-    public class CacheConfiguration : ICacheConfiguration
+    public class RouterConfiguration : IRouterConfiguration
     {
-        public CacheConfiguration(IRetry refreshRetry = null, TimeSpan? cacheExpiration = null)
+        public RouterConfiguration(IRetry refreshRetry = null, TimeSpan? cacheExpiration = null)
         {
             RefreshRetry = refreshRetry ?? Defaults.RefreshRetry();
             CacheExpiration = cacheExpiration ?? TimeSpan.FromMilliseconds(Defaults.CacheExpirationMilliseconds);
@@ -35,7 +35,7 @@ namespace KafkaClient
             public const int RefreshDelayMilliseconds = 100;
 
             /// <summary>
-            /// The default expiration length for <see cref="CacheConfiguration.CacheExpiration"/>
+            /// The default expiration length for <see cref="RouterConfiguration.CacheExpiration"/>
             /// </summary>
             public const int CacheExpirationMilliseconds = 10;
 

@@ -10,42 +10,42 @@ using KafkaClient.Protocol;
 
 namespace KafkaClient
 {
-    public static class BrokerRouterExtensions
+    public static class RouterExtensions
     {
         /// <summary>
         /// Get offsets for all partitions of a given topic.
         /// </summary>
-        /// <param name="brokerRouter">The router which provides the route and metadata.</param>
+        /// <param name="router">The router which provides the route and metadata.</param>
         /// <param name="topicName">Name of the topic to get offset information from.</param>
         /// <param name="maxOffsets">How many to get, at most.</param>
         /// <param name="offsetTime">These are best described by <see cref="OffsetRequest.Topic.Timestamp"/></param>
         /// <param name="cancellationToken"></param>
         /// <param name="retryPolicy"></param>
-        public static async Task<IImmutableList<OffsetResponse.Topic>> GetTopicOffsetsAsync(this IBrokerRouter brokerRouter, string topicName, int maxOffsets, long offsetTime, CancellationToken cancellationToken, IRetry retryPolicy = null)
+        public static async Task<IImmutableList<OffsetResponse.Topic>> GetTopicOffsetsAsync(this IRouter router, string topicName, int maxOffsets, long offsetTime, CancellationToken cancellationToken, IRetry retryPolicy = null)
         {
             bool? metadataInvalid = false;
             var offsets = new Dictionary<int, OffsetResponse.Topic>();
-            BrokeredRequest<OffsetResponse>[] brokeredRequests = null;
+            RoutedRequest<OffsetResponse>[] routedRequests = null;
 
             return await (retryPolicy ?? new Retry(TimeSpan.MaxValue, 3)).AttemptAsync(
                 async (attempt, timer) => {
-                    metadataInvalid = await brokerRouter.RefreshTopicMetadataIfInvalidAsync(topicName, metadataInvalid, cancellationToken).ConfigureAwait(false);
+                    metadataInvalid = await router.RefreshTopicMetadataIfInvalidAsync(topicName, metadataInvalid, cancellationToken).ConfigureAwait(false);
 
-                    var topicMetadata = await brokerRouter.GetTopicMetadataAsync(topicName, cancellationToken).ConfigureAwait(false);
-                    brokeredRequests = topicMetadata
+                    var topicMetadata = await router.GetTopicMetadataAsync(topicName, cancellationToken).ConfigureAwait(false);
+                    routedRequests = topicMetadata
                         .Partitions
                         .Where(_ => !offsets.ContainsKey(_.PartitionId)) // skip partitions already successfully retrieved
                         .GroupBy(x => x.LeaderId)
                         .Select(partitions => 
-                            new BrokeredRequest<OffsetResponse>(
+                            new RoutedRequest<OffsetResponse>(
                                 new OffsetRequest(partitions.Select(_ => new OffsetRequest.Topic(topicName, _.PartitionId, offsetTime, maxOffsets))), 
                                 topicName, 
                                 partitions.Select(_ => _.PartitionId).First(), 
-                                brokerRouter.Log))
+                                router.Log))
                         .ToArray();
 
-                    await Task.WhenAll(brokeredRequests.Select(_ => _.SendAsync(brokerRouter, cancellationToken))).ConfigureAwait(false);
-                    var responses = brokeredRequests.Select(_ => _.MetadataRetryResponse(attempt, out metadataInvalid)).ToArray();
+                    await Task.WhenAll(routedRequests.Select(_ => _.SendAsync(router, cancellationToken))).ConfigureAwait(false);
+                    var responses = routedRequests.Select(_ => _.MetadataRetryResponse(attempt, out metadataInvalid)).ToArray();
                     foreach (var response in responses.Where(_ => _.IsSuccessful)) {
                         foreach (var offsetTopic in response.Value.Topics) {
                             offsets[offsetTopic.PartitionId] = offsetTopic;
@@ -56,9 +56,9 @@ namespace KafkaClient
                         ? new RetryAttempt<IImmutableList<OffsetResponse.Topic>>(offsets.Values.ToImmutableList()) 
                         : RetryAttempt<IImmutableList<OffsetResponse.Topic>>.Retry;
                 },
-                brokeredRequests.MetadataRetry,
-                brokeredRequests.ThrowExtractedException,
-                (ex, attempt, retry) => brokeredRequests.MetadataRetry(attempt, ex, out metadataInvalid),
+                routedRequests.MetadataRetry,
+                routedRequests.ThrowExtractedException,
+                (ex, attempt, retry) => routedRequests.MetadataRetry(attempt, ex, out metadataInvalid),
                 null, // do nothing on final exception -- will be rethrown
                 cancellationToken);
         }
@@ -66,76 +66,76 @@ namespace KafkaClient
         /// <summary>
         /// Get offsets for all partitions of a given topic.
         /// </summary>
-        /// <param name="brokerRouter">The router which provides the route and metadata.</param>
+        /// <param name="router">The router which provides the route and metadata.</param>
         /// <param name="topicName">Name of the topic to get offset information from.</param>
         /// <param name="cancellationToken"></param>
-        public static Task<IImmutableList<OffsetResponse.Topic>> GetTopicOffsetsAsync(this IBrokerRouter brokerRouter, string topicName, CancellationToken cancellationToken)
+        public static Task<IImmutableList<OffsetResponse.Topic>> GetTopicOffsetsAsync(this IRouter router, string topicName, CancellationToken cancellationToken)
         {
-            return brokerRouter.GetTopicOffsetsAsync(topicName, OffsetRequest.Topic.DefaultMaxOffsets, OffsetRequest.Topic.LatestTime, cancellationToken);
+            return router.GetTopicOffsetsAsync(topicName, OffsetRequest.Topic.DefaultMaxOffsets, OffsetRequest.Topic.LatestTime, cancellationToken);
         }
 
         /// <summary>
         /// Get offsets for a single partitions of a given topic.
         /// </summary>
-        /// <param name="brokerRouter">The router which provides the route and metadata.</param>
+        /// <param name="router">The router which provides the route and metadata.</param>
         /// <param name="topicName">Name of the topic to get offset information from.</param>
         /// <param name="partitionId">The partition to get offsets for.</param>
         /// <param name="maxOffsets">How many to get, at most.</param>
         /// <param name="offsetTime">These are best described by <see cref="OffsetRequest.Topic.Timestamp"/></param>
         /// <param name="cancellationToken"></param>
-        public static async Task<OffsetResponse.Topic> GetTopicOffsetAsync(this IBrokerRouter brokerRouter, string topicName, int partitionId, int maxOffsets, long offsetTime, CancellationToken cancellationToken)
+        public static async Task<OffsetResponse.Topic> GetTopicOffsetAsync(this IRouter router, string topicName, int partitionId, int maxOffsets, long offsetTime, CancellationToken cancellationToken)
         {
             var request = new OffsetRequest(new OffsetRequest.Topic(topicName, partitionId));
-            var response = await brokerRouter.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
+            var response = await router.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
             return response.Topics.SingleOrDefault(t => t.TopicName == topicName && t.PartitionId == partitionId);
         }
 
         /// <summary>
         /// Get offsets for a single partitions of a given topic.
         /// </summary>
-        public static Task<OffsetResponse.Topic> GetTopicOffsetAsync(this IBrokerRouter brokerRouter, string topicName, int partitionId, CancellationToken cancellationToken)
+        public static Task<OffsetResponse.Topic> GetTopicOffsetAsync(this IRouter router, string topicName, int partitionId, CancellationToken cancellationToken)
         {
-            return brokerRouter.GetTopicOffsetAsync(topicName, partitionId, OffsetRequest.Topic.DefaultMaxOffsets, OffsetRequest.Topic.LatestTime, cancellationToken);
+            return router.GetTopicOffsetAsync(topicName, partitionId, OffsetRequest.Topic.DefaultMaxOffsets, OffsetRequest.Topic.LatestTime, cancellationToken);
         }
 
         /// <summary>
         /// Get offsets for a single partitions of a given topic.
         /// </summary>
-        /// <param name="brokerRouter">The router which provides the route and metadata.</param>
+        /// <param name="router">The router which provides the route and metadata.</param>
         /// <param name="topicName">Name of the topic to get offset information from.</param>
         /// <param name="partitionId">The partition to get offsets for.</param>
         /// <param name="consumerGroup">The id of the consumer group</param>
         /// <param name="cancellationToken"></param>
-        public static async Task<OffsetFetchResponse.Topic> GetTopicOffsetAsync(this IBrokerRouter brokerRouter, string topicName, int partitionId, string consumerGroup, CancellationToken cancellationToken)
+        public static async Task<OffsetFetchResponse.Topic> GetTopicOffsetAsync(this IRouter router, string topicName, int partitionId, string consumerGroup, CancellationToken cancellationToken)
         {
             var request = new OffsetFetchRequest(consumerGroup, new TopicPartition(topicName, partitionId));
-            var response = await brokerRouter.SendAsync(request, topicName, partitionId, consumerGroup, cancellationToken).ConfigureAwait(false);
+            var response = await router.SendAsync(request, topicName, partitionId, consumerGroup, cancellationToken).ConfigureAwait(false);
             return response.Topics.SingleOrDefault(t => t.TopicName == topicName && t.PartitionId == partitionId);
         }
 
         /// <summary>
         /// Get offsets for a single partitions of a given topic.
         /// </summary>
-        /// <param name="brokerRouter">The router which provides the route and metadata.</param>
+        /// <param name="router">The router which provides the route and metadata.</param>
         /// <param name="topicName">Name of the topic to get offset information from.</param>
         /// <param name="partitionId">The partition to get offsets for.</param>
         /// <param name="consumerGroup">The id of the consumer group</param>
         /// <param name="offset">The new offset</param>
         /// <param name="cancellationToken"></param>
-        public static async Task CommitTopicOffsetAsync(this IBrokerRouter brokerRouter, string topicName, int partitionId, string consumerGroup, long offset, CancellationToken cancellationToken)
+        public static async Task CommitTopicOffsetAsync(this IRouter router, string topicName, int partitionId, string consumerGroup, long offset, CancellationToken cancellationToken)
         {
             var request = new OffsetCommitRequest(consumerGroup, new [] { new OffsetCommitRequest.Topic(topicName, partitionId, offset) });
-            await brokerRouter.SendAsync(request, topicName, partitionId, consumerGroup, cancellationToken).ConfigureAwait(false);
+            await router.SendAsync(request, topicName, partitionId, consumerGroup, cancellationToken).ConfigureAwait(false);
         }
 
-        private static async Task<T> SendAsync<T>(this IBrokerRouter brokerRouter, IRequest<T> request, string topicName, int partitionId, string consumerGroup, CancellationToken cancellationToken) where T : class, IResponse
+        private static async Task<T> SendAsync<T>(this IRouter router, IRequest<T> request, string topicName, int partitionId, string consumerGroup, CancellationToken cancellationToken) where T : class, IResponse
         {
             try {
-                return await brokerRouter.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
+                return await router.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
             } catch (RequestException ex) when (ex.ErrorCode == ErrorResponseCode.NotCoordinatorForGroup) {
                 // ensure the group exists, then retry
-                await brokerRouter.SendAsync(new GroupCoordinatorRequest(consumerGroup), topicName, partitionId, cancellationToken).ConfigureAwait(false);
-                return await brokerRouter.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
+                await router.SendAsync(new GroupCoordinatorRequest(consumerGroup), topicName, partitionId, cancellationToken).ConfigureAwait(false);
+                return await router.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -144,15 +144,15 @@ namespace KafkaClient
         /// <exception cref="TimeoutException">Thrown if there request times out</exception>
         /// <exception cref="ConnectionException">Thrown in case of network error contacting broker (after retries), or if none of the default brokers can be contacted.</exception>
         /// <exception cref="RequestException">Thrown in case of an unexpected error in the request</exception>
-        public static async Task<T> SendAsync<T>(this IBrokerRouter brokerRouter, IRequest<T> request, string topicName, int partitionId, CancellationToken cancellationToken, IRequestContext context = null, IRetry retryPolicy = null) where T : class, IResponse
+        public static async Task<T> SendAsync<T>(this IRouter router, IRequest<T> request, string topicName, int partitionId, CancellationToken cancellationToken, IRequestContext context = null, IRetry retryPolicy = null) where T : class, IResponse
         {
             bool? metadataInvalid = false;
-            var brokeredRequest = new BrokeredRequest<T>(request, topicName, partitionId, brokerRouter.Log);
+            var brokeredRequest = new RoutedRequest<T>(request, topicName, partitionId, router.Log);
 
             return await (retryPolicy ?? new Retry(TimeSpan.MaxValue, 3)).AttemptAsync(
                 async (attempt, timer) => {
-                    metadataInvalid = await brokerRouter.RefreshTopicMetadataIfInvalidAsync(topicName, metadataInvalid, cancellationToken).ConfigureAwait(false);
-                    await brokeredRequest.SendAsync(brokerRouter, cancellationToken, context).ConfigureAwait(false);
+                    metadataInvalid = await router.RefreshTopicMetadataIfInvalidAsync(topicName, metadataInvalid, cancellationToken).ConfigureAwait(false);
+                    await brokeredRequest.SendAsync(router, cancellationToken, context).ConfigureAwait(false);
                     return brokeredRequest.MetadataRetryResponse(attempt, out metadataInvalid);
                 },
                 brokeredRequest.MetadataRetry,
@@ -162,37 +162,37 @@ namespace KafkaClient
                 cancellationToken);
         }
 
-        public static async Task<bool> RefreshTopicMetadataIfInvalidAsync(this IBrokerRouter brokerRouter, string topicName, bool? metadataInvalid, CancellationToken cancellationToken)
+        public static async Task<bool> RefreshTopicMetadataIfInvalidAsync(this IRouter router, string topicName, bool? metadataInvalid, CancellationToken cancellationToken)
         {
             if (metadataInvalid.GetValueOrDefault(true)) {
                 // unknown metadata status should not force the issue
-                await brokerRouter.RefreshTopicMetadataAsync(topicName, metadataInvalid.GetValueOrDefault(), cancellationToken).ConfigureAwait(false);
+                await router.RefreshTopicMetadataAsync(topicName, metadataInvalid.GetValueOrDefault(), cancellationToken).ConfigureAwait(false);
             }
             return false;
         }
 
-        public static async Task<bool> RefreshTopicMetadataIfInvalidAsync(this IBrokerRouter brokerRouter, IEnumerable<string> topicNames, bool? metadataInvalid, CancellationToken cancellationToken)
+        public static async Task<bool> RefreshTopicMetadataIfInvalidAsync(this IRouter router, IEnumerable<string> topicNames, bool? metadataInvalid, CancellationToken cancellationToken)
         {
             if (metadataInvalid.GetValueOrDefault(true)) {
                 // unknown metadata status should not force the issue
-                await brokerRouter.RefreshTopicMetadataAsync(topicNames, metadataInvalid.GetValueOrDefault(), cancellationToken).ConfigureAwait(false);
+                await router.RefreshTopicMetadataAsync(topicNames, metadataInvalid.GetValueOrDefault(), cancellationToken).ConfigureAwait(false);
             }
             return false;
         }
 
-        internal static void MetadataRetry<T>(this IEnumerable<BrokeredRequest<T>> brokeredRequests, int attempt, TimeSpan retry) where T : class, IResponse
+        internal static void MetadataRetry<T>(this IEnumerable<RoutedRequest<T>> brokeredRequests, int attempt, TimeSpan retry) where T : class, IResponse
         {
             foreach (var brokeredRequest in brokeredRequests) {
                 brokeredRequest.MetadataRetry(attempt, retry);
             }
         }
 
-        internal static void ThrowExtractedException<T>(this BrokeredRequest<T>[] brokeredRequests, int attempt) where T : class, IResponse
+        internal static void ThrowExtractedException<T>(this RoutedRequest<T>[] routedRequests, int attempt) where T : class, IResponse
         {
-            throw brokeredRequests.Select(_ => _.ResponseException).FlattenAggregates();
+            throw routedRequests.Select(_ => _.ResponseException).FlattenAggregates();
         }
 
-        internal static void MetadataRetry<T>(this IEnumerable<BrokeredRequest<T>> brokeredRequests, int attempt, Exception exception, out bool? retry) where T : class, IResponse
+        internal static void MetadataRetry<T>(this IEnumerable<RoutedRequest<T>> brokeredRequests, int attempt, Exception exception, out bool? retry) where T : class, IResponse
         {
             retry = null;
             foreach (var brokeredRequest in brokeredRequests) {
@@ -215,20 +215,20 @@ namespace KafkaClient
         /// <summary>
         /// Given a collection of server connections, query for the topic metadata.
         /// </summary>
-        /// <param name="brokerRouter">The router which provides the route and metadata.</param>
+        /// <param name="router">The router which provides the route and metadata.</param>
         /// <param name="topicNames">Topics to get metadata information for.</param>
         /// <param name="cancellationToken"></param>
         /// <remarks>
-        /// Used by <see cref="BrokerRouter"/> internally. Broken out for better testability, but not intended to be used separately.
+        /// Used by <see cref="Router"/> internally. Broken out for better testability, but not intended to be used separately.
         /// </remarks>
         /// <returns>MetadataResponse validated to be complete.</returns>
-        internal static async Task<MetadataResponse> GetMetadataAsync(this IBrokerRouter brokerRouter, IEnumerable<string> topicNames, CancellationToken cancellationToken)
+        internal static async Task<MetadataResponse> GetMetadataAsync(this IRouter router, IEnumerable<string> topicNames, CancellationToken cancellationToken)
         {
             var request = new MetadataRequest(topicNames);
 
-            return await brokerRouter.Configuration.RefreshRetry.AttemptAsync(
+            return await router.Configuration.RefreshRetry.AttemptAsync(
                 async (attempt, timer) => {
-                    var response = await brokerRouter.GetMetadataAsync(request, cancellationToken).ConfigureAwait(false);
+                    var response = await router.GetMetadataAsync(request, cancellationToken).ConfigureAwait(false);
                     if (response == null) return new RetryAttempt<MetadataResponse>(null);
 
                     var results = response.Brokers
@@ -243,30 +243,30 @@ namespace KafkaClient
 
                     if (results.Count == 0) return new RetryAttempt<MetadataResponse>(response);
                     foreach (var result in results.Where(r => !string.IsNullOrEmpty(r.Message))) {
-                        brokerRouter.Log.Warn(() => LogEvent.Create(result.Message));
+                        router.Log.Warn(() => LogEvent.Create(result.Message));
                     }
 
                     return RetryAttempt<MetadataResponse>.Retry;
                 },
-                (attempt, retry) => brokerRouter.Log.Warn(() => LogEvent.Create($"Failed metadata request on attempt {attempt}: Will retry in {retry}")),
+                (attempt, retry) => router.Log.Warn(() => LogEvent.Create($"Failed metadata request on attempt {attempt}: Will retry in {retry}")),
                 null, // return the failed response above, resulting in a null
                 (ex, attempt, retry) => {
                     throw ex.PrepareForRethrow();
                 },
-                (ex, attempt) => brokerRouter.Log.Warn(() => LogEvent.Create(ex, $"Failed metadata request on attempt {attempt}")),
+                (ex, attempt) => router.Log.Warn(() => LogEvent.Create(ex, $"Failed metadata request on attempt {attempt}")),
                 cancellationToken);
         }
 
-        private static async Task<MetadataResponse> GetMetadataAsync(this IBrokerRouter brokerRouter, MetadataRequest request, CancellationToken cancellationToken)
+        private static async Task<MetadataResponse> GetMetadataAsync(this IRouter router, MetadataRequest request, CancellationToken cancellationToken)
         {
             var servers = new List<string>();
-            foreach (var connection in brokerRouter.Connections) {
+            foreach (var connection in router.Connections) {
                 var server = connection.Endpoint?.ToString();
                 try {
                     return await connection.SendAsync(request, cancellationToken).ConfigureAwait(false);
                 } catch (Exception ex) {
                     servers.Add(server);
-                    brokerRouter.Log.Warn(() => LogEvent.Create(ex, $"Failed to contact {server}: Trying next server"));
+                    router.Log.Warn(() => LogEvent.Create(ex, $"Failed to contact {server}: Trying next server"));
                 }
             }
 

@@ -22,7 +22,7 @@ namespace KafkaClient.Tests
         [TestCase(1000, 1000)]
         public async Task SendAsyncShouldHandleHighVolumeOfMessages(int amount, int maxAsync)
         {
-            using (var router = new BrokerRouter(new KafkaOptions(TestConfig.IntegrationUri)))
+            using (var router = new Router(new KafkaOptions(TestConfig.IntegrationUri)))
                 using (var producer = new Producer(router, new ProducerConfiguration(maxAsync, amount / 2)))
                 {
                     var tasks = new Task<ProduceResponse.Topic>[amount];
@@ -51,9 +51,9 @@ namespace KafkaClient.Tests
         {
             var expected = totalMessages.Repeat(i => i.ToString()).ToList();
 
-            using (var router = new BrokerRouter(TestConfig.IntegrationUri, log: TestConfig.WarnLog)) {
+            using (var router = new Router(TestConfig.IntegrationUri, log: TestConfig.WarnLog)) {
                 using (var producer = new Producer(router, new ProducerConfiguration(batchSize: totalMessages / 10, batchMaxDelay: TimeSpan.FromMilliseconds(25)))) {
-                    var offset = await producer.BrokerRouter.GetTopicOffsetAsync(TestConfig.TopicName(), 0, CancellationToken.None);
+                    var offset = await producer.Router.GetTopicOffsetAsync(TestConfig.TopicName(), 0, CancellationToken.None);
 
                     var stopwatch = new Stopwatch();
                     stopwatch.Start();
