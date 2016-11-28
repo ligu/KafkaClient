@@ -545,7 +545,7 @@ namespace KafkaClient.Tests.Connections
             AutoResetEvent allEventAreArrived = new AutoResetEvent(false);
             var write = new ConcurrentBag<int>();
             int percent = 0;
-            var endpoint = Endpoint.Resolve(UnitConfig.ServerUri(), ConsoleLog.Singleton);
+            var endpoint = Endpoint.Resolve(UnitConfig.ServerUri(), new ConsoleLog(LogLevel.Warn));
             using (var server = new FakeTcpServer(ConsoleLog.Singleton, endpoint.IP.Port))
             using (var test = new TcpSocket(endpoint, log: ConsoleLog.Singleton))
             {
