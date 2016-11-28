@@ -367,7 +367,7 @@ namespace KafkaClient.Tests.Connections
         [Test]
         public async Task ShouldReconnectAfterLosingConnectionAndBeAbleToStartNewRead()
         {
-            var log = new ConsoleLog();
+            var log = new ConsoleLog(LogLevel.Info);
             var endpoint = Endpoint.Resolve(UnitConfig.ServerUri(), ConsoleLog.Singleton);
             using (var server = new FakeTcpServer(ConsoleLog.Singleton, endpoint.IP.Port))
             {

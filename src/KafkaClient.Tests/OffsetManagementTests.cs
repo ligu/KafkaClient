@@ -12,7 +12,7 @@ namespace KafkaClient.Tests
     [Category("Integration")]
     public class OffsetManagementTests
     {
-        private readonly KafkaOptions _options = new KafkaOptions(IntegrationConfig.IntegrationUri, log: new ConsoleLog());
+        private readonly KafkaOptions _options = new KafkaOptions(IntegrationConfig.IntegrationUri, log: IntegrationConfig.InfoLog);
 
         [SetUp]
         public void Setup()

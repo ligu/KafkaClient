@@ -153,7 +153,7 @@ namespace KafkaClient.Tests
         [Test]
         public async Task ShouldRecoverFromFailureByUpdateMetadataOnce() //Do not debug this test !!
         {
-            var log = new ConsoleLog();
+            var log = new ConsoleLog(LogLevel.Info);
             var routerProxy = new BrokerRouterProxy();
             routerProxy.CacheExpiration = TimeSpan.FromMilliseconds(1000);
             var router = routerProxy.Create();

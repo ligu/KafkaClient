@@ -27,7 +27,7 @@ namespace KafkaClient.Tests
         {
             _kafkaUri = IntegrationConfig.IntegrationUri;
             _config = new ConnectionConfiguration(TimeSpan.FromSeconds(10));
-            _options = new KafkaOptions(IntegrationConfig.IntegrationUri, _config, log: new ConsoleLog());
+            _options = new KafkaOptions(IntegrationConfig.IntegrationUri, _config, log: IntegrationConfig.InfoLog);
             _consumerConfig = new ConsumerConfiguration(maxPartitionFetchBytes: DefaultMaxMessageSetSize);
         }
 
@@ -178,7 +178,7 @@ namespace KafkaClient.Tests
         public async Task FetchMessagesOffsetBiggerThanLastOffsetInQueueTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
-            var brokerRouter = new BrokerRouter(_kafkaUri, new ConnectionFactory(), _config, log: new ConsoleLog());
+            var brokerRouter = new BrokerRouter(_kafkaUri, new ConnectionFactory(), _config, log: IntegrationConfig.InfoLog);
 
             var consumer = new Consumer(brokerRouter, _consumerConfig);
 
@@ -442,7 +442,7 @@ namespace KafkaClient.Tests
         public async Task FetchLastOffsetTopicDoesntExistTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
-            var brokerRouter = new BrokerRouter(_kafkaUri, new ConnectionFactory(), _config, log: new ConsoleLog());
+            var brokerRouter = new BrokerRouter(_kafkaUri, new ConnectionFactory(), _config, log: IntegrationConfig.InfoLog);
 
             var topic = IntegrationConfig.TopicName();
 

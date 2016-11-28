@@ -22,7 +22,7 @@ namespace KafkaClient.Tests.Connections
         [SetUp]
         public void Setup()
         {
-            var options = new KafkaOptions(IntegrationConfig.IntegrationUri, new ConnectionConfiguration(versionSupport: VersionSupport.Kafka8.MakeDynamic()), log: new ConsoleLog());
+            var options = new KafkaOptions(IntegrationConfig.IntegrationUri, new ConnectionConfiguration(versionSupport: VersionSupport.Kafka8.MakeDynamic()), log: IntegrationConfig.InfoLog);
             var endpoint = new ConnectionFactory().Resolve(options.ServerUris.First(), options.Log);
 
             _conn = new Connection(new TcpSocket(endpoint, options.ConnectionConfiguration), options.ConnectionConfiguration, IntegrationConfig.InfoLog);

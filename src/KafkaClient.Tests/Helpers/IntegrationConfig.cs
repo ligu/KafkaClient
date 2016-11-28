@@ -20,8 +20,7 @@ namespace KafkaClient.Tests.Helpers
 
         public static ILog InfoLog = new ConsoleLog(LogLevel.Info);
 
-        public static ILog DebugLog = new ConsoleLog();
-
+        //public static Uri IntegrationUri { get; } = new Uri("http://kafka1:9092");
         public static Uri IntegrationUri { get; } = new Uri("http://kafkaclient.westus.cloudapp.azure.com:9092");
     }
 }
