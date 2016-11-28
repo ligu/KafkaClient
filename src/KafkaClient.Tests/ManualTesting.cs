@@ -10,11 +10,9 @@ using NUnit.Framework;
 namespace KafkaClient.Tests
 {
     [TestFixture]
-    [Category("Integration")]
     internal class ManualTesting
     {
-        private readonly KafkaOptions _options = new KafkaOptions(IntegrationConfig.IntegrationUri, log: new ConsoleLog(LogLevel.Warn));
-        public readonly ILog Log = new ConsoleLog(LogLevel.Debug);
+        private readonly KafkaOptions _options = new KafkaOptions(TestConfig.IntegrationUri, log: TestConfig.WarnLog);
 
         /// <summary>
         /// These tests are for manual run. You need to stop the partition leader and then start it again and let it became the leader.        
@@ -57,7 +55,7 @@ namespace KafkaClient.Tests
                     await producer.SendMessageAsync(new Message((++id).ToString()), topicName, partitionId, CancellationToken.None);
                     await Task.Delay(100);
                 } catch (Exception ex) {
-                    Log.Info(() => LogEvent.Create(ex, "can't send:"));
+                    TestConfig.InfoLog.Info(() => LogEvent.Create(ex, "can't send:"));
                 }
             }
         }
@@ -70,14 +68,14 @@ namespace KafkaClient.Tests
 
                     if (messages.Any()) {
                         foreach (var message in messages) {
-                            Log.Info(() => LogEvent.Create($"Offset{message.Offset}"));
+                            TestConfig.InfoLog.Info(() => LogEvent.Create($"Offset{message.Offset}"));
                         }
                         offset = messages.Max(x => x.Offset) + 3;
                     } else {
                         await Task.Delay(100);
                     }
                 } catch (Exception ex) {
-                    Log.Info(() => LogEvent.Create(ex, "can't read:"));
+                    TestConfig.InfoLog.Info(() => LogEvent.Create(ex, "can't read:"));
                 }
             }
         }

@@ -17,12 +17,12 @@ namespace KafkaClient.Tests
         [Test]
         public async Task ProducerAckLevel()
         {
-            using (var router = new BrokerRouter(IntegrationConfig.IntegrationUri, log: IntegrationConfig.InfoLog ))
+            using (var router = new BrokerRouter(TestConfig.IntegrationUri, log: TestConfig.InfoLog ))
             using (var producer = new Producer(router))
             {
-                var responseAckLevel0 = await producer.SendMessageAsync(new Message("Ack Level 0"), IntegrationConfig.TopicName(), 0, new SendMessageConfiguration(acks: 0), CancellationToken.None);
+                var responseAckLevel0 = await producer.SendMessageAsync(new Message("Ack Level 0"), TestConfig.TopicName(), 0, new SendMessageConfiguration(acks: 0), CancellationToken.None);
                 Assert.AreEqual(responseAckLevel0.Offset, -1);
-                var responseAckLevel1 = await producer.SendMessageAsync(new Message("Ack Level 1"), IntegrationConfig.TopicName(), 0, new SendMessageConfiguration(acks: 1), CancellationToken.None);
+                var responseAckLevel1 = await producer.SendMessageAsync(new Message("Ack Level 1"), TestConfig.TopicName(), 0, new SendMessageConfiguration(acks: 1), CancellationToken.None);
                 Assert.That(responseAckLevel1.Offset, Is.GreaterThan(-1));
             }
         }
@@ -30,11 +30,11 @@ namespace KafkaClient.Tests
         [Test]
         public async Task ProducerAckLevel1ResponseOffsetShouldBeEqualToLastOffset()
         {
-            using (var router = new BrokerRouter(IntegrationConfig.IntegrationUri, log: IntegrationConfig.InfoLog ))
+            using (var router = new BrokerRouter(TestConfig.IntegrationUri, log: TestConfig.InfoLog ))
             using (var producer = new Producer(router))
             {
-                var responseAckLevel1 = await producer.SendMessageAsync(new Message("Ack Level 1"), IntegrationConfig.TopicName(), 0, new SendMessageConfiguration(acks: 1), CancellationToken.None);
-                var offsetResponse = await producer.BrokerRouter.GetTopicOffsetsAsync(IntegrationConfig.TopicName(), CancellationToken.None);
+                var responseAckLevel1 = await producer.SendMessageAsync(new Message("Ack Level 1"), TestConfig.TopicName(), 0, new SendMessageConfiguration(acks: 1), CancellationToken.None);
+                var offsetResponse = await producer.BrokerRouter.GetTopicOffsetsAsync(TestConfig.TopicName(), CancellationToken.None);
                 var maxOffset = offsetResponse.First(x => x.PartitionId == 0);
                 Assert.AreEqual(responseAckLevel1.Offset, maxOffset.Offset - 1);
             }
@@ -43,11 +43,11 @@ namespace KafkaClient.Tests
         [Test]
         public async Task ProducerLastResposeOffsetAckLevel1ShouldBeEqualsToLastOffset()
         {
-            using (var router = new BrokerRouter(IntegrationConfig.IntegrationUri, log: IntegrationConfig.InfoLog ))
+            using (var router = new BrokerRouter(TestConfig.IntegrationUri, log: TestConfig.InfoLog ))
             using (var producer = new Producer(router))
             {
-                var responseAckLevel1 = await producer.SendMessagesAsync(new [] { new Message("Ack Level 1"), new Message("Ack Level 1") }, IntegrationConfig.TopicName(), 0, new SendMessageConfiguration(acks: 1), CancellationToken.None);
-                var offsetResponse = await producer.BrokerRouter.GetTopicOffsetsAsync(IntegrationConfig.TopicName(), CancellationToken.None);
+                var responseAckLevel1 = await producer.SendMessagesAsync(new [] { new Message("Ack Level 1"), new Message("Ack Level 1") }, TestConfig.TopicName(), 0, new SendMessageConfiguration(acks: 1), CancellationToken.None);
+                var offsetResponse = await producer.BrokerRouter.GetTopicOffsetsAsync(TestConfig.TopicName(), CancellationToken.None);
                 var maxOffset = offsetResponse.First(x => x.PartitionId == 0);
 
                 Assert.AreEqual(responseAckLevel1.Last().Offset, maxOffset.Offset - 1);
@@ -60,16 +60,16 @@ namespace KafkaClient.Tests
             long offsetResponse;
             var messge = Guid.NewGuid();
 
-            using (var router = new BrokerRouter(IntegrationConfig.IntegrationUri, log: IntegrationConfig.InfoLog)) {
+            using (var router = new BrokerRouter(TestConfig.IntegrationUri, log: TestConfig.InfoLog)) {
                 using (var producer = new Producer(router)) {
-                    var responseAckLevel1 = await producer.SendMessageAsync(new Message(messge.ToString()), IntegrationConfig.TopicName(), 0, new SendMessageConfiguration(acks: 1), CancellationToken.None);
+                    var responseAckLevel1 = await producer.SendMessageAsync(new Message(messge.ToString()), TestConfig.TopicName(), 0, new SendMessageConfiguration(acks: 1), CancellationToken.None);
                     offsetResponse = responseAckLevel1.Offset;
                 }
             }
 
-            using (var router = new BrokerRouter(IntegrationConfig.IntegrationUri, log: IntegrationConfig.InfoLog)) {
+            using (var router = new BrokerRouter(TestConfig.IntegrationUri, log: TestConfig.InfoLog)) {
                 using (var consumer = new Consumer(router, new ConsumerConfiguration(maxServerWait: TimeSpan.Zero))) {
-                    var result = await consumer.FetchMessagesAsync(IntegrationConfig.TopicName(), 0, offsetResponse, 1, CancellationToken.None);
+                    var result = await consumer.FetchMessagesAsync(TestConfig.TopicName(), 0, offsetResponse, 1, CancellationToken.None);
                     Assert.AreEqual(messge.ToString(), result[0].Value.ToUtf8String());
                 }
             }
@@ -83,17 +83,17 @@ namespace KafkaClient.Tests
             var expected = totalMessages.Repeat(i => i.ToString()).ToList();
             var testId = Guid.NewGuid().ToString();
 
-            using (var router = new BrokerRouter(IntegrationConfig.IntegrationUri, log: IntegrationConfig.InfoLog )) {
+            using (var router = new BrokerRouter(TestConfig.IntegrationUri, log: TestConfig.InfoLog )) {
                 using (var producer = new Producer(router)) {
-                    var offset = await producer.BrokerRouter.GetTopicOffsetAsync(IntegrationConfig.TopicName(), 0, CancellationToken.None);
+                    var offset = await producer.BrokerRouter.GetTopicOffsetAsync(TestConfig.TopicName(), 0, CancellationToken.None);
 
                     for (var i = 0; i < sends; i++) {
                         if (messagesPerSend == 1) {
-                            await producer.SendMessageAsync(new Message(i.ToString(), testId), IntegrationConfig.TopicName(), 0, CancellationToken.None);
+                            await producer.SendMessageAsync(new Message(i.ToString(), testId), TestConfig.TopicName(), 0, CancellationToken.None);
                         } else {
                             var current = i * messagesPerSend;
                             var messages = messagesPerSend.Repeat(_ => new Message((current + _).ToString(), testId)).ToList();
-                            await producer.SendMessagesAsync(messages, IntegrationConfig.TopicName(), 0, CancellationToken.None);
+                            await producer.SendMessagesAsync(messages, TestConfig.TopicName(), 0, CancellationToken.None);
                         }
                     }
 
@@ -101,7 +101,7 @@ namespace KafkaClient.Tests
                         var results = await consumer.FetchMessagesAsync(offset, totalMessages, CancellationToken.None);
 
                         //ensure the produced messages arrived
-                        IntegrationConfig.InfoLog.Info(() => LogEvent.Create($"Message order:  {string.Join(", ", results.Select(x => x.Value.ToUtf8String()).ToList())}"));
+                        TestConfig.InfoLog.Info(() => LogEvent.Create($"Message order:  {string.Join(", ", results.Select(x => x.Value.ToUtf8String()).ToList())}"));
 
                         Assert.That(results.Count, Is.EqualTo(totalMessages));
                         Assert.That(results.Select(x => x.Value.ToUtf8String()).ToList(), Is.EqualTo(expected), "Expected the message list in the correct order.");
@@ -118,26 +118,26 @@ namespace KafkaClient.Tests
 
             var testId = Guid.NewGuid().ToString();
 
-            using (var router = new BrokerRouter(IntegrationConfig.IntegrationUri, log: IntegrationConfig.InfoLog )) {
+            using (var router = new BrokerRouter(TestConfig.IntegrationUri, log: TestConfig.InfoLog )) {
                 using (var producer = new Producer(router)) {
-                    var offset = await producer.BrokerRouter.GetTopicOffsetAsync(IntegrationConfig.TopicName(), 0, CancellationToken.None);
+                    var offset = await producer.BrokerRouter.GetTopicOffsetAsync(TestConfig.TopicName(), 0, CancellationToken.None);
 
                     for (var i = 0; i < sends; i++) {
                         if (messagesPerSend == 1) {
-                            await producer.SendMessageAsync(new Message(i.ToString(), testId), IntegrationConfig.TopicName(), 0, CancellationToken.None);
+                            await producer.SendMessageAsync(new Message(i.ToString(), testId), TestConfig.TopicName(), 0, CancellationToken.None);
                         } else {
                             var current = i * messagesPerSend;
                             var messages = messagesPerSend.Repeat(_ => new Message((current + _).ToString(), testId)).ToList();
-                            await producer.SendMessagesAsync(messages, IntegrationConfig.TopicName(), 0, CancellationToken.None);
+                            await producer.SendMessagesAsync(messages, TestConfig.TopicName(), 0, CancellationToken.None);
                         }
                     }
 
                     using (var consumer = new Consumer(router, new ConsumerConfiguration(maxServerWait: TimeSpan.Zero))) {
                         var results1 = await consumer.FetchMessagesAsync(offset, totalMessages, CancellationToken.None);
-                        IntegrationConfig.InfoLog.Info(() => LogEvent.Create($"Message order:  {string.Join(", ", results1.Select(x => x.Value.ToUtf8String()).ToList())}"));
+                        TestConfig.InfoLog.Info(() => LogEvent.Create($"Message order:  {string.Join(", ", results1.Select(x => x.Value.ToUtf8String()).ToList())}"));
 
                         var results2 = await consumer.FetchMessagesAsync(offset, totalMessages, CancellationToken.None);
-                        IntegrationConfig.InfoLog.Info(() => LogEvent.Create($"Message order:  {string.Join(", ", results2.Select(x => x.Value.ToUtf8String()).ToList())}"));
+                        TestConfig.InfoLog.Info(() => LogEvent.Create($"Message order:  {string.Join(", ", results2.Select(x => x.Value.ToUtf8String()).ToList())}"));
 
                         Assert.That(results1.Count, Is.EqualTo(totalMessages));
                         Assert.That(results1.Count, Is.EqualTo(results2.Count));
@@ -154,17 +154,17 @@ namespace KafkaClient.Tests
             var expected = totalMessages.Repeat(i => i.ToString()).ToList();
             var testId = Guid.NewGuid().ToString();
 
-            using (var router = new BrokerRouter(IntegrationConfig.IntegrationUri, log: IntegrationConfig.InfoLog )) {
+            using (var router = new BrokerRouter(TestConfig.IntegrationUri, log: TestConfig.InfoLog )) {
                 using (var producer = new Producer(router)) {
-                    var offset = await producer.BrokerRouter.GetTopicOffsetAsync(IntegrationConfig.TopicName(), 0, CancellationToken.None);
+                    var offset = await producer.BrokerRouter.GetTopicOffsetAsync(TestConfig.TopicName(), 0, CancellationToken.None);
 
                     for (var i = 0; i < totalMessages; i++) {
-                        await producer.SendMessageAsync(new Message(i.ToString(), testId), IntegrationConfig.TopicName(), 0, CancellationToken.None);
+                        await producer.SendMessageAsync(new Message(i.ToString(), testId), TestConfig.TopicName(), 0, CancellationToken.None);
                     }
 
                     using (var consumer = new Consumer(router, new ConsumerConfiguration(maxServerWait: TimeSpan.Zero))) {
                         var results = await consumer.FetchMessagesAsync(offset, totalMessages, CancellationToken.None);
-                        IntegrationConfig.InfoLog.Info(() => LogEvent.Create($"Message order:  {string.Join(", ", results.Select(x => x.Value.ToUtf8String()).ToList())}"));
+                        TestConfig.InfoLog.Info(() => LogEvent.Create($"Message order:  {string.Join(", ", results.Select(x => x.Value.ToUtf8String()).ToList())}"));
 
                         Assert.That(results.Count, Is.EqualTo(totalMessages));
                         Assert.That(results.Select(x => x.Value.ToUtf8String()).ToList(), Is.EqualTo(expected), "Expected the message list in the correct order.");
@@ -183,8 +183,8 @@ namespace KafkaClient.Tests
             partitionSelector.Select(null, null)
                              .ReturnsForAnyArgs(_ => _.Arg<MetadataResponse.Topic>().Partitions.Single(p => p.PartitionId == 1));
 
-            using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri, partitionSelector: partitionSelector))) {
-                var offset = await router.GetTopicOffsetAsync(IntegrationConfig.TopicName(), 0, CancellationToken.None);
+            using (var router = new BrokerRouter(new KafkaOptions(TestConfig.IntegrationUri, partitionSelector: partitionSelector))) {
+                var offset = await router.GetTopicOffsetAsync(TestConfig.TopicName(), 0, CancellationToken.None);
                 using (var producer = new Producer(router)) {
 
                     //message should send to PartitionId and not use the key to Select Broker Route !!
@@ -215,18 +215,18 @@ namespace KafkaClient.Tests
         {
             var testId = Guid.NewGuid().ToString();
 
-            using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri)))
+            using (var router = new BrokerRouter(new KafkaOptions(TestConfig.IntegrationUri)))
             using (var producer = new Producer(router))
             {
-                var offsets = producer.BrokerRouter.GetTopicOffsetsAsync(IntegrationConfig.TopicName(), CancellationToken.None).Result;
+                var offsets = producer.BrokerRouter.GetTopicOffsetsAsync(TestConfig.TopicName(), CancellationToken.None).Result;
 
                 //create consumer with buffer size of 1 (should block upstream)
-                using (var consumer = new OldConsumer(new ConsumerOptions(IntegrationConfig.TopicName(), router) { ConsumerBufferSize = 1, MaxWaitTimeForMinimumBytes = TimeSpan.Zero },
+                using (var consumer = new OldConsumer(new ConsumerOptions(TestConfig.TopicName(), router) { ConsumerBufferSize = 1, MaxWaitTimeForMinimumBytes = TimeSpan.Zero },
                       offsets.Select(x => new OffsetPosition(x.PartitionId, x.Offset)).ToArray()))
                 {
                     for (var i = 0; i < 20; i++)
                     {
-                        producer.SendMessageAsync(new Message(i.ToString(), testId), IntegrationConfig.TopicName(), CancellationToken.None).Wait();
+                        producer.SendMessageAsync(new Message(i.ToString(), testId), TestConfig.TopicName(), CancellationToken.None).Wait();
                     }
 
                     for (var i = 0; i < 20; i++)
@@ -243,20 +243,20 @@ namespace KafkaClient.Tests
         public async Task ConsumerShouldMoveToNextAvailableOffsetWhenQueryingForNextMessage()
         {
             const int expectedCount = 1000;
-            var options = new KafkaOptions(IntegrationConfig.IntegrationUri);
+            var options = new KafkaOptions(TestConfig.IntegrationUri);
 
             using (var producerRouter = new BrokerRouter(options))
             using (var producer = new Producer(producerRouter))
             {
                 //get current offset and reset consumer to top of log
-                var offsets = await producer.BrokerRouter.GetTopicOffsetsAsync(IntegrationConfig.TopicName(), CancellationToken.None).ConfigureAwait(false);
+                var offsets = await producer.BrokerRouter.GetTopicOffsetsAsync(TestConfig.TopicName(), CancellationToken.None).ConfigureAwait(false);
 
                 using (var consumerRouter = new BrokerRouter(options))
-                using (var consumer = new OldConsumer(new ConsumerOptions(IntegrationConfig.TopicName(), consumerRouter) { MaxWaitTimeForMinimumBytes = TimeSpan.Zero },
+                using (var consumer = new OldConsumer(new ConsumerOptions(TestConfig.TopicName(), consumerRouter) { MaxWaitTimeForMinimumBytes = TimeSpan.Zero },
                      offsets.Select(x => new OffsetPosition(x.PartitionId, x.Offset)).ToArray()))
                 {
                     Console.WriteLine("Sending {0} test messages", expectedCount);
-                    var response = await producer.SendMessagesAsync(Enumerable.Range(0, expectedCount).Select(x => new Message(x.ToString())), IntegrationConfig.TopicName(), CancellationToken.None);
+                    var response = await producer.SendMessagesAsync(Enumerable.Range(0, expectedCount).Select(x => new Message(x.ToString())), TestConfig.TopicName(), CancellationToken.None);
 
                     Assert.That(response.Any(x => x.ErrorCode != (int)ErrorResponseCode.None), Is.False, "Error occured sending test messages to server.");
 
@@ -267,7 +267,7 @@ namespace KafkaClient.Tests
 
                     var consumerOffset = consumer.GetOffsetPosition().OrderBy(x => x.PartitionId).ToList();
 
-                    var serverOffset = await producer.BrokerRouter.GetTopicOffsetsAsync(IntegrationConfig.TopicName(), CancellationToken.None).ConfigureAwait(false);
+                    var serverOffset = await producer.BrokerRouter.GetTopicOffsetsAsync(TestConfig.TopicName(), CancellationToken.None).ConfigureAwait(false);
                     var positionOffset = serverOffset.Select(x => new OffsetPosition(x.PartitionId, x.Offset))
                         .OrderBy(x => x.PartitionId)
                         .ToList();

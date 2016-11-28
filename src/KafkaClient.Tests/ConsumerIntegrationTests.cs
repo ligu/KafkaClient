@@ -25,9 +25,9 @@ namespace KafkaClient.Tests
 
         public ConsumerIntegrationTests()
         {
-            _kafkaUri = IntegrationConfig.IntegrationUri;
+            _kafkaUri = TestConfig.IntegrationUri;
             _config = new ConnectionConfiguration(TimeSpan.FromSeconds(10));
-            _options = new KafkaOptions(IntegrationConfig.IntegrationUri, _config, log: IntegrationConfig.InfoLog);
+            _options = new KafkaOptions(TestConfig.IntegrationUri, _config, log: TestConfig.InfoLog);
             _consumerConfig = new ConsumerConfiguration(maxPartitionFetchBytes: DefaultMaxMessageSetSize);
         }
 
@@ -35,18 +35,18 @@ namespace KafkaClient.Tests
         public async Task CanFetch()
         {
             int partitionId = 0;
-            var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri));
+            var router = new BrokerRouter(new KafkaOptions(TestConfig.IntegrationUri));
 
             var producer = new Producer(router);
             string messageValue = Guid.NewGuid().ToString();
-            var response = await producer.SendMessageAsync(new Message(messageValue), IntegrationConfig.TopicName(), partitionId, CancellationToken.None);
+            var response = await producer.SendMessageAsync(new Message(messageValue), TestConfig.TopicName(), partitionId, CancellationToken.None);
             var offset = response.Offset;
 
-            var fetch = new FetchRequest.Topic(IntegrationConfig.TopicName(), partitionId, offset, 32000);
+            var fetch = new FetchRequest.Topic(TestConfig.TopicName(), partitionId, offset, 32000);
 
             var fetchRequest = new FetchRequest(fetch, minBytes: 10);
 
-            var r = await router.SendAsync(fetchRequest, IntegrationConfig.TopicName(), partitionId, CancellationToken.None);
+            var r = await router.SendAsync(fetchRequest, TestConfig.TopicName(), partitionId, CancellationToken.None);
             Assert.IsTrue(r.Topics.First().Messages.First().Value.ToUtf8String() == messageValue);
         }
 
@@ -81,7 +81,7 @@ namespace KafkaClient.Tests
             var brokerRouter = new BrokerRouter(_options);
 
             var producer = new Producer(brokerRouter);
-            var topic = IntegrationConfig.TopicName();
+            var topic = TestConfig.TopicName();
             var consumer = new Consumer(brokerRouter, _consumerConfig);
 
             var offset = await brokerRouter.GetTopicOffsetAsync(topic, _partitionId, CancellationToken.None);
@@ -109,7 +109,7 @@ namespace KafkaClient.Tests
             var brokerRouter = new BrokerRouter(_options);
 
             var producer = new Producer(brokerRouter);
-            var topic = IntegrationConfig.TopicName();
+            var topic = TestConfig.TopicName();
             var consumer = new Consumer(brokerRouter, _consumerConfig);
 
             var offset = await brokerRouter.GetTopicOffsetAsync(topic, _partitionId, CancellationToken.None);
@@ -137,7 +137,7 @@ namespace KafkaClient.Tests
             var brokerRouter = new BrokerRouter(_options);
 
             var producer = new Producer(brokerRouter);
-            var topic = IntegrationConfig.TopicName();
+            var topic = TestConfig.TopicName();
             var consumer = new Consumer(brokerRouter, _consumerConfig);
 
             var offset = await brokerRouter.GetTopicOffsetAsync(topic, _partitionId, CancellationToken.None);
@@ -166,7 +166,7 @@ namespace KafkaClient.Tests
 
             var consumer = new Consumer(brokerRouter, _consumerConfig);
 
-            var offset = await brokerRouter.GetTopicOffsetAsync(IntegrationConfig.TopicName(), _partitionId, CancellationToken.None);
+            var offset = await brokerRouter.GetTopicOffsetAsync(TestConfig.TopicName(), _partitionId, CancellationToken.None);
 
             // Now let's consume
             var result = (await consumer.FetchMessagesAsync(offset, 5, CancellationToken.None)).ToList();
@@ -178,11 +178,11 @@ namespace KafkaClient.Tests
         public async Task FetchMessagesOffsetBiggerThanLastOffsetInQueueTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
-            var brokerRouter = new BrokerRouter(_kafkaUri, new ConnectionFactory(), _config, log: IntegrationConfig.InfoLog);
+            var brokerRouter = new BrokerRouter(_kafkaUri, new ConnectionFactory(), _config, log: TestConfig.InfoLog);
 
             var consumer = new Consumer(brokerRouter, _consumerConfig);
 
-            var offset = await brokerRouter.GetTopicOffsetAsync(IntegrationConfig.TopicName(), _partitionId, CancellationToken.None);
+            var offset = await brokerRouter.GetTopicOffsetAsync(TestConfig.TopicName(), _partitionId, CancellationToken.None);
 
             try {
                 // Now let's consume
@@ -204,7 +204,7 @@ namespace KafkaClient.Tests
             var offset = -1;
 
             // Now let's consume
-            Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await consumer.FetchMessagesAsync(IntegrationConfig.TopicName(), _partitionId, offset, 5, CancellationToken.None));
+            Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await consumer.FetchMessagesAsync(TestConfig.TopicName(), _partitionId, offset, 5, CancellationToken.None));
         }
 
         [Test]
@@ -213,7 +213,7 @@ namespace KafkaClient.Tests
             // Creating a broker router and a protocol gateway for the producer and consumer
             var brokerRouter = new BrokerRouter(_kafkaUri, new ConnectionFactory(), _config);
 
-            var topic = IntegrationConfig.TopicName();
+            var topic = TestConfig.TopicName();
 
             var consumer = new Consumer(brokerRouter, new ConsumerConfiguration(maxPartitionFetchBytes: DefaultMaxMessageSetSize * 2));
 
@@ -229,7 +229,7 @@ namespace KafkaClient.Tests
             // Creating a broker router and a protocol gateway for the producer and consumer
             var brokerRouter = new BrokerRouter(_kafkaUri, new ConnectionFactory(), _config);
             var partitionId = 100;
-            var topic = IntegrationConfig.TopicName();
+            var topic = TestConfig.TopicName();
 
             var consumer = new Consumer(brokerRouter, new ConsumerConfiguration(maxPartitionFetchBytes: DefaultMaxMessageSetSize * 2));
 
@@ -247,7 +247,7 @@ namespace KafkaClient.Tests
             var smallMessageSet = 4096 / 2;
 
             var producer = new Producer(brokerRouter);
-            var topic = IntegrationConfig.TopicName();
+            var topic = TestConfig.TopicName();
             var consumer = new Consumer(brokerRouter, new ConsumerConfiguration(maxPartitionFetchBytes: smallMessageSet));
 
             var offset = await brokerRouter.GetTopicOffsetAsync(topic, _partitionId, CancellationToken.None);
@@ -274,7 +274,7 @@ namespace KafkaClient.Tests
             var partitionId = 0;
             var consumerGroup = Guid.NewGuid().ToString();
 
-            var topicName = IntegrationConfig.TopicName();
+            var topicName = TestConfig.TopicName();
             await brokerRouter.GetTopicOffsetAsync(topicName, partitionId, consumerGroup, CancellationToken.None);
         }
 
@@ -284,9 +284,9 @@ namespace KafkaClient.Tests
             // Creating a broker router and a protocol gateway for the producer and consumer
             var brokerRouter = new BrokerRouter(_kafkaUri, new ConnectionFactory(), _config);
             var partitionId = 100;
-            var consumerGroup = IntegrationConfig.ConsumerName();
+            var consumerGroup = TestConfig.ConsumerName();
 
-            var topicName = IntegrationConfig.TopicName();
+            var topicName = TestConfig.TopicName();
             Assert.ThrowsAsync<CachedMetadataException>(async () => await brokerRouter.GetTopicOffsetAsync(topicName, partitionId, consumerGroup, CancellationToken.None));
         }
 
@@ -296,8 +296,8 @@ namespace KafkaClient.Tests
             // Creating a broker router and a protocol gateway for the producer and consumer
             var brokerRouter = new BrokerRouter(_kafkaUri, new ConnectionFactory(), _config);
 
-            var topic = IntegrationConfig.TopicName();
-            var consumerGroup = IntegrationConfig.ConsumerName();
+            var topic = TestConfig.TopicName();
+            var consumerGroup = TestConfig.ConsumerName();
 
             await brokerRouter.GetTopicOffsetAsync(topic, _partitionId, consumerGroup, CancellationToken.None);
         }
@@ -308,11 +308,11 @@ namespace KafkaClient.Tests
             // Creating a broker router and a protocol gateway for the producer and consumer
             var brokerRouter = new BrokerRouter(_kafkaUri, new ConnectionFactory(), _config);
             var partitionId = 0;
-            var consumerGroup = IntegrationConfig.ConsumerName();
+            var consumerGroup = TestConfig.ConsumerName();
 
             var offset = 5L;
 
-            var topicName = IntegrationConfig.TopicName();
+            var topicName = TestConfig.TopicName();
             await brokerRouter.CommitTopicOffsetAsync(topicName, partitionId, consumerGroup, offset, CancellationToken.None);
             var res = await brokerRouter.GetTopicOffsetAsync(topicName, _partitionId, consumerGroup, CancellationToken.None);
 
@@ -325,9 +325,9 @@ namespace KafkaClient.Tests
             // Creating a broker router and a protocol gateway for the producer and consumer
             var brokerRouter = new BrokerRouter(_kafkaUri, new ConnectionFactory(), _config);
             var partitionId = 0;
-            var consumerGroup = IntegrationConfig.ConsumerName();
+            var consumerGroup = TestConfig.ConsumerName();
 
-            var topicName = IntegrationConfig.TopicName();
+            var topicName = TestConfig.TopicName();
 
             var offset = 5;
 
@@ -341,9 +341,9 @@ namespace KafkaClient.Tests
             // Creating a broker router and a protocol gateway for the producer and consumer
             var brokerRouter = new BrokerRouter(_kafkaUri, new ConnectionFactory(), _config);
             var partitionId = 0;
-            var consumerGroup = IntegrationConfig.ConsumerName();
+            var consumerGroup = TestConfig.ConsumerName();
 
-            var topicName = IntegrationConfig.TopicName();
+            var topicName = TestConfig.TopicName();
             var offest = 5;
             var newOffset = 10;
 
@@ -366,7 +366,7 @@ namespace KafkaClient.Tests
             var partitionId = 100;
             var consumerGroup = Guid.NewGuid().ToString();
 
-            var topicName = IntegrationConfig.TopicName();
+            var topicName = TestConfig.TopicName();
 
             var offest = 5;
 
@@ -379,8 +379,8 @@ namespace KafkaClient.Tests
             // Creating a broker router and a protocol gateway for the producer and consumer
             var brokerRouter = new BrokerRouter(_kafkaUri, new ConnectionFactory(), _config);
             var partitionId = 0;
-            var topic = IntegrationConfig.TopicName();
-            var consumerGroup = IntegrationConfig.ConsumerName();
+            var topic = TestConfig.TopicName();
+            var consumerGroup = TestConfig.ConsumerName();
 
             var offest = 5;
 
@@ -393,7 +393,7 @@ namespace KafkaClient.Tests
             // Creating a broker router and a protocol gateway for the producer and consumer
             var brokerRouter = new BrokerRouter(_kafkaUri, new ConnectionFactory(), _config);
             var partitionId = 0;
-            var topic = IntegrationConfig.TopicName();
+            var topic = TestConfig.TopicName();
 
             var offest = 5;
 
@@ -406,8 +406,8 @@ namespace KafkaClient.Tests
             // Creating a broker router and a protocol gateway for the producer and consumer
             var brokerRouter = new BrokerRouter(_kafkaUri, new ConnectionFactory(), _config);
             var partitionId = 0;
-            var topic = IntegrationConfig.TopicName();
-            var consumerGroup = IntegrationConfig.ConsumerName();
+            var topic = TestConfig.TopicName();
+            var consumerGroup = TestConfig.ConsumerName();
 
             var offest = -5;
 
@@ -420,7 +420,7 @@ namespace KafkaClient.Tests
             // Creating a broker router and a protocol gateway for the producer and consumer
             var brokerRouter = new BrokerRouter(_kafkaUri, new ConnectionFactory(), _config);
 
-            var topic = IntegrationConfig.TopicName();
+            var topic = TestConfig.TopicName();
 
             var offset = await brokerRouter.GetTopicOffsetAsync(topic, _partitionId, CancellationToken.None);
 
@@ -433,7 +433,7 @@ namespace KafkaClient.Tests
             // Creating a broker router and a protocol gateway for the producer and consumer
             var brokerRouter = new BrokerRouter(_kafkaUri, new ConnectionFactory(), _config);
             var partitionId = 100;
-            var topic = IntegrationConfig.TopicName();
+            var topic = TestConfig.TopicName();
 
             Assert.ThrowsAsync<CachedMetadataException>(async () => await brokerRouter.GetTopicOffsetAsync(topic, partitionId, CancellationToken.None));
         }
@@ -442,9 +442,9 @@ namespace KafkaClient.Tests
         public async Task FetchLastOffsetTopicDoesntExistTest()
         {
             // Creating a broker router and a protocol gateway for the producer and consumer
-            var brokerRouter = new BrokerRouter(_kafkaUri, new ConnectionFactory(), _config, log: IntegrationConfig.InfoLog);
+            var brokerRouter = new BrokerRouter(_kafkaUri, new ConnectionFactory(), _config, log: TestConfig.InfoLog);
 
-            var topic = IntegrationConfig.TopicName();
+            var topic = TestConfig.TopicName();
 
             await brokerRouter.GetTopicOffsetAsync(topic, _partitionId, CancellationToken.None);
         }

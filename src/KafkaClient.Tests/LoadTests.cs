@@ -22,13 +22,13 @@ namespace KafkaClient.Tests
         [TestCase(1000, 1000)]
         public async Task SendAsyncShouldHandleHighVolumeOfMessages(int amount, int maxAsync)
         {
-            using (var router = new BrokerRouter(new KafkaOptions(IntegrationConfig.IntegrationUri)))
+            using (var router = new BrokerRouter(new KafkaOptions(TestConfig.IntegrationUri)))
                 using (var producer = new Producer(router, new ProducerConfiguration(maxAsync, amount / 2)))
                 {
                     var tasks = new Task<ProduceResponse.Topic>[amount];
 
                     for (var i = 0; i < amount; i++) {
-                        tasks[i] = producer.SendMessageAsync(new Message(Guid.NewGuid().ToString()), IntegrationConfig.TopicName(), CancellationToken.None);
+                        tasks[i] = producer.SendMessageAsync(new Message(Guid.NewGuid().ToString()), TestConfig.TopicName(), CancellationToken.None);
                     }
                     var results = await Task.WhenAll(tasks.ToArray());
 
@@ -51,9 +51,9 @@ namespace KafkaClient.Tests
         {
             var expected = totalMessages.Repeat(i => i.ToString()).ToList();
 
-            using (var router = new BrokerRouter(IntegrationConfig.IntegrationUri, log: IntegrationConfig.WarnLog)) {
+            using (var router = new BrokerRouter(TestConfig.IntegrationUri, log: TestConfig.WarnLog)) {
                 using (var producer = new Producer(router, new ProducerConfiguration(batchSize: totalMessages / 10, batchMaxDelay: TimeSpan.FromMilliseconds(25)))) {
-                    var offset = await producer.BrokerRouter.GetTopicOffsetAsync(IntegrationConfig.TopicName(), 0, CancellationToken.None);
+                    var offset = await producer.BrokerRouter.GetTopicOffsetAsync(TestConfig.TopicName(), 0, CancellationToken.None);
 
                     var stopwatch = new Stopwatch();
                     stopwatch.Start();
@@ -71,7 +71,7 @@ namespace KafkaClient.Tests
                         Assert.Inconclusive($"Only finished sending {completed} of {totalMessages} in {timeoutInMs} ms.");
                     }
                     await doneSend;
-                    IntegrationConfig.InfoLog.Info(() => LogEvent.Create($">> done send, time Milliseconds:{stopwatch.ElapsedMilliseconds}"));
+                    TestConfig.InfoLog.Info(() => LogEvent.Create($">> done send, time Milliseconds:{stopwatch.ElapsedMilliseconds}"));
                     stopwatch.Restart();
 
                     using (var consumer = new Consumer(router, new ConsumerConfiguration(maxServerWait: TimeSpan.Zero))) {
@@ -88,7 +88,7 @@ namespace KafkaClient.Tests
                             fetched = fetched.AddRange(results);
                         }
                         stopwatch.Stop();
-                        IntegrationConfig.InfoLog.Info(() => LogEvent.Create($">> done Consume, time Milliseconds:{stopwatch.ElapsedMilliseconds}"));
+                        TestConfig.InfoLog.Info(() => LogEvent.Create($">> done Consume, time Milliseconds:{stopwatch.ElapsedMilliseconds}"));
 
 //                        Assert.That(fetched.Select(x => x.Value.ToUtf8String()).ToList(), Is.EqualTo(expected), "Expected the message list in the correct order.");
                         Assert.That(fetched.Count, Is.EqualTo(totalMessages));

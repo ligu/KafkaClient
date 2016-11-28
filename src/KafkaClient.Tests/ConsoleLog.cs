@@ -18,14 +18,6 @@ namespace KafkaClient.Tests
             _minLevel = minLevel;
         }
 
-        public ConsoleLog() : this (LogLevel.Debug)
-        {
-        }
-
-        // ReSharper disable once InconsistentNaming
-        private static readonly Lazy<ConsoleLog> _singleton = new Lazy<ConsoleLog>();
-        public static ConsoleLog Singleton => _singleton.Value;
-
         public void Write(LogLevel level, Func<LogEvent> producer)
         {
             if (level < _minLevel) return;

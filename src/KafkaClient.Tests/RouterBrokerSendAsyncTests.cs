@@ -6,6 +6,7 @@ using KafkaClient.Common;
 using KafkaClient.Connections;
 using KafkaClient.Protocol;
 using KafkaClient.Tests.Fakes;
+using KafkaClient.Tests.Helpers;
 using NUnit.Framework;
 #pragma warning disable 1998
 
@@ -153,7 +154,6 @@ namespace KafkaClient.Tests
         [Test]
         public async Task ShouldRecoverFromFailureByUpdateMetadataOnce() //Do not debug this test !!
         {
-            var log = new ConsoleLog(LogLevel.Info);
             var routerProxy = new BrokerRouterProxy();
             routerProxy.CacheExpiration = TimeSpan.FromMilliseconds(1000);
             var router = routerProxy.Create();
@@ -166,6 +166,7 @@ namespace KafkaClient.Tests
             TaskCompletionSource<int> x = new TaskCompletionSource<int>();
             Func<Task<FetchResponse>> ShouldReturnNotLeaderForPartitionAndThenNoError = async () =>
             {
+                var log = TestConfig.DebugLog;
                 log.Debug(() => LogEvent.Create("FetchResponse Start "));
                 if (!x.Task.IsCompleted)
                 {

@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Connections;
 using KafkaClient.Protocol;
+using KafkaClient.Tests.Helpers;
 
 namespace KafkaClient.Tests.Fakes
 {
@@ -15,7 +16,7 @@ namespace KafkaClient.Tests.Fakes
 
         public FakeConnection(Uri address)
         {
-            Endpoint = new ConnectionFactory().Resolve(address, new ConsoleLog(KafkaClient.Common.LogLevel.Info));
+            Endpoint = new ConnectionFactory().Resolve(address, TestConfig.InfoLog);
         }
 
         public long MetadataRequestCallCount; // { get; set; }

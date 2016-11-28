@@ -22,10 +22,10 @@ namespace KafkaClient.Tests.Connections
         [SetUp]
         public void Setup()
         {
-            var options = new KafkaOptions(IntegrationConfig.IntegrationUri, new ConnectionConfiguration(versionSupport: VersionSupport.Kafka8.MakeDynamic()), log: IntegrationConfig.InfoLog);
+            var options = new KafkaOptions(TestConfig.IntegrationUri, new ConnectionConfiguration(versionSupport: VersionSupport.Kafka8.MakeDynamic()), log: TestConfig.InfoLog);
             var endpoint = new ConnectionFactory().Resolve(options.ServerUris.First(), options.Log);
 
-            _conn = new Connection(new TcpSocket(endpoint, options.ConnectionConfiguration), options.ConnectionConfiguration, IntegrationConfig.InfoLog);
+            _conn = new Connection(new TcpSocket(endpoint, options.ConnectionConfiguration), options.ConnectionConfiguration, TestConfig.InfoLog);
         }
 
         [Test]
@@ -56,7 +56,7 @@ namespace KafkaClient.Tests.Connections
         {
             var requestsSoFar = 0;
             var requestTasks = new ConcurrentBag<Task<MetadataResponse>>();
-            var singleResult = await _conn.SendAsync(new MetadataRequest(IntegrationConfig.TopicName()), CancellationToken.None);
+            var singleResult = await _conn.SendAsync(new MetadataRequest(TestConfig.TopicName()), CancellationToken.None);
             Assert.That(singleResult.Topics.Count, Is.GreaterThan(0));
             Assert.That(singleResult.Topics.First().Partitions.Count, Is.GreaterThan(0));
 
@@ -83,29 +83,29 @@ namespace KafkaClient.Tests.Connections
         public async Task EnsureDifferentTypesOfResponsesCanBeReadAsync()
         {
             //just ensure the topic exists for this test
-            var ensureTopic = await _conn.SendAsync(new MetadataRequest(IntegrationConfig.TopicName()), CancellationToken.None);
+            var ensureTopic = await _conn.SendAsync(new MetadataRequest(TestConfig.TopicName()), CancellationToken.None);
 
             Assert.That(ensureTopic.Topics.Count, Is.EqualTo(1));
-            Assert.That(ensureTopic.Topics.First().TopicName == IntegrationConfig.TopicName(), Is.True, "ProduceRequest did not return expected topic.");
+            Assert.That(ensureTopic.Topics.First().TopicName == TestConfig.TopicName(), Is.True, "ProduceRequest did not return expected topic.");
 
-            var result1 = _conn.SendAsync(RequestFactory.CreateProduceRequest(IntegrationConfig.TopicName(), "test"), CancellationToken.None);
-            var result2 = _conn.SendAsync(new MetadataRequest(IntegrationConfig.TopicName()), CancellationToken.None);
-            var result3 = _conn.SendAsync(RequestFactory.CreateOffsetRequest(IntegrationConfig.TopicName()), CancellationToken.None);
-            var result4 = _conn.SendAsync(RequestFactory.CreateFetchRequest(IntegrationConfig.TopicName(), 0), CancellationToken.None);
+            var result1 = _conn.SendAsync(RequestFactory.CreateProduceRequest(TestConfig.TopicName(), "test"), CancellationToken.None);
+            var result2 = _conn.SendAsync(new MetadataRequest(TestConfig.TopicName()), CancellationToken.None);
+            var result3 = _conn.SendAsync(RequestFactory.CreateOffsetRequest(TestConfig.TopicName()), CancellationToken.None);
+            var result4 = _conn.SendAsync(RequestFactory.CreateFetchRequest(TestConfig.TopicName(), 0), CancellationToken.None);
 
             await Task.WhenAll(result1, result2, result3, result4);
 
             Assert.That(result1.Result.Topics.Count, Is.EqualTo(1));
-            Assert.That(result1.Result.Topics.First().TopicName == IntegrationConfig.TopicName(), Is.True, "ProduceRequest did not return expected topic.");
+            Assert.That(result1.Result.Topics.First().TopicName == TestConfig.TopicName(), Is.True, "ProduceRequest did not return expected topic.");
 
             Assert.That(result2.Result.Topics.Count, Is.GreaterThan(0));
-            Assert.That(result2.Result.Topics.Any(x => x.TopicName == IntegrationConfig.TopicName()), Is.True, "MetadataRequest did not return expected topic.");
+            Assert.That(result2.Result.Topics.Any(x => x.TopicName == TestConfig.TopicName()), Is.True, "MetadataRequest did not return expected topic.");
 
             Assert.That(result3.Result.Topics.Count, Is.EqualTo(1));
-            Assert.That(result3.Result.Topics.First().TopicName == IntegrationConfig.TopicName(), Is.True, "OffsetRequest did not return expected topic.");
+            Assert.That(result3.Result.Topics.First().TopicName == TestConfig.TopicName(), Is.True, "OffsetRequest did not return expected topic.");
 
             Assert.That(result4.Result.Topics.Count, Is.EqualTo(1));
-            Assert.That(result4.Result.Topics.First().TopicName == IntegrationConfig.TopicName(), Is.True, "FetchRequest did not return expected topic.");
+            Assert.That(result4.Result.Topics.First().TopicName == TestConfig.TopicName(), Is.True, "FetchRequest did not return expected topic.");
         }
     }
 }
