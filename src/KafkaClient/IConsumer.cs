@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Immutable;
+﻿using System.Collections.Immutable;
 using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Protocol;
@@ -22,15 +21,5 @@ namespace KafkaClient
         IImmutableDictionary<string, IProtocolTypeEncoder> Encoders { get; }
 
         Task<IConsumerGroupMember> JoinConsumerGroupAsync(string groupId, IMemberMetadata metadata, CancellationToken cancellationToken, string memberId = "");
-    }
-
-    public interface IConsumerGroupMember : IGroupMember, IDisposable
-    {
-        string LeaderId { get; }
-
-        int GenerationId { get; }
-
-        // is this necessary?
-        IProtocolTypeEncoder Encoder { get; }
     }
 }

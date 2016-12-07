@@ -1,9 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using KafkaClient.Connections;
 using KafkaClient.Protocol;
+using KafkaClient.Protocol.Types;
 using KafkaClient.Tests.Fakes;
 using KafkaClient.Tests.Helpers;
 using NSubstitute;
@@ -147,6 +150,37 @@ namespace KafkaClient.Tests
             var consumer = new Consumer(router);
             using (consumer) { }
             router.DidNotReceive().Dispose();
+        }
+
+        [Test]
+        public async Task ConsumerThowsArgumentExceptionWhenMemberMetadataIsNotKnownByConsumer([Values(null, "", "unknown")] string protocolType)
+        {
+            var router = Substitute.For<IRouter>();
+
+            var consumer = new Consumer(router);
+            using (consumer) {
+                try {
+                    await consumer.JoinConsumerGroupAsync("group", new ByteMemberMetadata(protocolType, new byte[] { }), CancellationToken.None);
+                    Assert.Fail("Should have thrown exception");
+                } catch (ArgumentOutOfRangeException ex) {
+                    Assert.That(ex.Message, Is.EqualTo("ProtocolType be known by Encoders\r\nParameter name: metadata"));
+                }
+            }
+        }
+
+        [Test]
+        public async Task ConsumerDoesNotThowArgumentExceptionWhenMemberMetadataIsKnownByConsumer()
+        {
+            var router = Substitute.For<IRouter>();
+
+            var consumer = new Consumer(router, encoders: ImmutableDictionary<string, IProtocolTypeEncoder>.Empty.Add(ConsumerEncoder.ProtocolType, ConsumerEncoder.Singleton));
+            using (consumer) {
+                try {
+                    await consumer.JoinConsumerGroupAsync("group", new ByteMemberMetadata(ConsumerEncoder.ProtocolType, new byte[] { }), CancellationToken.None);
+                } catch (ConnectionException) {
+                    // since the servers aren't available
+                }
+            }
         }
 
         //        [Test]
