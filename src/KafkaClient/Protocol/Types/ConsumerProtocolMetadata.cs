@@ -82,5 +82,7 @@ namespace KafkaClient.Protocol.Types
         {
             return !Equals(left, right);
         }
+
+        public string ProtocolType => ConsumerEncoder.ProtocolType;
     }
 }

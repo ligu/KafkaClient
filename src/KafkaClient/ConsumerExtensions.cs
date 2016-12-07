@@ -46,15 +46,5 @@ namespace KafkaClient
             }
             return total;
         }
-
-        public static Task<IConsumerGroupMember> JoinConsumerGroupAsync(this IConsumer consumer, string groupId, CancellationToken cancellationToken)
-        {
-            return consumer.JoinConsumerGroupAsync(groupId, ConsumerEncoder.Singleton, cancellationToken);
-        }
-
-        public static Task<IConsumerGroupMember> JoinConsumerGroupAsync(this IConsumer consumer, string groupId, string protocol, CancellationToken cancellationToken)
-        {
-            return consumer.JoinConsumerGroupAsync(groupId, consumer.Encoders[protocol], cancellationToken);
-        }
     }
 }

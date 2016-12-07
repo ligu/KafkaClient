@@ -384,7 +384,7 @@ namespace KafkaClient.Tests.Protocol
             for (var p = 0; p < protocolsPerRequest; p++) {
                 var bytes = new byte[protocolsPerRequest*100];
                 _randomizer.NextBytes(bytes);
-                protocols.Add(new JoinGroupRequest.GroupProtocol(protocolType + p, new ByteMember(bytes)));
+                protocols.Add(new JoinGroupRequest.GroupProtocol(protocolType + p, new ByteMemberMetadata(protocolType, bytes)));
             }
             var request = new JoinGroupRequest(groupId, TimeSpan.FromMilliseconds(sessionTimeout), memberId, protocolType, protocols, version >= 1 ? (TimeSpan?)TimeSpan.FromMilliseconds(sessionTimeout * 2) : null);
 
@@ -407,7 +407,7 @@ namespace KafkaClient.Tests.Protocol
             for (var m = 0; m < memberCount; m++) {
                 var bytes = new byte[memberCount*100];
                 _randomizer.NextBytes(bytes);
-                members.Add(new JoinGroupResponse.Member(memberId + m, new ByteMember(bytes)));
+                members.Add(new JoinGroupResponse.Member(memberId + m, new ByteMemberMetadata(protocol, bytes)));
             }
             var response = new JoinGroupResponse(errorCode, generationId, protocol, leaderId, memberId, members);
 
@@ -517,7 +517,7 @@ namespace KafkaClient.Tests.Protocol
             for (var a = 0; a < assignmentsPerRequest; a++) {
                 var bytes = new byte[assignmentsPerRequest*100];
                 _randomizer.NextBytes(bytes);
-                assignments.Add(new SyncGroupRequest.GroupAssignment(protocolType + a, new ByteMember(bytes)));
+                assignments.Add(new SyncGroupRequest.GroupAssignment(protocolType + a, new ByteMemberAssignment(bytes)));
             }
             var request = new SyncGroupRequest(groupId, generationId, memberId, assignments);
 
@@ -533,7 +533,7 @@ namespace KafkaClient.Tests.Protocol
         {
             var bytes = new byte[1000];
             _randomizer.NextBytes(bytes);
-            var response = new SyncGroupResponse(errorCode, new ByteMember(bytes));
+            var response = new SyncGroupResponse(errorCode, new ByteMemberAssignment(bytes));
 
             response.AssertCanEncodeDecodeResponse(0);
         }
@@ -615,7 +615,7 @@ namespace KafkaClient.Tests.Protocol
                     _randomizer.NextBytes(metadata);
                     _randomizer.NextBytes(assignment);
 
-                    members.Add(new DescribeGroupsResponse.Member("member" + m, "client" + m, "host-" + m, new ByteMember(metadata), new ByteMember(assignment)));
+                    members.Add(new DescribeGroupsResponse.Member("member" + m, "client" + m, "host-" + m, new ByteMemberMetadata(protocolType, metadata), new ByteMemberAssignment(assignment)));
                 }
                 groups[g] = new DescribeGroupsResponse.Group(errorCode, groupId + g, state, protocolType, protocol, members);
             }

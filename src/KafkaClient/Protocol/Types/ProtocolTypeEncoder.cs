@@ -36,33 +36,33 @@ namespace KafkaClient.Protocol.Types
         protected abstract void EncodeAssignment(IKafkaWriter writer, TAssignment value);
     }
 
-    public class ProtocolTypeEncoder : ProtocolTypeEncoder<ByteMember, ByteMember>
+    public class ProtocolTypeEncoder : ProtocolTypeEncoder<ByteMemberMetadata, ByteMemberAssignment>
     {
         /// <inheritdoc />
-        public ProtocolTypeEncoder() : base("")
+        public ProtocolTypeEncoder(string type = "") : base(type)
         {
         }
 
         /// <inheritdoc />
         public override IMemberMetadata DecodeMetadata(IKafkaReader reader)
         {
-            return new ByteMember(reader.ReadBytes());
+            return new ByteMemberMetadata(Type, reader.ReadBytes());
         }
 
         /// <inheritdoc />
         public override IMemberAssignment DecodeAssignment(IKafkaReader reader)
         {
-            return new ByteMember(reader.ReadBytes());
+            return new ByteMemberAssignment(reader.ReadBytes());
         }
 
         /// <inheritdoc />
-        protected override void EncodeMetadata(IKafkaWriter writer, ByteMember value)
+        protected override void EncodeMetadata(IKafkaWriter writer, ByteMemberMetadata value)
         {
             writer.Write(value.Bytes);
         }
 
         /// <inheritdoc />
-        protected override void EncodeAssignment(IKafkaWriter writer, ByteMember value)
+        protected override void EncodeAssignment(IKafkaWriter writer, ByteMemberAssignment value)
         {
             writer.Write(value.Bytes);
         }

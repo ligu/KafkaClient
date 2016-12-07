@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Common;
+using KafkaClient.Connections;
 using KafkaClient.Protocol;
 using KafkaClient.Protocol.Types;
 
@@ -76,9 +77,48 @@ namespace KafkaClient
             }
         }
 
-        public Task<IConsumerGroupMember> JoinConsumerGroupAsync(string groupId, IProtocolTypeEncoder protocol, CancellationToken cancellationToken)
+        public async Task<IConsumerGroupMember> JoinConsumerGroupAsync(string groupId, IMemberMetadata metadata, CancellationToken cancellationToken, string memberId = "")
         {
+            var request = new JoinGroupRequest(groupId, Configuration.GroupHeartbeat, memberId, metadata.ProtocolType, new [] { new JoinGroupRequest.GroupProtocol(metadata.ProtocolType, metadata) }, Configuration.GroupRebalanceTimeout);
+            foreach (var connection in _router.Connections) {
+                try {
+                    var response = await connection.SendAsync(request, cancellationToken);
+
+                    return new ConsumerGroupMember(this, groupId, response.MemberId, response.LeaderId, response.GenerationId);
+                } catch (ConnectionException ex) {
+                    _router.Log.Info(() => LogEvent.Create(ex, $"Skipping connection that failed: {ex.Endpoint}"));
+                }
+            }
+
+            throw new ConnectionException("None of the provided Kafka servers are available to join.");
+        }
+    }
+
+    public class ConsumerGroupMember : IConsumerGroupMember
+    {
+        private readonly IConsumer _consumer;
+
+        public ConsumerGroupMember(IConsumer consumer, string groupId, string memberId, string leaderId, int generationId)
+        {
+            _consumer = consumer;
+            GroupId = groupId;
+            MemberId = memberId;
+            LeaderId = leaderId;
+            GenerationId = generationId;
+
+        }
+
+        public string GroupId { get; }
+        public string MemberId { get; }
+
+        public void Dispose()
+        {
+        // on dispose, should leave group (so it doesn't have to wait for next heartbeat to fail
             throw new NotImplementedException();
         }
+
+        public string LeaderId { get; }
+        public int GenerationId { get; }
+        public IProtocolTypeEncoder Encoder { get; }
     }
 }

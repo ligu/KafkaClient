@@ -21,18 +21,14 @@ namespace KafkaClient
 
         IImmutableDictionary<string, IProtocolTypeEncoder> Encoders { get; }
 
-        Task<IConsumerGroupMember> JoinConsumerGroupAsync(string groupId, IProtocolTypeEncoder protocol, CancellationToken cancellationToken);
+        Task<IConsumerGroupMember> JoinConsumerGroupAsync(string groupId, IMemberMetadata metadata, CancellationToken cancellationToken, string memberId = "");
     }
 
     public interface IConsumerGroupMember : IGroupMember, IDisposable
     {
-        // on dispose, should leave group (so it doesn't have to wait for next heartbeat to fail
-
         string LeaderId { get; }
 
         int GenerationId { get; }
-
-        string GroupProtocol { get; }
 
         // is this necessary?
         IProtocolTypeEncoder Encoder { get; }
