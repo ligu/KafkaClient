@@ -4,7 +4,6 @@ using System.Collections.Immutable;
 using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Protocol;
-using KafkaClient.Protocol.Types;
 
 namespace KafkaClient
 {

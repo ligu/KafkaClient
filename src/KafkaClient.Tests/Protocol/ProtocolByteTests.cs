@@ -388,7 +388,7 @@ namespace KafkaClient.Tests.Protocol
             }
             var request = new JoinGroupRequest(groupId, TimeSpan.FromMilliseconds(sessionTimeout), memberId, protocolType, protocols, version >= 1 ? (TimeSpan?)TimeSpan.FromMilliseconds(sessionTimeout * 2) : null);
 
-            request.AssertCanEncodeDecodeRequest(version);
+            request.AssertCanEncodeDecodeRequest(version, new ProtocolTypeEncoder(protocolType));
         }
 
         [Test]
@@ -411,7 +411,7 @@ namespace KafkaClient.Tests.Protocol
             }
             var response = new JoinGroupResponse(errorCode, generationId, protocol, leaderId, memberId, members);
 
-            response.AssertCanEncodeDecodeResponse(0);
+            response.AssertCanEncodeDecodeResponse(0, new ProtocolTypeEncoder(protocol));
         }
 
         [Test]
@@ -621,7 +621,7 @@ namespace KafkaClient.Tests.Protocol
             }
             var response = new DescribeGroupsResponse(groups);
 
-            response.AssertCanEncodeDecodeResponse(0);
+            response.AssertCanEncodeDecodeResponse(0, new ProtocolTypeEncoder(protocolType));
         }
 
         [Test]
