@@ -54,8 +54,7 @@ namespace KafkaClient.Tests.Common
         [TestCase((uint)0, new byte[] { 0x00, 0x00, 0x00, 0x00 })]
         [TestCase((uint)1, new byte[] { 0x00, 0x00, 0x00, 0x01 })]
         [TestCase((uint)123456789, new byte[] { 0x07, 0x5B, 0xCD, 0x15 })]
-        [TestCase(uint.MinValue, new byte[] { 0x00, 0x00, 0x00, 0x00 })]
-        [TestCase(uint.MaxValue, new byte[] { 0xFF, 0xFF, 0xFF, 0xFF })]
+        [TestCase((uint)0xffffffff, new byte[] { 0xFF, 0xFF, 0xFF, 0xFF })]
         public void UInt32Tests(uint expectedValue, byte[] givenBytes)
         {
             // arrange
@@ -128,8 +127,8 @@ namespace KafkaClient.Tests.Common
         }
 
         [Test]
-        [TestCase('0', new byte[] { 0x30 })]
-        [TestCase('€', new byte[] { 0xE2, 0x82, 0xAC })]
+        [TestCase((char)'0', new byte[] { 0x30 })]
+        [TestCase((char)'€', new byte[] { 0xE2, 0x82, 0xAC })]
         public void CharTests(char expectedValue, byte[] givenBytes)
         {
             // arrange
