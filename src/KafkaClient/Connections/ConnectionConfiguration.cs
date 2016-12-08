@@ -90,9 +90,7 @@ namespace KafkaClient.Connections
             ConnectionRetry = connectionRetry ?? Defaults.ConnectionRetry();
             VersionSupport = versionSupport ?? Connections.VersionSupport.Kafka8;
             RequestTimeout = requestTimeout ?? TimeSpan.FromSeconds(Defaults.RequestTimeoutSeconds);
-            Encoders = encoders != null
-                ? encoders.ToImmutableDictionary(e => e.Type)
-                : ImmutableDictionary<string, IProtocolTypeEncoder>.Empty;
+            Encoders = Defaults.Encoders(encoders);
             OnDisconnected = onDisconnected;
             OnConnecting = onConnecting;
             OnConnected = onConnected;
@@ -187,6 +185,17 @@ namespace KafkaClient.Connections
                     timeout ?? TimeSpan.FromMinutes(ConnectingTimeoutMinutes),
                     TimeSpan.FromMilliseconds(ConnectingDelayMilliseconds), 
                     MaxConnectionAttempts);
+            }
+
+            public static IImmutableDictionary<string, IProtocolTypeEncoder> Encoders(IEnumerable<IProtocolTypeEncoder> encoders = null)
+            {
+                var defaultEncoders = encoders != null
+                    ? encoders.ToImmutableDictionary(e => e.Type)
+                    : ImmutableDictionary<string, IProtocolTypeEncoder>.Empty;
+                if (!defaultEncoders.ContainsKey(ConsumerEncoder.ProtocolType)) {
+                    defaultEncoders = defaultEncoders.Add(ConsumerEncoder.ProtocolType, ConsumerEncoder.Singleton);
+                }
+                return defaultEncoders;
             }
         }
     }

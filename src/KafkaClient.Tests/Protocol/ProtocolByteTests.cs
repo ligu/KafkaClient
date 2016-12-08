@@ -761,15 +761,6 @@ namespace KafkaClient.Tests.Protocol
                 if (configs.Count == 0 && _randomizer.NextBool()) {
                     configs = null;
                 }
-                //var partitions = new List<MetadataResponse.Partition>();
-                //for (var partitionId = 0; partitionId < partitionsPerTopic; partitionId++) {
-                //    var leader = _randomizer.Next(0, brokersPerRequest - 1);
-                //    var replica = 0;
-                //    var replicas = _randomizer.Next(0, brokersPerRequest - 1).Repeat(() => replica++);
-                //    var isr = 0;
-                //    var isrs = _randomizer.Next(0, replica).Repeat(() => isr++);
-                //    partitions.Add(new MetadataResponse.Partition(partitionId, leader, replicationFactor, replicas, isrs));
-                //}
                 topics.Add(new CreateTopicsRequest.Topic(topicName + t, partitionsPerTopic, replicationFactor, configs));
             }
             var request = new CreateTopicsRequest(topics, TimeSpan.FromMilliseconds(timeoutMilliseconds));
@@ -827,7 +818,6 @@ namespace KafkaClient.Tests.Protocol
 
             response.AssertCanEncodeDecodeResponse(0);
         }
-
 
         private IEnumerable<Message> GenerateMessages(int count, byte version, int partition = 0)
         {

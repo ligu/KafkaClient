@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using KafkaClient.Connections;
 using KafkaClient.Protocol;
 using KafkaClient.Tests.Helpers;
 using NUnit.Framework;
@@ -13,11 +14,6 @@ namespace KafkaClient.Tests
     public class OffsetManagementTests
     {
         private readonly KafkaOptions _options = new KafkaOptions(TestConfig.IntegrationUri, log: TestConfig.InfoLog);
-
-        [SetUp]
-        public void Setup()
-        {
-        }
 
         [Test]
         public async Task OffsetFetchRequestOfNonExistingGroupShouldReturnNoError()
@@ -148,6 +144,18 @@ namespace KafkaClient.Tests
 
                 Assert.That(response, Is.Not.Null);
                 Assert.That(response.ErrorCode, Is.EqualTo(ErrorResponseCode.None));
+            }
+        }
+
+        [Test]
+        public async Task CanCreateAndDeleteTopics()
+        {
+            using (var router = new Router(_options)) {
+                await router.TemporaryTopicAsync(
+                    async topicName => {
+                        var response = await router.GetTopicMetadataAsync(topicName, CancellationToken.None);
+                        Assert.That(response.ErrorCode, Is.EqualTo(ErrorResponseCode.None));
+                    });
             }
         }
     }

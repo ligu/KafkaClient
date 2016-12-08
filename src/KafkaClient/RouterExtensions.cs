@@ -162,6 +162,20 @@ namespace KafkaClient
                 cancellationToken);
         }
 
+        public static async Task<T> SendToAnyAsync<T>(this IRouter router, IRequest<T> request, CancellationToken cancellationToken, IRequestContext context = null) where T : class, IResponse
+        {
+            Exception lastException = null;
+            foreach (var connection in router.Connections) {
+                try {
+                    return await connection.SendAsync(request, cancellationToken);
+                } catch (ConnectionException ex) {
+                    lastException = ex;
+                    router.Log.Info(() => LogEvent.Create(ex, $"Skipping connection that failed: {ex.Endpoint}"));
+                }
+            }
+            throw new ConnectionException("None of the provided Kafka servers are resolvable.", lastException);
+        }
+
         public static async Task<bool> RefreshTopicMetadataIfInvalidAsync(this IRouter router, string topicName, bool? metadataInvalid, CancellationToken cancellationToken)
         {
             if (metadataInvalid.GetValueOrDefault(true)) {
