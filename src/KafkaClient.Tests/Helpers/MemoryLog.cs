@@ -16,8 +16,7 @@ namespace KafkaClient.Tests.Helpers
             var logEvent = producer();
             LogEvents = LogEvents.Add(new Tuple<LogLevel, LogEvent>(level, logEvent));
             if (WriteToConsole) {
-                var text = ConsoleLog.ToText(level, logEvent);
-                Console.WriteLine(text);
+                ConsoleLog.Write(level, ConsoleLog.ToText(level, logEvent));
             }
         }
     }
