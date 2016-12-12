@@ -22,7 +22,7 @@ namespace KafkaClient.Tests.Helpers
 
         public static async Task TemporaryTopicAsync(this IRouter router, Func<string, Task> asyncAction, [CallerMemberName] string name = null)
         {
-            var topicName = TestConfig.TopicName();
+            var topicName = TestConfig.TopicName(name);
             try {
                 await router.SendToAnyAsync(new CreateTopicsRequest(new [] { new CreateTopicsRequest.Topic(topicName, 1, 1) }, TimeSpan.FromSeconds(1)), CancellationToken.None);
             } catch (RequestException ex) when (ex.ErrorCode == ErrorResponseCode.TopicAlreadyExists) {
@@ -31,7 +31,8 @@ namespace KafkaClient.Tests.Helpers
             try {
                 await asyncAction(topicName);
             } finally {
-                await router.SendToAnyAsync(new DeleteTopicsRequest(new [] { topicName }, TimeSpan.FromSeconds(1)), CancellationToken.None);
+                // right now deleting the topic isn't propagating properly, so subsequent runs of the test fail
+                // await router.SendToAnyAsync(new DeleteTopicsRequest(new [] { topicName }, TimeSpan.FromSeconds(1)), CancellationToken.None);
             }
         }
     }

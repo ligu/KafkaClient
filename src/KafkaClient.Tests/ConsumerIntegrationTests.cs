@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using KafkaClient.Common;
 using KafkaClient.Connections;
 using KafkaClient.Protocol;
+using KafkaClient.Protocol.Types;
 using KafkaClient.Tests.Helpers;
 using NUnit.Framework;
 #pragma warning disable 1998
@@ -26,428 +27,461 @@ namespace KafkaClient.Tests
         public ConsumerIntegrationTests()
         {
             _kafkaUri = TestConfig.IntegrationUri;
-            _config = new ConnectionConfiguration(TimeSpan.FromSeconds(10));
-            _options = new KafkaOptions(TestConfig.IntegrationUri, _config, log: TestConfig.InfoLog);
+            _config = new ConnectionConfiguration(ConnectionConfiguration.Defaults.ConnectionRetry(TimeSpan.FromSeconds(10)), requestTimeout: TimeSpan.FromSeconds(10));
             _consumerConfig = new ConsumerConfiguration(maxPartitionFetchBytes: DefaultMaxMessageSetSize);
+            _options = new KafkaOptions(TestConfig.IntegrationUri, _config, log: TestConfig.DebugLog, consumerConfiguration: _consumerConfig);
         }
 
         [Test]
         public async Task CanFetch()
         {
-            int partitionId = 0;
-            var router = new Router(new KafkaOptions(TestConfig.IntegrationUri));
+            const int partitionId = 0;
+            using (var router = new Router(new KafkaOptions(TestConfig.IntegrationUri))) {
+                await router.TemporaryTopicAsync(async topicName => {
+                    using (var producer = new Producer(router)) {
+                        string messageValue = Guid.NewGuid().ToString();
+                        var response = await producer.SendMessageAsync(new Message(messageValue), TestConfig.TopicName(), partitionId, CancellationToken.None);
+                        var offset = response.Offset;
 
-            var producer = new Producer(router);
-            string messageValue = Guid.NewGuid().ToString();
-            var response = await producer.SendMessageAsync(new Message(messageValue), TestConfig.TopicName(), partitionId, CancellationToken.None);
-            var offset = response.Offset;
+                        var fetch = new FetchRequest.Topic(TestConfig.TopicName(), partitionId, offset, 32000);
 
-            var fetch = new FetchRequest.Topic(TestConfig.TopicName(), partitionId, offset, 32000);
+                        var fetchRequest = new FetchRequest(fetch, minBytes: 10);
 
-            var fetchRequest = new FetchRequest(fetch, minBytes: 10);
-
-            var r = await router.SendAsync(fetchRequest, TestConfig.TopicName(), partitionId, CancellationToken.None);
-            Assert.IsTrue(r.Topics.First().Messages.First().Value.ToUtf8String() == messageValue);
+                        var r = await router.SendAsync(fetchRequest, TestConfig.TopicName(), partitionId, CancellationToken.None);
+                        Assert.IsTrue(r.Topics.First().Messages.First().Value.ToUtf8String() == messageValue);
+                    }
+                });
+            }
         }
 
         [Test]
         public async Task FetchMessagesSimpleTest()
         {
-            // Creating a broker router and a protocol gateway for the producer and consumer
-            var brokerRouter = new Router(_options);
+            using (var router = new Router(_options)) {
+                await router.TemporaryTopicAsync(async topicName => {
+                    using (var producer = new Producer(router)) {
+                        var consumer = new Consumer(router, _consumerConfig);
 
-            var topic = "ManualConsumerTestTopic";
+                        var offset = await router.GetTopicOffsetAsync(topicName, _partitionId, CancellationToken.None);
 
-            var producer = new Producer(brokerRouter);
-            var consumer = new Consumer(brokerRouter, _consumerConfig);
+                        // Creating 5 messages
+                        var messages = CreateTestMessages(5, 1);
 
-            var offset = await brokerRouter.GetTopicOffsetAsync(topic, _partitionId, CancellationToken.None);
+                        await producer.SendMessagesAsync(messages, topicName, _partitionId, new SendMessageConfiguration(ackTimeout: TimeSpan.FromSeconds(3)), CancellationToken.None);
 
-            // Creating 5 messages
-            var messages = CreateTestMessages(5, 1);
+                        // Now let's consume
+                        var result = (await consumer.FetchMessagesAsync(offset, 5, CancellationToken.None)).ToList();
 
-            await producer.SendMessagesAsync(messages, topic, _partitionId, new SendMessageConfiguration(ackTimeout: TimeSpan.FromSeconds(3)), CancellationToken.None);
-
-            // Now let's consume
-            var result = (await consumer.FetchMessagesAsync(offset, 5, CancellationToken.None)).ToList();
-
-            CheckMessages(messages, result);
+                        CheckMessages(messages, result);
+                    }
+                });
+            }
         }
 
         [Test]
         public async Task FetchMessagesCacheContainsAllRequestTest()
         {
-            // Creating a broker router and a protocol gateway for the producer and consumer
-            var brokerRouter = new Router(_options);
+            using (var router = new Router(_options)) {
+                await router.TemporaryTopicAsync(async topicName => {
+                    using (var producer = new Producer(router)) {
+                        var consumer = new Consumer(router, _consumerConfig);
 
-            var producer = new Producer(brokerRouter);
-            var topic = TestConfig.TopicName();
-            var consumer = new Consumer(brokerRouter, _consumerConfig);
+                        var offset = await router.GetTopicOffsetAsync(topicName, _partitionId, CancellationToken.None);
 
-            var offset = await brokerRouter.GetTopicOffsetAsync(topic, _partitionId, CancellationToken.None);
+                        // Creating 5 messages
+                        var messages = CreateTestMessages(10, 1);
 
-            // Creating 5 messages
-            var messages = CreateTestMessages(10, 1);
+                        await producer.SendMessagesAsync(messages, topicName, _partitionId, new SendMessageConfiguration(ackTimeout: TimeSpan.FromSeconds(3)), CancellationToken.None);
 
-            await producer.SendMessagesAsync(messages, topic, _partitionId, new SendMessageConfiguration(ackTimeout: TimeSpan.FromSeconds(3)), CancellationToken.None);
+                        // Now let's consume
+                        var result = (await consumer.FetchMessagesAsync(offset, 5, CancellationToken.None)).ToList();
 
-            // Now let's consume
-            var result = (await consumer.FetchMessagesAsync(offset, 5, CancellationToken.None)).ToList();
+                        CheckMessages(messages.Take(5).ToList(), result);
 
-            CheckMessages(messages.Take(5).ToList(), result);
+                        // Now let's consume again
+                        result = (await consumer.FetchMessagesAsync(offset.TopicName, offset.PartitionId, offset.Offset + 5, 5, CancellationToken.None)).ToList();
 
-            // Now let's consume again
-            result = (await consumer.FetchMessagesAsync(offset.TopicName, offset.PartitionId, offset.Offset + 5, 5, CancellationToken.None)).ToList();
-
-            CheckMessages(messages.Skip(5).ToList(), result);
+                        CheckMessages(messages.Skip(5).ToList(), result);
+                    }
+                });
+            }
         }
 
         [Test]
         public async Task FetchMessagesCacheContainsNoneOfRequestTest()
         {
-            // Creating a broker router and a protocol gateway for the producer and consumer
-            var brokerRouter = new Router(_options);
+            using (var router = new Router(_options)) {
+                await router.TemporaryTopicAsync(async topicName => {
+                    using (var producer = new Producer(router)) {
+                        var consumer = new Consumer(router, _consumerConfig);
 
-            var producer = new Producer(brokerRouter);
-            var topic = TestConfig.TopicName();
-            var consumer = new Consumer(brokerRouter, _consumerConfig);
+                        var offset = await router.GetTopicOffsetAsync(topicName, _partitionId, CancellationToken.None);
 
-            var offset = await brokerRouter.GetTopicOffsetAsync(topic, _partitionId, CancellationToken.None);
+                        // Creating 5 messages
+                        var messages = CreateTestMessages(10, 4096);
 
-            // Creating 5 messages
-            var messages = CreateTestMessages(10, 4096);
+                        await producer.SendMessagesAsync(messages, topicName, _partitionId, new SendMessageConfiguration(ackTimeout: TimeSpan.FromSeconds(3)), CancellationToken.None);
 
-            await producer.SendMessagesAsync(messages, topic, _partitionId, new SendMessageConfiguration(ackTimeout: TimeSpan.FromSeconds(3)), CancellationToken.None);
+                        // Now let's consume
+                        var result = (await consumer.FetchMessagesAsync(offset, 7, CancellationToken.None)).ToList();
 
-            // Now let's consume
-            var result = (await consumer.FetchMessagesAsync(offset, 7, CancellationToken.None)).ToList();
+                        CheckMessages(messages.Take(7).ToList(), result);
 
-            CheckMessages(messages.Take(7).ToList(), result);
+                        // Now let's consume again
+                        result = (await consumer.FetchMessagesAsync(offset.TopicName, offset.PartitionId, offset.Offset + 5, 2, CancellationToken.None)).ToList();
 
-            // Now let's consume again
-            result = (await consumer.FetchMessagesAsync(offset.TopicName, offset.PartitionId, offset.Offset + 5, 2, CancellationToken.None)).ToList();
-
-            CheckMessages(messages.Skip(8).ToList(), result);
+                        CheckMessages(messages.Skip(8).ToList(), result);
+                    }
+                });
+            }
         }
 
         [Test]
         public async Task FetchMessagesCacheContainsPartOfRequestTest()
         {
-            // Creating a broker router and a protocol gateway for the producer and consumer
-            var brokerRouter = new Router(_options);
+            using (var router = new Router(_options)) {
+                await router.TemporaryTopicAsync(async topicName => {
+                    using (var producer = new Producer(router)) {
+                        var consumer = new Consumer(router, _consumerConfig);
 
-            var producer = new Producer(brokerRouter);
-            var topic = TestConfig.TopicName();
-            var consumer = new Consumer(brokerRouter, _consumerConfig);
+                        var offset = await router.GetTopicOffsetAsync(topicName, _partitionId, CancellationToken.None);
 
-            var offset = await brokerRouter.GetTopicOffsetAsync(topic, _partitionId, CancellationToken.None);
+                        // Creating 5 messages
+                        var messages = CreateTestMessages(10, 4096);
 
-            // Creating 5 messages
-            var messages = CreateTestMessages(10, 4096);
+                        await producer.SendMessagesAsync(messages, topicName, _partitionId, new SendMessageConfiguration(ackTimeout: TimeSpan.FromSeconds(3)), CancellationToken.None);
 
-            await producer.SendMessagesAsync(messages, topic, _partitionId, new SendMessageConfiguration(ackTimeout: TimeSpan.FromSeconds(3)), CancellationToken.None);
+                        // Now let's consume
+                        var result = (await consumer.FetchMessagesAsync(offset, 5, CancellationToken.None)).ToList();
 
-            // Now let's consume
-            var result = (await consumer.FetchMessagesAsync(offset, 5, CancellationToken.None)).ToList();
+                        CheckMessages(messages.Take(5).ToList(), result);
 
-            CheckMessages(messages.Take(5).ToList(), result);
+                        // Now let's consume again
+                        result = (await consumer.FetchMessagesAsync(offset.TopicName, offset.PartitionId, offset.Offset + 5, 5, CancellationToken.None)).ToList();
 
-            // Now let's consume again
-            result = (await consumer.FetchMessagesAsync(offset.TopicName, offset.PartitionId, offset.Offset + 5, 5, CancellationToken.None)).ToList();
-
-            CheckMessages(messages.Skip(5).ToList(), result);
+                        CheckMessages(messages.Skip(5).ToList(), result);
+                    }
+                });
+            }
         }
 
         [Test]
         public async Task FetchMessagesNoNewMessagesInQueueTest()
         {
-            // Creating a broker router and a protocol gateway for the producer and consumer
-            var brokerRouter = new Router(_kafkaUri, new ConnectionFactory(), _config);
+            using (var router = new Router(_kafkaUri, new ConnectionFactory(), _config)) {
+                await router.TemporaryTopicAsync(async topicName => {
+                    var consumer = new Consumer(router, _consumerConfig);
 
-            var consumer = new Consumer(brokerRouter, _consumerConfig);
+                    var offset = await router.GetTopicOffsetAsync(TestConfig.TopicName(), _partitionId, CancellationToken.None);
 
-            var offset = await brokerRouter.GetTopicOffsetAsync(TestConfig.TopicName(), _partitionId, CancellationToken.None);
+                    // Now let's consume
+                    var result = (await consumer.FetchMessagesAsync(offset, 5, CancellationToken.None)).ToList();
 
-            // Now let's consume
-            var result = (await consumer.FetchMessagesAsync(offset, 5, CancellationToken.None)).ToList();
-
-            Assert.AreEqual(0, result.Count, "Should not get any messages");
+                    Assert.AreEqual(0, result.Count, "Should not get any messages");
+                });
+            }
         }
 
         [Test]
         public async Task FetchMessagesOffsetBiggerThanLastOffsetInQueueTest()
         {
-            // Creating a broker router and a protocol gateway for the producer and consumer
-            var brokerRouter = new Router(_kafkaUri, new ConnectionFactory(), _config, log: TestConfig.InfoLog);
+            using (var router = new Router(_kafkaUri, new ConnectionFactory(), _config, log: TestConfig.InfoLog)) {
+                await router.TemporaryTopicAsync(async topicName => {
+                    var consumer = new Consumer(router, _consumerConfig);
 
-            var consumer = new Consumer(brokerRouter, _consumerConfig);
+                    var offset = await router.GetTopicOffsetAsync(TestConfig.TopicName(), _partitionId, CancellationToken.None);
 
-            var offset = await brokerRouter.GetTopicOffsetAsync(TestConfig.TopicName(), _partitionId, CancellationToken.None);
-
-            try {
-                // Now let's consume
-                await consumer.FetchMessagesAsync(offset.TopicName, offset.PartitionId, offset.Offset + 1, 5, CancellationToken.None);
-                Assert.Fail("should have thrown FetchOutOfRangeException");
-            } catch (FetchOutOfRangeException ex) when (ex.Message.StartsWith("Kafka returned OffsetOutOfRange for Fetch request")) {
-                Console.WriteLine(ex.ToString());
+                    try {
+                        // Now let's consume
+                        await consumer.FetchMessagesAsync(offset.TopicName, offset.PartitionId, offset.Offset + 1, 5, CancellationToken.None);
+                        Assert.Fail("should have thrown FetchOutOfRangeException");
+                    } catch (FetchOutOfRangeException ex) when (ex.Message.StartsWith("Kafka returned OffsetOutOfRange for Fetch request")) {
+                        Console.WriteLine(ex.ToString());
+                    }
+                });
             }
         }
 
         [Test]
         public async Task FetchMessagesInvalidOffsetTest()
         {
-            // Creating a broker router and a protocol gateway for the producer and consumer
-            var brokerRouter = new Router(_kafkaUri, new ConnectionFactory(), _config);
+            using (var router = new Router(_kafkaUri, new ConnectionFactory(), _config)) {
+                await router.TemporaryTopicAsync(async topicName => {
+                    var consumer = new Consumer(router, _consumerConfig);
+                
+                    var offset = -1;
 
-            var consumer = new Consumer(brokerRouter, _consumerConfig);
-
-            var offset = -1;
-
-            // Now let's consume
-            Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await consumer.FetchMessagesAsync(TestConfig.TopicName(), _partitionId, offset, 5, CancellationToken.None));
+                    // Now let's consume
+                    Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await consumer.FetchMessagesAsync(topicName, _partitionId, offset, 5, CancellationToken.None));
+                });
+            }
         }
 
         [Test]
         public async Task FetchMessagesTopicDoesntExist()
         {
-            // Creating a broker router and a protocol gateway for the producer and consumer
-            var brokerRouter = new Router(_kafkaUri, new ConnectionFactory(), _config);
+            using (var router = new Router(_kafkaUri, new ConnectionFactory(), _config)) {
+                var topicName = TestConfig.TopicName();
+                try {
+                    await router.SendToAnyAsync(new DeleteTopicsRequest(new [] { topicName }, TimeSpan.FromSeconds(1)), CancellationToken.None);
+                } catch (RequestException ex) when (ex.ErrorCode == ErrorResponseCode.TopicAlreadyExists) {
+                    // ignore
+                }
+                var consumer = new Consumer(router, new ConsumerConfiguration(maxPartitionFetchBytes: DefaultMaxMessageSetSize * 2));
 
-            var topic = TestConfig.TopicName();
+                var offset = 0;
 
-            var consumer = new Consumer(brokerRouter, new ConsumerConfiguration(maxPartitionFetchBytes: DefaultMaxMessageSetSize * 2));
-
-            var offset = 0;
-
-            // Now let's consume
-            await consumer.FetchMessagesAsync(topic, _partitionId, offset, 5, CancellationToken.None);
+                // Now let's consume
+                await consumer.FetchMessagesAsync(topicName, _partitionId, offset, 5, CancellationToken.None);
+            }
         }
 
         [Test]
         public async Task FetchMessagesPartitionDoesntExist()
         {
-            // Creating a broker router and a protocol gateway for the producer and consumer
-            var brokerRouter = new Router(_kafkaUri, new ConnectionFactory(), _config);
-            var partitionId = 100;
-            var topic = TestConfig.TopicName();
+            using (var router = new Router(_kafkaUri, new ConnectionFactory(), _config)) {
+                await router.TemporaryTopicAsync(async topicName => {
+                    var partitionId = 100;
 
-            var consumer = new Consumer(brokerRouter, new ConsumerConfiguration(maxPartitionFetchBytes: DefaultMaxMessageSetSize * 2));
+                    var consumer = new Consumer(router, new ConsumerConfiguration(maxPartitionFetchBytes: DefaultMaxMessageSetSize * 2));
 
-            var offset = 0;
+                    var offset = 0;
 
-            Assert.ThrowsAsync<CachedMetadataException>(async () => await consumer.FetchMessagesAsync(topic, partitionId, offset, 5, CancellationToken.None));
+                    Assert.ThrowsAsync<CachedMetadataException>(async () => await consumer.FetchMessagesAsync(topicName, partitionId, offset, 5, CancellationToken.None));
+                });
+            }
         }
 
         [Test]
         public async Task FetchMessagesBufferUnderRunTest()
         {
-            // Creating a broker router and a protocol gateway for the producer and consumer
-            var brokerRouter = new Router(_options);
+            using (var router = new Router(_options)) {
+                await router.TemporaryTopicAsync(async topicName => {
+                    var smallMessageSet = 4096 / 2;
 
-            var smallMessageSet = 4096 / 2;
+                    var producer = new Producer(router);
+                    var consumer = new Consumer(router, new ConsumerConfiguration(maxPartitionFetchBytes: smallMessageSet));
 
-            var producer = new Producer(brokerRouter);
-            var topic = TestConfig.TopicName();
-            var consumer = new Consumer(brokerRouter, new ConsumerConfiguration(maxPartitionFetchBytes: smallMessageSet));
+                    var offset = await router.GetTopicOffsetAsync(topicName, _partitionId, CancellationToken.None);
 
-            var offset = await brokerRouter.GetTopicOffsetAsync(topic, _partitionId, CancellationToken.None);
+                    // Creating 5 messages
+                    var messages = CreateTestMessages(10, 4096);
 
-            // Creating 5 messages
-            var messages = CreateTestMessages(10, 4096);
+                    await producer.SendMessagesAsync(messages, topicName, _partitionId, new SendMessageConfiguration(ackTimeout: TimeSpan.FromSeconds(3)), CancellationToken.None);
 
-            await producer.SendMessagesAsync(messages, topic, _partitionId, new SendMessageConfiguration(ackTimeout: TimeSpan.FromSeconds(3)), CancellationToken.None);
-
-            try {
-                // Now let's consume
-                await consumer.FetchMessagesAsync(offset, 5, CancellationToken.None);
-                Assert.Fail("should have thrown BufferUnderRunException");
-            } catch (BufferUnderRunException ex) {
-                Console.WriteLine(ex.ToString());
+                    try {
+                        // Now let's consume
+                        await consumer.FetchMessagesAsync(offset, 5, CancellationToken.None);
+                        Assert.Fail("should have thrown BufferUnderRunException");
+                    } catch (BufferUnderRunException ex) {
+                        Console.WriteLine(ex.ToString());
+                    }
+                });
             }
         }
 
         [Test]
         public async Task FetchOffsetConsumerGroupDoesntExistTest()
         {
-            // Creating a broker router and a protocol gateway for the producer and consumer
-            var brokerRouter = new Router(_kafkaUri, new ConnectionFactory(), _config);
-            var partitionId = 0;
-            var consumerGroup = Guid.NewGuid().ToString();
+            using (var router = new Router(_kafkaUri, new ConnectionFactory(), _config)) {
+                await router.TemporaryTopicAsync(async topicName => {
+                    var partitionId = 0;
+                    var consumerGroup = Guid.NewGuid().ToString();
 
-            var topicName = TestConfig.TopicName();
-            await brokerRouter.GetTopicOffsetAsync(topicName, partitionId, consumerGroup, CancellationToken.None);
+                    await router.GetTopicOffsetAsync(topicName, partitionId, consumerGroup, CancellationToken.None);
+                });
+            }
         }
 
         [Test]
         public async Task FetchOffsetPartitionDoesntExistTest()
         {
-            // Creating a broker router and a protocol gateway for the producer and consumer
-            var brokerRouter = new Router(_kafkaUri, new ConnectionFactory(), _config);
-            var partitionId = 100;
-            var consumerGroup = TestConfig.ConsumerName();
+            using (var router = new Router(_kafkaUri, new ConnectionFactory(), _config)) {
+                await router.TemporaryTopicAsync(async topicName => {
+                    var partitionId = 100;
+                    var consumerGroup = TestConfig.ConsumerName();
 
-            var topicName = TestConfig.TopicName();
-            Assert.ThrowsAsync<CachedMetadataException>(async () => await brokerRouter.GetTopicOffsetAsync(topicName, partitionId, consumerGroup, CancellationToken.None));
+                    Assert.ThrowsAsync<CachedMetadataException>(async () => await router.GetTopicOffsetAsync(topicName, partitionId, consumerGroup, CancellationToken.None));
+                });
+            }
         }
 
         [Test]
         public async Task FetchOffsetTopicDoesntExistTest()
         {
-            // Creating a broker router and a protocol gateway for the producer and consumer
-            var brokerRouter = new Router(_kafkaUri, new ConnectionFactory(), _config);
+            using (var router = new Router(_kafkaUri, new ConnectionFactory(), _config)) {
+                var topicName = TestConfig.TopicName();
+                try {
+                    await router.SendToAnyAsync(new DeleteTopicsRequest(new [] { topicName }, TimeSpan.FromSeconds(1)), CancellationToken.None);
+                } catch (RequestException ex) when (ex.ErrorCode == ErrorResponseCode.TopicAlreadyExists) {
+                    // ignore
+                }
 
-            var topic = TestConfig.TopicName();
-            var consumerGroup = TestConfig.ConsumerName();
-
-            await brokerRouter.GetTopicOffsetAsync(topic, _partitionId, consumerGroup, CancellationToken.None);
+                var consumerGroup = TestConfig.ConsumerName();
+                await router.GetTopicOffsetAsync(topicName, _partitionId, consumerGroup, CancellationToken.None);
+            }
         }
 
         [Test]
         public async Task FetchOffsetConsumerGroupExistsTest()
         {
-            // Creating a broker router and a protocol gateway for the producer and consumer
-            var brokerRouter = new Router(_kafkaUri, new ConnectionFactory(), _config);
-            var partitionId = 0;
-            var consumerGroup = TestConfig.ConsumerName();
+            using (var router = new Router(_kafkaUri, new ConnectionFactory(), _config)) {
+                await router.TemporaryTopicAsync(async topicName => {
+                    var partitionId = 0;
+                    var consumerGroup = TestConfig.ConsumerName();
 
-            var offset = 5L;
+                    var offset = 5L;
 
-            var topicName = TestConfig.TopicName();
-            await brokerRouter.CommitTopicOffsetAsync(topicName, partitionId, consumerGroup, offset, CancellationToken.None);
-            var res = await brokerRouter.GetTopicOffsetAsync(topicName, _partitionId, consumerGroup, CancellationToken.None);
+                    await router.CommitTopicOffsetAsync(topicName, partitionId, consumerGroup, offset, CancellationToken.None);
+                    var res = await router.GetTopicOffsetAsync(topicName, _partitionId, consumerGroup, CancellationToken.None);
 
-            Assert.AreEqual(offset, res.Offset);
+                    Assert.AreEqual(offset, res.Offset);
+                });
+            }
         }
 
         [Test]
         public async Task FetchOffsetConsumerGroupArgumentNull([Values(null, "")] string group)
         {
-            // Creating a broker router and a protocol gateway for the producer and consumer
-            var brokerRouter = new Router(_kafkaUri, new ConnectionFactory(), _config);
-            var partitionId = 0;
-            var consumerGroup = TestConfig.ConsumerName();
+            using (var router = new Router(_kafkaUri, new ConnectionFactory(), _config)) {
+                await router.TemporaryTopicAsync(async topicName => {
+                    var partitionId = 0;
+                    var consumerGroup = TestConfig.ConsumerName();
 
-            var topicName = TestConfig.TopicName();
+                    var offset = 5;
 
-            var offset = 5;
-
-            await brokerRouter.CommitTopicOffsetAsync(topicName, partitionId, consumerGroup, offset, CancellationToken.None);
-            Assert.ThrowsAsync<ArgumentNullException>(async () => await brokerRouter.GetTopicOffsetAsync(topicName, partitionId, group, CancellationToken.None));
+                    await router.CommitTopicOffsetAsync(topicName, partitionId, consumerGroup, offset, CancellationToken.None);
+                    Assert.ThrowsAsync<ArgumentNullException>(async () => await router.GetTopicOffsetAsync(topicName, partitionId, group, CancellationToken.None));
+                });
+            }
         }
 
         [Test]
         public async Task UpdateOrCreateOffsetConsumerGroupExistsTest()
         {
-            // Creating a broker router and a protocol gateway for the producer and consumer
-            var brokerRouter = new Router(_kafkaUri, new ConnectionFactory(), _config);
-            var partitionId = 0;
-            var consumerGroup = TestConfig.ConsumerName();
+            using (var router = new Router(_kafkaUri, new ConnectionFactory(), _config)) {
+                await router.TemporaryTopicAsync(async topicName => {
+                    var partitionId = 0;
+                    var consumerGroup = TestConfig.ConsumerName();
 
-            var topicName = TestConfig.TopicName();
-            var offest = 5;
-            var newOffset = 10;
+                    var offest = 5;
+                    var newOffset = 10;
 
-            await brokerRouter.GetTopicOffsetAsync(topicName, partitionId, CancellationToken.None);
-            await brokerRouter.CommitTopicOffsetAsync(topicName, partitionId, consumerGroup, offest, CancellationToken.None);
-            var res = await brokerRouter.GetTopicOffsetAsync(topicName, partitionId, consumerGroup, CancellationToken.None);
-            Assert.AreEqual(offest, res.Offset);
+                    await router.GetTopicOffsetAsync(topicName, partitionId, CancellationToken.None);
+                    await router.CommitTopicOffsetAsync(topicName, partitionId, consumerGroup, offest, CancellationToken.None);
+                    var res = await router.GetTopicOffsetAsync(topicName, partitionId, consumerGroup, CancellationToken.None);
+                    Assert.AreEqual(offest, res.Offset);
 
-            await brokerRouter.CommitTopicOffsetAsync(topicName, partitionId, consumerGroup, newOffset, CancellationToken.None);
-            res = await brokerRouter.GetTopicOffsetAsync(topicName, partitionId, consumerGroup, CancellationToken.None);
+                    await router.CommitTopicOffsetAsync(topicName, partitionId, consumerGroup, newOffset, CancellationToken.None);
+                    res = await router.GetTopicOffsetAsync(topicName, partitionId, consumerGroup, CancellationToken.None);
 
-            Assert.AreEqual(newOffset, res.Offset);
+                    Assert.AreEqual(newOffset, res.Offset);
+                });
+            }
         }
 
         [Test]
         public async Task UpdateOrCreateOffsetPartitionDoesntExistTest()
         {
-            // Creating a broker router and a protocol gateway for the producer and consumer
-            var brokerRouter = new Router(_kafkaUri, new ConnectionFactory(), _config);
-            var partitionId = 100;
-            var consumerGroup = Guid.NewGuid().ToString();
+            using (var router = new Router(_kafkaUri, new ConnectionFactory(), _config)) {
+                await router.TemporaryTopicAsync(async topicName => {
+                    var partitionId = 100;
+                    var consumerGroup = Guid.NewGuid().ToString();
 
-            var topicName = TestConfig.TopicName();
+                    var offest = 5;
 
-            var offest = 5;
-
-            Assert.ThrowsAsync<CachedMetadataException>(async () => await brokerRouter.CommitTopicOffsetAsync(topicName, partitionId, consumerGroup, offest, CancellationToken.None));
+                    Assert.ThrowsAsync<CachedMetadataException>(async () => await router.CommitTopicOffsetAsync(topicName, partitionId, consumerGroup, offest, CancellationToken.None));
+                });
+            }
         }
 
         [Test]
         public async Task UpdateOrCreateOffsetTopicDoesntExistTest()
         {
-            // Creating a broker router and a protocol gateway for the producer and consumer
-            var brokerRouter = new Router(_kafkaUri, new ConnectionFactory(), _config);
-            var partitionId = 0;
-            var topic = TestConfig.TopicName();
-            var consumerGroup = TestConfig.ConsumerName();
+            using (var router = new Router(_kafkaUri, new ConnectionFactory(), _config)) {
+                var topicName = TestConfig.TopicName();
+                try {
+                    await router.SendToAnyAsync(new DeleteTopicsRequest(new [] { topicName }, TimeSpan.FromSeconds(1)), CancellationToken.None);
+                } catch (RequestException ex) when (ex.ErrorCode == ErrorResponseCode.TopicAlreadyExists) {
+                    // ignore
+                }
 
-            var offest = 5;
+                var partitionId = 0;
+                var consumerGroup = TestConfig.ConsumerName();
 
-            await brokerRouter.CommitTopicOffsetAsync(topic, partitionId, consumerGroup, offest, CancellationToken.None);
+                var offest = 5;
+
+                await router.CommitTopicOffsetAsync(topicName, partitionId, consumerGroup, offest, CancellationToken.None);
+            }
         }
 
         [Test]
         public async Task UpdateOrCreateOffsetConsumerGroupArgumentNull([Values(null, "")] string group)
         {
-            // Creating a broker router and a protocol gateway for the producer and consumer
-            var brokerRouter = new Router(_kafkaUri, new ConnectionFactory(), _config);
-            var partitionId = 0;
-            var topic = TestConfig.TopicName();
+            using (var router = new Router(_kafkaUri, new ConnectionFactory(), _config)) {
+                await router.TemporaryTopicAsync(async topicName => {
+                    var partitionId = 0;
 
-            var offest = 5;
+                    var offest = 5;
 
-            Assert.ThrowsAsync<ArgumentNullException>(async () => await brokerRouter.CommitTopicOffsetAsync(topic, partitionId, group, offest, CancellationToken.None));
+                    Assert.ThrowsAsync<ArgumentNullException>(async () => await router.CommitTopicOffsetAsync(topicName, partitionId, group, offest, CancellationToken.None));
+                });
+            }
         }
 
         [Test]
         public async Task UpdateOrCreateOffsetNegativeOffsetTest()
         {
-            // Creating a broker router and a protocol gateway for the producer and consumer
-            var brokerRouter = new Router(_kafkaUri, new ConnectionFactory(), _config);
-            var partitionId = 0;
-            var topic = TestConfig.TopicName();
-            var consumerGroup = TestConfig.ConsumerName();
+            using (var router = new Router(_kafkaUri, new ConnectionFactory(), _config)) {
+                await router.TemporaryTopicAsync(async topicName => {
+                    var partitionId = 0;
+                    var consumerGroup = TestConfig.ConsumerName();
 
-            var offest = -5;
+                    var offest = -5;
 
-            Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await brokerRouter.CommitTopicOffsetAsync(topic, partitionId, consumerGroup, offest, CancellationToken.None));
+                    Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await router.CommitTopicOffsetAsync(topicName, partitionId, consumerGroup, offest, CancellationToken.None));
+                });
+            }
         }
 
         [Test]
         public async Task FetchLastOffsetSimpleTest()
         {
-            // Creating a broker router and a protocol gateway for the producer and consumer
-            var brokerRouter = new Router(_kafkaUri, new ConnectionFactory(), _config);
+            using (var router = new Router(_kafkaUri, new ConnectionFactory(), _config)) {
+                await router.TemporaryTopicAsync(async topicName => {
+                    var offset = await router.GetTopicOffsetAsync(topicName, _partitionId, CancellationToken.None);
 
-            var topic = TestConfig.TopicName();
-
-            var offset = await brokerRouter.GetTopicOffsetAsync(topic, _partitionId, CancellationToken.None);
-
-            Assert.AreNotEqual(-1, offset.Offset);
+                    Assert.AreNotEqual(-1, offset.Offset);
+                });
+            }
         }
 
         [Test]
         public async Task FetchLastOffsetPartitionDoesntExistTest()
         {
-            // Creating a broker router and a protocol gateway for the producer and consumer
-            var brokerRouter = new Router(_kafkaUri, new ConnectionFactory(), _config);
-            var partitionId = 100;
-            var topic = TestConfig.TopicName();
+            using (var router = new Router(_kafkaUri, new ConnectionFactory(), _config)) {
+                await router.TemporaryTopicAsync(async topicName => {
+                    var partitionId = 100;
 
-            Assert.ThrowsAsync<CachedMetadataException>(async () => await brokerRouter.GetTopicOffsetAsync(topic, partitionId, CancellationToken.None));
+                    Assert.ThrowsAsync<CachedMetadataException>(async () => await router.GetTopicOffsetAsync(topicName, partitionId, CancellationToken.None));
+                });
+            }
         }
 
         [Test]
         public async Task FetchLastOffsetTopicDoesntExistTest()
         {
-            // Creating a broker router and a protocol gateway for the producer and consumer
-            var brokerRouter = new Router(_kafkaUri, new ConnectionFactory(), _config, log: TestConfig.InfoLog);
-
-            var topic = TestConfig.TopicName();
-
-            await brokerRouter.GetTopicOffsetAsync(topic, _partitionId, CancellationToken.None);
+            using (var router = new Router(_kafkaUri, new ConnectionFactory(), _config, log: TestConfig.InfoLog)) {
+                await router.TemporaryTopicAsync(async topicName => {
+                    await router.GetTopicOffsetAsync(topicName, _partitionId, CancellationToken.None);
+                });
+            }
         }
+
+
+        }
+
+        #region helpers
 
         private void CheckMessages(List<Message> expected, List<Message> actual)
         {
@@ -477,5 +511,7 @@ namespace KafkaClient.Tests
 
             return messages;
         }
+
+        #endregion
     }
 }
