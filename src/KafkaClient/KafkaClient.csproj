@@ -89,6 +89,7 @@
     <Compile Include="Common\IRetry.cs" />
     <Compile Include="Common\NoRetry.cs" />
     <Compile Include="Common\Retry.cs" />
+    <Compile Include="Connections\ISslConfiguration.cs" />
     <Compile Include="Connections\IVersionSupport.cs" />
     <Compile Include="Connections\PartialReadException.cs" />
     <Compile Include="Connections\SocketPayloadReadTask.cs" />
