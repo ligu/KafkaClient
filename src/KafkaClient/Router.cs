@@ -163,7 +163,7 @@ namespace KafkaClient
         private async Task<MetadataResponse.Topic> UpdateTopicMetadataFromServerAsync(string topicName, bool ignoreCache, CancellationToken cancellationToken)
         {
             var topics = await UpdateTopicMetadataFromServerAsync(new [] { topicName }, ignoreCache, cancellationToken).ConfigureAwait(false);
-            return topics.Single();
+            return topics.SingleOrDefault();
         }
 
         private async Task<IImmutableList<MetadataResponse.Topic>> UpdateTopicMetadataFromServerAsync(IEnumerable<string> topicNames, bool ignoreCache, CancellationToken cancellationToken)
@@ -177,13 +177,20 @@ namespace KafkaClient
                     if (searchResult.Missing.Count == 0) return searchResult.Topics;
                 }
 
+                MetadataRequest request;
                 MetadataResponse response;
                 if (ignoreCache && topicNames == null) {
                     Log.Info(() => LogEvent.Create("BrokerRouter refreshing metadata for all topics"));
-                    response = await GetTopicMetadataFromServerAsync(null, cancellationToken);
+                    request = new MetadataRequest();
+                    response = await this.GetMetadataAsync(request, cancellationToken);
                 } else {
                     Log.Info(() => LogEvent.Create($"BrokerRouter refreshing metadata for topics {string.Join(",", searchResult.Missing)}"));
-                    response = await GetTopicMetadataFromServerAsync(searchResult.Missing, cancellationToken);
+                    request = new MetadataRequest(searchResult.Missing);
+                    response = await this.GetMetadataAsync(request, cancellationToken);
+                }
+
+                if (ignoreCache && (response?.Topics == null || response.Topics.Count == 0)) {
+                    throw new CachedMetadataException($"Unable to refresh metadata");
                 }
 
                 UpdateConnectionCache(response);
@@ -191,13 +198,9 @@ namespace KafkaClient
 
                 // since the above may take some time to complete, it's necessary to hold on to the topics we found before
                 // just in case they expired between when we searched for them and now.
-                return searchResult.Topics.AddNotNullRange(response?.Topics);
+                var result = searchResult.Topics.AddNotNullRange(response?.Topics);
+                return result;
             }
-        }
-
-        private Task<MetadataResponse> GetTopicMetadataFromServerAsync(IEnumerable<string> topicNames, CancellationToken cancellationToken)
-        {
-            return this.GetMetadataAsync(topicNames, cancellationToken);
         }
 
         private CachedTopicsResult TryGetCachedTopics(IEnumerable<string> topicNames, TimeSpan? expiration = null)

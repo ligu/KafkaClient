@@ -56,27 +56,31 @@ namespace KafkaClient.Tests.Connections
         {
             var requestsSoFar = 0;
             var requestTasks = new ConcurrentBag<Task<MetadataResponse>>();
-            var singleResult = await _conn.SendAsync(new MetadataRequest(TestConfig.TopicName()), CancellationToken.None);
-            Assert.That(singleResult.Topics.Count, Is.GreaterThan(0));
-            Assert.That(singleResult.Topics.First().Partitions.Count, Is.GreaterThan(0));
+            using (var router = new Router(TestConfig.IntegrationUri)) {
+                await router.TemporaryTopicAsync(async topicName => {
+                    var singleResult = await _conn.SendAsync(new MetadataRequest(TestConfig.TopicName()), CancellationToken.None);
+                    Assert.That(singleResult.Topics.Count, Is.GreaterThan(0));
+                    Assert.That(singleResult.Topics.First().Partitions.Count, Is.GreaterThan(0));
 
-            var senderTasks = new List<Task>();
-            for (var s = 0; s < senders; s++) {
-                senderTasks.Add(Task.Run(async () => {
-                    while (true) {
-                        await Task.Delay(1);
-                        if (Interlocked.Increment(ref requestsSoFar) > totalRequests) break;
-                        requestTasks.Add(_conn.SendAsync(new MetadataRequest(), CancellationToken.None));
+                    var senderTasks = new List<Task>();
+                    for (var s = 0; s < senders; s++) {
+                        senderTasks.Add(Task.Run(async () => {
+                            while (true) {
+                                await Task.Delay(1);
+                                if (Interlocked.Increment(ref requestsSoFar) > totalRequests) break;
+                                requestTasks.Add(_conn.SendAsync(new MetadataRequest(), CancellationToken.None));
+                            }
+                        }));
                     }
-                }));
+
+                    await Task.WhenAll(senderTasks);
+                    var requests = requestTasks.ToArray();
+                    await Task.WhenAll(requests);
+
+                    var results = requests.Select(x => x.Result).ToList();
+                    Assert.That(results.Count, Is.EqualTo(totalRequests));
+                });
             }
-
-            await Task.WhenAll(senderTasks);
-            var requests = requestTasks.ToArray();
-            await Task.WhenAll(requests);
-
-            var results = requests.Select(x => x.Result).ToList();
-            Assert.That(results.Count, Is.EqualTo(totalRequests));
         }
 
         [Test]

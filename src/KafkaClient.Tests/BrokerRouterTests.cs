@@ -92,7 +92,7 @@ namespace KafkaClient.Tests
             routerProxy.Connection2.MetadataResponseFunction = () => { throw new Exception("some error"); };
             var router = routerProxy.Create();
 
-            Assert.ThrowsAsync<RequestException>(async () => await router.GetTopicMetadataAsync(TestTopic, CancellationToken.None));
+            Assert.ThrowsAsync<ConnectionException>(async () => await router.GetTopicMetadataAsync(TestTopic, CancellationToken.None));
 
             Assert.That(routerProxy.Connection1.MetadataRequestCallCount, Is.EqualTo(1));
             Assert.That(routerProxy.Connection2.MetadataRequestCallCount, Is.EqualTo(1));

@@ -41,7 +41,7 @@ namespace KafkaClient.Tests
                 .Returns(x => CreateMetadataResponse(errorCode), x => CreateMetadataResponse(errorCode));
 
             _brokerRouter.Connections.ReturnsForAnyArgs(new List<IConnection> {conn});
-            var response = await _brokerRouter.GetMetadataAsync(new []{ "Test"}, CancellationToken.None);
+            var response = await _brokerRouter.GetMetadataAsync(new MetadataRequest("Test"), CancellationToken.None);
 
             Received.InOrder(() =>
             {
@@ -66,7 +66,7 @@ namespace KafkaClient.Tests
                 .Returns(x => CreateMetadataResponse(-1, "123", 1), x => CreateMetadataResponse(ErrorResponseCode.None));
 
             _brokerRouter.Connections.ReturnsForAnyArgs(new List<IConnection> {conn});
-            var response = await _brokerRouter.GetMetadataAsync(new []{ "Test"}, CancellationToken.None);
+            var response = await _brokerRouter.GetMetadataAsync(new MetadataRequest("Test"), CancellationToken.None);
 
             Received.InOrder(() =>
             {
@@ -89,7 +89,7 @@ namespace KafkaClient.Tests
 
             _brokerRouter.Connections.ReturnsForAnyArgs(new List<IConnection> {conn});
             var source = new CancellationTokenSource();
-            var response = _brokerRouter.GetMetadataAsync(new [] { "Test"}, source.Token);
+            var response = _brokerRouter.GetMetadataAsync(new MetadataRequest("Test"), source.Token);
             source.Cancel();
 
             conn.Received(1).SendAsync(Arg.Any<IRequest<MetadataResponse>>(), Arg.Any<CancellationToken>());
@@ -105,7 +105,7 @@ namespace KafkaClient.Tests
 
             _brokerRouter.Connections.ReturnsForAnyArgs(new List<IConnection> {conn});
             var source = new CancellationTokenSource();
-            var response = _brokerRouter.GetMetadataAsync(new string[] { }, source.Token);
+            var response = _brokerRouter.GetMetadataAsync(new MetadataRequest(), source.Token);
             source.Cancel();
 
             conn.Received(1).SendAsync(Arg.Any<IRequest<MetadataResponse>>(), Arg.Any<CancellationToken>());
@@ -122,7 +122,7 @@ namespace KafkaClient.Tests
             conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), Arg.Any<CancellationToken>()).Returns(x => CreateMetadataResponse(errorCode));
 
             _brokerRouter.Connections.ReturnsForAnyArgs(new List<IConnection> {conn});
-            Assert.ThrowsAsync<RequestException>(() => _brokerRouter.GetMetadataAsync(new [] { "Test"}, CancellationToken.None));
+            Assert.ThrowsAsync<RequestException>(() => _brokerRouter.GetMetadataAsync(new MetadataRequest("Test"), CancellationToken.None));
         }
 
         [Test]
@@ -135,7 +135,7 @@ namespace KafkaClient.Tests
             conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), Arg.Any<CancellationToken>()).Returns(x => CreateMetadataResponse(1, host, 1));
 
             _brokerRouter.Connections.ReturnsForAnyArgs(new List<IConnection> {conn});
-            Assert.ThrowsAsync<ConnectionException>(() => _brokerRouter.GetMetadataAsync(new [] { "Test"}, CancellationToken.None));
+            Assert.ThrowsAsync<ConnectionException>(() => _brokerRouter.GetMetadataAsync(new MetadataRequest("Test"), CancellationToken.None));
         }
 
         [Test]
@@ -148,7 +148,7 @@ namespace KafkaClient.Tests
             conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), Arg.Any<CancellationToken>()).Returns(x => CreateMetadataResponse(1, "123", port));
 
             _brokerRouter.Connections.ReturnsForAnyArgs(new List<IConnection> {conn});
-            Assert.ThrowsAsync<ConnectionException>(() => _brokerRouter.GetMetadataAsync(new [] { "Test"}, CancellationToken.None));
+            Assert.ThrowsAsync<ConnectionException>(() => _brokerRouter.GetMetadataAsync(new MetadataRequest("Test"), CancellationToken.None));
         }
 
 #pragma warning disable 1998

@@ -158,22 +158,32 @@ namespace KafkaClient
                 brokeredRequest.MetadataRetry,
                 brokeredRequest.ThrowExtractedException,
                 (ex, attempt, retry) => brokeredRequest.MetadataRetry(attempt, ex, out metadataInvalid),
-                null, // do nothing on final exception -- will be rethrown
+                (ex, attempt) => {
+                    var connectionException = ex as ConnectionException;
+                    if (connectionException?.Message != null && connectionException.Message.StartsWith("Unable to make Metadata Request to any of")) {
+                        throw new CachedMetadataException("Unable to find Metadata", ex);
+                    }
+                    throw ex.PrepareForRethrow(); 
+                },
                 cancellationToken);
         }
 
         public static async Task<T> SendToAnyAsync<T>(this IRouter router, IRequest<T> request, CancellationToken cancellationToken, IRequestContext context = null) where T : class, IResponse
         {
             Exception lastException = null;
+            var servers = new List<string>();
             foreach (var connection in router.Connections) {
+                var server = connection.Endpoint?.ToString();
                 try {
-                    return await connection.SendAsync(request, cancellationToken);
-                } catch (ConnectionException ex) {
+                    return await connection.SendAsync(request, cancellationToken).ConfigureAwait(false);
+                } catch (Exception ex) {
                     lastException = ex;
-                    router.Log.Info(() => LogEvent.Create(ex, $"Skipping connection that failed: {ex.Endpoint}"));
+                    servers.Add(server);
+                    router.Log.Info(() => LogEvent.Create(ex, $"Failed to contact {server}: Trying next server"));
                 }
             }
-            throw new ConnectionException("None of the provided Kafka servers are resolvable.", lastException);
+
+            throw new ConnectionException($"Unable to make {request.ApiKey} Request to any of {string.Join(" ", servers)}", lastException);
         }
 
         public static async Task<bool> RefreshTopicMetadataIfInvalidAsync(this IRouter router, string topicName, bool? metadataInvalid, CancellationToken cancellationToken)
@@ -230,19 +240,17 @@ namespace KafkaClient
         /// Given a collection of server connections, query for the topic metadata.
         /// </summary>
         /// <param name="router">The router which provides the route and metadata.</param>
-        /// <param name="topicNames">Topics to get metadata information for.</param>
+        /// <param name="request">Metadata request to make</param>
         /// <param name="cancellationToken"></param>
         /// <remarks>
         /// Used by <see cref="Router"/> internally. Broken out for better testability, but not intended to be used separately.
         /// </remarks>
         /// <returns>MetadataResponse validated to be complete.</returns>
-        internal static async Task<MetadataResponse> GetMetadataAsync(this IRouter router, IEnumerable<string> topicNames, CancellationToken cancellationToken)
+        internal static async Task<MetadataResponse> GetMetadataAsync(this IRouter router, MetadataRequest request, CancellationToken cancellationToken)
         {
-            var request = new MetadataRequest(topicNames);
-
             return await router.Configuration.RefreshRetry.AttemptAsync(
                 async (attempt, timer) => {
-                    var response = await router.GetMetadataAsync(request, cancellationToken).ConfigureAwait(false);
+                    var response = await router.SendToAnyAsync(request, cancellationToken).ConfigureAwait(false);
                     if (response == null) return new RetryAttempt<MetadataResponse>(null);
 
                     var results = response.Brokers
@@ -269,22 +277,6 @@ namespace KafkaClient
                 },
                 (ex, attempt) => router.Log.Warn(() => LogEvent.Create(ex, $"Failed metadata request on attempt {attempt}")),
                 cancellationToken);
-        }
-
-        private static async Task<MetadataResponse> GetMetadataAsync(this IRouter router, MetadataRequest request, CancellationToken cancellationToken)
-        {
-            var servers = new List<string>();
-            foreach (var connection in router.Connections) {
-                var server = connection.Endpoint?.ToString();
-                try {
-                    return await connection.SendAsync(request, cancellationToken).ConfigureAwait(false);
-                } catch (Exception ex) {
-                    servers.Add(server);
-                    router.Log.Warn(() => LogEvent.Create(ex, $"Failed to contact {server}: Trying next server"));
-                }
-            }
-
-            throw new RequestException(request.ApiKey, ErrorResponseCode.None, $"Unable to make Metadata Request to any of {string.Join(" ", servers)}");
         }
 
         private class MetadataResult

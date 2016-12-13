@@ -24,7 +24,7 @@ namespace KafkaClient.Tests
         {
             var expectedTopic = Guid.NewGuid().ToString();
             var router = new Router(_options);
-            var response = router.GetMetadataAsync(new []{ expectedTopic }, CancellationToken.None);
+            var response = router.GetMetadataAsync(new MetadataRequest(expectedTopic), CancellationToken.None);
             var topic = (await response).Topics.FirstOrDefault();
 
             Assert.That(topic, Is.Not.Null);

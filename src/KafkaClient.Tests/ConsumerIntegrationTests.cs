@@ -27,9 +27,9 @@ namespace KafkaClient.Tests
         public ConsumerIntegrationTests()
         {
             _kafkaUri = TestConfig.IntegrationUri;
-            _config = new ConnectionConfiguration(ConnectionConfiguration.Defaults.ConnectionRetry(TimeSpan.FromSeconds(10)), requestTimeout: TimeSpan.FromSeconds(10));
+            _config = new ConnectionConfiguration(ConnectionConfiguration.Defaults.ConnectionRetry(TimeSpan.FromSeconds(10)), requestTimeout: TimeSpan.FromSeconds(1));
             _consumerConfig = new ConsumerConfiguration(maxPartitionFetchBytes: DefaultMaxMessageSetSize);
-            _options = new KafkaOptions(TestConfig.IntegrationUri, _config, log: TestConfig.DebugLog, consumerConfiguration: _consumerConfig);
+            _options = new KafkaOptions(TestConfig.IntegrationUri, new ConnectionConfiguration(ConnectionConfiguration.Defaults.ConnectionRetry(TimeSpan.FromSeconds(10)), requestTimeout: TimeSpan.FromSeconds(10)), log: TestConfig.DebugLog, consumerConfiguration: _consumerConfig);
         }
 
         [Test]
@@ -168,7 +168,7 @@ namespace KafkaClient.Tests
         [Test]
         public async Task FetchMessagesNoNewMessagesInQueueTest()
         {
-            using (var router = new Router(_kafkaUri, new ConnectionFactory(), _config)) {
+            using (var router = new Router(_options)) {
                 await router.TemporaryTopicAsync(async topicName => {
                     var consumer = new Consumer(router, _consumerConfig);
 
@@ -232,7 +232,12 @@ namespace KafkaClient.Tests
                 var offset = 0;
 
                 // Now let's consume
-                await consumer.FetchMessagesAsync(topicName, _partitionId, offset, 5, CancellationToken.None);
+                try {
+                    await consumer.FetchMessagesAsync(topicName, _partitionId, offset, 5, CancellationToken.None);
+                    Assert.Fail("should have thrown CachedMetadataException");
+                } catch (CachedMetadataException ex) when (ex.Message == "Unable to refresh metadata") {
+                    // expected
+                }
             }
         }
 
@@ -318,7 +323,12 @@ namespace KafkaClient.Tests
                 }
 
                 var consumerGroup = TestConfig.ConsumerName();
-                await router.GetTopicOffsetAsync(topicName, _partitionId, consumerGroup, CancellationToken.None);
+                try {
+                    await router.GetTopicOffsetAsync(topicName, _partitionId, consumerGroup, CancellationToken.None);
+                    Assert.Fail("should have thrown CachedMetadataException");
+                } catch (CachedMetadataException ex) when (ex.Message == "Unable to refresh metadata") {
+                    // expected
+                }
             }
         }
 
@@ -398,7 +408,7 @@ namespace KafkaClient.Tests
         [Test]
         public async Task UpdateOrCreateOffsetTopicDoesntExistTest()
         {
-            using (var router = new Router(_kafkaUri, new ConnectionFactory(), _config)) {
+            using (var router = new Router(_kafkaUri, new ConnectionFactory(), _config, log: TestConfig.DebugLog)) {
                 var topicName = TestConfig.TopicName();
                 try {
                     await router.SendToAnyAsync(new DeleteTopicsRequest(new [] { topicName }, TimeSpan.FromSeconds(1)), CancellationToken.None);
@@ -410,8 +420,12 @@ namespace KafkaClient.Tests
                 var consumerGroup = TestConfig.ConsumerName();
 
                 var offest = 5;
-
-                await router.CommitTopicOffsetAsync(topicName, partitionId, consumerGroup, offest, CancellationToken.None);
+                try {
+                    await router.CommitTopicOffsetAsync(topicName, partitionId, consumerGroup, offest, CancellationToken.None);
+                    Assert.Fail("should have thrown CachedMetadataException");
+                } catch (CachedMetadataException ex) when (ex.Message == "Unable to refresh metadata") {
+                    // expected
+                }
             }
         }
 
@@ -463,6 +477,7 @@ namespace KafkaClient.Tests
                 await router.TemporaryTopicAsync(async topicName => {
                     var partitionId = 100;
 
+
                     Assert.ThrowsAsync<CachedMetadataException>(async () => await router.GetTopicOffsetAsync(topicName, partitionId, CancellationToken.None));
                 });
             }
@@ -472,13 +487,51 @@ namespace KafkaClient.Tests
         public async Task FetchLastOffsetTopicDoesntExistTest()
         {
             using (var router = new Router(_kafkaUri, new ConnectionFactory(), _config, log: TestConfig.InfoLog)) {
-                await router.TemporaryTopicAsync(async topicName => {
+                var topicName = TestConfig.TopicName();
+                try {
+                    await router.SendToAnyAsync(new DeleteTopicsRequest(new [] { topicName }, TimeSpan.FromSeconds(1)), CancellationToken.None);
+                } catch (RequestException ex) when (ex.ErrorCode == ErrorResponseCode.TopicAlreadyExists) {
+                    // ignore
+                }
+
+                try {
                     await router.GetTopicOffsetAsync(topicName, _partitionId, CancellationToken.None);
+                    Assert.Fail("should have thrown CachedMetadataException");
+                } catch (CachedMetadataException ex) when (ex.Message == "Unable to refresh metadata") {
+                    // expected
+                }
+            }
+        }
+
+        [Test]
+        public async Task JoiningConsumerGroupOnMissingTopicFails()
+        {
+            using (var router = new Router(_options)) {
+                await router.TemporaryTopicAsync(async topicName => {
+                    var consumerGroup = TestConfig.ConsumerName();
+
+                    using (var consumer = new Consumer(router, _consumerConfig, _config.Encoders)) {
+                        using (var member = await consumer.JoinConsumerGroupAsync(consumerGroup, new ConsumerProtocolMetadata(topicNames: new[] { topicName }), CancellationToken.None)) {
+                            Assert.That(member.GroupId, Is.EqualTo(consumerGroup));
+                        }
+                    }
                 });
             }
         }
 
-
+        [Test]
+        public async Task ConsumerCanJoinConsumerGroup()
+        {
+            using (var router = new Router(_options)) {
+                await router.TemporaryTopicAsync(async topicName => {
+                    using (var consumer = new Consumer(router, _consumerConfig, _config.Encoders)) {
+                        var groupId = TestConfig.ConsumerName();
+                        using (var member = await consumer.JoinConsumerGroupAsync(groupId, new ConsumerProtocolMetadata(topicNames: new[] { TestConfig.TopicName() }), CancellationToken.None)) {
+                            Assert.That(member.GroupId, Is.EqualTo(groupId));
+                        }
+                    }
+                });
+            }
         }
 
         #region helpers
