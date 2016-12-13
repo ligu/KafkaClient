@@ -52,10 +52,10 @@ namespace KafkaClient.Tests.Fakes
 
             var kafkaConnectionFactory = Substitute.For<IConnectionFactory>();
             kafkaConnectionFactory
-                .Create(Arg.Is<Endpoint>(e => e.IP.Port == 1), Arg.Any<IConnectionConfiguration>(),Arg.Any<ILog>())
+                .Create(Arg.Is<Endpoint>(e => e.IP.Port == 1), Arg.Any<IConnectionConfiguration>(),null, Arg.Any<ILog>())
                 .Returns(Connection1);
             kafkaConnectionFactory
-                .Create(Arg.Is<Endpoint>(e => e.IP.Port == 2), Arg.Any<IConnectionConfiguration>(),Arg.Any<ILog>())
+                .Create(Arg.Is<Endpoint>(e => e.IP.Port == 2), Arg.Any<IConnectionConfiguration>(),null, Arg.Any<ILog>())
                 .Returns(Connection2);
             kafkaConnectionFactory
                 .Resolve(Arg.Any<Uri>(), Arg.Any<ILog>())

@@ -51,8 +51,8 @@ namespace KafkaClient.Tests.Fakes
 #pragma warning restore 1998
 
             _mockConnectionFactory = Substitute.For<IConnectionFactory>();
-            _mockConnectionFactory.Create(Arg.Is<Endpoint>(e => e.IP.Port == 1), Arg.Any<IConnectionConfiguration>(), Arg.Any<ILog>()).Returns(_fakeConn0);
-            _mockConnectionFactory.Create(Arg.Is<Endpoint>(e => e.IP.Port == 2), Arg.Any<IConnectionConfiguration>(), Arg.Any<ILog>()).Returns(_fakeConn1);
+            _mockConnectionFactory.Create(Arg.Is<Endpoint>(e => e.IP.Port == 1), Arg.Any<IConnectionConfiguration>(), null, Arg.Any<ILog>()).Returns(_fakeConn0);
+            _mockConnectionFactory.Create(Arg.Is<Endpoint>(e => e.IP.Port == 2), Arg.Any<IConnectionConfiguration>(), null, Arg.Any<ILog>()).Returns(_fakeConn1);
             _mockConnectionFactory.Resolve(Arg.Any<Uri>(), Arg.Any<ILog>())
                                        .Returns(info => new Endpoint((Uri)info[0], new IPEndPoint(IPAddress.Parse("127.0.0.1"), ((Uri)info[0]).Port)));
         }
