@@ -171,7 +171,9 @@ namespace KafkaClient.Protocol
 
         public static IKafkaWriter Write(this IKafkaWriter writer, IMemberMetadata metadata, IProtocolTypeEncoder encoder)
         {
-            encoder.EncodeMetadata(writer, metadata);
+            using (writer.MarkForLength()) {
+                encoder.EncodeMetadata(writer, metadata);
+            }
             return writer;
         }
 

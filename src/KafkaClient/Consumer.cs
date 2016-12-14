@@ -4,7 +4,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Common;
-using KafkaClient.Connections;
 using KafkaClient.Protocol;
 using KafkaClient.Protocol.Types;
 
@@ -82,19 +81,11 @@ namespace KafkaClient
             IProtocolTypeEncoder encoder = null;
             if (!Encoders.TryGetValue(metadata?.ProtocolType ?? "", out encoder)) throw new ArgumentOutOfRangeException(nameof(metadata), "ProtocolType be known by Encoders");
 
-            var request = new JoinGroupRequest(groupId, Configuration.GroupHeartbeat, memberId, metadata.ProtocolType, new [] { new JoinGroupRequest.GroupProtocol(metadata.ProtocolType, metadata) }, Configuration.GroupRebalanceTimeout);
-            foreach (var connection in _router.Connections) {
-                try {
-                    var response = await connection.SendAsync(request, cancellationToken);
-
-                    // add encoder?
-                    return new ConsumerGroupMember(this, groupId, response.MemberId, response.LeaderId, response.GenerationId);
-                } catch (ConnectionException ex) {
-                    _router.Log.Info(() => LogEvent.Create(ex, $"Skipping connection that failed: {ex.Endpoint}"));
-                }
-            }
-
-            throw new ConnectionException("None of the provided Kafka servers are available to join.");
+            var protocol = new JoinGroupRequest.GroupProtocol(metadata.ProtocolType, metadata);
+            var request = new JoinGroupRequest(groupId, Configuration.GroupHeartbeat, memberId, metadata.ProtocolType, new [] { protocol }, Configuration.GroupRebalanceTimeout);
+            var response = await _router.SendToAnyAsync(request, cancellationToken);
+            // add encoder?
+            return new ConsumerGroupMember(this, groupId, response.MemberId, response.LeaderId, response.GenerationId);
         }
     }
 }

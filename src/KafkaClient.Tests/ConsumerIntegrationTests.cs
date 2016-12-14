@@ -29,7 +29,7 @@ namespace KafkaClient.Tests
             _kafkaUri = TestConfig.IntegrationUri;
             _config = new ConnectionConfiguration(ConnectionConfiguration.Defaults.ConnectionRetry(TimeSpan.FromSeconds(10)), requestTimeout: TimeSpan.FromSeconds(1));
             _consumerConfig = new ConsumerConfiguration(maxPartitionFetchBytes: DefaultMaxMessageSetSize);
-            _options = new KafkaOptions(TestConfig.IntegrationUri, new ConnectionConfiguration(ConnectionConfiguration.Defaults.ConnectionRetry(TimeSpan.FromSeconds(10)), requestTimeout: TimeSpan.FromSeconds(10)), log: TestConfig.DebugLog, consumerConfiguration: _consumerConfig);
+            _options = new KafkaOptions(TestConfig.IntegrationUri, new ConnectionConfiguration(ConnectionConfiguration.Defaults.ConnectionRetry(TimeSpan.FromSeconds(10)), requestTimeout: TimeSpan.FromSeconds(10)), log: TestConfig.Log, consumerConfiguration: _consumerConfig);
         }
 
         [Test]
@@ -185,7 +185,7 @@ namespace KafkaClient.Tests
         [Test]
         public async Task FetchMessagesOffsetBiggerThanLastOffsetInQueueTest()
         {
-            using (var router = new Router(_kafkaUri, new ConnectionFactory(), _config, log: TestConfig.InfoLog)) {
+            using (var router = new Router(_kafkaUri, new ConnectionFactory(), _config, log: TestConfig.Log)) {
                 await router.TemporaryTopicAsync(async topicName => {
                     var consumer = new Consumer(router, _consumerConfig);
 
@@ -408,7 +408,7 @@ namespace KafkaClient.Tests
         [Test]
         public async Task UpdateOrCreateOffsetTopicDoesntExistTest()
         {
-            using (var router = new Router(_kafkaUri, new ConnectionFactory(), _config, log: TestConfig.DebugLog)) {
+            using (var router = new Router(_kafkaUri, new ConnectionFactory(), _config, log: TestConfig.Log)) {
                 var topicName = TestConfig.TopicName();
                 try {
                     await router.SendToAnyAsync(new DeleteTopicsRequest(new [] { topicName }, TimeSpan.FromSeconds(1)), CancellationToken.None);
@@ -486,7 +486,7 @@ namespace KafkaClient.Tests
         [Test]
         public async Task FetchLastOffsetTopicDoesntExistTest()
         {
-            using (var router = new Router(_kafkaUri, new ConnectionFactory(), _config, log: TestConfig.InfoLog)) {
+            using (var router = new Router(_kafkaUri, new ConnectionFactory(), _config, log: TestConfig.Log)) {
                 var topicName = TestConfig.TopicName();
                 try {
                     await router.SendToAnyAsync(new DeleteTopicsRequest(new [] { topicName }, TimeSpan.FromSeconds(1)), CancellationToken.None);

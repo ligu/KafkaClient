@@ -17,9 +17,7 @@ namespace KafkaClient.Tests.Helpers
         }
 
         // turned down to reduce log noise -- turn up if necessary
-        public static ILog WarnLog = new ConsoleLog(LogLevel.Warn);
-        public static ILog InfoLog = new ConsoleLog(LogLevel.Warn);
-        public static ILog DebugLog = new ConsoleLog(LogLevel.Warn);
+        public static ILog Log = new ConsoleLog(LogLevel.Warn);
 
         public static Uri ServerUri([CallerMemberName] string name = null)
         {

@@ -166,7 +166,7 @@ namespace KafkaClient.Tests
             TaskCompletionSource<int> x = new TaskCompletionSource<int>();
             Func<Task<FetchResponse>> ShouldReturnNotLeaderForPartitionAndThenNoError = async () =>
             {
-                var log = TestConfig.DebugLog;
+                var log = TestConfig.Log;
                 log.Debug(() => LogEvent.Create("FetchResponse Start "));
                 if (!x.Task.IsCompleted)
                 {

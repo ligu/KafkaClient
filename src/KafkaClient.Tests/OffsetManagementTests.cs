@@ -13,7 +13,7 @@ namespace KafkaClient.Tests
     [Category("Integration")]
     public class OffsetManagementTests
     {
-        private readonly KafkaOptions _options = new KafkaOptions(TestConfig.IntegrationUri, log: TestConfig.InfoLog);
+        private readonly KafkaOptions _options = new KafkaOptions(TestConfig.IntegrationUri, log: TestConfig.Log);
 
         [Test]
         public async Task OffsetFetchRequestOfNonExistingGroupShouldReturnNoError()

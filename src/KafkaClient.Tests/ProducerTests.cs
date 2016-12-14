@@ -95,7 +95,7 @@ namespace KafkaClient.Tests
         [Test]
         public async Task SendAsyncShouldBlockWhenMaximumAsyncQueueReached()
         {
-            TestConfig.InfoLog.Info(() => LogEvent.Create("Start SendAsyncShouldBlockWhenMaximumAsyncQueueReached"));
+            TestConfig.Log.Info(() => LogEvent.Create("Start SendAsyncShouldBlockWhenMaximumAsyncQueueReached"));
             int count = 0;
             var semaphore = new SemaphoreSlim(0);
             var routerProxy = new FakeBrokerRouter();
@@ -266,7 +266,7 @@ namespace KafkaClient.Tests
                     }
                 });
                 await senderTask;
-                TestConfig.InfoLog.Info(() => LogEvent.Create("Finished test send task"));
+                TestConfig.Log.Info(() => LogEvent.Create("Finished test send task"));
 
                 Assert.That(senderTask.IsCompleted);
                 Assert.That(producer.InFlightMessageCount + producer.BufferedMessageCount, Is.EqualTo(1000));

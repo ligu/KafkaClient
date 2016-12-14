@@ -51,7 +51,7 @@ namespace KafkaClient.Tests
         {
             var expected = totalMessages.Repeat(i => i.ToString()).ToList();
 
-            using (var router = new Router(TestConfig.IntegrationUri, log: TestConfig.WarnLog)) {
+            using (var router = new Router(TestConfig.IntegrationUri, log: TestConfig.Log)) {
                 using (var producer = new Producer(router, new ProducerConfiguration(batchSize: totalMessages / 10, batchMaxDelay: TimeSpan.FromMilliseconds(25)))) {
                     var offset = await producer.Router.GetTopicOffsetAsync(TestConfig.TopicName(), 0, CancellationToken.None);
 
@@ -71,7 +71,7 @@ namespace KafkaClient.Tests
                         Assert.Inconclusive($"Only finished sending {completed} of {totalMessages} in {timeoutInMs} ms.");
                     }
                     await doneSend;
-                    TestConfig.InfoLog.Info(() => LogEvent.Create($">> done send, time Milliseconds:{stopwatch.ElapsedMilliseconds}"));
+                    TestConfig.Log.Info(() => LogEvent.Create($">> done send, time Milliseconds:{stopwatch.ElapsedMilliseconds}"));
                     stopwatch.Restart();
 
                     using (var consumer = new Consumer(router, new ConsumerConfiguration(maxServerWait: TimeSpan.Zero))) {
@@ -88,7 +88,7 @@ namespace KafkaClient.Tests
                             fetched = fetched.AddRange(results);
                         }
                         stopwatch.Stop();
-                        TestConfig.InfoLog.Info(() => LogEvent.Create($">> done Consume, time Milliseconds:{stopwatch.ElapsedMilliseconds}"));
+                        TestConfig.Log.Info(() => LogEvent.Create($">> done Consume, time Milliseconds:{stopwatch.ElapsedMilliseconds}"));
 
 //                        Assert.That(fetched.Select(x => x.Value.ToUtf8String()).ToList(), Is.EqualTo(expected), "Expected the message list in the correct order.");
                         Assert.That(fetched.Count, Is.EqualTo(totalMessages));

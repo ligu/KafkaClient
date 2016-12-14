@@ -17,7 +17,7 @@ namespace KafkaClient.Tests.Connections
         public async Task FakeShouldBeAbleToReconnect()
         {
             var serverUri = TestConfig.ServerUri();
-            using (var server = new FakeTcpServer(TestConfig.WarnLog, serverUri.Port))
+            using (var server = new FakeTcpServer(TestConfig.Log, serverUri.Port))
             {
                 byte[] received = null;
                 server.OnBytesReceived += data => received = data;
@@ -43,7 +43,7 @@ namespace KafkaClient.Tests.Connections
         [Test]
         public void ShouldDisposeEvenWhenTryingToSendWithoutExceptionThrown()
         {
-            using (var server = new FakeTcpServer(TestConfig.WarnLog, TestConfig.ServerPort()))
+            using (var server = new FakeTcpServer(TestConfig.Log, TestConfig.ServerPort()))
             {
                 server.SendDataAsync("test");
                 Thread.Sleep(500);
@@ -53,7 +53,7 @@ namespace KafkaClient.Tests.Connections
         [Test]
         public void ShouldDisposeWithoutExecptionThrown()
         {
-            using (var server = new FakeTcpServer(TestConfig.WarnLog, TestConfig.ServerPort()))
+            using (var server = new FakeTcpServer(TestConfig.Log, TestConfig.ServerPort()))
             {
                 Thread.Sleep(500);
             }
@@ -64,7 +64,7 @@ namespace KafkaClient.Tests.Connections
         {
             const int testData = 99;
             var serverUri = TestConfig.ServerUri();
-            using (var server = new FakeTcpServer(TestConfig.WarnLog, serverUri.Port))
+            using (var server = new FakeTcpServer(TestConfig.Log, serverUri.Port))
             using (var client = new TcpClient())
             {
                 var send = server.SendDataAsync(testData.ToBytes());
