@@ -78,7 +78,7 @@ namespace KafkaClient
 
         public async Task<IConsumerGroupMember> JoinConsumerGroupAsync(string groupId, IMemberMetadata metadata, CancellationToken cancellationToken, string memberId = "")
         {
-            IProtocolTypeEncoder encoder = null;
+            IProtocolTypeEncoder encoder;
             if (!Encoders.TryGetValue(metadata?.ProtocolType ?? "", out encoder)) throw new ArgumentOutOfRangeException(nameof(metadata), "ProtocolType be known by Encoders");
 
             var protocol = new JoinGroupRequest.GroupProtocol(metadata.ProtocolType, metadata);
@@ -88,8 +88,16 @@ namespace KafkaClient
                 throw request.ExtractExceptions(response);
             }
 
-            // add encoder?
             return new ConsumerGroupMember(this, groupId, response.MemberId, response.LeaderId, response.GenerationId, encoder);
+        }
+
+        public async Task LeaveConsumerGroupAsync(string groupId, string memberId, CancellationToken cancellationToken, bool awaitResponse = true)
+        {
+            var request = new LeaveGroupRequest(groupId, memberId, awaitResponse);
+            var response = await _router.SendToAnyAsync(request, cancellationToken);
+            if (awaitResponse && !response.ErrorCode.IsSuccess()) {
+                throw request.ExtractExceptions(response);
+            }
         }
     }
 }

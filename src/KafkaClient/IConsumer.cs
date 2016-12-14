@@ -21,5 +21,6 @@ namespace KafkaClient
         IImmutableDictionary<string, IProtocolTypeEncoder> Encoders { get; }
 
         Task<IConsumerGroupMember> JoinConsumerGroupAsync(string groupId, IMemberMetadata metadata, CancellationToken cancellationToken, string memberId = "");
+        Task LeaveConsumerGroupAsync(string groupId, string memberId, CancellationToken cancellationToken, bool awaitResponse = true);
     }
 }
