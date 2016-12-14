@@ -304,7 +304,7 @@ namespace KafkaClient.Tests
             using (var router = new Router(_kafkaUri, new ConnectionFactory(), _config)) {
                 await router.TemporaryTopicAsync(async topicName => {
                     var partitionId = 100;
-                    var consumerGroup = TestConfig.ConsumerName();
+                    var consumerGroup = TestConfig.GroupId();
 
                     Assert.ThrowsAsync<CachedMetadataException>(async () => await router.GetTopicOffsetAsync(topicName, partitionId, consumerGroup, CancellationToken.None));
                 });
@@ -322,7 +322,7 @@ namespace KafkaClient.Tests
                     // ignore
                 }
 
-                var consumerGroup = TestConfig.ConsumerName();
+                var consumerGroup = TestConfig.GroupId();
                 try {
                     await router.GetTopicOffsetAsync(topicName, _partitionId, consumerGroup, CancellationToken.None);
                     Assert.Fail("should have thrown CachedMetadataException");
@@ -338,7 +338,7 @@ namespace KafkaClient.Tests
             using (var router = new Router(_kafkaUri, new ConnectionFactory(), _config)) {
                 await router.TemporaryTopicAsync(async topicName => {
                     var partitionId = 0;
-                    var consumerGroup = TestConfig.ConsumerName();
+                    var consumerGroup = TestConfig.GroupId();
 
                     var offset = 5L;
 
@@ -356,7 +356,7 @@ namespace KafkaClient.Tests
             using (var router = new Router(_kafkaUri, new ConnectionFactory(), _config)) {
                 await router.TemporaryTopicAsync(async topicName => {
                     var partitionId = 0;
-                    var consumerGroup = TestConfig.ConsumerName();
+                    var consumerGroup = TestConfig.GroupId();
 
                     var offset = 5;
 
@@ -372,7 +372,7 @@ namespace KafkaClient.Tests
             using (var router = new Router(_kafkaUri, new ConnectionFactory(), _config)) {
                 await router.TemporaryTopicAsync(async topicName => {
                     var partitionId = 0;
-                    var consumerGroup = TestConfig.ConsumerName();
+                    var consumerGroup = TestConfig.GroupId();
 
                     var offest = 5;
                     var newOffset = 10;
@@ -417,7 +417,7 @@ namespace KafkaClient.Tests
                 }
 
                 var partitionId = 0;
-                var consumerGroup = TestConfig.ConsumerName();
+                var consumerGroup = TestConfig.GroupId();
 
                 var offest = 5;
                 try {
@@ -449,7 +449,7 @@ namespace KafkaClient.Tests
             using (var router = new Router(_kafkaUri, new ConnectionFactory(), _config)) {
                 await router.TemporaryTopicAsync(async topicName => {
                     var partitionId = 0;
-                    var consumerGroup = TestConfig.ConsumerName();
+                    var consumerGroup = TestConfig.GroupId();
 
                     var offest = -5;
 
@@ -508,7 +508,7 @@ namespace KafkaClient.Tests
         {
             using (var router = new Router(_options)) {
                 await router.TemporaryTopicAsync(async topicName => {
-                    var consumerGroup = TestConfig.ConsumerName();
+                    var consumerGroup = TestConfig.GroupId();
 
                     using (var consumer = new Consumer(router, _consumerConfig, _config.Encoders)) {
                         using (var member = await consumer.JoinConsumerGroupAsync(consumerGroup, new ConsumerProtocolMetadata(topicNames: new[] { topicName }), CancellationToken.None)) {
@@ -525,9 +525,10 @@ namespace KafkaClient.Tests
             using (var router = new Router(_options)) {
                 await router.TemporaryTopicAsync(async topicName => {
                     using (var consumer = new Consumer(router, _consumerConfig, _config.Encoders)) {
-                        var groupId = TestConfig.ConsumerName();
+                        var groupId = TestConfig.GroupId();
                         using (var member = await consumer.JoinConsumerGroupAsync(groupId, new ConsumerProtocolMetadata(topicNames: new[] { TestConfig.TopicName() }), CancellationToken.None)) {
                             Assert.That(member.GroupId, Is.EqualTo(groupId));
+                            Assert.That(member.LeaderId, Is.EqualTo(member.MemberId));
                         }
                     }
                 });

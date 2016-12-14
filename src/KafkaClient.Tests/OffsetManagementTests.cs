@@ -48,7 +48,8 @@ namespace KafkaClient.Tests
                     var conn = router.GetBrokerRoute(topicName, partitionId);
 
                     // ensure the group exists
-                    var group = new GroupCoordinatorRequest(TestConfig.ConsumerName());
+                    var groupId = TestConfig.GroupId();
+                    var group = new GroupCoordinatorRequest(groupId);
                     var groupResponse = await conn.Connection.SendAsync(group, CancellationToken.None);
                     Assert.That(groupResponse, Is.Not.Null);
                     Assert.That(groupResponse.ErrorCode, Is.EqualTo(ErrorResponseCode.None));
@@ -75,7 +76,8 @@ namespace KafkaClient.Tests
                     var conn = router.GetBrokerRoute(topicName, partitionId);
 
                     // ensure the group exists
-                    var group = new GroupCoordinatorRequest(TestConfig.ConsumerName());
+                    var groupId = TestConfig.GroupId();
+                    var group = new GroupCoordinatorRequest(groupId);
                     var groupResponse = await conn.Connection.SendAsync(group, CancellationToken.None);
                     Assert.That(groupResponse, Is.Not.Null);
                     Assert.That(groupResponse.ErrorCode, Is.EqualTo(ErrorResponseCode.None));
@@ -87,7 +89,7 @@ namespace KafkaClient.Tests
                     Assert.That(commitTopic, Is.Not.Null);
                     Assert.That(commitTopic.ErrorCode, Is.EqualTo(ErrorResponseCode.None));
 
-                    var fetch = new OffsetFetchRequest(TestConfig.ConsumerName(), new TopicPartition(topicName, partitionId));
+                    var fetch = new OffsetFetchRequest(groupId, new TopicPartition(topicName, partitionId));
                     var fetchResponse = await conn.Connection.SendAsync(fetch, CancellationToken.None);
                     var fetchTopic = fetchResponse.Topics.SingleOrDefault();
 
@@ -110,7 +112,8 @@ namespace KafkaClient.Tests
                     var conn = await router.GetBrokerRouteAsync(topicName, partitionId, CancellationToken.None);
 
                     // ensure the group exists
-                    var group = new GroupCoordinatorRequest(TestConfig.ConsumerName());
+                    var groupId = TestConfig.GroupId();
+                    var group = new GroupCoordinatorRequest(groupId);
                     var groupResponse = await conn.Connection.SendAsync(group, CancellationToken.None);
                     Assert.That(groupResponse, Is.Not.Null);
                     Assert.That(groupResponse.ErrorCode, Is.EqualTo(ErrorResponseCode.None));
@@ -122,7 +125,7 @@ namespace KafkaClient.Tests
                     Assert.That(commitTopic, Is.Not.Null);
                     Assert.That(commitTopic.ErrorCode, Is.EqualTo(ErrorResponseCode.None));
 
-                    var fetch = new OffsetFetchRequest(TestConfig.ConsumerName(), commitTopic);
+                    var fetch = new OffsetFetchRequest(groupId, commitTopic);
                     var fetchResponse = await conn.Connection.SendAsync(fetch, CancellationToken.None);
                     var fetchTopic = fetchResponse.Topics.SingleOrDefault();
 
@@ -141,7 +144,8 @@ namespace KafkaClient.Tests
                 await router.TemporaryTopicAsync(async topicName => {
                     var conn = await router.GetBrokerRouteAsync(topicName, 0, CancellationToken.None);
 
-                    var request = new GroupCoordinatorRequest(TestConfig.ConsumerName());
+                    var groupId = TestConfig.GroupId();
+                    var request = new GroupCoordinatorRequest(groupId);
 
                     var response = await conn.Connection.SendAsync(request, CancellationToken.None);
 

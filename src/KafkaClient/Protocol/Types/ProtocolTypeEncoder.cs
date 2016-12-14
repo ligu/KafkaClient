@@ -17,23 +17,41 @@ namespace KafkaClient.Protocol.Types
         /// <inheritdoc />
         public void EncodeMetadata(IKafkaWriter writer, IMemberMetadata value)
         {
-            EncodeMetadata(writer, (TMetadata) value);
+            using (writer.MarkForLength()) {
+                EncodeMetadata(writer, (TMetadata) value);
+            }
         }
 
         /// <inheritdoc />
         public void EncodeAssignment(IKafkaWriter writer, IMemberAssignment value)
         {
-            EncodeAssignment(writer, (TAssignment) value);
+            using (writer.MarkForLength()) {
+                EncodeAssignment(writer, (TAssignment) value);
+            }
         }
 
         /// <inheritdoc />
-        public abstract IMemberMetadata DecodeMetadata(IKafkaReader reader);
+        public IMemberMetadata DecodeMetadata(IKafkaReader reader)
+        {
+            var expectedLength = reader.ReadInt32();
+            if (!reader.Available(expectedLength)) throw new BufferUnderRunException($"{Type} Metadata size of {expectedLength} is not fully available.");
+            
+            return DecodeMetadata(reader, expectedLength);
+        }
 
         /// <inheritdoc />
-        public abstract IMemberAssignment DecodeAssignment(IKafkaReader reader);
+        public IMemberAssignment DecodeAssignment(IKafkaReader reader)
+        {
+            var expectedLength = reader.ReadInt32();
+            if (!reader.Available(expectedLength)) throw new BufferUnderRunException($"{Type} Assignment size of {expectedLength} is not fully available.");
+            
+            return DecodeAssignment(reader, expectedLength);
+        }
 
         protected abstract void EncodeMetadata(IKafkaWriter writer, TMetadata value);
         protected abstract void EncodeAssignment(IKafkaWriter writer, TAssignment value);
+        protected abstract TMetadata DecodeMetadata(IKafkaReader reader, int expectedLength);
+        protected abstract TAssignment DecodeAssignment(IKafkaReader reader, int expectedLength);
     }
 
     public class ProtocolTypeEncoder : ProtocolTypeEncoder<ByteMemberMetadata, ByteMemberAssignment>
@@ -41,18 +59,6 @@ namespace KafkaClient.Protocol.Types
         /// <inheritdoc />
         public ProtocolTypeEncoder(string type = "") : base(type)
         {
-        }
-
-        /// <inheritdoc />
-        public override IMemberMetadata DecodeMetadata(IKafkaReader reader)
-        {
-            return new ByteMemberMetadata(Type, reader.ReadBytes());
-        }
-
-        /// <inheritdoc />
-        public override IMemberAssignment DecodeAssignment(IKafkaReader reader)
-        {
-            return new ByteMemberAssignment(reader.ReadBytes());
         }
 
         /// <inheritdoc />
@@ -65,6 +71,16 @@ namespace KafkaClient.Protocol.Types
         protected override void EncodeAssignment(IKafkaWriter writer, ByteMemberAssignment value)
         {
             writer.Write(value.Bytes);
+        }
+
+        protected override ByteMemberMetadata DecodeMetadata(IKafkaReader reader, int expectedLength)
+        {
+            return new ByteMemberMetadata(Type, reader.ReadBytes());
+        }
+
+        protected override ByteMemberAssignment DecodeAssignment(IKafkaReader reader, int expectedLength)
+        {
+            return new ByteMemberAssignment(reader.ReadBytes());
         }
     }
 }

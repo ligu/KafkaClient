@@ -84,8 +84,12 @@ namespace KafkaClient
             var protocol = new JoinGroupRequest.GroupProtocol(metadata.ProtocolType, metadata);
             var request = new JoinGroupRequest(groupId, Configuration.GroupHeartbeat, memberId, metadata.ProtocolType, new [] { protocol }, Configuration.GroupRebalanceTimeout);
             var response = await _router.SendToAnyAsync(request, cancellationToken);
+            if (!response.ErrorCode.IsSuccess()) {
+                throw request.ExtractExceptions(response);
+            }
+
             // add encoder?
-            return new ConsumerGroupMember(this, groupId, response.MemberId, response.LeaderId, response.GenerationId);
+            return new ConsumerGroupMember(this, groupId, response.MemberId, response.LeaderId, response.GenerationId, encoder);
         }
     }
 }

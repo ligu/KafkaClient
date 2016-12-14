@@ -862,7 +862,6 @@ namespace KafkaClient.Protocol
                 var members = new JoinGroupResponse.Member[reader.ReadInt32()];
                 for (var m = 0; m < members.Length; m++) {
                     var id = reader.ReadString();
-                    var metadataBytes = reader.ReadInt32();
                     var metadata = encoder.DecodeMetadata(reader);
                     members[m] = new JoinGroupResponse.Member(id, metadata);
                 }
@@ -917,7 +916,6 @@ namespace KafkaClient.Protocol
                         var memberId = reader.ReadString();
                         var clientId = reader.ReadString();
                         var clientHost = reader.ReadString();
-                        var metadataBytes = reader.ReadInt32();
                         var memberMetadata = encoder.DecodeMetadata(reader);
                         var memberAssignment = encoder.DecodeAssignment(reader);
                         members[m] = new DescribeGroupsResponse.Member(memberId, clientId, clientHost, memberMetadata, memberAssignment);

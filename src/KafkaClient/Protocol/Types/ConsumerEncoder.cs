@@ -19,7 +19,7 @@ namespace KafkaClient.Protocol.Types
         }
 
         /// <inheritdoc />
-        public override IMemberMetadata DecodeMetadata(IKafkaReader reader)
+        protected override ConsumerProtocolMetadata DecodeMetadata(IKafkaReader reader, int expectedLength)
         {
             var version = reader.ReadInt16();
             var topicNames = new string[reader.ReadInt32()];
@@ -31,7 +31,7 @@ namespace KafkaClient.Protocol.Types
         }
 
         /// <inheritdoc />
-        public override IMemberAssignment DecodeAssignment(IKafkaReader reader)
+        protected override ConsumerMemberAssignment DecodeAssignment(IKafkaReader reader, int expectedLength)
         {
             var version = reader.ReadInt16();
 

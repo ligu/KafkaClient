@@ -7,14 +7,14 @@ namespace KafkaClient
     {
         private readonly IConsumer _consumer;
 
-        public ConsumerGroupMember(IConsumer consumer, string groupId, string memberId, string leaderId, int generationId)
+        public ConsumerGroupMember(IConsumer consumer, string groupId, string memberId, string leaderId, int generationId, IProtocolTypeEncoder encoder)
         {
             _consumer = consumer;
             GroupId = groupId;
             MemberId = memberId;
             LeaderId = leaderId;
             GenerationId = generationId;
-
+            Encoder = encoder;
         }
 
         public string GroupId { get; }

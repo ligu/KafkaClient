@@ -11,9 +11,9 @@ namespace KafkaClient.Tests.Helpers
             return $"{Environment.MachineName}-Topic-{name}";
         }
 
-        public static string ConsumerName([CallerMemberName] string name = null)
+        public static string GroupId([CallerMemberName] string name = null)
         {
-            return $"{Environment.MachineName}-Consumer-{name}";
+            return $"{Environment.MachineName}-Group-{name}-{Guid.NewGuid():N}";
         }
 
         // turned down to reduce log noise -- turn up if necessary
