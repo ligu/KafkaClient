@@ -23,7 +23,6 @@ namespace KafkaClient
         public void Dispose()
         {
             // on dispose, should leave group (so it doesn't have to wait for next heartbeat to fail
-            throw new NotImplementedException();
         }
 
         public string LeaderId { get; }

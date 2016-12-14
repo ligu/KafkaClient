@@ -266,6 +266,7 @@ namespace KafkaClient.Tests.Protocol
                 var encoder = context.GetEncoder(protocolType);
                 for (var g = 0; g < groupProtocols.Length; g++) {
                     var protocolName = reader.ReadString();
+                    var metadataBytes = reader.ReadInt32();
                     var metadata = encoder.DecodeMetadata(reader);
                     groupProtocols[g] = new JoinGroupRequest.GroupProtocol(protocolName, metadata);
                 }
@@ -607,7 +608,7 @@ namespace KafkaClient.Tests.Protocol
             var encoder = context.GetEncoder();
             foreach (var member in response.Members) {
                 writer.Write(member.MemberId)
-                       .Write(member.Metadata, encoder);
+                      .Write(member.Metadata, encoder);
             }
             return true;
         }
