@@ -190,7 +190,7 @@ namespace KafkaClient
                 }
 
                 if (ignoreCache && (response?.Topics == null || response.Topics.Count == 0)) {
-                    throw new CachedMetadataException($"Unable to refresh metadata");
+                    throw new CachedMetadataException($"Unable to refresh metadata for topics {string.Join(",", request.Topics)}");
                 }
 
                 UpdateConnectionCache(response);

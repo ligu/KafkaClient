@@ -235,7 +235,7 @@ namespace KafkaClient.Tests
                 try {
                     await consumer.FetchMessagesAsync(topicName, _partitionId, offset, 5, CancellationToken.None);
                     Assert.Fail("should have thrown CachedMetadataException");
-                } catch (CachedMetadataException ex) when (ex.Message == "Unable to refresh metadata") {
+                } catch (CachedMetadataException ex) when (ex.Message.StartsWith("Unable to refresh metadata")) {
                     // expected
                 }
             }
@@ -326,7 +326,7 @@ namespace KafkaClient.Tests
                 try {
                     await router.GetTopicOffsetAsync(topicName, _partitionId, consumerGroup, CancellationToken.None);
                     Assert.Fail("should have thrown CachedMetadataException");
-                } catch (CachedMetadataException ex) when (ex.Message == "Unable to refresh metadata") {
+                } catch (CachedMetadataException ex) when (ex.Message.StartsWith("Unable to refresh metadata")) {
                     // expected
                 }
             }
@@ -423,7 +423,7 @@ namespace KafkaClient.Tests
                 try {
                     await router.CommitTopicOffsetAsync(topicName, partitionId, consumerGroup, offest, CancellationToken.None);
                     Assert.Fail("should have thrown CachedMetadataException");
-                } catch (CachedMetadataException ex) when (ex.Message == "Unable to refresh metadata") {
+                } catch (CachedMetadataException ex) when (ex.Message.StartsWith("Unable to refresh metadata")) {
                     // expected
                 }
             }
@@ -497,7 +497,7 @@ namespace KafkaClient.Tests
                 try {
                     await router.GetTopicOffsetAsync(topicName, _partitionId, CancellationToken.None);
                     Assert.Fail("should have thrown CachedMetadataException");
-                } catch (CachedMetadataException ex) when (ex.Message == "Unable to refresh metadata") {
+                } catch (CachedMetadataException ex) when (ex.Message.StartsWith("Unable to refresh metadata")) {
                     // expected
                 }
             }
