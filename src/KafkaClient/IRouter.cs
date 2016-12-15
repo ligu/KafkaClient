@@ -15,6 +15,26 @@ namespace KafkaClient
     public interface IRouter : IDisposable
     {
         /// <summary>
+        /// Get a broker for a specific groupId, from the cache.
+        /// </summary>
+        /// <param name="groupId">The group to select a broker for.</param>
+        /// <returns>A broker for the given group.</returns>
+        /// <exception cref="CachedMetadataException">Thrown if the given groupId does not exist.</exception>
+        GroupBroker GetGroupBroker(string groupId);
+
+        /// <summary>
+        /// Get a broker for a specific groupId.
+        /// </summary>
+        /// <param name="groupId">The group to select a broker for.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>A broker for the given group.</returns>
+        /// <remarks>
+        /// This method will check the cache first, and if the group is missing it will initiate a call to the kafka servers, updating the cache with the resulting metadata.
+        /// </remarks>
+        /// <exception cref="CachedMetadataException">Thrown if the given groupId does not exist even after a refresh.</exception>
+        Task<GroupBroker> GetGroupBrokerAsync(string groupId, CancellationToken cancellationToken);
+
+        /// <summary>
         /// Get a broker for a specific topic and partitionId, from the cache.
         /// </summary>
         /// <param name="topicName">The topic name to select a broker for.</param>
@@ -24,7 +44,7 @@ namespace KafkaClient
         /// This function does not use any selector criteria. If the given partitionId does not exist an exception will be thrown.
         /// </remarks>
         /// <exception cref="CachedMetadataException">Thrown if the given topic or partitionId does not exist for the given topic.</exception>
-        RouteToBroker GetBrokerRoute(string topicName, int partitionId);
+        TopicBroker GetTopicBroker(string topicName, int partitionId);
 
         /// <summary>
         /// Get a broker for a given topic using the IPartitionSelector function, from the cache.
@@ -33,7 +53,7 @@ namespace KafkaClient
         /// <param name="key">The key used by the IPartitionSelector to collate to a consistent partition. Null value means key will be ignored in selection process.</param>
         /// <returns>A broker route for the given topic.</returns>
         /// <exception cref="CachedMetadataException">Thrown if the topic metadata does not exist in the cache.</exception>
-        RouteToBroker GetBrokerRoute(string topicName, byte[] key = null);
+        TopicBroker GetTopicBroker(string topicName, byte[] key);
 
         /// <summary>
         /// Get a broker for a specific topic and partitionId.
@@ -47,7 +67,7 @@ namespace KafkaClient
         /// is missing it will initiate a call to the kafka servers, updating the cache with the resulting metadata.
         /// </remarks>
         /// <exception cref="CachedMetadataException">Thrown if the given topic or partitionId does not exist for the given topic even after a refresh.</exception>
-        Task<RouteToBroker> GetBrokerRouteAsync(string topicName, int partitionId, CancellationToken cancellationToken);
+        Task<TopicBroker> GetTopicBrokerAsync(string topicName, int partitionId, CancellationToken cancellationToken);
 
         /// <summary>
         /// Returns Topic metadata for the given topic.
@@ -93,6 +113,17 @@ namespace KafkaClient
         /// servers, updating the cache with the resulting metadata.
         /// </remarks>
         Task<IImmutableList<MetadataResponse.Topic>> GetTopicMetadataAsync(IEnumerable<string> topicNames, CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Force a call to the kafka servers to refresh metadata for the given group.
+        /// </summary>
+        /// <param name="groupId">The group name to refresh metadata for.</param>
+        /// <param name="ignoreCacheExpiry">True to ignore the local cache expiry and force the call to the server.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <remarks>
+        /// This method will ignore the cache and initiate a call to the kafka servers for the given group, updating the cache with the resulting metadata.
+        /// </remarks>
+        Task RefreshGroupMetadataAsync(string groupId, bool ignoreCacheExpiry, CancellationToken cancellationToken);
 
         /// <summary>
         /// Force a call to the kafka servers to refresh metadata for the given topic.

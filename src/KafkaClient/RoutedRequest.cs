@@ -22,13 +22,13 @@ namespace KafkaClient
         private readonly string _topicName;
         private readonly int _partitionId;
 
-        private RouteToBroker _route;
+        private TopicBroker _route;
         private T _response;
 
         public async Task SendAsync(IRouter router, CancellationToken cancellationToken, IRequestContext context = null)
         {
             _response = null;
-            _route = await router.GetBrokerRouteAsync(_topicName, _partitionId, cancellationToken).ConfigureAwait(false);
+            _route = await router.GetTopicBrokerAsync(_topicName, _partitionId, cancellationToken).ConfigureAwait(false);
             _response = await _route.Connection.SendAsync(_request, cancellationToken, context).ConfigureAwait(false);
         }
 

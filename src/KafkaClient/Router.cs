@@ -30,6 +30,7 @@ namespace KafkaClient
         private ImmutableDictionary<Endpoint, IConnection> _allConnections = ImmutableDictionary<Endpoint, IConnection>.Empty;
         private ImmutableDictionary<int, IConnection> _brokerConnections = ImmutableDictionary<int, IConnection>.Empty;
         private ImmutableDictionary<string, Tuple<MetadataResponse.Topic, DateTime>> _topicCache = ImmutableDictionary<string, Tuple<MetadataResponse.Topic, DateTime>>.Empty;
+        private ImmutableDictionary<string, Tuple<int, DateTime>> _groupCache = ImmutableDictionary<string, Tuple<int, DateTime>>.Empty;
 
         private readonly AsyncLock _lock = new AsyncLock();
 
@@ -75,12 +76,12 @@ namespace KafkaClient
         public IEnumerable<IConnection> Connections => _allConnections.Values;
 
         /// <inheritdoc />
-        public RouteToBroker GetBrokerRoute(string topicName, int partitionId)
+        public TopicBroker GetTopicBroker(string topicName, int partitionId)
         {
-            return GetBrokerRoute(topicName, partitionId, GetCachedTopic(topicName));
+            return GetCachedTopicBroker(topicName, partitionId, GetCachedTopic(topicName));
         }
 
-        private RouteToBroker GetBrokerRoute(string topicName, int partitionId, MetadataResponse.Topic topic)
+        private TopicBroker GetCachedTopicBroker(string topicName, int partitionId, MetadataResponse.Topic topic)
         {
             var partition = topic.Partitions.FirstOrDefault(x => x.PartitionId == partitionId);
             if (partition == null)
@@ -89,20 +90,20 @@ namespace KafkaClient
                     Partition = partitionId
                 };
 
-            return GetCachedRoute(topicName, partition);
+            return GetCachedTopicBroker(topicName, partition);
         }
 
         /// <inheritdoc />
-        public RouteToBroker GetBrokerRoute(string topicName, byte[] key = null)
+        public TopicBroker GetTopicBroker(string topicName, byte[] key)
         {
             var topic = GetCachedTopic(topicName);
-            return GetCachedRoute(topicName, _partitionSelector.Select(topic, key));
+            return GetCachedTopicBroker(topicName, _partitionSelector.Select(topic, key));
         }
 
         /// <inheritdoc />
-        public async Task<RouteToBroker> GetBrokerRouteAsync(string topicName, int partitionId, CancellationToken cancellationToken)
+        public async Task<TopicBroker> GetTopicBrokerAsync(string topicName, int partitionId, CancellationToken cancellationToken)
         {
-            return GetBrokerRoute(topicName, partitionId, await GetTopicMetadataAsync(topicName, cancellationToken));
+            return GetCachedTopicBroker(topicName, partitionId, await GetTopicMetadataAsync(topicName, cancellationToken));
         }
 
         /// <inheritdoc />
@@ -180,11 +181,11 @@ namespace KafkaClient
                 MetadataRequest request;
                 MetadataResponse response;
                 if (ignoreCache && topicNames == null) {
-                    Log.Info(() => LogEvent.Create("BrokerRouter refreshing metadata for all topics"));
+                    Log.Info(() => LogEvent.Create("Router refreshing metadata for all topics"));
                     request = new MetadataRequest();
                     response = await this.GetMetadataAsync(request, cancellationToken);
                 } else {
-                    Log.Info(() => LogEvent.Create($"BrokerRouter refreshing metadata for topics {string.Join(",", searchResult.Missing)}"));
+                    Log.Info(() => LogEvent.Create($"Router refreshing metadata for topics {string.Join(",", searchResult.Missing)}"));
                     request = new MetadataRequest(searchResult.Missing);
                     response = await this.GetMetadataAsync(request, cancellationToken);
                 }
@@ -200,6 +201,29 @@ namespace KafkaClient
                 // just in case they expired between when we searched for them and now.
                 var result = searchResult.Topics.AddNotNullRange(response?.Topics);
                 return result;
+            }
+        }
+
+        private async Task<int> UpdateGroupMetadataFromServerAsync(string groupId, bool ignoreCache, CancellationToken cancellationToken)
+        {
+            using (await _lock.LockAsync(cancellationToken).ConfigureAwait(false)) {
+                if (!ignoreCache) {
+                    var brokerId = TryGetCachedGroupBrokerId(groupId, Configuration.CacheExpiration);
+                    if (brokerId.HasValue) return brokerId.Value;
+                }
+
+                Log.Info(() => LogEvent.Create($"Router refreshing metadata for group {groupId}"));
+                var request = new GroupCoordinatorRequest(groupId);
+                try {
+                    var response = await this.SendToAnyAsync(request, cancellationToken);
+
+                    UpdateConnectionCache(new [] { response });
+                    UpdateGroupCache(request, response);
+
+                    return response.BrokerId;
+                } catch (Exception ex) {
+                    throw new CachedMetadataException($"Unable to refresh metadata for group {groupId}", ex);
+                }
             }
         }
 
@@ -230,19 +254,24 @@ namespace KafkaClient
 
         private MetadataResponse.Topic TryGetCachedTopic(string topicName, TimeSpan? expiration = null)
         {
-            Tuple<MetadataResponse.Topic, DateTime> cachedTopic;
-            if (_topicCache.TryGetValue(topicName, out cachedTopic)) {
-                if (!expiration.HasValue || DateTime.UtcNow - cachedTopic.Item2 < expiration.Value) {
-                    return cachedTopic.Item1;
-                }
+            Tuple<MetadataResponse.Topic, DateTime> cachedValue;
+            if (_topicCache.TryGetValue(topicName, out cachedValue) && !HasExpired(cachedValue, expiration)) {
+                return cachedValue.Item1;
             }
             return null;
         }
 
-        private RouteToBroker GetCachedRoute(string topicName, MetadataResponse.Partition partition)
+        private static bool HasExpired<T>(Tuple<T, DateTime> cachedValue, TimeSpan? expiration = null)
         {
-            var route = TryGetCachedRoute(topicName, partition);
-            if (route != null) return route;
+            return expiration.HasValue && expiration.Value < DateTime.UtcNow - cachedValue.Item2;
+        }
+
+        private TopicBroker GetCachedTopicBroker(string topicName, MetadataResponse.Partition partition)
+        {
+            IConnection conn;
+            if (_brokerConnections.TryGetValue(partition.LeaderId, out conn)) {
+                return new TopicBroker(topicName, partition.PartitionId, partition.LeaderId, conn);
+            }
 
             throw new CachedMetadataException($"Lead broker cannot be found for partition/{partition.PartitionId}, leader {partition.LeaderId}") {
                 TopicName = topicName,
@@ -250,12 +279,31 @@ namespace KafkaClient
             };
         }
 
-        private RouteToBroker TryGetCachedRoute(string topicName, MetadataResponse.Partition partition)
+        private GroupBroker GetCachedGroupBroker(string groupId, int brokerId)
         {
             IConnection conn;
-            return _brokerConnections.TryGetValue(partition.LeaderId, out conn)
-                ? new RouteToBroker(topicName, partition.PartitionId, partition.LeaderId, conn) 
-                : null;
+            if (_brokerConnections.TryGetValue(brokerId, out conn)) {
+                return new GroupBroker(groupId, brokerId, conn);
+            }
+
+            throw new CachedMetadataException($"Broker cannot be found for group/{groupId}, broker {brokerId}");
+        }
+
+        private int GetCachedGroupBrokerId(string groupId, TimeSpan? expiration = null)
+        {
+            var brokerId = TryGetCachedGroupBrokerId(groupId, expiration);
+            if (brokerId.HasValue) return brokerId.Value;
+
+            throw new CachedMetadataException($"No metadata defined for group/{groupId}");
+        }
+
+        private int? TryGetCachedGroupBrokerId(string groupId, TimeSpan? expiration = null)
+        {
+            Tuple<int, DateTime> cachedValue;
+            if (_groupCache.TryGetValue(groupId, out cachedValue) && !HasExpired(cachedValue, expiration)) {
+                return cachedValue.Item1;
+            }
+            return null;
         }
 
         private CachedMetadataException GetPartitionElectionException(IList<TopicPartition> partitionElections)
@@ -271,6 +319,13 @@ namespace KafkaClient
             exception.TopicName = topic.TopicName;
             exception.Partition = topic.PartitionId;
             return exception;
+        }
+
+        private void UpdateGroupCache(GroupCoordinatorRequest request, GroupCoordinatorResponse response)
+        {
+            if (request == null || response == null) return;
+
+            _groupCache = _groupCache.SetItem(request.GroupId, new Tuple<int, DateTime>(response.BrokerId, DateTime.UtcNow));
         }
 
         private void UpdateTopicCache(MetadataResponse metadata)
@@ -298,11 +353,16 @@ namespace KafkaClient
         {
             if (metadata == null) return;
 
+            UpdateConnectionCache(metadata.Brokers);
+        }
+
+        private void UpdateConnectionCache(IEnumerable<Broker> brokers)
+        {
             var allConnections = _allConnections;
             var brokerConnections = _brokerConnections;
             var connectionsToDispose = ImmutableList<IConnection>.Empty;
             try {
-                foreach (var broker in metadata.Brokers) {
+                foreach (var broker in brokers) {
                     var endpoint = _connectionFactory.Resolve(new Uri($"http://{broker.Host}:{broker.Port}"), Log);
 
                     IConnection connection;
@@ -311,8 +371,11 @@ namespace KafkaClient
                             // existing connection, nothing to change
                         } else {
                             // ReSharper disable once AccessToModifiedClosure
-                            Log.Warn(() => LogEvent.Create($"Broker {broker.BrokerId} Uri changed from {connection.Endpoint} to {endpoint}"));
-                            
+                            Log.Warn(
+                                () =>
+                                    LogEvent.Create(
+                                        $"Broker {broker.BrokerId} Uri changed from {connection.Endpoint} to {endpoint}"));
+
                             // A connection changed for a broker, so close the old connection and create a new one
                             connectionsToDispose = connectionsToDispose.Add(connection);
                             connection = _connectionFactory.Create(endpoint, ConnectionConfiguration, Log);
@@ -350,7 +413,33 @@ namespace KafkaClient
             DisposeConnections(_allConnections.Values);
         }
 
+        /// <inheritdoc />
         public ILog Log { get; }
+
+        /// <inheritdoc />
+        public GroupBroker GetGroupBroker(string groupId)
+        {
+            return GetCachedGroupBroker(groupId, GetCachedGroupBrokerId(groupId));
+        }
+
+        /// <inheritdoc />
+        public async Task<GroupBroker> GetGroupBrokerAsync(string groupId, CancellationToken cancellationToken)
+        {
+            return GetCachedGroupBroker(groupId, await GetGroupBrokerIdAsync(groupId, cancellationToken));
+        }
+
+        /// <inheritdoc />
+        public async Task<int> GetGroupBrokerIdAsync(string groupId, CancellationToken cancellationToken)
+        {
+            return TryGetCachedGroupBrokerId(groupId) 
+                ?? await UpdateGroupMetadataFromServerAsync(groupId, true, cancellationToken).ConfigureAwait(false);
+        }
+
+        /// <inheritdoc />
+        public Task RefreshGroupMetadataAsync(string groupId, bool ignoreCacheExpiry, CancellationToken cancellationToken)
+        {
+            return UpdateGroupMetadataFromServerAsync(groupId, ignoreCacheExpiry, cancellationToken);
+        }
 
         private class CachedTopicsResult
         {

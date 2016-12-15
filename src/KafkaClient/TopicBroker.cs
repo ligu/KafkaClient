@@ -3,9 +3,9 @@ using KafkaClient.Protocol;
 
 namespace KafkaClient
 {
-    public class RouteToBroker : TopicPartition
+    public class TopicBroker : TopicPartition
     {
-        public RouteToBroker(string topicName, int partitionId, int brokerId, IConnection connection) : base(topicName, partitionId)
+        public TopicBroker(string topicName, int partitionId, int brokerId, IConnection connection) : base(topicName, partitionId)
         {
             BrokerId = brokerId;
             Connection = connection;

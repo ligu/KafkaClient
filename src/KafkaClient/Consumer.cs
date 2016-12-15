@@ -88,7 +88,7 @@ namespace KafkaClient
                 throw request.ExtractExceptions(response);
             }
 
-            return new ConsumerGroupMember(this, groupId, response.MemberId, response.LeaderId, response.GenerationId, encoder);
+            return new ConsumerGroupMember(this, request, response, encoder, _router.Log);
         }
 
         public async Task LeaveConsumerGroupAsync(string groupId, string memberId, CancellationToken cancellationToken, bool awaitResponse = true)
@@ -96,6 +96,15 @@ namespace KafkaClient
             var request = new LeaveGroupRequest(groupId, memberId, awaitResponse);
             var response = await _router.SendToAnyAsync(request, cancellationToken);
             if (awaitResponse && !response.ErrorCode.IsSuccess()) {
+                throw request.ExtractExceptions(response);
+            }
+        }
+
+        public async Task SendHeartbeatAsync(string groupId, string memberId, int generationId, CancellationToken cancellationToken)
+        {
+            var request = new HeartbeatRequest(groupId, generationId, memberId);
+            var response = await _router.SendToAnyAsync(request, cancellationToken);
+            if (!response.ErrorCode.IsSuccess()) {
                 throw request.ExtractExceptions(response);
             }
         }

@@ -176,14 +176,14 @@ namespace KafkaClient.Tests
             routerProxy.MetadataResponse = BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers;
             await router.RefreshTopicMetadataAsync(TestTopic, true, CancellationToken.None);
 
-            var router1 = router.GetBrokerRoute(TestTopic, 0);
+            var router1 = router.GetTopicBroker(TestTopic, 0);
 
             Assert.That(routerProxy.Connection1.MetadataRequestCallCount, Is.EqualTo(1));
             await Task.Delay(routerProxy.CacheExpiration);
             await Task.Delay(1);//After cache is expair
             routerProxy.MetadataResponse = BrokerRouterProxy.CreateMetadataResponseWithSingleBroker;
             await router.RefreshTopicMetadataAsync(TestTopic, true, CancellationToken.None);
-            var router2 = router.GetBrokerRoute(TestTopic, 0);
+            var router2 = router.GetTopicBroker(TestTopic, 0);
 
             Assert.That(routerProxy.Connection1.MetadataRequestCallCount, Is.EqualTo(2));
             Assert.That(router1.Connection.Endpoint, Is.EqualTo(routerProxy.Connection1.Endpoint));
@@ -227,8 +227,8 @@ namespace KafkaClient.Tests
             var routerProxy = new BrokerRouterProxy();
             var router = routerProxy.Create();
             await router.GetTopicMetadataAsync(TestTopic, CancellationToken.None);
-            var p0 = router.GetBrokerRoute(TestTopic, 0);
-            var p1 = router.GetBrokerRoute(TestTopic, 1);
+            var p0 = router.GetTopicBroker(TestTopic, 0);
+            var p1 = router.GetTopicBroker(TestTopic, 1);
 
             Assert.That(p0.PartitionId, Is.EqualTo(0));
             Assert.That(p1.PartitionId, Is.EqualTo(1));
@@ -240,7 +240,7 @@ namespace KafkaClient.Tests
             var routerProxy = new BrokerRouterProxy();
             var router = routerProxy.Create();
             await router.GetTopicMetadataAsync(TestTopic, CancellationToken.None);
-            Assert.Throws<CachedMetadataException>(() => router.GetBrokerRoute(TestTopic, 3));
+            Assert.Throws<CachedMetadataException>(() => router.GetTopicBroker(TestTopic, 3));
         }
 
         [Test]
@@ -254,7 +254,7 @@ namespace KafkaClient.Tests
             routerProxy.Connection1.MetadataResponseFunction = async () => metadataResponse;
 #pragma warning restore 1998
 
-            Assert.Throws<CachedMetadataException>(() => routerProxy.Create().GetBrokerRoute(TestTopic, 1));
+            Assert.Throws<CachedMetadataException>(() => routerProxy.Create().GetTopicBroker(TestTopic, 1));
         }
 
         [Test]
@@ -269,7 +269,7 @@ namespace KafkaClient.Tests
 #pragma warning restore 1998
             var router = routerProxy.Create();
             await router.GetTopicMetadataAsync(TestTopic, CancellationToken.None);
-            Assert.Throws<CachedMetadataException>(() => router.GetBrokerRoute(TestTopic, 1));
+            Assert.Throws<CachedMetadataException>(() => router.GetTopicBroker(TestTopic, 1));
         }
 
         #endregion SelectBrokerRouteAsync Exact Tests...
@@ -292,7 +292,7 @@ namespace KafkaClient.Tests
             routerProxy.PartitionSelector = partitionSelector;
             var router = routerProxy.Create();
             await router.GetTopicMetadataAsync(TestTopic, CancellationToken.None);
-            var result = router.GetBrokerRoute(TestTopic, key);
+            var result = router.GetTopicBroker(TestTopic, key);
 
             partitionSelector.Received().Select(Arg.Is<MetadataResponse.Topic>(x => x.TopicName == TestTopic), key);
         }
@@ -308,7 +308,7 @@ namespace KafkaClient.Tests
             routerProxy.Connection1.MetadataResponseFunction = async () => metadataResponse;
 #pragma warning restore 1998
 
-            Assert.Throws<CachedMetadataException>(() => routerProxy.Create().GetBrokerRoute(TestTopic));
+            Assert.Throws<CachedMetadataException>(() => routerProxy.Create().GetTopicBroker(TestTopic, new byte[] {}));
         }
 
         [Test]
@@ -324,7 +324,7 @@ namespace KafkaClient.Tests
 #pragma warning restore 1998
             var routerProxy1 = routerProxy.Create();
             await routerProxy1.GetTopicMetadataAsync(TestTopic, CancellationToken.None);
-            Assert.Throws<CachedMetadataException>(() => routerProxy1.GetBrokerRoute(TestTopic));
+            Assert.Throws<CachedMetadataException>(() => routerProxy1.GetTopicBroker(TestTopic, new byte[] {}));
         }
 
         #endregion SelectBrokerRouteAsync Select Tests...

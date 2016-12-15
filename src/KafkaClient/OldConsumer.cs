@@ -146,7 +146,7 @@ namespace KafkaClient
                             var fetchRequest = new FetchRequest(fetch, _options.MaxWaitTimeForMinimumBytes, _options.MinimumBytes);
 
                             //make request and post to queue
-                            var route = _options.Router.GetBrokerRoute(topic, partitionId);
+                            var route = _options.Router.GetTopicBroker(topic, partitionId);
 
                             var taskSend = route.Connection.SendAsync(fetchRequest, cancellationToken);
 

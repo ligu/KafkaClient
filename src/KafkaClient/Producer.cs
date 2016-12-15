@@ -172,8 +172,8 @@ namespace KafkaClient
                 ptt => new {
                     ProduceTask = ptt,
                     Route = ptt.Partition.HasValue
-                        ? Router.GetBrokerRoute(ptt.TopicName, ptt.Partition.Value)
-                        : Router.GetBrokerRoute(ptt.TopicName, ptt.Message.Key)
+                        ? Router.GetTopicBroker(ptt.TopicName, ptt.Partition.Value)
+                        : Router.GetTopicBroker(ptt.TopicName, ptt.Message.Key)
                 })
                 .GroupBy(_ => new {_.ProduceTask.Acks, _.ProduceTask.AckTimeout, _.Route.Connection.Endpoint});
 
