@@ -70,8 +70,8 @@ namespace KafkaClient.Tests.Fakes
         {
             return new MetadataResponse(
                 new [] {
-                    new Broker(0, "localhost", 1),
-                    new Broker(1, "localhost", 2)
+                    new KafkaClient.Protocol.Broker(0, "localhost", 1),
+                    new KafkaClient.Protocol.Broker(1, "localhost", 2)
                 },
                 new [] {
                     new MetadataResponse.Topic(TestTopic, 

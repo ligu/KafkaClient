@@ -21,7 +21,7 @@ namespace KafkaClient.Tests.Helpers
             return KafkaDecoder.EncodeResponseBytes(
                 new RequestContext(correlationId),
                 new MetadataResponse(
-                    new[] {new Broker(1, "http://localhost", 8990), new Broker(2, "http://localhost", 8991)},
+                    new[] {new KafkaClient.Protocol.Broker(1, "http://localhost", 8990), new KafkaClient.Protocol.Broker(2, "http://localhost", 8991)},
                     new[] {
                         new MetadataResponse.Topic(
                             topic,

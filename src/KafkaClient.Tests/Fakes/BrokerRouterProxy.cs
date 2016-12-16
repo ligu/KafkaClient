@@ -24,31 +24,44 @@ namespace KafkaClient.Tests.Fakes
         public IConnectionFactory KafkaConnectionFactory { get; }
 
         public Func<Task<MetadataResponse>> MetadataResponse = CreateMetadataResponseWithMultipleBrokers;
+        public Func<Task<GroupCoordinatorResponse>> GroupCoordinatorResponse = () => CreateGroupCoordinatorResponse(0);
 
         public IPartitionSelector PartitionSelector = new PartitionSelector();
 
         public BrokerRouterProxy()
         {
             //setup mock IConnection
-            Connection1 = new FakeConnection(new Uri("http://localhost:1"));
-#pragma warning disable 1998
-            Connection1.ProduceResponseFunction = async () => new ProduceResponse(new ProduceResponse.Topic(TestTopic, 0, ErrorResponseCode.None, _offset1++));
-            Connection1.MetadataResponseFunction = () => MetadataResponse();
-            Connection1.OffsetResponseFunction = async () => new OffsetResponse(new [] {
-                new OffsetResponse.Topic(TestTopic, 0, ErrorResponseCode.None, 0L),
-                new OffsetResponse.Topic(TestTopic, 0, ErrorResponseCode.None, 99L)
-            });
-            Connection1.FetchResponseFunction = async () => { Thread.Sleep(500); return null; };
+            Connection1 = new FakeConnection(new Uri("http://localhost:1")) {
+                ProduceResponseFunction =
+                    () => Task.FromResult(new ProduceResponse(new ProduceResponse.Topic(TestTopic, 0, ErrorResponseCode.None, _offset1++))),
+                MetadataResponseFunction = () => MetadataResponse(),
+                GroupCoordinatorResponseFunction = () => GroupCoordinatorResponse(),
+                OffsetResponseFunction = () => Task.FromResult(new OffsetResponse(
+                    new[] {
+                        new OffsetResponse.Topic(TestTopic, 0, ErrorResponseCode.None, 0L),
+                        new OffsetResponse.Topic(TestTopic, 0, ErrorResponseCode.None, 99L)
+                    })),
+                FetchResponseFunction = async () => {
+                    await Task.Delay(500);
+                    return null;
+                }
+            };
 
-            Connection2 = new FakeConnection(new Uri("http://localhost:2"));
-            Connection2.ProduceResponseFunction = async () => new ProduceResponse(new ProduceResponse.Topic(TestTopic, 1, ErrorResponseCode.None, _offset2++));
-            Connection2.MetadataResponseFunction = () => MetadataResponse();
-            Connection2.OffsetResponseFunction = async () => new OffsetResponse(new [] {
-                new OffsetResponse.Topic(TestTopic, 1, ErrorResponseCode.None, 0L),
-                new OffsetResponse.Topic(TestTopic, 1, ErrorResponseCode.None, 100L)
-            });
-            Connection2.FetchResponseFunction = async () => { Thread.Sleep(500); return null; };
-#pragma warning restore 1998
+            Connection2 = new FakeConnection(new Uri("http://localhost:2")) {
+                ProduceResponseFunction =
+                    () => Task.FromResult(new ProduceResponse(new ProduceResponse.Topic(TestTopic, 1, ErrorResponseCode.None, _offset2++))),
+                MetadataResponseFunction = () => MetadataResponse(),
+                GroupCoordinatorResponseFunction = () => GroupCoordinatorResponse(),
+                OffsetResponseFunction = () => Task.FromResult(new OffsetResponse(
+                    new[] {
+                        new OffsetResponse.Topic(TestTopic, 1, ErrorResponseCode.None, 0L),
+                        new OffsetResponse.Topic(TestTopic, 1, ErrorResponseCode.None, 100L)
+                    })),
+                FetchResponseFunction = async () => {
+                    await Task.Delay(500);
+                    return null;
+                }
+            };
 
             var kafkaConnectionFactory = Substitute.For<IConnectionFactory>();
             kafkaConnectionFactory
@@ -77,8 +90,8 @@ namespace KafkaClient.Tests.Fakes
         {
             return new MetadataResponse(
                 new [] {
-                    new Broker(0, "localhost", 1),
-                    new Broker(1, "localhost", 2)
+                    new KafkaClient.Protocol.Broker(0, "localhost", 1),
+                    new KafkaClient.Protocol.Broker(1, "localhost", 2)
                 },
                 new [] {
                     new MetadataResponse.Topic(TestTopic, 
@@ -89,12 +102,16 @@ namespace KafkaClient.Tests.Fakes
                 });
         }
 
+        public static async Task<GroupCoordinatorResponse> CreateGroupCoordinatorResponse(int brokerId)
+        {
+            return new GroupCoordinatorResponse(ErrorResponseCode.None, 0, "localhost", brokerId + 1);
+        }
 
         public static async Task<MetadataResponse> CreateMetadataResponseWithSingleBroker()
         {
             return new MetadataResponse(
                 new [] {
-                    new Broker(1, "localhost", 2)
+                    new KafkaClient.Protocol.Broker(1, "localhost", 2)
                 },
                 new [] {
                     new MetadataResponse.Topic(TestTopic, 
@@ -109,7 +126,7 @@ namespace KafkaClient.Tests.Fakes
         {
             return new MetadataResponse(
                 new [] {
-                    new Broker(1, "localhost", 2)
+                    new KafkaClient.Protocol.Broker(1, "localhost", 2)
                 },
                 new [] {
                     new MetadataResponse.Topic(TestTopic, 

@@ -83,7 +83,7 @@ namespace KafkaClient
 
             var protocol = new JoinGroupRequest.GroupProtocol(metadata.ProtocolType, metadata);
             var request = new JoinGroupRequest(groupId, Configuration.GroupHeartbeat, memberId, metadata.ProtocolType, new [] { protocol }, Configuration.GroupRebalanceTimeout);
-            var response = await _router.SendToAnyAsync(request, cancellationToken);
+            var response = await _router.SendAsync(request, groupId, cancellationToken);
             if (!response.ErrorCode.IsSuccess()) {
                 throw request.ExtractExceptions(response);
             }
@@ -94,7 +94,7 @@ namespace KafkaClient
         public async Task LeaveConsumerGroupAsync(string groupId, string memberId, CancellationToken cancellationToken, bool awaitResponse = true)
         {
             var request = new LeaveGroupRequest(groupId, memberId, awaitResponse);
-            var response = await _router.SendToAnyAsync(request, cancellationToken);
+            var response = await _router.SendAsync(request, groupId, cancellationToken);
             if (awaitResponse && !response.ErrorCode.IsSuccess()) {
                 throw request.ExtractExceptions(response);
             }
@@ -103,7 +103,7 @@ namespace KafkaClient
         public async Task SendHeartbeatAsync(string groupId, string memberId, int generationId, CancellationToken cancellationToken)
         {
             var request = new HeartbeatRequest(groupId, generationId, memberId);
-            var response = await _router.SendToAnyAsync(request, cancellationToken);
+            var response = await _router.SendAsync(request, groupId, cancellationToken);
             if (!response.ErrorCode.IsSuccess()) {
                 throw request.ExtractExceptions(response);
             }

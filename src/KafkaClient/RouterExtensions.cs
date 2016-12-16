@@ -25,27 +25,27 @@ namespace KafkaClient
         {
             bool? metadataInvalid = false;
             var offsets = new Dictionary<int, OffsetResponse.Topic>();
-            RoutedRequest<OffsetResponse>[] routedRequests = null;
+            RoutedTopicRequest<OffsetResponse>[] routedTopicRequests = null;
 
             return await (retryPolicy ?? new Retry(TimeSpan.MaxValue, 3)).AttemptAsync(
                 async (attempt, timer) => {
                     metadataInvalid = await router.RefreshTopicMetadataIfInvalidAsync(topicName, metadataInvalid, cancellationToken).ConfigureAwait(false);
 
                     var topicMetadata = await router.GetTopicMetadataAsync(topicName, cancellationToken).ConfigureAwait(false);
-                    routedRequests = topicMetadata
+                    routedTopicRequests = topicMetadata
                         .Partitions
                         .Where(_ => !offsets.ContainsKey(_.PartitionId)) // skip partitions already successfully retrieved
                         .GroupBy(x => x.LeaderId)
                         .Select(partitions => 
-                            new RoutedRequest<OffsetResponse>(
+                            new RoutedTopicRequest<OffsetResponse>(
                                 new OffsetRequest(partitions.Select(_ => new OffsetRequest.Topic(topicName, _.PartitionId, offsetTime, maxOffsets))), 
                                 topicName, 
                                 partitions.Select(_ => _.PartitionId).First(), 
                                 router.Log))
                         .ToArray();
 
-                    await Task.WhenAll(routedRequests.Select(_ => _.SendAsync(router, cancellationToken))).ConfigureAwait(false);
-                    var responses = routedRequests.Select(_ => _.MetadataRetryResponse(attempt, out metadataInvalid)).ToArray();
+                    await Task.WhenAll(routedTopicRequests.Select(_ => _.SendAsync(router, cancellationToken))).ConfigureAwait(false);
+                    var responses = routedTopicRequests.Select(_ => _.MetadataRetryResponse(attempt, out metadataInvalid)).ToArray();
                     foreach (var response in responses.Where(_ => _.IsSuccessful)) {
                         foreach (var offsetTopic in response.Value.Topics) {
                             offsets[offsetTopic.PartitionId] = offsetTopic;
@@ -56,9 +56,9 @@ namespace KafkaClient
                         ? new RetryAttempt<IImmutableList<OffsetResponse.Topic>>(offsets.Values.ToImmutableList()) 
                         : RetryAttempt<IImmutableList<OffsetResponse.Topic>>.Retry;
                 },
-                routedRequests.MetadataRetry,
-                routedRequests.ThrowExtractedException,
-                (ex, attempt, retry) => routedRequests.MetadataRetry(attempt, ex, out metadataInvalid),
+                routedTopicRequests.MetadataRetry,
+                routedTopicRequests.ThrowExtractedException,
+                (ex, attempt, retry) => routedTopicRequests.MetadataRetry(attempt, ex, out metadataInvalid),
                 null, // do nothing on final exception -- will be rethrown
                 cancellationToken);
         }
@@ -147,11 +147,40 @@ namespace KafkaClient
         public static async Task<T> SendAsync<T>(this IRouter router, IRequest<T> request, string topicName, int partitionId, CancellationToken cancellationToken, IRequestContext context = null, IRetry retryPolicy = null) where T : class, IResponse
         {
             bool? metadataInvalid = false;
-            var brokeredRequest = new RoutedRequest<T>(request, topicName, partitionId, router.Log);
+            var brokeredRequest = new RoutedTopicRequest<T>(request, topicName, partitionId, router.Log);
 
             return await (retryPolicy ?? new Retry(TimeSpan.MaxValue, 3)).AttemptAsync(
                 async (attempt, timer) => {
                     metadataInvalid = await router.RefreshTopicMetadataIfInvalidAsync(topicName, metadataInvalid, cancellationToken).ConfigureAwait(false);
+                    await brokeredRequest.SendAsync(router, cancellationToken, context).ConfigureAwait(false);
+                    return brokeredRequest.MetadataRetryResponse(attempt, out metadataInvalid);
+                },
+                brokeredRequest.MetadataRetry,
+                brokeredRequest.ThrowExtractedException,
+                (ex, attempt, retry) => brokeredRequest.MetadataRetry(attempt, ex, out metadataInvalid),
+                (ex, attempt) => {
+                    var connectionException = ex as ConnectionException;
+                    if (connectionException?.Message != null && connectionException.Message.StartsWith("Unable to make Metadata Request to any of")) {
+                        throw new CachedMetadataException("Unable to find Metadata", ex);
+                    }
+                    throw ex.PrepareForRethrow(); 
+                },
+                cancellationToken);
+        }
+
+        /// <exception cref="CachedMetadataException">Thrown if the cached metadata for the given topic is invalid or missing.</exception>
+        /// <exception cref="FetchOutOfRangeException">Thrown if the fetch request is not valid.</exception>
+        /// <exception cref="TimeoutException">Thrown if there request times out</exception>
+        /// <exception cref="ConnectionException">Thrown in case of network error contacting broker (after retries), or if none of the default brokers can be contacted.</exception>
+        /// <exception cref="RequestException">Thrown in case of an unexpected error in the request</exception>
+        public static async Task<T> SendAsync<T>(this IRouter router, IRequest<T> request, string groupId, CancellationToken cancellationToken, IRequestContext context = null, IRetry retryPolicy = null) where T : class, IResponse
+        {
+            bool? metadataInvalid = false;
+            var brokeredRequest = new RoutedGroupRequest<T>(request, groupId, router.Log);
+
+            return await (retryPolicy ?? new Retry(TimeSpan.MaxValue, 3)).AttemptAsync(
+                async (attempt, timer) => {
+                    metadataInvalid = await router.RefreshGroupMetadataIfInvalidAsync(groupId, metadataInvalid, cancellationToken).ConfigureAwait(false);
                     await brokeredRequest.SendAsync(router, cancellationToken, context).ConfigureAwait(false);
                     return brokeredRequest.MetadataRetryResponse(attempt, out metadataInvalid);
                 },
@@ -175,7 +204,7 @@ namespace KafkaClient
             foreach (var connection in router.Connections) {
                 var server = connection.Endpoint?.ToString();
                 try {
-                    return await connection.SendAsync(request, cancellationToken).ConfigureAwait(false);
+                    return await connection.SendAsync(request, cancellationToken, context).ConfigureAwait(false);
                 } catch (Exception ex) {
                     lastException = ex;
                     servers.Add(server);
@@ -184,6 +213,15 @@ namespace KafkaClient
             }
 
             throw new ConnectionException($"Unable to make {request.ApiKey} Request to any of {string.Join(" ", servers)}", lastException);
+        }
+
+        public static async Task<bool> RefreshGroupMetadataIfInvalidAsync(this IRouter router, string groupId, bool? metadataInvalid, CancellationToken cancellationToken)
+        {
+            if (metadataInvalid.GetValueOrDefault(true)) {
+                // unknown metadata status should not force the issue
+                await router.RefreshGroupMetadataAsync(groupId, metadataInvalid.GetValueOrDefault(), cancellationToken).ConfigureAwait(false);
+            }
+            return false;
         }
 
         public static async Task<bool> RefreshTopicMetadataIfInvalidAsync(this IRouter router, string topicName, bool? metadataInvalid, CancellationToken cancellationToken)
@@ -204,19 +242,19 @@ namespace KafkaClient
             return false;
         }
 
-        internal static void MetadataRetry<T>(this IEnumerable<RoutedRequest<T>> brokeredRequests, int attempt, TimeSpan retry) where T : class, IResponse
+        internal static void MetadataRetry<T>(this IEnumerable<RoutedTopicRequest<T>> brokeredRequests, int attempt, TimeSpan retry) where T : class, IResponse
         {
             foreach (var brokeredRequest in brokeredRequests) {
                 brokeredRequest.MetadataRetry(attempt, retry);
             }
         }
 
-        internal static void ThrowExtractedException<T>(this RoutedRequest<T>[] routedRequests, int attempt) where T : class, IResponse
+        internal static void ThrowExtractedException<T>(this RoutedTopicRequest<T>[] routedTopicRequests, int attempt) where T : class, IResponse
         {
-            throw routedRequests.Select(_ => _.ResponseException).FlattenAggregates();
+            throw routedTopicRequests.Select(_ => _.ResponseException).FlattenAggregates();
         }
 
-        internal static void MetadataRetry<T>(this IEnumerable<RoutedRequest<T>> brokeredRequests, int attempt, Exception exception, out bool? retry) where T : class, IResponse
+        internal static void MetadataRetry<T>(this IEnumerable<RoutedTopicRequest<T>> brokeredRequests, int attempt, Exception exception, out bool? retry) where T : class, IResponse
         {
             retry = null;
             foreach (var brokeredRequest in brokeredRequests) {
@@ -301,7 +339,7 @@ namespace KafkaClient
             }
         }
 
-        private static MetadataResult ValidateBroker(Broker broker)
+        private static MetadataResult ValidateBroker(Protocol.Broker broker)
         {
             if (broker.BrokerId == -1)             return new MetadataResult(ErrorResponseCode.Unknown);
             if (string.IsNullOrEmpty(broker.Host)) return new MetadataResult(ErrorResponseCode.None, false, "Broker missing host information.");

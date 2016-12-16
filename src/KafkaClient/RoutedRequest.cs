@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -7,30 +7,28 @@ using KafkaClient.Protocol;
 
 namespace KafkaClient
 {
-    internal class RoutedRequest<T> where T : class, IResponse
+    internal abstract class RoutedRequest<T> where T : class, IResponse
     {
-        public RoutedRequest(IRequest<T> request, string topicName, int partitionId, ILog log)
+        protected RoutedRequest(IRequest<T> request, ILog log)
         {
             _request = request;
-            _topicName = topicName;
-            _partitionId = partitionId;
             _log = log;
         }
 
         private readonly ILog _log;
         private readonly IRequest<T> _request;
-        private readonly string _topicName;
-        private readonly int _partitionId;
 
-        private TopicBroker _route;
+        private Broker _route;
         private T _response;
 
         public async Task SendAsync(IRouter router, CancellationToken cancellationToken, IRequestContext context = null)
         {
             _response = null;
-            _route = await router.GetTopicBrokerAsync(_topicName, _partitionId, cancellationToken).ConfigureAwait(false);
+            _route = await GetBrokerAsync(router, cancellationToken).ConfigureAwait(false);
             _response = await _route.Connection.SendAsync(_request, cancellationToken, context).ConfigureAwait(false);
         }
+
+        protected abstract Task<Broker> GetBrokerAsync(IRouter router, CancellationToken cancellationToken);
 
         public RetryAttempt<T> MetadataRetryResponse(int attempt, out bool? metadataInvalid)
         {

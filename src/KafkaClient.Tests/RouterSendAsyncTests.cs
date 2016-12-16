@@ -14,7 +14,7 @@ namespace KafkaClient.Tests
 {
     [TestFixture]
     [Category("Unit")]
-    public class RouterBrokerSendAsyncTests
+    public class RouterSendAsyncTests
     {
         private const int PartitionId = 0;
 
@@ -34,8 +34,8 @@ namespace KafkaClient.Tests
 
             await router.SendAsync(new FetchRequest(), BrokerRouterProxy.TestTopic, PartitionId, CancellationToken.None);
 
-            Assert.That(routerProxy.Connection1.MetadataRequestCallCount, Is.EqualTo(2));
-            Assert.That(routerProxy.Connection1.FetchRequestCallCount, Is.EqualTo(2));
+            Assert.That(routerProxy.Connection1.RequestCallCount(ApiKeyRequestType.Metadata), Is.EqualTo(2));
+            Assert.That(routerProxy.Connection1.RequestCallCount(ApiKeyRequestType.Fetch), Is.EqualTo(2));
         }
 
         [Test]
@@ -53,8 +53,8 @@ namespace KafkaClient.Tests
 
             await router.SendAsync(new FetchRequest(), BrokerRouterProxy.TestTopic, PartitionId, CancellationToken.None);
 
-            Assert.That(routerProxy.Connection1.MetadataRequestCallCount, Is.EqualTo(2));
-            Assert.That(routerProxy.Connection1.FetchRequestCallCount, Is.EqualTo(2));
+            Assert.That(routerProxy.Connection1.RequestCallCount(ApiKeyRequestType.Metadata), Is.EqualTo(2));
+            Assert.That(routerProxy.Connection1.RequestCallCount(ApiKeyRequestType.Fetch), Is.EqualTo(2));
         }
 
         [TestCase(typeof(Exception))]
@@ -113,8 +113,8 @@ namespace KafkaClient.Tests
             }
 
             await Task.WhenAll(tasks);
-            Assert.That(routerProxy.Connection1.FetchRequestCallCount, Is.EqualTo(numberOfCall));
-            Assert.That(routerProxy.Connection1.MetadataRequestCallCount, Is.EqualTo(1));
+            Assert.That(routerProxy.Connection1.RequestCallCount(ApiKeyRequestType.Fetch), Is.EqualTo(numberOfCall));
+            Assert.That(routerProxy.Connection1.RequestCallCount(ApiKeyRequestType.Metadata), Is.EqualTo(1));
         }
 
         [Test]
@@ -147,8 +147,8 @@ namespace KafkaClient.Tests
             }
 
             await Task.WhenAll(tasks);
-            Assert.That(routerProxy.Connection1.FetchRequestCallCount, Is.EqualTo(numberOfCall));
-            Assert.That(routerProxy.Connection1.MetadataRequestCallCount, Is.EqualTo(2));
+            Assert.That(routerProxy.Connection1.RequestCallCount(ApiKeyRequestType.Fetch), Is.EqualTo(numberOfCall));
+            Assert.That(routerProxy.Connection1.RequestCallCount(ApiKeyRequestType.Metadata), Is.EqualTo(2));
         }
 
         [Test]
@@ -199,9 +199,9 @@ namespace KafkaClient.Tests
 
             await Task.WhenAll(tasks);
             Assert.That(numberOfErrorSend, Is.GreaterThan(1), "numberOfErrorSend");
-            Assert.That(routerProxy.Connection1.FetchRequestCallCount, Is.EqualTo(numberOfCall + numberOfErrorSend),
-                "FetchRequestCallCount");
-            Assert.That(routerProxy.Connection1.MetadataRequestCallCount, Is.EqualTo(2), "MetadataRequestCallCount");
+            Assert.That(routerProxy.Connection1.RequestCallCount(ApiKeyRequestType.Fetch), Is.EqualTo(numberOfCall + numberOfErrorSend),
+                "RequestCallCount(ApiKeyRequestType.Fetch)");
+            Assert.That(routerProxy.Connection1.RequestCallCount(ApiKeyRequestType.Metadata), Is.EqualTo(2), "RequestCallCount(ApiKeyRequestType.Metadata)");
         }
 
         [Test]
@@ -234,9 +234,9 @@ namespace KafkaClient.Tests
             //Send Successful Message
             await router.SendAsync(fetchRequest, BrokerRouterProxy.TestTopic, partitionId, CancellationToken.None);
 
-            Assert.That(routerProxy.Connection1.FetchRequestCallCount, Is.EqualTo(1), "FetchRequestCallCount");
-            Assert.That(routerProxy.Connection1.MetadataRequestCallCount, Is.EqualTo(1), "MetadataRequestCallCount");
-            Assert.That(routerProxy.Connection2.MetadataRequestCallCount, Is.EqualTo(0), "MetadataRequestCallCount");
+            Assert.That(routerProxy.Connection1.RequestCallCount(ApiKeyRequestType.Fetch), Is.EqualTo(1), "RequestCallCount(ApiKeyRequestType.Fetch)");
+            Assert.That(routerProxy.Connection1.RequestCallCount(ApiKeyRequestType.Metadata), Is.EqualTo(1), "RequestCallCount(ApiKeyRequestType.Metadata)");
+            Assert.That(routerProxy.Connection2.RequestCallCount(ApiKeyRequestType.Metadata), Is.EqualTo(0), "RequestCallCount(ApiKeyRequestType.Metadata)");
 
             routerProxy.Connection1.FetchResponseFunction = fetchResponse;
             //triger to update metadata
@@ -244,19 +244,19 @@ namespace KafkaClient.Tests
             routerProxy.Connection2.MetadataResponseFunction = BrokerRouterProxy.CreateMetadataResponseWithSingleBroker;
 
             //Reset variables
-            routerProxy.Connection1.FetchRequestCallCount = 0;
-            routerProxy.Connection2.FetchRequestCallCount = 0;
-            routerProxy.Connection1.MetadataRequestCallCount = 0;
-            routerProxy.Connection2.MetadataRequestCallCount = 0;
+            routerProxy.Connection1.ResetRequestCallCount(ApiKeyRequestType.Fetch);
+            routerProxy.Connection2.ResetRequestCallCount(ApiKeyRequestType.Fetch);
+            routerProxy.Connection1.ResetRequestCallCount(ApiKeyRequestType.Metadata);
+            routerProxy.Connection2.ResetRequestCallCount(ApiKeyRequestType.Metadata);
 
             //Send Successful Message that was recover from exception
             await router.SendAsync(fetchRequest, BrokerRouterProxy.TestTopic, partitionId, CancellationToken.None);
 
-            Assert.That(routerProxy.Connection1.FetchRequestCallCount, Is.EqualTo(1), "FetchRequestCallCount");
-            Assert.That(routerProxy.Connection1.MetadataRequestCallCount, Is.EqualTo(1), "MetadataRequestCallCount");
+            Assert.That(routerProxy.Connection1.RequestCallCount(ApiKeyRequestType.Fetch), Is.EqualTo(1), "RequestCallCount(ApiKeyRequestType.Fetch)");
+            Assert.That(routerProxy.Connection1.RequestCallCount(ApiKeyRequestType.Metadata), Is.EqualTo(1), "RequestCallCount(ApiKeyRequestType.Metadata)");
 
-            Assert.That(routerProxy.Connection2.FetchRequestCallCount, Is.EqualTo(1), "FetchRequestCallCount");
-            Assert.That(routerProxy.Connection2.MetadataRequestCallCount, Is.EqualTo(1), "MetadataRequestCallCount");
+            Assert.That(routerProxy.Connection2.RequestCallCount(ApiKeyRequestType.Fetch), Is.EqualTo(1), "RequestCallCount(ApiKeyRequestType.Fetch)");
+            Assert.That(routerProxy.Connection2.RequestCallCount(ApiKeyRequestType.Metadata), Is.EqualTo(1), "RequestCallCount(ApiKeyRequestType.Metadata)");
         }
 
 

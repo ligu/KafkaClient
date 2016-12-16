@@ -356,7 +356,7 @@ namespace KafkaClient
             UpdateConnectionCache(metadata.Brokers);
         }
 
-        private void UpdateConnectionCache(IEnumerable<Broker> brokers)
+        private void UpdateConnectionCache(IEnumerable<Protocol.Broker> brokers)
         {
             var allConnections = _allConnections;
             var brokerConnections = _brokerConnections;

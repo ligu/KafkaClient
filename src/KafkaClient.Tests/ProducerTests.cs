@@ -34,8 +34,8 @@ namespace KafkaClient.Tests
                 var response = await producer.SendMessagesAsync(messages, "UnitTest", CancellationToken.None);
 
                 Assert.That(response.Count, Is.EqualTo(2));
-                Assert.That(routerProxy.BrokerConn0.ProduceRequestCallCount, Is.EqualTo(1));
-                Assert.That(routerProxy.BrokerConn1.ProduceRequestCallCount, Is.EqualTo(1));
+                Assert.That(routerProxy.BrokerConn0.RequestCallCount(ApiKeyRequestType.Produce), Is.EqualTo(1));
+                Assert.That(routerProxy.BrokerConn1.RequestCallCount(ApiKeyRequestType.Produce), Is.EqualTo(1));
             }
         }
 
@@ -53,8 +53,8 @@ namespace KafkaClient.Tests
                 var sendTask = producer.SendMessagesAsync(messages, "UnitTest", CancellationToken.None).ConfigureAwait(false);
                 Assert.ThrowsAsync<RequestException>(async () => await sendTask);
 
-                Assert.That(routerProxy.BrokerConn0.ProduceRequestCallCount, Is.EqualTo(1));
-                Assert.That(routerProxy.BrokerConn1.ProduceRequestCallCount, Is.EqualTo(1));
+                Assert.That(routerProxy.BrokerConn0.RequestCallCount(ApiKeyRequestType.Produce), Is.EqualTo(1));
+                Assert.That(routerProxy.BrokerConn1.RequestCallCount(ApiKeyRequestType.Produce), Is.EqualTo(1));
             }
         }
 
@@ -173,8 +173,8 @@ namespace KafkaClient.Tests
 
                 await Task.WhenAll(calls);
 
-                Assert.That(routerProxy.BrokerConn0.ProduceRequestCallCount, Is.EqualTo(1));
-                Assert.That(routerProxy.BrokerConn1.ProduceRequestCallCount, Is.EqualTo(1));
+                Assert.That(routerProxy.BrokerConn0.RequestCallCount(ApiKeyRequestType.Produce), Is.EqualTo(1));
+                Assert.That(routerProxy.BrokerConn1.RequestCallCount(ApiKeyRequestType.Produce), Is.EqualTo(1));
             }
         }
 
@@ -199,8 +199,8 @@ namespace KafkaClient.Tests
 
                 await Task.WhenAll(calls);
 
-                Assert.That(routerProxy.BrokerConn0.ProduceRequestCallCount, Is.EqualTo(2));
-                Assert.That(routerProxy.BrokerConn1.ProduceRequestCallCount, Is.EqualTo(2));
+                Assert.That(routerProxy.BrokerConn0.RequestCallCount(ApiKeyRequestType.Produce), Is.EqualTo(2));
+                Assert.That(routerProxy.BrokerConn1.RequestCallCount(ApiKeyRequestType.Produce), Is.EqualTo(2));
             }
         }
 
@@ -222,8 +222,8 @@ namespace KafkaClient.Tests
 
                 await Task.WhenAll(calls);
 
-                Assert.That(routerProxy.BrokerConn0.ProduceRequestCallCount, Is.EqualTo(expected));
-                Assert.That(routerProxy.BrokerConn1.ProduceRequestCallCount, Is.EqualTo(expected));
+                Assert.That(routerProxy.BrokerConn0.RequestCallCount(ApiKeyRequestType.Produce), Is.EqualTo(expected));
+                Assert.That(routerProxy.BrokerConn1.RequestCallCount(ApiKeyRequestType.Produce), Is.EqualTo(expected));
             }
         }
 
@@ -245,8 +245,8 @@ namespace KafkaClient.Tests
 
                 await Task.WhenAll(calls);
 
-                Assert.That(routerProxy.BrokerConn0.ProduceRequestCallCount, Is.EqualTo(expected));
-                Assert.That(routerProxy.BrokerConn1.ProduceRequestCallCount, Is.EqualTo(expected));
+                Assert.That(routerProxy.BrokerConn0.RequestCallCount(ApiKeyRequestType.Produce), Is.EqualTo(expected));
+                Assert.That(routerProxy.BrokerConn1.RequestCallCount(ApiKeyRequestType.Produce), Is.EqualTo(expected));
             }
         }
 

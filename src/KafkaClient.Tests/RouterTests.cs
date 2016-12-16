@@ -15,7 +15,7 @@ namespace KafkaClient.Tests
 {
     [TestFixture]
     [Category("Unit")]
-    public class BrokerRouterTests
+    public class RouterTests
     {
         private const string TestTopic = BrokerRouterProxy.TestTopic;
         private IConnection _connection;
@@ -66,7 +66,21 @@ namespace KafkaClient.Tests
             await router.GetTopicMetadataAsync(TestTopic, CancellationToken.None);
             var topics = router.GetTopicMetadata(TestTopic);
             _connectionFactory.Received()
-                              .Create(Arg.Is<Endpoint>(e => e.IP.Port == 2), Arg.Any<IConnectionConfiguration>(),Arg.Any<ILog>());
+                              .Create(Arg.Is<Endpoint>(e => e.IP.Port == 2), Arg.Any<IConnectionConfiguration>(), Arg.Any<ILog>());
+        }
+
+        [Test]
+        public async Task BrokerRouterUsesFactoryToAddNewBrokersFromGroups()
+        {
+            var router = new Router(new Uri("http://localhost:1"), _connectionFactory);
+
+            _connection
+                .SendAsync(Arg.Any<GroupCoordinatorRequest>(), Arg.Any<CancellationToken>(), Arg.Any<IRequestContext>())
+                .Returns(_ => BrokerRouterProxy.CreateGroupCoordinatorResponse(1));
+            await router.GetGroupBrokerAsync(TestTopic, CancellationToken.None);
+            var broker = router.GetGroupBroker(TestTopic);
+            _connectionFactory.Received()
+                              .Create(Arg.Is<Endpoint>(e => e.IP.Port == 2), Arg.Any<IConnectionConfiguration>(), Arg.Any<ILog>());
         }
 
         #region MetadataRequest Tests...
@@ -80,8 +94,21 @@ namespace KafkaClient.Tests
             await router.GetTopicMetadataAsync(TestTopic, CancellationToken.None);
             var result = router.GetTopicMetadata(TestTopic);
             Assert.That(result, Is.Not.Null);
-            Assert.That(routerProxy.Connection1.MetadataRequestCallCount, Is.EqualTo(1));
-            Assert.That(routerProxy.Connection2.MetadataRequestCallCount, Is.EqualTo(1));
+            Assert.That(routerProxy.Connection1.RequestCallCount(ApiKeyRequestType.Metadata), Is.EqualTo(1));
+            Assert.That(routerProxy.Connection2.RequestCallCount(ApiKeyRequestType.Metadata), Is.EqualTo(1));
+        }
+
+        [Test]
+        public async Task BrokerRouteShouldCycleThroughEachBrokerUntilOneIsFoundForGroup()
+        {
+            var routerProxy = new BrokerRouterProxy();
+            routerProxy.Connection1.GroupCoordinatorResponseFunction = () => { throw new Exception("some error"); };
+            var router = routerProxy.Create();
+            await router.GetGroupBrokerAsync(TestTopic, CancellationToken.None);
+            var result = router.GetGroupBroker(TestTopic);
+            Assert.That(result, Is.Not.Null);
+            Assert.That(routerProxy.Connection1.RequestCallCount(ApiKeyRequestType.GroupCoordinator), Is.EqualTo(1));
+            Assert.That(routerProxy.Connection2.RequestCallCount(ApiKeyRequestType.GroupCoordinator), Is.EqualTo(1));
         }
 
         [Test]
@@ -94,8 +121,22 @@ namespace KafkaClient.Tests
 
             Assert.ThrowsAsync<ConnectionException>(async () => await router.GetTopicMetadataAsync(TestTopic, CancellationToken.None));
 
-            Assert.That(routerProxy.Connection1.MetadataRequestCallCount, Is.EqualTo(1));
-            Assert.That(routerProxy.Connection2.MetadataRequestCallCount, Is.EqualTo(1));
+            Assert.That(routerProxy.Connection1.RequestCallCount(ApiKeyRequestType.Metadata), Is.EqualTo(1));
+            Assert.That(routerProxy.Connection2.RequestCallCount(ApiKeyRequestType.Metadata), Is.EqualTo(1));
+        }
+
+        [Test]
+        public async Task BrokerRouteShouldThrowIfCycleCouldNotConnectToAnyServerForGroup()
+        {
+            var routerProxy = new BrokerRouterProxy();
+            routerProxy.Connection1.GroupCoordinatorResponseFunction = () => { throw new Exception("some error"); };
+            routerProxy.Connection2.GroupCoordinatorResponseFunction = () => { throw new Exception("some error"); };
+            var router = routerProxy.Create();
+
+            Assert.ThrowsAsync<CachedMetadataException>(async () => await router.GetGroupBrokerAsync(TestTopic, CancellationToken.None));
+
+            Assert.That(routerProxy.Connection1.RequestCallCount(ApiKeyRequestType.GroupCoordinator), Is.EqualTo(1));
+            Assert.That(routerProxy.Connection2.RequestCallCount(ApiKeyRequestType.GroupCoordinator), Is.EqualTo(1));
         }
 
         [Test]
@@ -108,9 +149,23 @@ namespace KafkaClient.Tests
             var result2 = router.GetTopicMetadata(TestTopic);
 
             Assert.AreEqual(1, router.GetTopicMetadata().Count);
-            Assert.That(routerProxy.Connection1.MetadataRequestCallCount, Is.EqualTo(1));
+            Assert.That(routerProxy.Connection1.RequestCallCount(ApiKeyRequestType.Metadata), Is.EqualTo(1));
             Assert.That(result1.TopicName, Is.EqualTo(TestTopic));
             Assert.That(result2.TopicName, Is.EqualTo(TestTopic));
+        }
+
+        [Test]
+        public async Task BrokerRouteShouldReturnGroupFromCache()
+        {
+            var routerProxy = new BrokerRouterProxy();
+            var router = routerProxy.Create();
+            await router.GetGroupBrokerAsync(TestTopic, CancellationToken.None);
+            var result1 = router.GetGroupBroker(TestTopic);
+            var result2 = router.GetGroupBroker(TestTopic);
+
+            Assert.That(routerProxy.Connection1.RequestCallCount(ApiKeyRequestType.GroupCoordinator), Is.EqualTo(1));
+            Assert.That(result1.GroupId, Is.EqualTo(TestTopic));
+            Assert.That(result2.GroupId, Is.EqualTo(TestTopic));
         }
 
         [Test]
@@ -134,7 +189,7 @@ namespace KafkaClient.Tests
             var result1 = router.GetTopicMetadata();
             var result2 = router.GetTopicMetadata();
 
-            Assert.That(routerProxy.Connection1.MetadataRequestCallCount, Is.EqualTo(1));
+            Assert.That(routerProxy.Connection1.RequestCallCount(ApiKeyRequestType.Metadata), Is.EqualTo(1));
             Assert.That(result1.Count, Is.EqualTo(1));
             Assert.That(result1[0].TopicName, Is.EqualTo(TestTopic));
             Assert.That(result2.Count, Is.EqualTo(1));
@@ -142,17 +197,31 @@ namespace KafkaClient.Tests
         }
 
         [Test]
-        public async Task RefreshTopicMetadataShouldIgnoreCacheAndAlwaysCauseMetadataRequestAfterExpertionDate()
+        public async Task RefreshTopicMetadataShouldIgnoreCacheAndAlwaysCauseMetadataRequestAfterExpirationDate()
         {
             var routerProxy = new BrokerRouterProxy();
             var router = routerProxy.Create();
             TimeSpan cacheExpiration = TimeSpan.FromMilliseconds(100);
             await router.RefreshTopicMetadataAsync(TestTopic, true, CancellationToken.None);
-            Assert.That(routerProxy.Connection1.MetadataRequestCallCount, Is.EqualTo(1));
+            Assert.That(routerProxy.Connection1.RequestCallCount(ApiKeyRequestType.Metadata), Is.EqualTo(1));
             await Task.Delay(routerProxy.CacheExpiration);
             await Task.Delay(1);//After cache is expair
             await router.RefreshTopicMetadataAsync(TestTopic, true, CancellationToken.None);
-            Assert.That(routerProxy.Connection1.MetadataRequestCallCount, Is.EqualTo(2));
+            Assert.That(routerProxy.Connection1.RequestCallCount(ApiKeyRequestType.Metadata), Is.EqualTo(2));
+        }
+
+        [Test]
+        public async Task RefreshGroupMetadataShouldIgnoreCacheAndAlwaysCauseRequestAfterExpirationDate()
+        {
+            var routerProxy = new BrokerRouterProxy();
+            var router = routerProxy.Create();
+            TimeSpan cacheExpiration = TimeSpan.FromMilliseconds(100);
+            await router.RefreshGroupMetadataAsync(TestTopic, true, CancellationToken.None);
+            Assert.That(routerProxy.Connection1.RequestCallCount(ApiKeyRequestType.GroupCoordinator), Is.EqualTo(1));
+            await Task.Delay(routerProxy.CacheExpiration);
+            await Task.Delay(1);//After cache is expired
+            await router.RefreshGroupMetadataAsync(TestTopic, true, CancellationToken.None);
+            Assert.That(routerProxy.Connection1.RequestCallCount(ApiKeyRequestType.GroupCoordinator), Is.EqualTo(2));
         }
 
         [Test]
@@ -161,9 +230,9 @@ namespace KafkaClient.Tests
             var routerProxy = new BrokerRouterProxy();
             var router = routerProxy.Create();
             await router.RefreshTopicMetadataAsync(CancellationToken.None);
-            Assert.That(routerProxy.Connection1.MetadataRequestCallCount, Is.EqualTo(1));
+            Assert.That(routerProxy.Connection1.RequestCallCount(ApiKeyRequestType.Metadata), Is.EqualTo(1));
             await router.RefreshTopicMetadataAsync(CancellationToken.None);
-            Assert.That(routerProxy.Connection1.MetadataRequestCallCount, Is.EqualTo(2));
+            Assert.That(routerProxy.Connection1.RequestCallCount(ApiKeyRequestType.Metadata), Is.EqualTo(2));
         }
 
         [Test]
@@ -178,14 +247,14 @@ namespace KafkaClient.Tests
 
             var router1 = router.GetTopicBroker(TestTopic, 0);
 
-            Assert.That(routerProxy.Connection1.MetadataRequestCallCount, Is.EqualTo(1));
+            Assert.That(routerProxy.Connection1.RequestCallCount(ApiKeyRequestType.Metadata), Is.EqualTo(1));
             await Task.Delay(routerProxy.CacheExpiration);
             await Task.Delay(1);//After cache is expair
             routerProxy.MetadataResponse = BrokerRouterProxy.CreateMetadataResponseWithSingleBroker;
             await router.RefreshTopicMetadataAsync(TestTopic, true, CancellationToken.None);
             var router2 = router.GetTopicBroker(TestTopic, 0);
 
-            Assert.That(routerProxy.Connection1.MetadataRequestCallCount, Is.EqualTo(2));
+            Assert.That(routerProxy.Connection1.RequestCallCount(ApiKeyRequestType.Metadata), Is.EqualTo(2));
             Assert.That(router1.Connection.Endpoint, Is.EqualTo(routerProxy.Connection1.Endpoint));
             Assert.That(router2.Connection.Endpoint, Is.EqualTo(routerProxy.Connection2.Endpoint));
             Assert.That(router1.Connection.Endpoint, Is.Not.EqualTo(router2.Connection.Endpoint));
@@ -201,7 +270,7 @@ namespace KafkaClient.Tests
             x.Add(router.RefreshTopicMetadataAsync(TestTopic, true, CancellationToken.None));//do not debug
             x.Add(router.RefreshTopicMetadataAsync(TestTopic, true, CancellationToken.None));//do not debug
             await Task.WhenAll(x.ToArray());
-            Assert.That(routerProxy.Connection1.MetadataRequestCallCount, Is.EqualTo(2));
+            Assert.That(routerProxy.Connection1.RequestCallCount(ApiKeyRequestType.Metadata), Is.EqualTo(2));
         }
 
         [Test]
@@ -214,7 +283,7 @@ namespace KafkaClient.Tests
             x.Add(router.GetTopicMetadataAsync(TestTopic, CancellationToken.None));//do not debug
             x.Add(router.GetTopicMetadataAsync(TestTopic, CancellationToken.None));//do not debug
             await Task.WhenAll(x.ToArray());
-            Assert.That(routerProxy.Connection1.MetadataRequestCallCount, Is.EqualTo(1));
+            Assert.That(routerProxy.Connection1.RequestCallCount(ApiKeyRequestType.Metadata), Is.EqualTo(1));
         }
 
         #endregion MetadataRequest Tests...

@@ -1,24 +1,18 @@
-﻿using System;
-using KafkaClient.Connections;
+﻿using KafkaClient.Connections;
 
 namespace KafkaClient
 {
-    public class GroupBroker : IEquatable<GroupBroker>
+    public class GroupBroker : Broker
     {
         public GroupBroker(string groupId, int brokerId, IConnection connection)
+            : base(brokerId, connection)
         {
             GroupId = groupId;
-            BrokerId = brokerId;
-            Connection = connection;
         }
-
-        public IConnection Connection { get; }
-
-        public int BrokerId { get; }
 
         public string GroupId { get; }
 
-        public override string ToString() => $"{Connection.Endpoint.ServerUri} ({BrokerId}) group/{GroupId}";
+        public override string ToString() => $"{base.ToString()} group/{GroupId}";
 
         public override bool Equals(object obj)
         {
@@ -29,7 +23,7 @@ namespace KafkaClient
         {
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
-            return BrokerId == other.BrokerId && string.Equals(GroupId, other.GroupId);
+            return base.Equals(other) && string.Equals(GroupId, other.GroupId);
         }
 
         public override int GetHashCode()

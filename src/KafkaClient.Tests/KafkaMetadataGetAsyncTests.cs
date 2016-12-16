@@ -155,13 +155,13 @@ namespace KafkaClient.Tests
         private Task<MetadataResponse> CreateMetadataResponse(int brokerId, string host, int port)
         {
             var tcs = new TaskCompletionSource<MetadataResponse>();
-            tcs.SetResult(new MetadataResponse(new [] { new Broker(brokerId, host, port) }, new MetadataResponse.Topic[] {}));
+            tcs.SetResult(new MetadataResponse(new [] { new KafkaClient.Protocol.Broker(brokerId, host, port) }, new MetadataResponse.Topic[] {}));
             return tcs.Task;
         }
 
         private async Task<MetadataResponse> CreateMetadataResponse(ErrorResponseCode errorCode)
         {
-            return new MetadataResponse(new Broker[] {}, new [] { new MetadataResponse.Topic("Test", errorCode, new MetadataResponse.Partition[] {})});
+            return new MetadataResponse(new KafkaClient.Protocol.Broker[] {}, new [] { new MetadataResponse.Topic("Test", errorCode, new MetadataResponse.Partition[] {})});
         }
 #pragma warning restore 1998
     }

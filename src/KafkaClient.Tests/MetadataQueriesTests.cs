@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using KafkaClient.Protocol;
 using KafkaClient.Tests.Fakes;
 using NUnit.Framework;
 
@@ -20,8 +21,8 @@ namespace KafkaClient.Tests
             var router = routerProxy.Create();
 
             var result = router.GetTopicOffsetsAsync(BrokerRouterProxy.TestTopic, 2, -1, CancellationToken.None).Result;
-            Assert.That(routerProxy.Connection1.OffsetRequestCallCount, Is.EqualTo(1));
-            Assert.That(routerProxy.Connection2.OffsetRequestCallCount, Is.EqualTo(1));
+            Assert.That(routerProxy.Connection1.RequestCallCount(ApiKeyRequestType.Offset), Is.EqualTo(1));
+            Assert.That(routerProxy.Connection2.RequestCallCount(ApiKeyRequestType.Offset), Is.EqualTo(1));
         }
 
         [Test]

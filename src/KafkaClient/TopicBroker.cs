@@ -1,21 +1,19 @@
 ﻿using KafkaClient.Connections;
-using KafkaClient.Protocol;
 
 namespace KafkaClient
 {
-    public class TopicBroker : TopicPartition
+    public class TopicBroker : Broker
     {
-        public TopicBroker(string topicName, int partitionId, int brokerId, IConnection connection) : base(topicName, partitionId)
+        public TopicBroker(string topicName, int partitionId, int brokerId, IConnection connection) 
+            : base(brokerId, connection)
         {
-            BrokerId = brokerId;
-            Connection = connection;
+            TopicName = topicName;
+            PartitionId = partitionId;
         }
 
-        public IConnection Connection { get; }
+        public string TopicName { get; }
+        public int PartitionId { get; }
 
-        public int BrokerId { get; }
-
-        public override string ToString() => $"{Connection.Endpoint.ServerUri} ({BrokerId}) {base.ToString()}";
-
+        public override string ToString() => $"{base.ToString()} topic/{TopicName}/partition/{PartitionId}";
     }
 }
