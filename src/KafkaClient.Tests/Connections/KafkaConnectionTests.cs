@@ -94,7 +94,7 @@ namespace KafkaClient.Tests.Connections
 
             var endpoint = Endpoint.Resolve(TestConfig.ServerUri(), TestConfig.InfoLog);
             using (var server = new FakeTcpServer(TestConfig.InfoLog, endpoint.IP.Port))
-            using (var socket = new TcpSocket(endpoint, config, TestConfig.InfoLog))
+            using (var socket = new TcpSocket(endpoint, config, null, TestConfig.InfoLog))
             using (new Connection(socket, config, log: mockLog))
             {
                 for (var connectionAttempt = 1; connectionAttempt <= connectionAttempts; connectionAttempt++)
@@ -127,7 +127,7 @@ namespace KafkaClient.Tests.Connections
 
             var endpoint = Endpoint.Resolve(TestConfig.ServerUri(), TestConfig.InfoLog);
             using (var server = new FakeTcpServer(TestConfig.InfoLog, endpoint.IP.Port))
-            using (var socket = new TcpSocket(endpoint, config, TestConfig.InfoLog))
+            using (var socket = new TcpSocket(endpoint, config, null, TestConfig.InfoLog))
             using (new Connection(socket, config, log: mockLog))
             {
                 // send size
@@ -172,7 +172,7 @@ namespace KafkaClient.Tests.Connections
             var config = new ConnectionConfiguration(onRead: (e, buffer, elapsed) => receivedData = true);
             var endpoint = Endpoint.Resolve(TestConfig.ServerUri(), TestConfig.InfoLog);
             using (var server = new FakeTcpServer(TestConfig.InfoLog, endpoint.IP.Port))
-            using (var socket = new TcpSocket(endpoint, config, mockLog))
+            using (var socket = new TcpSocket(endpoint, config, null, mockLog))
             using (var conn = new Connection(socket, config, log: mockLog))
             {
                 //send correlation message

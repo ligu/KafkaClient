@@ -7,12 +7,15 @@
     "System.Collections.Immutable": "1.2.0",
     "System.Diagnostics.TraceSource": "4.0.0",
     "System.Net.NameResolution": "4.0.0",
+    "System.Net.Security": "4.0.0",
     "System.Threading.Thread": "4.0.0",
     "System.IO.Compression": "4.3.0"
   },
 
   "frameworks": {
     "net462": {
+      "dependencies": {
+      }
     },
     "netstandard1.3": {
       "dependencies": {

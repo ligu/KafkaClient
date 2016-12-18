@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.Net.Security;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
@@ -21,6 +22,7 @@ namespace KafkaClient.Connections
 
         private readonly ILog _log;
         private readonly IConnectionConfiguration _configuration;
+        private readonly ISslConfiguration _sslConfiguration;
 
         private readonly AsyncProducerConsumerQueue<SocketPayloadWriteTask> _writeTaskQueue;
         private readonly AsyncProducerConsumerQueue<SocketPayloadReadTask> _readTaskQueue;
@@ -34,10 +36,12 @@ namespace KafkaClient.Connections
         /// Construct socket and open connection to a specified server.
         /// </summary>
         /// <param name="configuration">Configuration for timeouts and retries.</param>
+        /// /// <param name="sslConfiguration">Configuration for SSL encrypted communication</param>
         /// <param name="log">Logging facility for verbose messaging of actions.</param>
         /// <param name="endpoint">The IP endpoint to connect to.</param>
-        public TcpSocket(Endpoint endpoint, IConnectionConfiguration configuration = null, ILog log = null)
+        public TcpSocket(Endpoint endpoint, IConnectionConfiguration configuration = null, ISslConfiguration sslConfiguration = null, ILog log = null)
         {
+            _sslConfiguration = sslConfiguration;
             Endpoint = endpoint;
             _log = log ?? TraceLog.Log;
             _configuration = configuration ?? new ConnectionConfiguration();
@@ -247,14 +251,38 @@ namespace KafkaClient.Connections
             return new ConnectionException($"Lost connection to {Endpoint}", ex) { Endpoint = Endpoint };
         }
 
-        private async Task<NetworkStream> GetStreamAsync()
+        private async Task<Stream> GetStreamAsync()
         {
             using (await _clientLock.LockAsync(_disposeToken.Token).ConfigureAwait(false)) {
                 if ((_client == null || _client.Connected == false) && !_disposeToken.IsCancellationRequested) {
                     _client = await ReEstablishConnectionAsync().ConfigureAwait(false);
                 }
 
-                return _client?.GetStream();
+                if(_sslConfiguration == null || _client == null)
+                    return _client?.GetStream();
+
+                //SSL stream setup
+                var sslStream = new SslStream(
+                    _client.GetStream(),
+                    false,
+                    _sslConfiguration.RemoteCertificateValidationCallback,
+                    _sslConfiguration.LocalCertificateSelectionCallback,
+                    _sslConfiguration.EncryptionPolicy ?? EncryptionPolicy.RequireEncryption
+                );
+
+                try
+                {
+                    await sslStream.AuthenticateAsClientAsync(Endpoint.ServerUri.Host).ConfigureAwait(false);
+                    _log.Info(() => LogEvent.Create($"Successful SSL connection, SslProtocol:{sslStream.SslProtocol}, KeyExchange:{sslStream.KeyExchangeAlgorithm}.{sslStream.KeyExchangeStrength}, Cipher:{sslStream.CipherAlgorithm}.{sslStream.CipherStrength}, Hash:{sslStream.HashAlgorithm}.{sslStream.HashStrength}, Authenticated:{sslStream.IsAuthenticated}, MutuallyAuthenticated:{sslStream.IsMutuallyAuthenticated}, Encrypted:{sslStream.IsEncrypted}, Signed:{sslStream.IsSigned}"));
+                    return sslStream;
+                }
+                catch (Exception ex)
+                {
+                    _log.Warn(() => LogEvent.Create(ex, $"SSL connection failed: {ex.Message}"));
+                    sslStream.Dispose();
+                    return null;
+                }
+                
             }
         }
 

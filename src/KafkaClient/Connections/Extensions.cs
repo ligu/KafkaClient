@@ -4,7 +4,7 @@
     {
         public static IConnection Create(this KafkaOptions options, Endpoint endpoint)
         {
-            return options.ConnectionFactory.Create(endpoint, options.ConnectionConfiguration, options.Log);
+            return options.ConnectionFactory.Create(endpoint, options.ConnectionConfiguration, options.SslConfiguration, options.Log);
         }
 
         public static IVersionSupport MakeDynamic(this VersionSupport versionSupport)
