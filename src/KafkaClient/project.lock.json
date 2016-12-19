@@ -4171,7 +4171,7 @@
     ],
     ".NETFramework,Version=v4.6.2": [],
     ".NETStandard,Version=v1.3": [
-      "NETStandard.Library >= 1.3.0"
+      "NETStandard.Library >= 1.6.0"
     ]
   },
   "tools": {},

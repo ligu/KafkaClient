@@ -257,45 +257,45 @@ namespace KafkaClient.Tests
         //    }
         //}
 
-        [Test]
-        public async Task ConsumerShouldMoveToNextAvailableOffsetWhenQueryingForNextMessage()
-        {
-            const int expectedCount = 1000;
-            var options = new KafkaOptions(TestConfig.IntegrationUri);
+        //[Test]
+        //public async Task ConsumerShouldMoveToNextAvailableOffsetWhenQueryingForNextMessage()
+        //{
+        //    const int expectedCount = 1000;
+        //    var options = new KafkaOptions(TestConfig.IntegrationUri);
 
-            using (var router = new Router(options)) {
-                await router.TemporaryTopicAsync(async topicName => {
-                    using (var producer = new Producer(router)) {
-                        //get current offset and reset consumer to top of log
-                        var offsets = await producer.Router.GetTopicOffsetsAsync(topicName, CancellationToken.None).ConfigureAwait(false);
+        //    using (var router = new Router(options)) {
+        //        await router.TemporaryTopicAsync(async topicName => {
+        //            using (var producer = new Producer(router)) {
+        //                //get current offset and reset consumer to top of log
+        //                var offsets = await producer.Router.GetTopicOffsetsAsync(topicName, CancellationToken.None).ConfigureAwait(false);
 
-                        using (var consumerRouter = new Router(options))
-                        using (var consumer = new OldConsumer(new ConsumerOptions(topicName, consumerRouter) { MaxWaitTimeForMinimumBytes = TimeSpan.Zero },
-                             offsets.Select(x => new OffsetPosition(x.PartitionId, x.Offset)).ToArray()))
-                        {
-                            Console.WriteLine("Sending {0} test messages", expectedCount);
-                            var response = await producer.SendMessagesAsync(Enumerable.Range(0, expectedCount).Select(x => new Message(x.ToString())), topicName, CancellationToken.None);
+        //                using (var consumerRouter = new Router(options))
+        //                using (var consumer = new OldConsumer(new ConsumerOptions(topicName, consumerRouter) { MaxWaitTimeForMinimumBytes = TimeSpan.Zero },
+        //                     offsets.Select(x => new OffsetPosition(x.PartitionId, x.Offset)).ToArray()))
+        //                {
+        //                    Console.WriteLine("Sending {0} test messages", expectedCount);
+        //                    var response = await producer.SendMessagesAsync(Enumerable.Range(0, expectedCount).Select(x => new Message(x.ToString())), topicName, CancellationToken.None);
 
-                            Assert.That(response.Any(x => x.ErrorCode != (int)ErrorResponseCode.None), Is.False, "Error occured sending test messages to server.");
+        //                    Assert.That(response.Any(x => x.ErrorCode != (int)ErrorResponseCode.None), Is.False, "Error occured sending test messages to server.");
 
-                            var stream = consumer.Consume();
+        //                    var stream = consumer.Consume();
 
-                            Console.WriteLine("Reading message back out from consumer.");
-                            var data = stream.Take(expectedCount).ToList();
+        //                    Console.WriteLine("Reading message back out from consumer.");
+        //                    var data = stream.Take(expectedCount).ToList();
 
-                            var consumerOffset = consumer.GetOffsetPosition().OrderBy(x => x.PartitionId).ToList();
+        //                    var consumerOffset = consumer.GetOffsetPosition().OrderBy(x => x.PartitionId).ToList();
 
-                            var serverOffset = await producer.Router.GetTopicOffsetsAsync(topicName, CancellationToken.None).ConfigureAwait(false);
-                            var positionOffset = serverOffset.Select(x => new OffsetPosition(x.PartitionId, x.Offset))
-                                .OrderBy(x => x.PartitionId)
-                                .ToList();
+        //                    var serverOffset = await producer.Router.GetTopicOffsetsAsync(topicName, CancellationToken.None).ConfigureAwait(false);
+        //                    var positionOffset = serverOffset.Select(x => new OffsetPosition(x.PartitionId, x.Offset))
+        //                        .OrderBy(x => x.PartitionId)
+        //                        .ToList();
 
-                            Assert.That(consumerOffset, Is.EqualTo(positionOffset), "The consumerOffset position should match the server offset position.");
-                            Assert.That(data.Count, Is.EqualTo(expectedCount), "We should have received 2000 messages from the server.");
-                        }
-                    }
-                });
-            }
-        }
+        //                    Assert.That(consumerOffset, Is.EqualTo(positionOffset), "The consumerOffset position should match the server offset position.");
+        //                    Assert.That(data.Count, Is.EqualTo(expectedCount), "We should have received 2000 messages from the server.");
+        //                }
+        //            }
+        //        });
+        //    }
+        //}
     }
 }
