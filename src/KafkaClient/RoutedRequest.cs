@@ -25,7 +25,7 @@ namespace KafkaClient
         {
             _response = null;
             _route = await GetBrokerAsync(router, cancellationToken).ConfigureAwait(false);
-            _response = await _route.Connection.SendAsync(_request, cancellationToken, context).ConfigureAwait(false);
+            _response = _route == null ? null : await _route.Connection.SendAsync(_request, cancellationToken, context).ConfigureAwait(false);
         }
 
         protected abstract Task<Broker> GetBrokerAsync(IRouter router, CancellationToken cancellationToken);

@@ -16,8 +16,10 @@ namespace KafkaClient.Protocol
         public static Exception ExtractExceptions<TResponse>(this IRequest<TResponse> request, TResponse response, Endpoint endpoint = null) where TResponse : IResponse
         {
             var exceptions = new List<Exception>();
-            foreach (var errorCode in response.Errors.Where(e => e != ErrorResponseCode.None)) {
-                exceptions.Add(ExtractException(request, errorCode, endpoint));
+            if (response != null) {
+                foreach (var errorCode in response.Errors.Where(e => e != ErrorResponseCode.None)) {
+                    exceptions.Add(ExtractException(request, errorCode, endpoint));
+                }
             }
             if (exceptions.Count == 0) return new RequestException(request.ApiKey, ErrorResponseCode.None) { Endpoint = endpoint };
             if (exceptions.Count == 1) return exceptions[0];

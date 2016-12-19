@@ -172,12 +172,15 @@ namespace KafkaClient.Tests
         public async Task ConsumerDoesNotThowArgumentExceptionWhenMemberMetadataIsKnownByConsumer()
         {
             var router = Substitute.For<IRouter>();
+            var conn = Substitute.For<IConnection>();
+            router.GetGroupBrokerAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                  .Returns(_ => Task.FromResult(new GroupBroker(_.Arg<string>(), 0, conn)));
 
             var consumer = new Consumer(router, encoders: ImmutableDictionary<string, IProtocolTypeEncoder>.Empty.Add(ConsumerEncoder.ProtocolType, ConsumerEncoder.Singleton));
             using (consumer) {
                 try {
                     await consumer.JoinConsumerGroupAsync("group", new ByteMemberMetadata(ConsumerEncoder.ProtocolType, new byte[] { }), CancellationToken.None);
-                } catch (ConnectionException) {
+                } catch (RequestException) {
                     // since the servers aren't available
                 }
             }
