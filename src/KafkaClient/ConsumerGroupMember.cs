@@ -26,7 +26,6 @@ namespace KafkaClient
             // This thread will heartbeat on the appropriate frequency
             _heartbeatTimeout = TimeSpan.FromMilliseconds(request.SessionTimeout.TotalMilliseconds / 2);
             _heartbeatTask = Task.Factory.StartNew(DedicatedHeartbeatTask, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
-
         }
 
         private readonly CancellationTokenSource _disposeToken = new CancellationTokenSource();
@@ -49,15 +48,28 @@ namespace KafkaClient
                 // only allow one heartbeat to execute, dump out all other requests
                 if (Interlocked.Increment(ref _activeHeartbeatCount) != 1) return;
 
+                var lastError = ErrorResponseCode.None;
+                var lastHeartbeat = DateTimeOffset.UtcNow;
                 while (!_disposeToken.IsCancellationRequested) {
-                    await Task.Delay(_heartbeatTimeout, _disposeToken.Token);
-                    await _consumer.SendHeartbeatAsync(GroupId, MemberId, GenerationId, _disposeToken.Token);
+                    try {
+                        if (_heartbeatTimeout < DateTimeOffset.UtcNow - lastHeartbeat) {
+                            _disposeToken.Cancel();
+                            break;
+                        }
+                        if (lastError == ErrorResponseCode.None) {
+                            await Task.Delay(_heartbeatTimeout, _disposeToken.Token);
+                        }
+                        lastError = await _consumer.SendHeartbeatAsync(GroupId, MemberId, GenerationId, _disposeToken.Token);
+                        lastHeartbeat = DateTimeOffset.UtcNow;
+                    } catch (Exception ex) when (!(ex is TaskCanceledException)) {
+                        _log.Warn(() => LogEvent.Create(ex));
+                    }
                 }
             } catch (Exception ex) when (!(ex is TaskCanceledException)) {
                 _log.Warn(() => LogEvent.Create(ex));
             } finally {
                 Interlocked.Decrement(ref _activeHeartbeatCount);
-                _log.Info(() => LogEvent.Create($"Closed down heartbeat for {GroupId}/{MemberId}"));
+                _log.Info(() => LogEvent.Create($"Stopped heartbeat for {GroupId}/{MemberId}"));
             }
         }
 

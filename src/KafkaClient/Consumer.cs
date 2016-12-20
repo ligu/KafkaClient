@@ -100,13 +100,14 @@ namespace KafkaClient
             }
         }
 
-        public async Task SendHeartbeatAsync(string groupId, string memberId, int generationId, CancellationToken cancellationToken)
+        public async Task<ErrorResponseCode> SendHeartbeatAsync(string groupId, string memberId, int generationId, CancellationToken cancellationToken)
         {
             var request = new HeartbeatRequest(groupId, generationId, memberId);
             var response = await _router.SendAsync(request, groupId, cancellationToken);
             if (!response.ErrorCode.IsSuccess()) {
                 throw request.ExtractExceptions(response);
             }
+            return response.ErrorCode;
         }
     }
 }

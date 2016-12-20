@@ -22,6 +22,6 @@ namespace KafkaClient
 
         Task<IConsumerGroupMember> JoinConsumerGroupAsync(string groupId, IMemberMetadata metadata, CancellationToken cancellationToken, string memberId = "");
         Task LeaveConsumerGroupAsync(string groupId, string memberId, CancellationToken cancellationToken, bool awaitResponse = true);
-        Task SendHeartbeatAsync(string groupId, string memberId, int generationId, CancellationToken cancellationToken);
+        Task<ErrorResponseCode> SendHeartbeatAsync(string groupId, string memberId, int generationId, CancellationToken cancellationToken);
     }
 }

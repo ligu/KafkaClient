@@ -176,7 +176,7 @@ namespace KafkaClient.Tests
             router.GetGroupBrokerAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
                   .Returns(_ => Task.FromResult(new GroupBroker(_.Arg<string>(), 0, conn)));
 
-            var consumer = new Consumer(router, encoders: ImmutableDictionary<string, IProtocolTypeEncoder>.Empty.Add(ConsumerEncoder.ProtocolType, ConsumerEncoder.Singleton));
+            var consumer = new Consumer(router, encoders: ConnectionConfiguration.Defaults.Encoders());
             using (consumer) {
                 try {
                     await consumer.JoinConsumerGroupAsync("group", new ByteMemberMetadata(ConsumerEncoder.ProtocolType, new byte[] { }), CancellationToken.None);
@@ -186,31 +186,88 @@ namespace KafkaClient.Tests
             }
         }
 
-        //        [Test]
-        //        public void EnsureConsumerDisposesAllTasks()
-        //        {
-        //            var routerProxy = new BrokerRouterProxy();
-        //#pragma warning disable 1998
-        //            routerProxy.Connection1.FetchResponseFunction = async () => new FetchResponse(new FetchResponse.Topic[] {});
-        //#pragma warning restore 1998
-        //            var router = routerProxy.Create();
-        //            var options = CreateOptions(router);
-        //            options.PartitionWhitelist = new List<int>();
+        [Test]
+        [TestCase(0, 100, 0)]
+        [TestCase(4, 100, 500)]
+        [TestCase(9, 100, 1000)]
+        public async Task ConsumerHeartbeatsAtDesiredIntervals(int expectedHeartbeats, int heartbeatMilliseconds, int totalMilliseconds)
+        {
+            var protocol = new JoinGroupRequest.GroupProtocol(ConsumerEncoder.ProtocolType, new ConsumerProtocolMetadata());
+            var consumer = Substitute.For<IConsumer>();
+            consumer.SendHeartbeatAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+                    .Returns(_ => Task.FromResult(ErrorResponseCode.None));
+            var request = new JoinGroupRequest(TestConfig.GroupId(), TimeSpan.FromMilliseconds(heartbeatMilliseconds * 2), "", ConsumerEncoder.ProtocolType, new [] { protocol });
+            var memberId = Guid.NewGuid().ToString("N");
+            var response = new JoinGroupResponse(ErrorResponseCode.None, 1, protocol.Name, memberId, memberId, new []{ new JoinGroupResponse.Member(memberId, new ConsumerProtocolMetadata()) });
+            using (new ConsumerGroupMember(consumer, request, response, ConsumerEncoder.Singleton, TestConfig.Log)) {
+                await Task.Delay(totalMilliseconds);
+            }
 
-        //            var consumer = new OldConsumer(options);
-        //            using (consumer)
-        //            {
-        //                var test = consumer.Consume();
-        //                var wait = TaskTest.WaitFor(() => consumer.ConsumerTaskCount >= 2);
-        //            }
+#pragma warning disable 4014
+            consumer.Received(expectedHeartbeats)
+                    .SendHeartbeatAsync(request.GroupId, memberId, response.GenerationId, Arg.Any<CancellationToken>());
+#pragma warning restore 4014
+        }
 
-        //            var wait2 = TaskTest.WaitFor(() => consumer.ConsumerTaskCount <= 0);
-        //            Assert.That(consumer.ConsumerTaskCount, Is.EqualTo(0));
-        //        }
+        [Test]
+        [TestCase(100, 700)]
+        [TestCase(150, 700)]
+        [TestCase(250, 700)]
+        public async Task ConsumerHeartbeatsWithinTimeLimit(int heartbeatMilliseconds, int totalMilliseconds)
+        {
+            var protocol = new JoinGroupRequest.GroupProtocol(ConsumerEncoder.ProtocolType, new ConsumerProtocolMetadata());
+            var consumer = Substitute.For<IConsumer>();
+            var lastHeartbeat = DateTime.UtcNow;
+            var heartbeatIntervals = ImmutableArray<TimeSpan>.Empty;
+            consumer.SendHeartbeatAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+                    .Returns(
+                        _ => {
+                            heartbeatIntervals = heartbeatIntervals.Add(DateTime.UtcNow - lastHeartbeat);
+                            lastHeartbeat = DateTime.UtcNow;
+                            return Task.FromResult(ErrorResponseCode.None);
+                        });
+            var request = new JoinGroupRequest(TestConfig.GroupId(), TimeSpan.FromMilliseconds(heartbeatMilliseconds), "", ConsumerEncoder.ProtocolType, new [] { protocol });
+            var memberId = Guid.NewGuid().ToString("N");
+            var response = new JoinGroupResponse(ErrorResponseCode.None, 1, protocol.Name, memberId, memberId, new []{ new JoinGroupResponse.Member(memberId, new ConsumerProtocolMetadata()) });
+            lastHeartbeat = DateTime.UtcNow;
+            using (new ConsumerGroupMember(consumer, request, response, ConsumerEncoder.Singleton, TestConfig.Log)) {
+                await Task.Delay(totalMilliseconds);
+            }
 
-        //        private ConsumerOptions CreateOptions(IRouter router)
-        //        {
-        //            return new ConsumerOptions(BrokerRouterProxy.TestTopic, router);
-        //        }
+            foreach (var interval in heartbeatIntervals) {
+                Assert.That((int)interval.TotalMilliseconds, Is.AtMost(heartbeatMilliseconds));
+            }
+        }
+
+        [Test]
+        [TestCase(100)]
+        [TestCase(150)]
+        [TestCase(250)]
+        public async Task ConsumerHeartbeatsUntilTimeoutWhenRequestFails(int heartbeatMilliseconds)
+        {
+            var protocol = new JoinGroupRequest.GroupProtocol(ConsumerEncoder.ProtocolType, new ConsumerProtocolMetadata());
+            var consumer = Substitute.For<IConsumer>();
+            var heartbeatCounter = 0;
+            consumer.SendHeartbeatAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+                    .Returns(
+                        _ =>
+                        {
+                            heartbeatCounter++;
+                            return Task.FromResult(ErrorResponseCode.NetworkException);
+                        });
+            var request = new JoinGroupRequest(TestConfig.GroupId(), TimeSpan.FromMilliseconds(heartbeatMilliseconds), "", ConsumerEncoder.ProtocolType, new [] { protocol });
+            var memberId = Guid.NewGuid().ToString("N");
+            var response = new JoinGroupResponse(ErrorResponseCode.None, 1, protocol.Name, memberId, memberId, new []{ new JoinGroupResponse.Member(memberId, new ConsumerProtocolMetadata()) });
+            using (new ConsumerGroupMember(consumer, request, response, ConsumerEncoder.Singleton, TestConfig.Log)) {
+                await Task.Delay(heartbeatMilliseconds * 2);
+
+#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+                // this is called because the lack of heartbeat within the timeframe triggered dispose
+                consumer.Received().LeaveConsumerGroupAsync(request.GroupId, memberId, Arg.Any<CancellationToken>(), Arg.Any<bool>());
+#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+            }
+
+            Assert.That(heartbeatCounter, Is.AtLeast(10));
+        }
     }
 }
