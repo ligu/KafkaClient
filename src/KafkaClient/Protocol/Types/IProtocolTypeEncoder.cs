@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using KafkaClient.Common;
 
 namespace KafkaClient.Protocol.Types
@@ -11,5 +12,7 @@ namespace KafkaClient.Protocol.Types
 
         IMemberMetadata DecodeMetadata(IKafkaReader reader);
         IMemberAssignment DecodeAssignment(IKafkaReader reader);
+
+        IImmutableDictionary<string, IMemberAssignment> AssignMembers(IImmutableDictionary<string, IMemberMetadata> memberMetadata);
     }
 }

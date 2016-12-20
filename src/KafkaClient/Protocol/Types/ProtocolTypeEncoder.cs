@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using KafkaClient.Common;
 
 namespace KafkaClient.Protocol.Types
@@ -52,6 +53,11 @@ namespace KafkaClient.Protocol.Types
         protected abstract void EncodeAssignment(IKafkaWriter writer, TAssignment value);
         protected abstract TMetadata DecodeMetadata(IKafkaReader reader, int expectedLength);
         protected abstract TAssignment DecodeAssignment(IKafkaReader reader, int expectedLength);
+
+        public IImmutableDictionary<string, IMemberAssignment> AssignMembers(IImmutableDictionary<string, IMemberMetadata> memberMetadata)
+        {
+            throw new System.NotImplementedException();
+        }
     }
 
     public class ProtocolTypeEncoder : ProtocolTypeEncoder<ByteMemberMetadata, ByteMemberAssignment>

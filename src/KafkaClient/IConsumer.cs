@@ -23,7 +23,8 @@ namespace KafkaClient
 
         Task<IConsumerGroupMember> JoinConsumerGroupAsync(string groupId, IEnumerable<IMemberMetadata> metadata, CancellationToken cancellationToken, IConsumerGroupMember member = null);
         Task<IConsumerGroupMember> JoinConsumerGroupAsync(string groupId, IMemberMetadata metadata, CancellationToken cancellationToken);
-        Task LeaveConsumerGroupAsync(string groupId, string memberId, CancellationToken cancellationToken, bool awaitResponse = true);
+        Task<IMemberAssignment> SyncGroupAsync(string groupId, string memberId, int generationId, IImmutableDictionary<string, IMemberMetadata> memberMetadata, CancellationToken cancellationToken);
         Task<ErrorResponseCode> SendHeartbeatAsync(string groupId, string memberId, int generationId, CancellationToken cancellationToken);
+        Task LeaveConsumerGroupAsync(string groupId, string memberId, CancellationToken cancellationToken, bool awaitResponse = true);
     }
 }

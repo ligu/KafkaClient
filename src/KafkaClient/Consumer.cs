@@ -118,10 +118,20 @@ namespace KafkaClient
             return response.ErrorCode;
         }
 
-        public async Task SyncGroupAsync(
-            string groupId, string memberId, int generationId, CancellationToken cancellationToken)
+        public async Task<IMemberAssignment> SyncGroupAsync(string groupId, string memberId, int generationId, IImmutableDictionary<string, IMemberMetadata> memberMetadata, CancellationToken cancellationToken)
         {
-            
+            IEnumerable<SyncGroupRequest.GroupAssignment> groupAssignments = null;
+            if (memberMetadata?.Count > 0) {
+                var encoder = Encoders[memberMetadata.First().Value.ProtocolType];
+                var memberAssignment = encoder.AssignMembers(memberMetadata);
+                groupAssignments = memberAssignment.Select(assignment => new SyncGroupRequest.GroupAssignment(assignment.Key, assignment.Value));
+            }
+            var request = new SyncGroupRequest(groupId, generationId, memberId, groupAssignments);
+            var response = await _router.SendAsync(request, groupId, cancellationToken);
+            if (!response.ErrorCode.IsSuccess()) {
+                throw request.ExtractExceptions(response);
+            }
+            return response.MemberAssignment;
         }
     }
 }

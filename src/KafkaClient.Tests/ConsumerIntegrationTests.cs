@@ -528,7 +528,7 @@ namespace KafkaClient.Tests
                         var groupId = TestConfig.GroupId();
                         using (var member = await consumer.JoinConsumerGroupAsync(groupId, new ConsumerProtocolMetadata(topicNames: new[] { TestConfig.TopicName() }), CancellationToken.None)) {
                             Assert.That(member.GroupId, Is.EqualTo(groupId));
-                            Assert.That(member.LeaderId, Is.EqualTo(member.MemberId));
+                            Assert.That(member.IsLeader, Is.True);
                         }
                     }
                 });
