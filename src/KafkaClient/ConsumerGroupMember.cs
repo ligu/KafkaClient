@@ -1,4 +1,7 @@
 using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Common;
@@ -12,16 +15,15 @@ namespace KafkaClient
     {
         private readonly IConsumer _consumer;
 
-        public ConsumerGroupMember(IConsumer consumer, JoinGroupRequest request, JoinGroupResponse response, IProtocolTypeEncoder encoder, ILog log = null)
+        public ConsumerGroupMember(IConsumer consumer, JoinGroupRequest request, JoinGroupResponse response, ILog log = null)
         {
             _consumer = consumer;
             _log = log ?? TraceLog.Log;
 
             GroupId = request.GroupId;
             MemberId = response.MemberId;
-            LeaderId = response.LeaderId;
-            GenerationId = response.GenerationId;
-            Encoder = encoder;
+
+            OnRejoin(response);
 
             // This thread will heartbeat on the appropriate frequency
             _heartbeatTimeout = TimeSpan.FromMilliseconds(request.SessionTimeout.TotalMilliseconds / 2);
@@ -34,43 +36,90 @@ namespace KafkaClient
         private readonly Task _heartbeatTask;
         private readonly TimeSpan _heartbeatTimeout;
         private readonly ILog _log;
+        private int _joinGeneration;
+        private ImmutableDictionary<string, IMemberMetadata> _memberMetadata = ImmutableDictionary<string, IMemberMetadata>.Empty;
 
         public string GroupId { get; }
         public string MemberId { get; }
 
-        public string LeaderId { get; }
-        public int GenerationId { get; }
-        public IProtocolTypeEncoder Encoder { get; }
+        public bool IsLeader { get; private set; }
+        public int GenerationId { get; private set; }
 
+        /// <summary>
+        /// See https://cwiki.apache.org/confluence/display/KAFKA/Kafka+Client-side+Assignment+Proposal for details
+        /// </summary>
         private async Task DedicatedHeartbeatTask()
         {
             try {
                 // only allow one heartbeat to execute, dump out all other requests
                 if (Interlocked.Increment(ref _activeHeartbeatCount) != 1) return;
 
-                var lastError = ErrorResponseCode.None;
-                var lastHeartbeat = DateTimeOffset.UtcNow;
-                while (!_disposeToken.IsCancellationRequested) {
+                var response = ErrorResponseCode.None;
+                var timestamp = DateTimeOffset.UtcNow;
+                while (!(_disposeToken.IsCancellationRequested || HeartbeatIsOverdue(timestamp, response))) {
                     try {
-                        if (_heartbeatTimeout < DateTimeOffset.UtcNow - lastHeartbeat) {
-                            _disposeToken.Cancel();
-                            break;
+                        switch (response) {
+                            case ErrorResponseCode.GroupLoadInProgress: // Down state
+                            case ErrorResponseCode.GroupCoordinatorNotAvailable: // Initialize state
+                            case ErrorResponseCode.None: // Stable state
+                                await Task.Delay(_heartbeatTimeout, _disposeToken.Token);
+                                break;
+
+                            case ErrorResponseCode.RebalanceInProgress: // Joining or AwaitSync state
+                                // should only need to submit Joining once per generation
+                                // TODO: how to distinguish between Joining and AwaitSync. Also how to send this enough but not too much ...
+                                await RejoinGroupAsync(_disposeToken.Token);
+                                await SyncGroupAsync(_disposeToken.Token);
+                                break;
                         }
-                        if (lastError == ErrorResponseCode.None) {
-                            await Task.Delay(_heartbeatTimeout, _disposeToken.Token);
+                        response = await _consumer.SendHeartbeatAsync(GroupId, MemberId, GenerationId, _disposeToken.Token);
+                        if (response.IsSuccess()) {
+                            timestamp = DateTimeOffset.UtcNow;
                         }
-                        lastError = await _consumer.SendHeartbeatAsync(GroupId, MemberId, GenerationId, _disposeToken.Token);
-                        lastHeartbeat = DateTimeOffset.UtcNow;
                     } catch (Exception ex) when (!(ex is TaskCanceledException)) {
                         _log.Warn(() => LogEvent.Create(ex));
                     }
                 }
-            } catch (Exception ex) when (!(ex is TaskCanceledException)) {
-                _log.Warn(() => LogEvent.Create(ex));
+                _disposeToken.Cancel();
+            } catch (Exception ex) {
+                if (!(ex is TaskCanceledException)) {
+                    _log.Warn(() => LogEvent.Create(ex));
+                }
             } finally {
                 Interlocked.Decrement(ref _activeHeartbeatCount);
                 _log.Info(() => LogEvent.Create($"Stopped heartbeat for {GroupId}/{MemberId}"));
             }
+        }
+
+        private bool HeartbeatIsOverdue(DateTimeOffset lastHeartbeat, ErrorResponseCode response)
+        {
+            return response == ErrorResponseCode.IllegalGeneration 
+                || response == ErrorResponseCode.UnknownMemberId
+                || _heartbeatTimeout < DateTimeOffset.UtcNow - lastHeartbeat;
+        }
+
+        private async Task RejoinGroupAsync(CancellationToken cancellationToken)
+        {
+            if (_joinGeneration == GenerationId) {
+                // on success, this will call OnRejoin before returning
+                await _consumer.JoinConsumerGroupAsync(GroupId, _memberMetadata.Values, cancellationToken, this);
+            }
+        }
+
+        public void OnRejoin(JoinGroupResponse response)
+        {
+            if (response.MemberId != MemberId) throw new ArgumentOutOfRangeException(nameof(response), $"Member is not valid ({MemberId} != {response.MemberId})");
+
+            // TODO: async lock
+            IsLeader = response.LeaderId == MemberId;
+            GenerationId = response.GenerationId;
+            _joinGeneration = response.GenerationId;
+            _memberMetadata = ImmutableDictionary<string, IMemberMetadata>.Empty.AddRange(response.Members.Select(m => new KeyValuePair<string, IMemberMetadata>(m.MemberId, m.Metadata)));
+        }
+
+        private async Task SyncGroupAsync(CancellationToken cancellationToken)
+        {
+            
         }
 
         /// <summary>

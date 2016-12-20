@@ -199,7 +199,7 @@ namespace KafkaClient.Tests
             var request = new JoinGroupRequest(TestConfig.GroupId(), TimeSpan.FromMilliseconds(heartbeatMilliseconds * 2), "", ConsumerEncoder.ProtocolType, new [] { protocol });
             var memberId = Guid.NewGuid().ToString("N");
             var response = new JoinGroupResponse(ErrorResponseCode.None, 1, protocol.Name, memberId, memberId, new []{ new JoinGroupResponse.Member(memberId, new ConsumerProtocolMetadata()) });
-            using (new ConsumerGroupMember(consumer, request, response, ConsumerEncoder.Singleton, TestConfig.Log)) {
+            using (new ConsumerGroupMember(consumer, request, response, TestConfig.Log)) {
                 await Task.Delay(totalMilliseconds);
             }
 
@@ -230,7 +230,7 @@ namespace KafkaClient.Tests
             var memberId = Guid.NewGuid().ToString("N");
             var response = new JoinGroupResponse(ErrorResponseCode.None, 1, protocol.Name, memberId, memberId, new []{ new JoinGroupResponse.Member(memberId, new ConsumerProtocolMetadata()) });
             lastHeartbeat = DateTime.UtcNow;
-            using (new ConsumerGroupMember(consumer, request, response, ConsumerEncoder.Singleton, TestConfig.Log)) {
+            using (new ConsumerGroupMember(consumer, request, response, TestConfig.Log)) {
                 await Task.Delay(totalMilliseconds);
             }
 
@@ -258,7 +258,7 @@ namespace KafkaClient.Tests
             var request = new JoinGroupRequest(TestConfig.GroupId(), TimeSpan.FromMilliseconds(heartbeatMilliseconds), "", ConsumerEncoder.ProtocolType, new [] { protocol });
             var memberId = Guid.NewGuid().ToString("N");
             var response = new JoinGroupResponse(ErrorResponseCode.None, 1, protocol.Name, memberId, memberId, new []{ new JoinGroupResponse.Member(memberId, new ConsumerProtocolMetadata()) });
-            using (new ConsumerGroupMember(consumer, request, response, ConsumerEncoder.Singleton, TestConfig.Log)) {
+            using (new ConsumerGroupMember(consumer, request, response, TestConfig.Log)) {
                 await Task.Delay(heartbeatMilliseconds * 2);
 
 #pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
