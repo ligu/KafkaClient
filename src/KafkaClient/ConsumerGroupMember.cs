@@ -26,7 +26,8 @@ namespace KafkaClient
             OnRejoin(response);
 
             // This thread will heartbeat on the appropriate frequency
-            _heartbeatTimeout = TimeSpan.FromMilliseconds(request.SessionTimeout.TotalMilliseconds / 2);
+            _heartbeatDelay = TimeSpan.FromMilliseconds(request.SessionTimeout.TotalMilliseconds / 2);
+            _heartbeatTimeout = request.SessionTimeout;
             _heartbeatTask = Task.Factory.StartNew(DedicatedHeartbeatTask, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
         }
 
@@ -34,6 +35,7 @@ namespace KafkaClient
         private int _disposeCount;
         private int _activeHeartbeatCount = 0;
         private readonly Task _heartbeatTask;
+        private readonly TimeSpan _heartbeatDelay;
         private readonly TimeSpan _heartbeatTimeout;
         private readonly ILog _log;
         private ImmutableDictionary<string, IMemberMetadata> _memberMetadata = ImmutableDictionary<string, IMemberMetadata>.Empty;
@@ -54,39 +56,51 @@ namespace KafkaClient
                 // only allow one heartbeat to execute, dump out all other requests
                 if (Interlocked.Increment(ref _activeHeartbeatCount) != 1) return;
 
-                ErrorResponseCode? response = null;
+                ErrorResponseCode? response = ErrorResponseCode.None;
                 var timestamp = DateTimeOffset.UtcNow;
-                while (!(_disposeToken.IsCancellationRequested || HeartbeatIsOverdue(timestamp, response))) {
+                while (!(_disposeToken.IsCancellationRequested || HeartbeatIsOverdue(timestamp))) {
                     try {
                         switch (response) {
+                            // unrecoverable
+                            case ErrorResponseCode.UnknownMemberId:
+                            case ErrorResponseCode.IllegalGeneration:
+                                _disposeToken.Cancel();
+                                continue;
+
                             case ErrorResponseCode.GroupLoadInProgress: // Down state
                             case ErrorResponseCode.GroupCoordinatorNotAvailable: // Initialize state
                             case ErrorResponseCode.None: // Stable state
-                                await Task.Delay(_heartbeatTimeout, _disposeToken.Token);
+                                await Task.Delay(_heartbeatDelay, _disposeToken.Token).ConfigureAwait(false);
                                 break;
 
                             case ErrorResponseCode.RebalanceInProgress: // Joining or AwaitSync state
-                                await RejoinGroupAsync(_disposeToken.Token);
+                                await RejoinGroupAsync(_disposeToken.Token).ConfigureAwait(false);
                                 response = null; // => AwaitSync state
                                 timestamp = DateTimeOffset.UtcNow;
                                 continue;
 
                             case null: // AwaitSync state
-                                await SyncGroupAsync(_disposeToken.Token);
+                                await SyncGroupAsync(_disposeToken.Token).ConfigureAwait(false);
                                 response = ErrorResponseCode.None; // => Stable state
                                 timestamp = DateTimeOffset.UtcNow;
+                                continue;
+
+                            default:
+                                await Task.Delay(1, _disposeToken.Token).ConfigureAwait(false);
                                 break;
                         }
 
-                        response = await _consumer.SendHeartbeatAsync(GroupId, MemberId, GenerationId, _disposeToken.Token);
+                        response = await _consumer.SendHeartbeatAsync(GroupId, MemberId, GenerationId, _disposeToken.Token).ConfigureAwait(false);
                         if (response.Value.IsSuccess()) {
                             timestamp = DateTimeOffset.UtcNow;
                         }
-                    } catch (Exception ex) when (!(ex is TaskCanceledException)) {
-                        _log.Warn(() => LogEvent.Create(ex));
+                    } catch (Exception ex) {
+                        if (!(ex is TaskCanceledException)) {
+                            _log.Warn(() => LogEvent.Create(ex));
+                        }
                     }
                 }
-                _disposeToken.Cancel();
+                await LeaveGroupAsync(CancellationToken.None);
             } catch (Exception ex) {
                 if (!(ex is TaskCanceledException)) {
                     _log.Warn(() => LogEvent.Create(ex));
@@ -97,11 +111,9 @@ namespace KafkaClient
             }
         }
 
-        private bool HeartbeatIsOverdue(DateTimeOffset lastHeartbeat, ErrorResponseCode? response)
+        private bool HeartbeatIsOverdue(DateTimeOffset lastHeartbeat)
         {
-            return response == ErrorResponseCode.IllegalGeneration 
-                || response == ErrorResponseCode.UnknownMemberId
-                || _heartbeatTimeout < DateTimeOffset.UtcNow - lastHeartbeat;
+            return _heartbeatTimeout < DateTimeOffset.UtcNow - lastHeartbeat;
         }
 
         private async Task RejoinGroupAsync(CancellationToken cancellationToken)

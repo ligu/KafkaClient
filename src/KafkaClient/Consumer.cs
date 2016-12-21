@@ -81,7 +81,7 @@ namespace KafkaClient
         {
             var protocols = metadata.Select(m => new JoinGroupRequest.GroupProtocol(m.ProtocolType, m)).ToList();
             foreach (var protocol in protocols) {
-                if (!Encoders.ContainsKey(protocol.Name)) throw new ArgumentOutOfRangeException(nameof(metadata), $"ProtocolType {protocol.Name} is unknown");
+                if (!Encoders.ContainsKey(protocol.Name ?? "")) throw new ArgumentOutOfRangeException(nameof(metadata), $"ProtocolType {protocol.Name} is unknown");
                 
             }
             var request = new JoinGroupRequest(groupId, Configuration.GroupHeartbeat, member?.MemberId ?? "", protocols[0].Name, protocols, Configuration.GroupRebalanceTimeout);

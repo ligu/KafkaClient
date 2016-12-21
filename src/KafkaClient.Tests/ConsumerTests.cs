@@ -163,7 +163,7 @@ namespace KafkaClient.Tests
                     await consumer.JoinConsumerGroupAsync("group", new ByteMemberMetadata(protocolType, new byte[] { }), CancellationToken.None);
                     Assert.Fail("Should have thrown exception");
                 } catch (ArgumentOutOfRangeException ex) {
-                    Assert.That(ex.Message, Is.EqualTo("ProtocolType be known by Encoders\r\nParameter name: metadata"));
+                    Assert.That(ex.Message, Is.EqualTo($"ProtocolType {protocolType} is unknown\r\nParameter name: metadata"));
                 }
             }
         }
@@ -247,19 +247,13 @@ namespace KafkaClient.Tests
         {
             var protocol = new JoinGroupRequest.GroupProtocol(ConsumerEncoder.ProtocolType, new ConsumerProtocolMetadata());
             var consumer = Substitute.For<IConsumer>();
-            var heartbeatCounter = 0;
             consumer.SendHeartbeatAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-                    .Returns(
-                        _ =>
-                        {
-                            heartbeatCounter++;
-                            return Task.FromResult(ErrorResponseCode.NetworkException);
-                        });
+                    .Returns(Task.FromResult(ErrorResponseCode.NetworkException));
             var request = new JoinGroupRequest(TestConfig.GroupId(), TimeSpan.FromMilliseconds(heartbeatMilliseconds), "", ConsumerEncoder.ProtocolType, new [] { protocol });
             var memberId = Guid.NewGuid().ToString("N");
             var response = new JoinGroupResponse(ErrorResponseCode.None, 1, protocol.Name, memberId, memberId, new []{ new JoinGroupResponse.Member(memberId, new ConsumerProtocolMetadata()) });
             using (new ConsumerGroupMember(consumer, request, response, TestConfig.Log)) {
-                await Task.Delay(heartbeatMilliseconds * 2);
+                await Task.Delay(heartbeatMilliseconds * 3);
 
 #pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
                 // this is called because the lack of heartbeat within the timeframe triggered dispose
@@ -267,7 +261,7 @@ namespace KafkaClient.Tests
 #pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
             }
 
-            Assert.That(heartbeatCounter, Is.AtLeast(10));
+            Assert.That(consumer.ReceivedCalls().Count(c => c.GetMethodInfo().Name == nameof(consumer.SendHeartbeatAsync)), Is.AtLeast(3));
         }
     }
 }
