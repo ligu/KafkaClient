@@ -82,7 +82,7 @@ namespace KafkaClient.Tests.Protocol
         {
             var topics = new List<ProduceResponse.Topic>();
             for (var t = 0; t < topicsPerRequest; t++) {
-                topics.Add(new ProduceResponse.Topic(topicName + t, t % totalPartitions, errorCode, _randomizer.Next(), version >= 2 ? timestampMilliseconds.FromUnixEpochMilliseconds() : (DateTime?)null));
+                topics.Add(new ProduceResponse.Topic(topicName + t, t % totalPartitions, errorCode, _randomizer.Next(), version >= 2 ? DateTimeOffset.FromUnixTimeMilliseconds(timestampMilliseconds) : (DateTimeOffset?)null));
             }
             var response = new ProduceResponse(topics, version >= 1 ? TimeSpan.FromMilliseconds(throttleTime) : (TimeSpan?)null);
 
@@ -168,7 +168,7 @@ namespace KafkaClient.Tests.Protocol
             for (var t = 0; t < topicsPerRequest; t++) {
                 var partitionId = t % totalPartitions;
                 for (var o = 0; o < offsetsPerPartition; o++) {
-                    topics.Add(new OffsetResponse.Topic(topicName + t, partitionId, errorCode, _randomizer.Next(-1, int.MaxValue), version >= 1 ? (DateTime?)DateTime.UtcNow : null));
+                    topics.Add(new OffsetResponse.Topic(topicName + t, partitionId, errorCode, _randomizer.Next(-1, int.MaxValue), version >= 1 ? (DateTimeOffset?)DateTimeOffset.UtcNow : null));
                 }
             }
             var response = new OffsetResponse(topics);
@@ -830,7 +830,7 @@ namespace KafkaClient.Tests.Protocol
                 }
                 _randomizer.NextBytes(value);
 
-                messages.Add(new Message(value, 0, partitionId: partition, version: version, key: key, timestamp: version > 0 ? DateTime.UtcNow : (DateTime?)null));
+                messages.Add(new Message(value, 0, partitionId: partition, version: version, key: key, timestamp: version > 0 ? DateTimeOffset.UtcNow : (DateTimeOffset?)null));
             }
             return messages;
         }

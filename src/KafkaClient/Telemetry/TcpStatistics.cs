@@ -5,7 +5,7 @@ namespace KafkaClient.Telemetry
 {
     public class TcpStatistics : Statistics
     {
-        public TcpStatistics(DateTime startedAt, TimeSpan duration)
+        public TcpStatistics(DateTimeOffset startedAt, TimeSpan duration)
             : base(startedAt, duration)
         {
         }

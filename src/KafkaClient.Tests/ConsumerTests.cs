@@ -217,19 +217,19 @@ namespace KafkaClient.Tests
         {
             var protocol = new JoinGroupRequest.GroupProtocol(ConsumerEncoder.ProtocolType, new ConsumerProtocolMetadata());
             var consumer = Substitute.For<IConsumer>();
-            var lastHeartbeat = DateTime.UtcNow;
+            var lastHeartbeat = DateTimeOffset.UtcNow;
             var heartbeatIntervals = ImmutableArray<TimeSpan>.Empty;
             consumer.SendHeartbeatAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
                     .Returns(
                         _ => {
-                            heartbeatIntervals = heartbeatIntervals.Add(DateTime.UtcNow - lastHeartbeat);
-                            lastHeartbeat = DateTime.UtcNow;
+                            heartbeatIntervals = heartbeatIntervals.Add(DateTimeOffset.UtcNow - lastHeartbeat);
+                            lastHeartbeat = DateTimeOffset.UtcNow;
                             return Task.FromResult(ErrorResponseCode.None);
                         });
             var request = new JoinGroupRequest(TestConfig.GroupId(), TimeSpan.FromMilliseconds(heartbeatMilliseconds), "", ConsumerEncoder.ProtocolType, new [] { protocol });
             var memberId = Guid.NewGuid().ToString("N");
             var response = new JoinGroupResponse(ErrorResponseCode.None, 1, protocol.Name, memberId, memberId, new []{ new JoinGroupResponse.Member(memberId, new ConsumerProtocolMetadata()) });
-            lastHeartbeat = DateTime.UtcNow;
+            lastHeartbeat = DateTimeOffset.UtcNow;
             using (new ConsumerGroupMember(consumer, request, response, TestConfig.Log)) {
                 await Task.Delay(totalMilliseconds);
             }

@@ -29,8 +29,8 @@ namespace KafkaClient
 
         private ImmutableDictionary<Endpoint, IConnection> _allConnections = ImmutableDictionary<Endpoint, IConnection>.Empty;
         private ImmutableDictionary<int, IConnection> _brokerConnections = ImmutableDictionary<int, IConnection>.Empty;
-        private ImmutableDictionary<string, Tuple<MetadataResponse.Topic, DateTime>> _topicCache = ImmutableDictionary<string, Tuple<MetadataResponse.Topic, DateTime>>.Empty;
-        private ImmutableDictionary<string, Tuple<int, DateTime>> _groupCache = ImmutableDictionary<string, Tuple<int, DateTime>>.Empty;
+        private ImmutableDictionary<string, Tuple<MetadataResponse.Topic, DateTimeOffset>> _topicCache = ImmutableDictionary<string, Tuple<MetadataResponse.Topic, DateTimeOffset>>.Empty;
+        private ImmutableDictionary<string, Tuple<int, DateTimeOffset>> _groupCache = ImmutableDictionary<string, Tuple<int, DateTimeOffset>>.Empty;
 
         private readonly AsyncLock _lock = new AsyncLock();
 
@@ -254,16 +254,16 @@ namespace KafkaClient
 
         private MetadataResponse.Topic TryGetCachedTopic(string topicName, TimeSpan? expiration = null)
         {
-            Tuple<MetadataResponse.Topic, DateTime> cachedValue;
+            Tuple<MetadataResponse.Topic, DateTimeOffset> cachedValue;
             if (_topicCache.TryGetValue(topicName, out cachedValue) && !HasExpired(cachedValue, expiration)) {
                 return cachedValue.Item1;
             }
             return null;
         }
 
-        private static bool HasExpired<T>(Tuple<T, DateTime> cachedValue, TimeSpan? expiration = null)
+        private static bool HasExpired<T>(Tuple<T, DateTimeOffset> cachedValue, TimeSpan? expiration = null)
         {
-            return expiration.HasValue && expiration.Value < DateTime.UtcNow - cachedValue.Item2;
+            return expiration.HasValue && expiration.Value < DateTimeOffset.UtcNow - cachedValue.Item2;
         }
 
         private TopicBroker GetCachedTopicBroker(string topicName, MetadataResponse.Partition partition)
@@ -299,7 +299,7 @@ namespace KafkaClient
 
         private int? TryGetCachedGroupBrokerId(string groupId, TimeSpan? expiration = null)
         {
-            Tuple<int, DateTime> cachedValue;
+            Tuple<int, DateTimeOffset> cachedValue;
             if (_groupCache.TryGetValue(groupId, out cachedValue) && !HasExpired(cachedValue, expiration)) {
                 return cachedValue.Item1;
             }
@@ -325,7 +325,7 @@ namespace KafkaClient
         {
             if (request == null || response == null) return;
 
-            _groupCache = _groupCache.SetItem(request.GroupId, new Tuple<int, DateTime>(response.BrokerId, DateTime.UtcNow));
+            _groupCache = _groupCache.SetItem(request.GroupId, new Tuple<int, DateTimeOffset>(response.BrokerId, DateTimeOffset.UtcNow));
         }
 
         private void UpdateTopicCache(MetadataResponse metadata)
@@ -342,7 +342,7 @@ namespace KafkaClient
             var topicCache = _topicCache;
             try {
                 foreach (var topic in metadata.Topics) {
-                    topicCache = topicCache.SetItem(topic.TopicName, new Tuple<MetadataResponse.Topic, DateTime>(topic, DateTime.UtcNow));
+                    topicCache = topicCache.SetItem(topic.TopicName, new Tuple<MetadataResponse.Topic, DateTimeOffset>(topic, DateTimeOffset.UtcNow));
                 }
             } finally {
                 _topicCache = topicCache;

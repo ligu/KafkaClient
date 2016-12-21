@@ -43,21 +43,9 @@ namespace KafkaClient.Protocol
             return null;
         } 
 
-        internal static readonly DateTime UnixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-
-        public static long? ToUnixEpochMilliseconds(this DateTime? pointInTime)
+        public static long? ToUnixTimeMilliseconds(this DateTimeOffset? pointInTime)
         {
-            return pointInTime?.ToUnixEpochMilliseconds();
-        }
-
-        public static long ToUnixEpochMilliseconds(this DateTime pointInTime)
-        {
-            return pointInTime > UnixEpoch ? (long)(pointInTime - UnixEpoch).TotalMilliseconds : 0L;
-        }
-
-        public static DateTime FromUnixEpochMilliseconds(this long milliseconds)
-        {
-            return UnixEpoch.AddMilliseconds(milliseconds);
+            return pointInTime?.ToUnixTimeMilliseconds();
         }
 
         public static bool IsSuccess(this ErrorResponseCode code)

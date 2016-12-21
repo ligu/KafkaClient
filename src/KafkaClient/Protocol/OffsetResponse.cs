@@ -77,7 +77,7 @@ namespace KafkaClient.Protocol
 
         public class Topic : TopicResponse, IEquatable<Topic>
         {
-            public Topic(string topic, int partitionId, ErrorResponseCode errorCode = ErrorResponseCode.None, long offset = -1, DateTime? timestamp = null) 
+            public Topic(string topic, int partitionId, ErrorResponseCode errorCode = ErrorResponseCode.None, long offset = -1, DateTimeOffset? timestamp = null) 
                 : base(topic, partitionId, errorCode)
             {
                 Offset = offset;
@@ -88,7 +88,7 @@ namespace KafkaClient.Protocol
             /// The timestamp associated with the returned offset.
             /// This only applies to version 1 and above.
             /// </summary>
-            public DateTime? Timestamp { get; set; }
+            public DateTimeOffset? Timestamp { get; set; }
 
             /// <summary>
             /// The offset found.
@@ -107,7 +107,7 @@ namespace KafkaClient.Protocol
                 if (ReferenceEquals(null, other)) return false;
                 if (ReferenceEquals(this, other)) return true;
                 return base.Equals(other) 
-                    && Timestamp.ToUnixEpochMilliseconds() == other.Timestamp.ToUnixEpochMilliseconds()
+                    && Timestamp.ToUnixTimeMilliseconds() == other.Timestamp.ToUnixTimeMilliseconds()
                     && Offset == other.Offset;
             }
 

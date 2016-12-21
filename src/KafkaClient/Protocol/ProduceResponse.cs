@@ -96,11 +96,11 @@ namespace KafkaClient.Protocol
 
         public class Topic : TopicResponse, IEquatable<Topic>
         {
-            public Topic(string topic, int partitionId, ErrorResponseCode errorCode, long offset, DateTime? timestamp = null)
+            public Topic(string topic, int partitionId, ErrorResponseCode errorCode, long offset, DateTimeOffset? timestamp = null)
                 : base(topic, partitionId, errorCode)
             {
                 Offset = offset;
-                Timestamp = timestamp.HasValue && timestamp.Value >= Extensions.UnixEpoch ? timestamp : null;
+                Timestamp = timestamp.HasValue && timestamp.Value.ToUnixTimeMilliseconds() >= 0 ? timestamp : null;
             }
 
             /// <summary>
@@ -114,7 +114,7 @@ namespace KafkaClient.Protocol
             /// If CreateTime is used, this field is always -1. The producer can assume the timestamp of the messages in the 
             /// produce request has been accepted by the broker if there is no error code returned.
             /// </summary>
-            public DateTime? Timestamp { get; }
+            public DateTimeOffset? Timestamp { get; }
 
             #region Equality
 

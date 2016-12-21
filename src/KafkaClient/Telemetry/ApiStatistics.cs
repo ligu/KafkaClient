@@ -7,7 +7,7 @@ namespace KafkaClient.Telemetry
 {
     public class ApiStatistics : Statistics
     {
-        public ApiStatistics(DateTime startedAt, TimeSpan duration)
+        public ApiStatistics(DateTimeOffset startedAt, TimeSpan duration)
             : base(startedAt, duration)
         {
             RequestsAttempted = new ConcurrentDictionary<ApiKeyRequestType, int>();

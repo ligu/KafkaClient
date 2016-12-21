@@ -158,7 +158,7 @@ namespace KafkaClient.Protocol
                     writer.Write(message.MessageVersion)
                            .Write(message.Attribute);
                     if (message.MessageVersion >= 1) {
-                        writer.Write(message.Timestamp.GetValueOrDefault(DateTime.UtcNow).ToUnixEpochMilliseconds());
+                        writer.Write(message.Timestamp.GetValueOrDefault(DateTimeOffset.UtcNow).ToUnixTimeMilliseconds());
                     }
                     writer.Write(message.Key)
                            .Write(message.Value);
@@ -565,11 +565,11 @@ namespace KafkaClient.Protocol
 
             var messageVersion = reader.ReadByte();
             var attribute = reader.ReadByte();
-            DateTime? timestamp = null;
+            DateTimeOffset? timestamp = null;
             if (messageVersion >= 1) {
                 var milliseconds = reader.ReadInt64();
                 if (milliseconds >= 0) {
-                    timestamp = milliseconds.FromUnixEpochMilliseconds();
+                    timestamp = DateTimeOffset.FromUnixTimeMilliseconds(milliseconds);
                 }
             }
             var key = reader.ReadBytes();
@@ -658,12 +658,12 @@ namespace KafkaClient.Protocol
                         var partitionId = reader.ReadInt32();
                         var errorCode = (ErrorResponseCode) reader.ReadInt16();
                         var offset = reader.ReadInt64();
-                        DateTime? timestamp = null;
+                        DateTimeOffset? timestamp = null;
 
                         if (context.ApiVersion >= 2) {
                             var milliseconds = reader.ReadInt64();
                             if (milliseconds >= 0) {
-                                timestamp = milliseconds.FromUnixEpochMilliseconds();
+                                timestamp = DateTimeOffset.FromUnixTimeMilliseconds(milliseconds);
                             }
                         }
 
@@ -728,7 +728,7 @@ namespace KafkaClient.Protocol
                         } else {
                             var timestamp = reader.ReadInt64();
                             var offset = reader.ReadInt64();
-                            topics.Add(new OffsetResponse.Topic(topicName, partitionId, errorCode, offset, timestamp.FromUnixEpochMilliseconds()));
+                            topics.Add(new OffsetResponse.Topic(topicName, partitionId, errorCode, offset, DateTimeOffset.FromUnixTimeMilliseconds(timestamp)));
                         }
                     }
                 }
