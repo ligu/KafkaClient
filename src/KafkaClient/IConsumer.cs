@@ -14,12 +14,12 @@ namespace KafkaClient
         /// </summary>
         Task<IImmutableList<Message>> FetchMessagesAsync(string topicName, int partitionId, long offset, int maxCount, CancellationToken cancellationToken);
 
+        //Task CommitOffsetsAsync(CancellationToken cancellationToken);
+
         /// <summary>
         /// The configuration for various limits and for consume defaults
         /// </summary>
         IConsumerConfiguration Configuration { get; }
-
-        IImmutableDictionary<string, IProtocolTypeEncoder> Encoders { get; }
 
         Task<IConsumerGroupMember> JoinConsumerGroupAsync(string groupId, IEnumerable<IMemberMetadata> metadata, CancellationToken cancellationToken, IConsumerGroupMember member = null);
         Task<IConsumerGroupMember> JoinConsumerGroupAsync(string groupId, IMemberMetadata metadata, CancellationToken cancellationToken);

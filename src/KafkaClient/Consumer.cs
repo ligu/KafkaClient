@@ -31,10 +31,10 @@ namespace KafkaClient
             _leaveRouterOpen = leaveRouterOpen;
             Configuration = configuration ?? new ConsumerConfiguration();
             _localMessages = ImmutableList<Message>.Empty;
-            Encoders = encoders ?? ImmutableDictionary<string, IProtocolTypeEncoder>.Empty;
+            _encoders = encoders ?? ImmutableDictionary<string, IProtocolTypeEncoder>.Empty;
         }
 
-        public IImmutableDictionary<string, IProtocolTypeEncoder> Encoders { get; }
+        private readonly IImmutableDictionary<string, IProtocolTypeEncoder> _encoders;
 
         public IConsumerConfiguration Configuration { get; }
 
@@ -81,7 +81,7 @@ namespace KafkaClient
         {
             var protocols = metadata.Select(m => new JoinGroupRequest.GroupProtocol(m.ProtocolType, m)).ToList();
             foreach (var protocol in protocols) {
-                if (!Encoders.ContainsKey(protocol.Name ?? "")) throw new ArgumentOutOfRangeException(nameof(metadata), $"ProtocolType {protocol.Name} is unknown");
+                if (!_encoders.ContainsKey(protocol.Name ?? "")) throw new ArgumentOutOfRangeException(nameof(metadata), $"ProtocolType {protocol.Name} is unknown");
                 
             }
             var request = new JoinGroupRequest(groupId, Configuration.GroupHeartbeat, member?.MemberId ?? "", protocols[0].Name, protocols, Configuration.GroupRebalanceTimeout);
@@ -122,7 +122,7 @@ namespace KafkaClient
         {
             IEnumerable<SyncGroupRequest.GroupAssignment> groupAssignments = null;
             if (memberMetadata?.Count > 0) {
-                var encoder = Encoders[memberMetadata.First().Value.ProtocolType];
+                var encoder = _encoders[memberMetadata.First().Value.ProtocolType];
                 var memberAssignment = encoder.AssignMembers(memberMetadata);
                 groupAssignments = memberAssignment.Select(assignment => new SyncGroupRequest.GroupAssignment(assignment.Key, assignment.Value));
             }
