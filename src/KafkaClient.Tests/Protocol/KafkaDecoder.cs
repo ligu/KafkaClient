@@ -267,7 +267,7 @@ namespace KafkaClient.Tests.Protocol
                 for (var g = 0; g < groupProtocols.Length; g++) {
                     var protocolName = reader.ReadString();
                     var metadata = encoder.DecodeMetadata(protocolName, reader);
-                    groupProtocols[g] = new JoinGroupRequest.GroupProtocol(protocolName, metadata);
+                    groupProtocols[g] = new JoinGroupRequest.GroupProtocol(metadata);
                 }
 
                 return new JoinGroupRequest(groupId, sessionTimeout, memberId, protocolType, groupProtocols, rebalanceTimeout);
@@ -633,7 +633,7 @@ namespace KafkaClient.Tests.Protocol
         {
             if (response == null) return false;
 
-            var encoder = context.GetEncoder();
+            var encoder = context.GetEncoder(context.ProtocolType);
             writer.Write(response.ErrorCode)
                    .Write(response.MemberAssignment, encoder);
             return true;

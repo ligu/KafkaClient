@@ -193,7 +193,7 @@ namespace KafkaClient.Tests
         [TestCase(9, 100, 1000)]
         public async Task ConsumerHeartbeatsAtDesiredIntervals(int expectedHeartbeats, int heartbeatMilliseconds, int totalMilliseconds)
         {
-            var protocol = new JoinGroupRequest.GroupProtocol(ConsumerEncoder.ConsumerProtocol, new ConsumerProtocolMetadata("mine"));
+            var protocol = new JoinGroupRequest.GroupProtocol(new ConsumerProtocolMetadata("mine"));
             var consumer = Substitute.For<IConsumer>();
             consumer.SendHeartbeatAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
                     .Returns(_ => Task.FromResult(ErrorResponseCode.None));
@@ -216,7 +216,7 @@ namespace KafkaClient.Tests
         [TestCase(250, 700)]
         public async Task ConsumerHeartbeatsWithinTimeLimit(int heartbeatMilliseconds, int totalMilliseconds)
         {
-            var protocol = new JoinGroupRequest.GroupProtocol(ConsumerEncoder.ConsumerProtocol, new ConsumerProtocolMetadata("mine"));
+            var protocol = new JoinGroupRequest.GroupProtocol(new ConsumerProtocolMetadata("mine"));
             var consumer = Substitute.For<IConsumer>();
             var lastHeartbeat = DateTimeOffset.UtcNow;
             var heartbeatIntervals = ImmutableArray<TimeSpan>.Empty;
@@ -246,7 +246,7 @@ namespace KafkaClient.Tests
         [TestCase(250)]
         public async Task ConsumerHeartbeatsUntilTimeoutWhenRequestFails(int heartbeatMilliseconds)
         {
-            var protocol = new JoinGroupRequest.GroupProtocol(ConsumerEncoder.ConsumerProtocol, new ConsumerProtocolMetadata("mine"));
+            var protocol = new JoinGroupRequest.GroupProtocol(new ConsumerProtocolMetadata("mine"));
             var consumer = Substitute.For<IConsumer>();
             consumer.SendHeartbeatAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
                     .Returns(Task.FromResult(ErrorResponseCode.NetworkException));

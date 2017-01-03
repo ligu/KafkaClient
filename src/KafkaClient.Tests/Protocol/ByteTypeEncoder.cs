@@ -7,7 +7,7 @@ namespace KafkaClient.Tests.Protocol
     public class ByteTypeEncoder : TypeEncoder<ByteTypeMetadata, ByteTypeAssignment>
     {
         /// <inheritdoc />
-        public ByteTypeEncoder(string type = "") : base(type)
+        public ByteTypeEncoder(string protocolType) : base(protocolType)
         {
         }
 

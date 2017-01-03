@@ -1,4 +1,3 @@
-using System;
 using KafkaClient.Common;
 
 namespace KafkaClient.Protocol.Types
@@ -7,9 +6,9 @@ namespace KafkaClient.Protocol.Types
         where TMetadata : IMemberMetadata
         where TAssignment : IMemberAssignment
     {
-        protected TypeEncoder(string type)
+        protected TypeEncoder(string protocolType)
         {
-            ProtocolType = type;
+            ProtocolType = protocolType;
         }
 
         /// <inheritdoc />

@@ -414,7 +414,7 @@ namespace KafkaClient.Protocol
                     .Write(request.MemberId)
                     .Write(request.GroupAssignments.Count);
 
-                var encoder = context.GetEncoder();
+                var encoder = context.GetEncoder(context.ProtocolType);
                 foreach (var assignment in request.GroupAssignments) {
                     writer.Write(assignment.MemberId)
                           .Write(assignment.MemberAssignment, encoder);
@@ -858,7 +858,7 @@ namespace KafkaClient.Protocol
                 var leaderId = reader.ReadString();
                 var memberId = reader.ReadString();
 
-                var encoder = context.GetEncoder(groupProtocol);
+                var encoder = context.GetEncoder(context.ProtocolType);
                 var members = new JoinGroupResponse.Member[reader.ReadInt32()];
                 for (var m = 0; m < members.Length; m++) {
                     var id = reader.ReadString();

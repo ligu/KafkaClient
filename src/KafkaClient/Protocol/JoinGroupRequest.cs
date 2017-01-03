@@ -113,13 +113,12 @@ namespace KafkaClient.Protocol
 
         public class GroupProtocol : IEquatable<GroupProtocol>
         {
-            public GroupProtocol(string name, IMemberMetadata metadata)
+            public GroupProtocol(IMemberMetadata metadata)
             {
-                Name = name;
                 Metadata = metadata;
             }
 
-            public string Name { get; }
+            public string Name => Metadata.AssignmentStrategy;
             public IMemberMetadata Metadata { get; }
 
             /// <inheritdoc />

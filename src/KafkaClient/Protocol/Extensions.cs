@@ -156,7 +156,7 @@ namespace KafkaClient.Protocol
             ITypeEncoder encoder;
             if (type != null && context.Encoders.TryGetValue(type, out encoder) && encoder != null) return encoder;
 
-            throw new ArgumentOutOfRangeException(nameof(protocolType));
+            throw new ArgumentOutOfRangeException(nameof(protocolType), $"Unknown protocol type {protocolType}");
         }
 
         public static IKafkaWriter Write(this IKafkaWriter writer, IMemberMetadata metadata, ITypeEncoder encoder)
