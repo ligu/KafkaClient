@@ -149,8 +149,8 @@ namespace KafkaClient.Tests.Integration
                             var results2 = await consumer.FetchMessagesAsync(offset, totalMessages, CancellationToken.None);
                             TestConfig.Log.Info(() => LogEvent.Create($"Message order:  {string.Join(", ", results2.Select(x => x.Value.ToUtf8String()).ToList())}"));
 
-                            Assert.That(results1.Count, Is.EqualTo(totalMessages));
                             Assert.That(results1.Count, Is.EqualTo(results2.Count));
+                            Assert.That(results1.Count, Is.EqualTo(totalMessages));
                             Assert.That(results1.Select(x => x.Value.ToUtf8String()).ToList(), Is.EqualTo(results2.Select(x => x.Value.ToUtf8String()).ToList()), "Expected the message list in the correct order.");
                         }
                     }

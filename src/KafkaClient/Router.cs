@@ -371,10 +371,7 @@ namespace KafkaClient
                             // existing connection, nothing to change
                         } else {
                             // ReSharper disable once AccessToModifiedClosure
-                            Log.Warn(
-                                () =>
-                                    LogEvent.Create(
-                                        $"Broker {broker.BrokerId} Uri changed from {connection.Endpoint} to {endpoint}"));
+                            Log.Warn(() => LogEvent.Create($"Broker {broker.BrokerId} Uri changed from {connection.Endpoint} to {endpoint}"));
 
                             // A connection changed for a broker, so close the old connection and create a new one
                             connectionsToDispose = connectionsToDispose.Add(connection);

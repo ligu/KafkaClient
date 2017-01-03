@@ -221,11 +221,7 @@ namespace KafkaClient.Tests.Integration
         {
             using (var router = new Router(_kafkaUri, new ConnectionFactory(), _config)) {
                 var topicName = TestConfig.TopicName();
-                try {
-                    await router.SendToAnyAsync(new DeleteTopicsRequest(new [] { topicName }, TimeSpan.FromSeconds(1)), CancellationToken.None);
-                } catch (RequestException ex) when (ex.ErrorCode == ErrorResponseCode.TopicAlreadyExists) {
-                    // ignore
-                }
+                await router.DeleteTopicAsync();
                 var consumer = new Consumer(router, new ConsumerConfiguration(maxPartitionFetchBytes: DefaultMaxMessageSetSize * 2));
 
                 var offset = 0;
@@ -315,11 +311,7 @@ namespace KafkaClient.Tests.Integration
         {
             using (var router = new Router(_kafkaUri, new ConnectionFactory(), _config)) {
                 var topicName = TestConfig.TopicName();
-                try {
-                    await router.SendToAnyAsync(new DeleteTopicsRequest(new [] { topicName }, TimeSpan.FromSeconds(1)), CancellationToken.None);
-                } catch (RequestException ex) when (ex.ErrorCode == ErrorResponseCode.TopicAlreadyExists) {
-                    // ignore
-                }
+                await router.DeleteTopicAsync();
 
                 var consumerGroup = TestConfig.GroupId();
                 try {
@@ -409,11 +401,7 @@ namespace KafkaClient.Tests.Integration
         {
             using (var router = new Router(_kafkaUri, new ConnectionFactory(), _config, log: TestConfig.Log)) {
                 var topicName = TestConfig.TopicName();
-                try {
-                    await router.SendToAnyAsync(new DeleteTopicsRequest(new [] { topicName }, TimeSpan.FromSeconds(1)), CancellationToken.None);
-                } catch (RequestException ex) when (ex.ErrorCode == ErrorResponseCode.TopicAlreadyExists) {
-                    // ignore
-                }
+                await router.DeleteTopicAsync();
 
                 var partitionId = 0;
                 var consumerGroup = TestConfig.GroupId();
@@ -487,11 +475,7 @@ namespace KafkaClient.Tests.Integration
         {
             using (var router = new Router(_kafkaUri, new ConnectionFactory(), _config, log: TestConfig.Log)) {
                 var topicName = TestConfig.TopicName();
-                try {
-                    await router.SendToAnyAsync(new DeleteTopicsRequest(new [] { topicName }, TimeSpan.FromSeconds(1)), CancellationToken.None);
-                } catch (RequestException ex) when (ex.ErrorCode == ErrorResponseCode.TopicAlreadyExists) {
-                    // ignore
-                }
+                await router.DeleteTopicAsync();
 
                 try {
                     await router.GetTopicOffsetAsync(topicName, _partitionId, CancellationToken.None);
