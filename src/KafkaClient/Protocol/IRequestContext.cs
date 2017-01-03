@@ -25,10 +25,10 @@ namespace KafkaClient.Protocol
         /// <summary>
         /// Custom Encoding support for different protocol types
         /// </summary>
-        IImmutableDictionary<string, IProtocolTypeEncoder> Encoders { get; }
+        IImmutableDictionary<string, ITypeEncoder> Encoders { get; }
 
         /// <summary>
-        /// The protocol type, used for custom <see cref="IProtocolTypeEncoder"/>
+        /// The protocol type, used for custom <see cref="ITypeEncoder"/>
         /// </summary>
         string ProtocolType { get; }
 

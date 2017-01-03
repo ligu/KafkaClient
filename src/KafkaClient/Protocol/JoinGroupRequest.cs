@@ -15,7 +15,7 @@ namespace KafkaClient.Protocol
     ///   member_id => STRING          -- The assigned consumer id or an empty string for a new consumer.
     ///   protocol_type => STRING      -- Unique name for class of protocols implemented by group (ie "consumer")
     ///   GroupProtocol => ProtocolName ProtocolMetadata
-    ///     protocol_name => STRING    -- ie AssignmentStrategy for "consumer" type
+    ///     protocol_name => STRING    -- ie AssignmentStrategy for "consumer" type. protocol_name != protocol_type. It's a subtype of sorts.
     ///     protocol_metadata => BYTES -- <see cref="ConsumerProtocolMetadata"/>
     /// 
     /// see http://kafka.apache.org/protocol.html#protocol_messages for details

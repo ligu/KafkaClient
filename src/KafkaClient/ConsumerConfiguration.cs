@@ -49,7 +49,7 @@ namespace KafkaClient
             /// <summary>
             /// The default <see cref="GroupProtocol"/>
             /// </summary>
-            public const string ProtocolType = ConsumerEncoder.ProtocolType;
+            public const string ProtocolType = ConsumerEncoder.ConsumerProtocol;
 
             /// <summary>
             /// The default <see cref="GroupHeartbeat"/> and <see cref="GroupRebalanceTimeout"/> seconds

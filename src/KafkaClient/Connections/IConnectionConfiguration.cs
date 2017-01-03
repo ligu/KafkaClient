@@ -28,6 +28,6 @@ namespace KafkaClient.Connections
         /// <summary>
         /// Custom Encoding support for different protocol types
         /// </summary>
-        IImmutableDictionary<string, Protocol.Types.IProtocolTypeEncoder> Encoders { get; }
+        IImmutableDictionary<string, Protocol.Types.ITypeEncoder> Encoders { get; }
     }
 }

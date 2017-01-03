@@ -266,7 +266,7 @@ namespace KafkaClient.Tests.Protocol
                 var encoder = context.GetEncoder(protocolType);
                 for (var g = 0; g < groupProtocols.Length; g++) {
                     var protocolName = reader.ReadString();
-                    var metadata = encoder.DecodeMetadata(reader);
+                    var metadata = encoder.DecodeMetadata(protocolName, reader);
                     groupProtocols[g] = new JoinGroupRequest.GroupProtocol(protocolName, metadata);
                 }
 

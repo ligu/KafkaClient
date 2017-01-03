@@ -24,17 +24,17 @@ namespace KafkaClient
         {
         }
 
-        public Consumer(IRouter router, IConsumerConfiguration configuration = null, IImmutableDictionary<string, IProtocolTypeEncoder> encoders = null, bool leaveRouterOpen = true)
+        public Consumer(IRouter router, IConsumerConfiguration configuration = null, IImmutableDictionary<string, ITypeEncoder> encoders = null, bool leaveRouterOpen = true)
         {
             _stopToken = new CancellationTokenSource();
             _router = router;
             _leaveRouterOpen = leaveRouterOpen;
             Configuration = configuration ?? new ConsumerConfiguration();
             _localMessages = ImmutableList<Message>.Empty;
-            _encoders = encoders ?? ImmutableDictionary<string, IProtocolTypeEncoder>.Empty;
+            _encoders = encoders ?? ImmutableDictionary<string, ITypeEncoder>.Empty;
         }
 
-        private readonly IImmutableDictionary<string, IProtocolTypeEncoder> _encoders;
+        private readonly IImmutableDictionary<string, ITypeEncoder> _encoders;
 
         public IConsumerConfiguration Configuration { get; }
 
@@ -79,12 +79,13 @@ namespace KafkaClient
 
         public async Task<IConsumerGroupMember> JoinConsumerGroupAsync(string groupId, IEnumerable<IMemberMetadata> metadata, CancellationToken cancellationToken, IConsumerGroupMember member = null)
         {
-            var protocols = metadata.Select(m => new JoinGroupRequest.GroupProtocol(m.ProtocolType, m)).ToList();
+            var protocols = metadata.Select(m => new JoinGroupRequest.GroupProtocol(m.AssignmentStrategy, m)).ToList();
+            if (protocols.Select(p => p.Metadata.ProtocolType).Distinct().Count() > 1) throw new ArgumentOutOfRangeException(nameof(metadata), "Multiple ProtocolTypes used");
             foreach (var protocol in protocols) {
-                if (!_encoders.ContainsKey(protocol.Name ?? "")) throw new ArgumentOutOfRangeException(nameof(metadata), $"ProtocolType {protocol.Name} is unknown");
+                if (!_encoders.ContainsKey(protocol.Metadata?.ProtocolType ?? "")) throw new ArgumentOutOfRangeException(nameof(metadata), $"ProtocolType {protocol.Metadata?.ProtocolType} is unknown");
                 
             }
-            var request = new JoinGroupRequest(groupId, Configuration.GroupHeartbeat, member?.MemberId ?? "", protocols[0].Name, protocols, Configuration.GroupRebalanceTimeout);
+            var request = new JoinGroupRequest(groupId, Configuration.GroupHeartbeat, member?.MemberId ?? "", protocols[0].Metadata.ProtocolType, protocols, Configuration.GroupRebalanceTimeout);
             var response = await _router.SendAsync(request, groupId, cancellationToken);
             if (!response.ErrorCode.IsSuccess()) {
                 throw request.ExtractExceptions(response);
@@ -122,8 +123,10 @@ namespace KafkaClient
         {
             IEnumerable<SyncGroupRequest.GroupAssignment> groupAssignments = null;
             if (memberMetadata?.Count > 0) {
-                var encoder = _encoders[memberMetadata.First().Value.ProtocolType];
-                var memberAssignment = encoder.AssignMembers(memberMetadata);
+                var metadata = memberMetadata.First().Value;
+                var encoder = _encoders[metadata.ProtocolType];
+                var assigner = encoder.GetAssigner(metadata.AssignmentStrategy);
+                var memberAssignment = assigner.AssignMembers(memberMetadata);
                 groupAssignments = memberAssignment.Select(assignment => new SyncGroupRequest.GroupAssignment(assignment.Key, assignment.Value));
             }
             var request = new SyncGroupRequest(groupId, generationId, memberId, groupAssignments);

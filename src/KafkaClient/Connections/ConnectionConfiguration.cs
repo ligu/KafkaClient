@@ -29,7 +29,7 @@ namespace KafkaClient.Connections
         /// <param name="versionSupport">Support for different protocol versions for Kakfa requests and responses.</param>
         /// <param name="requestTimeout">The maximum time to wait for requests.</param>
         /// <param name="encoders">Custom Encoding support for different protocol types</param>
-        public ConnectionConfiguration(ITrackEvents tracker, IRetry connectionRetry = null, IVersionSupport versionSupport = null, TimeSpan? requestTimeout = null, IEnumerable<IProtocolTypeEncoder> encoders = null)
+        public ConnectionConfiguration(ITrackEvents tracker, IRetry connectionRetry = null, IVersionSupport versionSupport = null, TimeSpan? requestTimeout = null, IEnumerable<ITypeEncoder> encoders = null)
             : this(connectionRetry, versionSupport, requestTimeout, encoders, 
                   tracker != null ? (ConnectError)tracker.Disconnected : null, 
                   tracker != null ? (Connecting)tracker.Connecting : null, 
@@ -71,7 +71,7 @@ namespace KafkaClient.Connections
             IRetry connectionRetry = null, 
             IVersionSupport versionSupport = null,
             TimeSpan? requestTimeout = null,
-            IEnumerable<IProtocolTypeEncoder> encoders = null,
+            IEnumerable<ITypeEncoder> encoders = null,
             ConnectError onDisconnected = null, 
             Connecting onConnecting = null, 
             Connecting onConnected = null, 
@@ -116,7 +116,7 @@ namespace KafkaClient.Connections
         public TimeSpan RequestTimeout { get; }
 
         /// <inheritdoc />
-        public IImmutableDictionary<string, IProtocolTypeEncoder> Encoders { get; }
+        public IImmutableDictionary<string, ITypeEncoder> Encoders { get; }
 
         /// <inheritdoc />
         public ConnectError OnDisconnected { get; }
@@ -187,13 +187,13 @@ namespace KafkaClient.Connections
                     MaxConnectionAttempts);
             }
 
-            public static IImmutableDictionary<string, IProtocolTypeEncoder> Encoders(IEnumerable<IProtocolTypeEncoder> encoders = null)
+            public static IImmutableDictionary<string, ITypeEncoder> Encoders(IEnumerable<ITypeEncoder> encoders = null)
             {
                 var defaultEncoders = encoders != null
-                    ? encoders.ToImmutableDictionary(e => e.Type)
-                    : ImmutableDictionary<string, IProtocolTypeEncoder>.Empty;
-                if (!defaultEncoders.ContainsKey(ConsumerEncoder.ProtocolType)) {
-                    defaultEncoders = defaultEncoders.Add(ConsumerEncoder.ProtocolType, ConsumerEncoder.Singleton);
+                    ? encoders.ToImmutableDictionary(e => e.ProtocolType)
+                    : ImmutableDictionary<string, ITypeEncoder>.Empty;
+                if (!defaultEncoders.ContainsKey(ConsumerEncoder.ConsumerProtocol)) {
+                    defaultEncoders = defaultEncoders.Add(ConsumerEncoder.ConsumerProtocol, ConsumerEncoder.Singleton);
                 }
                 return defaultEncoders;
             }

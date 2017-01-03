@@ -10,7 +10,7 @@ namespace KafkaClient.Protocol
     /// JoinGroup Response => error_code generation_id group_protocol leader_id member_id [member] 
     ///   error_code => INT16
     ///   generation_id => INT32   -- The generation of the consumer group.
-    ///   group_protocol => STRING -- The group protocol selected by the coordinator TODO: is this the name or the type? Assuming type
+    ///   group_protocol => STRING -- The group protocol selected by the coordinator (ie AssignmentStrategy)
     ///   leader_id => STRING      -- The leader of the group
     ///   member_id => STRING      -- The consumer id assigned by the group coordinator.
     ///   member => member_id member_metadata 

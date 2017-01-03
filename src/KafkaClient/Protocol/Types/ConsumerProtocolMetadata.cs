@@ -28,8 +28,9 @@ namespace KafkaClient.Protocol.Types
     {
         private static readonly byte[] Empty = {};
 
-        public ConsumerProtocolMetadata(short version = 0, IEnumerable<string> topicNames = null, byte[] userData = null)
+        public ConsumerProtocolMetadata(string assignmentStrategy = ConsumerEncoder.ConsumerProtocol, short version = 0, IEnumerable<string> topicNames = null, byte[] userData = null)
         {
+            AssignmentStrategy = assignmentStrategy;
             Version = version;
             Subscriptions = ImmutableList<string>.Empty.AddNotNullRange(topicNames);
             UserData = userData ?? Empty;
@@ -83,6 +84,7 @@ namespace KafkaClient.Protocol.Types
             return !Equals(left, right);
         }
 
-        public string ProtocolType => ConsumerEncoder.ProtocolType;
+        public string AssignmentStrategy { get; }
+        public string ProtocolType => ConsumerEncoder.ConsumerProtocol;
     }
 }

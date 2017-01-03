@@ -5,21 +5,21 @@ using KafkaClient.Common;
 
 namespace KafkaClient.Protocol.Types
 {
-    public class ConsumerEncoder : ProtocolTypeEncoder<ConsumerProtocolMetadata, ConsumerMemberAssignment>
+    public class ConsumerEncoder : TypeEncoder<ConsumerProtocolMetadata, ConsumerMemberAssignment>
     {
-        public const string ProtocolType = "consumer";
+        public const string ConsumerProtocol = "consumer";
 
         // ReSharper disable once InconsistentNaming
         private static readonly Lazy<ConsumerEncoder> _singleton = new Lazy<ConsumerEncoder>();
         public static ConsumerEncoder Singleton => _singleton.Value;
 
         /// <inheritdoc />
-        public ConsumerEncoder() : base(ProtocolType)
+        public ConsumerEncoder() : base(ConsumerProtocol)
         {
         }
 
         /// <inheritdoc />
-        protected override ConsumerProtocolMetadata DecodeMetadata(IKafkaReader reader, int expectedLength)
+        protected override ConsumerProtocolMetadata DecodeMetadata(string assignmentStrategy, IKafkaReader reader, int expectedLength)
         {
             var version = reader.ReadInt16();
             var topicNames = new string[reader.ReadInt32()];
@@ -27,7 +27,7 @@ namespace KafkaClient.Protocol.Types
                 topicNames[t] = reader.ReadString();
             }
             var userData = reader.ReadBytes();
-            return new ConsumerProtocolMetadata(version, topicNames, userData);
+            return new ConsumerProtocolMetadata(assignmentStrategy, version, topicNames, userData);
         }
 
         /// <inheritdoc />
@@ -74,6 +74,11 @@ namespace KafkaClient.Protocol.Types
                     writer.Write(partition.PartitionId);
                 }
             }
+        }
+
+        public override ITypeAssigner GetAssigner(string protocol)
+        {
+            return new ConsumerAssigner();
         }
     }
 }

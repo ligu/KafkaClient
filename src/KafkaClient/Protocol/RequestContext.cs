@@ -9,12 +9,12 @@ namespace KafkaClient.Protocol
     {
         public static string DefaultClientId = "Net";
 
-        public RequestContext(int? correlationId = null, short? version = null, string clientId = null, IImmutableDictionary<string, IProtocolTypeEncoder> encoders = null, string protocolType = null, ProduceRequestMessages onProduceRequestMessages = null)
+        public RequestContext(int? correlationId = null, short? version = null, string clientId = null, IImmutableDictionary<string, ITypeEncoder> encoders = null, string protocolType = null, ProduceRequestMessages onProduceRequestMessages = null)
         {
             CorrelationId = correlationId.GetValueOrDefault(1);
             ApiVersion = version;
             ClientId = clientId ?? DefaultClientId;
-            Encoders = encoders ?? ImmutableDictionary<string, IProtocolTypeEncoder>.Empty;
+            Encoders = encoders ?? ImmutableDictionary<string, ITypeEncoder>.Empty;
             ProtocolType = protocolType;
             OnProduceRequestMessages = onProduceRequestMessages;
         }
@@ -38,7 +38,7 @@ namespace KafkaClient.Protocol
         public short? ApiVersion { get; }
 
         /// <inheritdoc />
-        public IImmutableDictionary<string, IProtocolTypeEncoder> Encoders { get; }
+        public IImmutableDictionary<string, ITypeEncoder> Encoders { get; }
 
         /// <inheritdoc />
         public string ProtocolType { get; }

@@ -384,11 +384,11 @@ namespace KafkaClient.Tests.Protocol
             for (var p = 0; p < protocolsPerRequest; p++) {
                 var bytes = new byte[protocolsPerRequest*100];
                 _randomizer.NextBytes(bytes);
-                protocols.Add(new JoinGroupRequest.GroupProtocol(protocolType + p, new ByteMemberMetadata(protocolType, bytes)));
+                protocols.Add(new JoinGroupRequest.GroupProtocol(protocolType + p, new ByteTypeMetadata(protocolType, "known", bytes)));
             }
             var request = new JoinGroupRequest(groupId, TimeSpan.FromMilliseconds(sessionTimeout), memberId, protocolType, protocols, version >= 1 ? (TimeSpan?)TimeSpan.FromMilliseconds(sessionTimeout * 2) : null);
 
-            request.AssertCanEncodeDecodeRequest(version, new ProtocolTypeEncoder(protocolType));
+            request.AssertCanEncodeDecodeRequest(version, new ByteTypeEncoder(protocolType));
         }
 
         [Test]
@@ -407,11 +407,11 @@ namespace KafkaClient.Tests.Protocol
             for (var m = 0; m < memberCount; m++) {
                 var bytes = new byte[memberCount*100];
                 _randomizer.NextBytes(bytes);
-                members.Add(new JoinGroupResponse.Member(memberId + m, new ByteMemberMetadata(protocol, bytes)));
+                members.Add(new JoinGroupResponse.Member(memberId + m, new ByteTypeMetadata(protocol, "known", bytes)));
             }
             var response = new JoinGroupResponse(errorCode, generationId, protocol, leaderId, memberId, members);
 
-            response.AssertCanEncodeDecodeResponse(0, new ProtocolTypeEncoder(protocol));
+            response.AssertCanEncodeDecodeResponse(0, new ByteTypeEncoder(protocol));
         }
 
         [Test]
@@ -419,7 +419,7 @@ namespace KafkaClient.Tests.Protocol
             [Values("test", "a groupId")] string groupId, 
             [Values(1, 20000)] int sessionTimeout,
             [Values("", "an existing member")] string memberId, 
-            [Values("consumer")] string protocolType, 
+            [Values("mine", "yours")] string protocol, 
             [Values(1, 10)] int protocolsPerRequest)
         {
             var encoder = new ConsumerEncoder();
@@ -427,10 +427,10 @@ namespace KafkaClient.Tests.Protocol
             for (var p = 0; p < protocolsPerRequest; p++) {
                 var userData = new byte[protocolsPerRequest*100];
                 _randomizer.NextBytes(userData);
-                var metadata = new ConsumerProtocolMetadata(0, new []{ groupId, memberId, protocolType }, userData);
-                protocols.Add(new JoinGroupRequest.GroupProtocol(protocolType + p, metadata));
+                var metadata = new ConsumerProtocolMetadata(protocol + p, 0, new []{ groupId, memberId, protocol }, userData);
+                protocols.Add(new JoinGroupRequest.GroupProtocol(protocol + p, metadata));
             }
-            var request = new JoinGroupRequest(groupId, TimeSpan.FromMilliseconds(sessionTimeout), memberId, protocolType, protocols);
+            var request = new JoinGroupRequest(groupId, TimeSpan.FromMilliseconds(sessionTimeout), memberId, ConsumerEncoder.ConsumerProtocol, protocols);
 
             request.AssertCanEncodeDecodeRequest(0, encoder);
         }
@@ -452,7 +452,7 @@ namespace KafkaClient.Tests.Protocol
             for (var m = 0; m < memberCount; m++) {
                 var userData = new byte[memberCount*100];
                 _randomizer.NextBytes(userData);
-                var metadata = new ConsumerProtocolMetadata(0, new []{ protocol, memberId, leaderId }, userData);
+                var metadata = new ConsumerProtocolMetadata(protocol, 0, new []{ protocol, memberId, leaderId }, userData);
                 members.Add(new JoinGroupResponse.Member(memberId + m, metadata));
             }
             var response = new JoinGroupResponse(errorCode, generationId, protocol, leaderId, memberId, members);
@@ -517,7 +517,7 @@ namespace KafkaClient.Tests.Protocol
             for (var a = 0; a < assignmentsPerRequest; a++) {
                 var bytes = new byte[assignmentsPerRequest*100];
                 _randomizer.NextBytes(bytes);
-                assignments.Add(new SyncGroupRequest.GroupAssignment(protocolType + a, new ByteMemberAssignment(bytes)));
+                assignments.Add(new SyncGroupRequest.GroupAssignment(protocolType + a, new ByteTypeAssignment(bytes)));
             }
             var request = new SyncGroupRequest(groupId, generationId, memberId, assignments);
 
@@ -533,7 +533,7 @@ namespace KafkaClient.Tests.Protocol
         {
             var bytes = new byte[1000];
             _randomizer.NextBytes(bytes);
-            var response = new SyncGroupResponse(errorCode, new ByteMemberAssignment(bytes));
+            var response = new SyncGroupResponse(errorCode, new ByteTypeAssignment(bytes));
 
             response.AssertCanEncodeDecodeResponse(0);
         }
@@ -615,13 +615,13 @@ namespace KafkaClient.Tests.Protocol
                     _randomizer.NextBytes(metadata);
                     _randomizer.NextBytes(assignment);
 
-                    members.Add(new DescribeGroupsResponse.Member("member" + m, "client" + m, "host-" + m, new ByteMemberMetadata(protocolType, metadata), new ByteMemberAssignment(assignment)));
+                    members.Add(new DescribeGroupsResponse.Member("member" + m, "client" + m, "host-" + m, new ByteTypeMetadata(protocolType, protocol, metadata), new ByteTypeAssignment(assignment)));
                 }
                 groups[g] = new DescribeGroupsResponse.Group(errorCode, groupId + g, state, protocolType, protocol, members);
             }
             var response = new DescribeGroupsResponse(groups);
 
-            response.AssertCanEncodeDecodeResponse(0, new ProtocolTypeEncoder(protocolType));
+            response.AssertCanEncodeDecodeResponse(0, new ByteTypeEncoder(protocolType));
         }
 
         [Test]
@@ -644,7 +644,7 @@ namespace KafkaClient.Tests.Protocol
                     var memberId = "member" + m;
                     var userData = new byte[count*100];
                     _randomizer.NextBytes(userData);
-                    var metadata = new ConsumerProtocolMetadata(0, new []{ protocol, memberId, memberId }, userData);
+                    var metadata = new ConsumerProtocolMetadata(protocol, 0, new []{ protocol, memberId, memberId }, userData);
 
                     var topics = new List<TopicPartition>();
                     for (var t = 0; t < count; t++) {

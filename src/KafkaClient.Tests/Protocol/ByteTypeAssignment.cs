@@ -1,13 +1,14 @@
 using System;
 using KafkaClient.Common;
+using KafkaClient.Protocol.Types;
 
-namespace KafkaClient.Protocol.Types
+namespace KafkaClient.Tests.Protocol
 {
-    public class ByteMemberAssignment : IMemberAssignment, IEquatable<ByteMemberAssignment>
+    public class ByteTypeAssignment : IMemberAssignment, IEquatable<ByteTypeAssignment>
     {
         private static readonly byte[] Empty = {};
 
-        public ByteMemberAssignment(byte[] bytes)
+        public ByteTypeAssignment(byte[] bytes)
         {
             Bytes = bytes ?? Empty;
         }
@@ -17,7 +18,7 @@ namespace KafkaClient.Protocol.Types
         /// <inheritdoc />
         public override bool Equals(object obj)
         {
-            return Equals(obj as ByteMemberAssignment);
+            return Equals(obj as ByteTypeAssignment);
         }
 
         public override int GetHashCode()
@@ -26,18 +27,18 @@ namespace KafkaClient.Protocol.Types
         }
 
 
-        public static bool operator ==(ByteMemberAssignment left, ByteMemberAssignment right)
+        public static bool operator ==(ByteTypeAssignment left, ByteTypeAssignment right)
         {
             return Equals(left, right);
         }
 
-        public static bool operator !=(ByteMemberAssignment left, ByteMemberAssignment right)
+        public static bool operator !=(ByteTypeAssignment left, ByteTypeAssignment right)
         {
             return !Equals(left, right);
         }
 
         /// <inheritdoc />
-        public bool Equals(ByteMemberAssignment other)
+        public bool Equals(ByteTypeAssignment other)
         {
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;

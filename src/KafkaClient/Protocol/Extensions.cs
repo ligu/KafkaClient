@@ -150,22 +150,22 @@ namespace KafkaClient.Protocol
             return false;
         }
 
-        public static IProtocolTypeEncoder GetEncoder(this IRequestContext context, string protocolType = null)
+        public static ITypeEncoder GetEncoder(this IRequestContext context, string protocolType = null)
         {
             var type = protocolType ?? context.ProtocolType;
-            IProtocolTypeEncoder encoder;
+            ITypeEncoder encoder;
             if (type != null && context.Encoders.TryGetValue(type, out encoder) && encoder != null) return encoder;
 
-            return new ProtocolTypeEncoder();
+            throw new ArgumentOutOfRangeException(nameof(protocolType));
         }
 
-        public static IKafkaWriter Write(this IKafkaWriter writer, IMemberMetadata metadata, IProtocolTypeEncoder encoder)
+        public static IKafkaWriter Write(this IKafkaWriter writer, IMemberMetadata metadata, ITypeEncoder encoder)
         {
             encoder.EncodeMetadata(writer, metadata);
             return writer;
         }
 
-        public static IKafkaWriter Write(this IKafkaWriter writer, IMemberAssignment assignment, IProtocolTypeEncoder encoder)
+        public static IKafkaWriter Write(this IKafkaWriter writer, IMemberAssignment assignment, ITypeEncoder encoder)
         {
             encoder.EncodeAssignment(writer, assignment);
             return writer;

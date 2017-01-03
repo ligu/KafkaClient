@@ -8,14 +8,14 @@ namespace KafkaClient.Tests.Protocol
 {
     public static class ProtocolAssertionExtensions
     {
-        public static void AssertCanEncodeDecodeRequest<T>(this T request, short version, IProtocolTypeEncoder encoder = null) where T : class, IRequest
+        public static void AssertCanEncodeDecodeRequest<T>(this T request, short version, ITypeEncoder encoder = null) where T : class, IRequest
         {
-            var encoders = ImmutableDictionary<string, IProtocolTypeEncoder>.Empty;
+            var encoders = ImmutableDictionary<string, ITypeEncoder>.Empty;
             if (encoder != null) {
-                encoders = encoders.Add(encoder.Type, encoder);
+                encoders = encoders.Add(encoder.ProtocolType, encoder);
             }
 
-            var context = new RequestContext(17, version, "Test-Request", encoders, encoder?.Type);
+            var context = new RequestContext(17, version, "Test-Request", encoders, encoder?.ProtocolType);
             var data = KafkaEncoder.EncodeRequestBytes(context, request);
             var decoded = KafkaDecoder.Decode<T>(data, context);
 
@@ -28,14 +28,14 @@ namespace KafkaClient.Tests.Protocol
             }
         }
 
-        public static void AssertCanEncodeDecodeResponse<T>(this T response, short version, IProtocolTypeEncoder encoder = null) where T : class, IResponse
+        public static void AssertCanEncodeDecodeResponse<T>(this T response, short version, ITypeEncoder encoder = null) where T : class, IResponse
         {
-            var encoders = ImmutableDictionary<string, IProtocolTypeEncoder>.Empty;
+            var encoders = ImmutableDictionary<string, ITypeEncoder>.Empty;
             if (encoder != null) {
-                encoders = encoders.Add(encoder.Type, encoder);
+                encoders = encoders.Add(encoder.ProtocolType, encoder);
             }
 
-            var context = new RequestContext(16, version, "Test-Response", encoders, encoder?.Type);
+            var context = new RequestContext(16, version, "Test-Response", encoders, encoder?.ProtocolType);
             var data = KafkaDecoder.EncodeResponseBytes(context, response);
             var decoded = KafkaEncoder.Decode<T>(context, data, true);
 

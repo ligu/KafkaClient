@@ -1,53 +1,56 @@
 using System;
 using KafkaClient.Common;
+using KafkaClient.Protocol.Types;
 
-namespace KafkaClient.Protocol.Types
+namespace KafkaClient.Tests.Protocol
 {
-    public class ByteMemberMetadata : IMemberMetadata, IEquatable<ByteMemberMetadata>
+    public class ByteTypeMetadata : IMemberMetadata, IEquatable<ByteTypeMetadata>
     {
         private static readonly byte[] Empty = {};
 
-        public ByteMemberMetadata(string protocolType, byte[] bytes)
+        public ByteTypeMetadata(string protocolType, string assignmentStrategy, byte[] bytes)
         {
             Bytes = bytes ?? Empty;
             ProtocolType = protocolType;
+            AssignmentStrategy = assignmentStrategy;
         }
 
         public string ProtocolType { get; }
+
+        public string AssignmentStrategy { get; }
 
         public byte[] Bytes { get; }
 
         /// <inheritdoc />
         public override bool Equals(object obj)
         {
-            return Equals(obj as ByteMemberMetadata);
+            return Equals(obj as ByteTypeMetadata);
         }
 
         public override int GetHashCode()
         {
             unchecked {
-                return ((ProtocolType?.GetHashCode() ?? 0) * 397) ^ (Bytes?.GetHashCode() ?? 0);
+                return ((AssignmentStrategy?.GetHashCode() ?? 0) * 397) ^ (Bytes?.GetHashCode() ?? 0);
             }
         }
 
-        public static bool operator ==(ByteMemberMetadata left, ByteMemberMetadata right)
+        public static bool operator ==(ByteTypeMetadata left, ByteTypeMetadata right)
         {
             return Equals(left, right);
         }
 
-        public static bool operator !=(ByteMemberMetadata left, ByteMemberMetadata right)
+        public static bool operator !=(ByteTypeMetadata left, ByteTypeMetadata right)
         {
             return !Equals(left, right);
         }
 
         /// <inheritdoc />
-        public bool Equals(ByteMemberMetadata other)
+        public bool Equals(ByteTypeMetadata other)
         {
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
-            return Equals(ProtocolType, other.ProtocolType) 
+            return Equals(AssignmentStrategy, other.AssignmentStrategy) 
                 && Bytes.HasEqualElementsInOrder(other.Bytes);
         }
-
     }
 }
