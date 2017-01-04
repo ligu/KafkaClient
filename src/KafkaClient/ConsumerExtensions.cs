@@ -4,6 +4,7 @@ using System.Collections.Immutable;
 using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Protocol;
+using KafkaClient.Protocol.Types;
 
 namespace KafkaClient
 {
@@ -44,6 +45,16 @@ namespace KafkaClient
                 total += fetched.Count;
             }
             return total;
+        }
+
+        public static Task<IConsumerGroupMember> JoinConsumerGroupAsync(this IConsumer consumer, string groupId, ConsumerProtocolMetadata metadata, CancellationToken cancellationToken)
+        {
+            return consumer.JoinConsumerGroupAsync(groupId, ConsumerEncoder.ConsumerProtocol, new[] { metadata }, cancellationToken);
+        }
+
+        public static Task<IConsumerGroupMember> JoinConsumerGroupAsync(this IConsumer consumer, string groupId, string protocolType, IMemberMetadata metadata, CancellationToken cancellationToken)
+        {
+            return consumer.JoinConsumerGroupAsync(groupId, protocolType, new[] { metadata }, cancellationToken);
         }
     }
 }

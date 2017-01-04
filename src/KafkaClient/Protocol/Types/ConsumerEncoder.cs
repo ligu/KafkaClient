@@ -27,7 +27,7 @@ namespace KafkaClient.Protocol.Types
                 topicNames[t] = reader.ReadString();
             }
             var userData = reader.ReadBytes();
-            return new ConsumerProtocolMetadata(assignmentStrategy, version, topicNames, userData);
+            return new ConsumerProtocolMetadata(topicNames, assignmentStrategy, version, userData);
         }
 
         /// <inheritdoc />

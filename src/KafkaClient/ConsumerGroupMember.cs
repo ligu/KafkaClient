@@ -22,6 +22,7 @@ namespace KafkaClient
 
             GroupId = request.GroupId;
             MemberId = response.MemberId;
+            ProtocolType = request.ProtocolType;
 
             OnRejoin(response);
 
@@ -119,7 +120,7 @@ namespace KafkaClient
         private async Task RejoinGroupAsync(CancellationToken cancellationToken)
         {
             // on success, this will call OnRejoin before returning
-            await _consumer.JoinConsumerGroupAsync(GroupId, _memberMetadata.Values, cancellationToken, this);
+            await _consumer.JoinConsumerGroupAsync(GroupId, ProtocolType, _memberMetadata.Values, cancellationToken, this);
         }
 
         public void OnRejoin(JoinGroupResponse response)
@@ -136,7 +137,7 @@ namespace KafkaClient
 
         private async Task SyncGroupAsync(CancellationToken cancellationToken)
         {
-            _memberAssignment = await _consumer.SyncGroupAsync(GroupId, MemberId, GenerationId, IsLeader ? _memberMetadata : ImmutableDictionary<string, IMemberMetadata>.Empty, cancellationToken);
+            _memberAssignment = await _consumer.SyncGroupAsync(GroupId, MemberId, GenerationId, ProtocolType, IsLeader ? _memberMetadata : ImmutableDictionary<string, IMemberMetadata>.Empty, cancellationToken);
         }
 
         /// <summary>
@@ -161,5 +162,7 @@ namespace KafkaClient
         {
             AsyncContext.Run(() => LeaveGroupAsync(CancellationToken.None));
         }
+
+        public string ProtocolType { get; }
     }
 }

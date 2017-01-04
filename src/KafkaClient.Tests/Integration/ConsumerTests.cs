@@ -494,7 +494,7 @@ namespace KafkaClient.Tests.Integration
                     var consumerGroup = TestConfig.GroupId();
 
                     using (var consumer = new Consumer(router, _consumerConfig, _config.Encoders)) {
-                        using (var member = await consumer.JoinConsumerGroupAsync(consumerGroup, new ConsumerProtocolMetadata(topicNames: new[] { topicName }), CancellationToken.None)) {
+                        using (var member = await consumer.JoinConsumerGroupAsync(consumerGroup, new ConsumerProtocolMetadata(topicName), CancellationToken.None)) {
                             Assert.That(member.GroupId, Is.EqualTo(consumerGroup));
                         }
                     }
@@ -509,7 +509,7 @@ namespace KafkaClient.Tests.Integration
                 await router.TemporaryTopicAsync(async topicName => {
                     using (var consumer = new Consumer(router, _consumerConfig, _config.Encoders)) {
                         var groupId = TestConfig.GroupId();
-                        using (var member = await consumer.JoinConsumerGroupAsync(groupId, new ConsumerProtocolMetadata(topicNames: new[] { TestConfig.TopicName() }), CancellationToken.None)) {
+                        using (var member = await consumer.JoinConsumerGroupAsync(groupId, new ConsumerProtocolMetadata(TestConfig.TopicName()), CancellationToken.None)) {
                             Assert.That(member.GroupId, Is.EqualTo(groupId));
                             Assert.That(member.IsLeader, Is.True);
                         }

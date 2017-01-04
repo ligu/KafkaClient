@@ -10,6 +10,7 @@ namespace KafkaClient
     {
         int GenerationId { get; }
         bool IsLeader { get; }
+        string ProtocolType { get; }
 
         void OnRejoin(JoinGroupResponse response);
 

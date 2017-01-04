@@ -28,7 +28,12 @@ namespace KafkaClient.Protocol.Types
     {
         private static readonly byte[] Empty = {};
 
-        public ConsumerProtocolMetadata(string assignmentStrategy = ConsumerEncoder.ConsumerProtocol, short version = 0, IEnumerable<string> topicNames = null, byte[] userData = null)
+        public ConsumerProtocolMetadata(string topicName, string assignmentStrategy = ConsumerEncoder.ConsumerProtocol, short version = 0, byte[] userData = null)
+            : this(new []{ topicName }, assignmentStrategy, version, userData)
+        {
+        }
+
+        public ConsumerProtocolMetadata(IEnumerable<string> topicNames, string assignmentStrategy = ConsumerEncoder.ConsumerProtocol, short version = 0, byte[] userData = null)
         {
             AssignmentStrategy = assignmentStrategy;
             Version = version;

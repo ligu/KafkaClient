@@ -77,15 +77,12 @@ namespace KafkaClient
             }
         }
 
-        public async Task<IConsumerGroupMember> JoinConsumerGroupAsync(string groupId, IEnumerable<IMemberMetadata> metadata, CancellationToken cancellationToken, IConsumerGroupMember member = null)
+        public async Task<IConsumerGroupMember> JoinConsumerGroupAsync(string groupId, string protocolType, IEnumerable<IMemberMetadata> metadata, CancellationToken cancellationToken, IConsumerGroupMember member = null)
         {
-            var protocols = metadata.Select(m => new JoinGroupRequest.GroupProtocol(m)).ToList();
-            if (protocols.Select(p => p.Metadata.ProtocolType).Distinct().Count() > 1) throw new ArgumentOutOfRangeException(nameof(metadata), "Multiple ProtocolTypes used");
-            foreach (var protocol in protocols) {
-                if (!_encoders.ContainsKey(protocol.Metadata?.ProtocolType ?? "")) throw new ArgumentOutOfRangeException(nameof(metadata), $"ProtocolType {protocol.Metadata?.ProtocolType} is unknown");
-                
-            }
-            var request = new JoinGroupRequest(groupId, Configuration.GroupHeartbeat, member?.MemberId ?? "", protocols[0].Metadata.ProtocolType, protocols, Configuration.GroupRebalanceTimeout);
+            if (!_encoders.ContainsKey(protocolType)) throw new ArgumentOutOfRangeException(nameof(metadata), $"ProtocolType {protocolType} is unknown");
+
+            var protocols = metadata.Select(m => new JoinGroupRequest.GroupProtocol(m));
+            var request = new JoinGroupRequest(groupId, Configuration.GroupHeartbeat, member?.MemberId ?? "", protocolType, protocols, Configuration.GroupRebalanceTimeout);
             var response = await _router.SendAsync(request, groupId, cancellationToken);
             if (!response.ErrorCode.IsSuccess()) {
                 throw request.ExtractExceptions(response);
@@ -96,11 +93,6 @@ namespace KafkaClient
                 return member;
             }
             return new ConsumerGroupMember(this, request, response, _router.Log);
-        }
-
-        public Task<IConsumerGroupMember> JoinConsumerGroupAsync(string groupId, IMemberMetadata metadata, CancellationToken cancellationToken)
-        {
-            return JoinConsumerGroupAsync(groupId, new[] { metadata }, cancellationToken);
         }
 
         public async Task LeaveConsumerGroupAsync(string groupId, string memberId, CancellationToken cancellationToken, bool awaitResponse = true)
@@ -119,12 +111,12 @@ namespace KafkaClient
             return response.ErrorCode;
         }
 
-        public async Task<IMemberAssignment> SyncGroupAsync(string groupId, string memberId, int generationId, IImmutableDictionary<string, IMemberMetadata> memberMetadata, CancellationToken cancellationToken)
+        public async Task<IMemberAssignment> SyncGroupAsync(string groupId, string memberId, int generationId, string protocolType, IImmutableDictionary<string, IMemberMetadata> memberMetadata, CancellationToken cancellationToken)
         {
             IEnumerable<SyncGroupRequest.GroupAssignment> groupAssignments = null;
             if (memberMetadata?.Count > 0) {
                 var metadata = memberMetadata.First().Value;
-                var encoder = _encoders[metadata.ProtocolType];
+                var encoder = _encoders[protocolType];
                 var assigner = encoder.GetAssigner(metadata.AssignmentStrategy);
                 var memberAssignment = assigner.AssignMembers(memberMetadata);
                 groupAssignments = memberAssignment.Select(assignment => new SyncGroupRequest.GroupAssignment(assignment.Key, assignment.Value));

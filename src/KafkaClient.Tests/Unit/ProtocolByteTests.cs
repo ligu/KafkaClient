@@ -426,7 +426,7 @@ namespace KafkaClient.Tests.Unit
             for (var p = 0; p < protocolsPerRequest; p++) {
                 var userData = new byte[protocolsPerRequest*100];
                 _randomizer.NextBytes(userData);
-                var metadata = new ConsumerProtocolMetadata(protocol + p, 0, new []{ groupId, memberId, protocol }, userData);
+                var metadata = new ConsumerProtocolMetadata(new []{ groupId, memberId, protocol }, protocol + p, 0, userData);
                 protocols.Add(new JoinGroupRequest.GroupProtocol(metadata));
             }
             var request = new JoinGroupRequest(groupId, TimeSpan.FromMilliseconds(sessionTimeout), memberId, ConsumerEncoder.ConsumerProtocol, protocols);
@@ -451,7 +451,7 @@ namespace KafkaClient.Tests.Unit
             for (var m = 0; m < memberCount; m++) {
                 var userData = new byte[memberCount*100];
                 _randomizer.NextBytes(userData);
-                var metadata = new ConsumerProtocolMetadata(protocol, 0, new []{ protocol, memberId, leaderId }, userData);
+                var metadata = new ConsumerProtocolMetadata(new []{ protocol, memberId, leaderId }, protocol, 0, userData);
                 members.Add(new JoinGroupResponse.Member(memberId + m, metadata));
             }
             var response = new JoinGroupResponse(errorCode, generationId, protocol, leaderId, memberId, members);
@@ -631,7 +631,7 @@ namespace KafkaClient.Tests.Unit
              )] ErrorResponseCode errorCode,
             [Values("test", "a groupId")] string groupId, 
             [Range(2, 3)] int count,
-            [Values(KafkaClient.Protocol.DescribeGroupsResponse.Group.States.Stable, KafkaClient.Protocol.DescribeGroupsResponse.Group.States.AwaitingSync)] string state, 
+            [Values(KafkaClient.Protocol.DescribeGroupsResponse.Group.States.Stable, Protocol.DescribeGroupsResponse.Group.States.AwaitingSync)] string state, 
             [Values("consumer")] string protocolType,
             [Values("good", "bad", "ugly")] string protocol)
         {
@@ -643,7 +643,7 @@ namespace KafkaClient.Tests.Unit
                     var memberId = "member" + m;
                     var userData = new byte[count*100];
                     _randomizer.NextBytes(userData);
-                    var metadata = new ConsumerProtocolMetadata(protocol, 0, new []{ protocol, memberId, memberId }, userData);
+                    var metadata = new ConsumerProtocolMetadata(new []{ protocol, memberId, memberId }, protocol, 0, userData);
 
                     var topics = new List<TopicPartition>();
                     for (var t = 0; t < count; t++) {
