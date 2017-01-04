@@ -1,13 +1,13 @@
 using System;
+using KafkaClient.Assignment;
 using KafkaClient.Common;
-using KafkaClient.Protocol.Types;
 
 namespace KafkaClient.Tests
 {
-    public class ByteTypeEncoder : TypeEncoder<ByteTypeMetadata, ByteTypeAssignment>
+    public class ByteMembershipEncoder : MembershipEncoder<ByteTypeMetadata, ByteTypeAssignment>
     {
         /// <inheritdoc />
-        public ByteTypeEncoder(string protocolType) : base(protocolType)
+        public ByteMembershipEncoder(string protocolType) : base(protocolType)
         {
         }
 
@@ -33,7 +33,7 @@ namespace KafkaClient.Tests
             return new ByteTypeAssignment(reader.ReadBytes());
         }
 
-        public override ITypeAssigner GetAssigner(string protocol)
+        public override IMembershipAssignor GetAssigner(string protocol)
         {
             throw new NotImplementedException();
         }

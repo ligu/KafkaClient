@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using KafkaClient.Assignment;
 using KafkaClient.Common;
-using KafkaClient.Protocol.Types;
 using KafkaClient.Telemetry;
 
 namespace KafkaClient.Connections
@@ -29,7 +29,7 @@ namespace KafkaClient.Connections
         /// <param name="versionSupport">Support for different protocol versions for Kakfa requests and responses.</param>
         /// <param name="requestTimeout">The maximum time to wait for requests.</param>
         /// <param name="encoders">Custom Encoding support for different protocol types</param>
-        public ConnectionConfiguration(ITrackEvents tracker, IRetry connectionRetry = null, IVersionSupport versionSupport = null, TimeSpan? requestTimeout = null, IEnumerable<ITypeEncoder> encoders = null)
+        public ConnectionConfiguration(ITrackEvents tracker, IRetry connectionRetry = null, IVersionSupport versionSupport = null, TimeSpan? requestTimeout = null, IEnumerable<IMembershipEncoder> encoders = null)
             : this(connectionRetry, versionSupport, requestTimeout, encoders, 
                   tracker != null ? (ConnectError)tracker.Disconnected : null, 
                   tracker != null ? (Connecting)tracker.Connecting : null, 
@@ -71,7 +71,7 @@ namespace KafkaClient.Connections
             IRetry connectionRetry = null, 
             IVersionSupport versionSupport = null,
             TimeSpan? requestTimeout = null,
-            IEnumerable<ITypeEncoder> encoders = null,
+            IEnumerable<IMembershipEncoder> encoders = null,
             ConnectError onDisconnected = null, 
             Connecting onConnecting = null, 
             Connecting onConnected = null, 
@@ -116,7 +116,7 @@ namespace KafkaClient.Connections
         public TimeSpan RequestTimeout { get; }
 
         /// <inheritdoc />
-        public IImmutableDictionary<string, ITypeEncoder> Encoders { get; }
+        public IImmutableDictionary<string, IMembershipEncoder> Encoders { get; }
 
         /// <inheritdoc />
         public ConnectError OnDisconnected { get; }
@@ -187,13 +187,13 @@ namespace KafkaClient.Connections
                     MaxConnectionAttempts);
             }
 
-            public static IImmutableDictionary<string, ITypeEncoder> Encoders(IEnumerable<ITypeEncoder> encoders = null)
+            public static IImmutableDictionary<string, IMembershipEncoder> Encoders(IEnumerable<IMembershipEncoder> encoders = null)
             {
                 var defaultEncoders = encoders != null
                     ? encoders.ToImmutableDictionary(e => e.ProtocolType)
-                    : ImmutableDictionary<string, ITypeEncoder>.Empty;
-                if (!defaultEncoders.ContainsKey(ConsumerEncoder.ConsumerProtocol)) {
-                    defaultEncoders = defaultEncoders.Add(ConsumerEncoder.ConsumerProtocol, ConsumerEncoder.Singleton);
+                    : ImmutableDictionary<string, IMembershipEncoder>.Empty;
+                if (!defaultEncoders.ContainsKey(ConsumerEncoder.Protocol)) {
+                    defaultEncoders = defaultEncoders.Add(ConsumerEncoder.Protocol, new ConsumerEncoder());
                 }
                 return defaultEncoders;
             }

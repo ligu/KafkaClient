@@ -4,9 +4,9 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using KafkaClient.Assignment;
 using KafkaClient.Common;
 using KafkaClient.Protocol;
-using KafkaClient.Protocol.Types;
 using Nito.AsyncEx;
 
 namespace KafkaClient

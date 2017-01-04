@@ -1,6 +1,6 @@
 using System;
+using KafkaClient.Assignment;
 using KafkaClient.Common;
-using KafkaClient.Protocol.Types;
 
 namespace KafkaClient
 {
@@ -49,7 +49,7 @@ namespace KafkaClient
             /// <summary>
             /// The default <see cref="GroupProtocol"/>
             /// </summary>
-            public const string ProtocolType = ConsumerEncoder.ConsumerProtocol;
+            public const string ProtocolType = ConsumerEncoder.Protocol;
 
             /// <summary>
             /// The default <see cref="GroupHeartbeat"/> and <see cref="GroupRebalanceTimeout"/> seconds

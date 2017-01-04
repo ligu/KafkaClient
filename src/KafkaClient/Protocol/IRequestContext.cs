@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
+using KafkaClient.Assignment;
 using KafkaClient.Connections;
-using KafkaClient.Protocol.Types;
 using KafkaClient.Telemetry;
 
 namespace KafkaClient.Protocol
@@ -25,10 +25,10 @@ namespace KafkaClient.Protocol
         /// <summary>
         /// Custom Encoding support for different protocol types
         /// </summary>
-        IImmutableDictionary<string, ITypeEncoder> Encoders { get; }
+        IImmutableDictionary<string, IMembershipEncoder> Encoders { get; }
 
         /// <summary>
-        /// The protocol type, used for custom <see cref="ITypeEncoder"/>
+        /// The protocol type, used for custom <see cref="IMembershipEncoder"/>
         /// </summary>
         string ProtocolType { get; }
 

@@ -1,4 +1,4 @@
-namespace KafkaClient.Protocol.Types
+namespace KafkaClient.Assignment
 {
     public interface IMemberAssignment
     {

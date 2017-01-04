@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using KafkaClient.Common;
 
-namespace KafkaClient.Protocol.Types
+namespace KafkaClient.Assignment
 {
     /// <summary>
     /// ProtocolType => "consumer"
@@ -28,12 +28,12 @@ namespace KafkaClient.Protocol.Types
     {
         private static readonly byte[] Empty = {};
 
-        public ConsumerProtocolMetadata(string topicName, string assignmentStrategy = ConsumerEncoder.ConsumerProtocol, short version = 0, byte[] userData = null)
+        public ConsumerProtocolMetadata(string topicName, string assignmentStrategy = ConsumerEncoder.Protocol, short version = 0, byte[] userData = null)
             : this(new []{ topicName }, assignmentStrategy, version, userData)
         {
         }
 
-        public ConsumerProtocolMetadata(IEnumerable<string> topicNames, string assignmentStrategy = ConsumerEncoder.ConsumerProtocol, short version = 0, byte[] userData = null)
+        public ConsumerProtocolMetadata(IEnumerable<string> topicNames, string assignmentStrategy = ConsumerEncoder.Protocol, short version = 0, byte[] userData = null)
         {
             AssignmentStrategy = assignmentStrategy;
             Version = version;

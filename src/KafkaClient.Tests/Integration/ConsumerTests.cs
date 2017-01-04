@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using KafkaClient.Assignment;
 using KafkaClient.Common;
 using KafkaClient.Connections;
 using KafkaClient.Protocol;
-using KafkaClient.Protocol.Types;
 using NUnit.Framework;
 
 #pragma warning disable 1998

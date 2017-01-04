@@ -2,8 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using KafkaClient.Common;
+using KafkaClient.Protocol;
 
-namespace KafkaClient.Protocol.Types
+namespace KafkaClient.Assignment
 {
     /// <summary>
     ///  The format of the MemberAssignment field for consumer groups is included below:

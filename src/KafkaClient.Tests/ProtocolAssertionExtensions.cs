@@ -1,16 +1,16 @@
 using System;
 using System.Collections.Immutable;
+using KafkaClient.Assignment;
 using KafkaClient.Protocol;
-using KafkaClient.Protocol.Types;
 using NUnit.Framework;
 
 namespace KafkaClient.Tests
 {
     public static class ProtocolAssertionExtensions
     {
-        public static void AssertCanEncodeDecodeRequest<T>(this T request, short version, ITypeEncoder encoder = null) where T : class, IRequest
+        public static void AssertCanEncodeDecodeRequest<T>(this T request, short version, IMembershipEncoder encoder = null) where T : class, IRequest
         {
-            var encoders = ImmutableDictionary<string, ITypeEncoder>.Empty;
+            var encoders = ImmutableDictionary<string, IMembershipEncoder>.Empty;
             if (encoder != null) {
                 encoders = encoders.Add(encoder.ProtocolType, encoder);
             }
@@ -28,9 +28,9 @@ namespace KafkaClient.Tests
             }
         }
 
-        public static void AssertCanEncodeDecodeResponse<T>(this T response, short version, ITypeEncoder encoder = null) where T : class, IResponse
+        public static void AssertCanEncodeDecodeResponse<T>(this T response, short version, IMembershipEncoder encoder = null) where T : class, IResponse
         {
-            var encoders = ImmutableDictionary<string, ITypeEncoder>.Empty;
+            var encoders = ImmutableDictionary<string, IMembershipEncoder>.Empty;
             if (encoder != null) {
                 encoders = encoders.Add(encoder.ProtocolType, encoder);
             }

@@ -3,12 +3,19 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 
-namespace KafkaClient.Protocol.Types
+namespace KafkaClient.Assignment
 {
-    public abstract class TypeAssigner<TMetadata, TAssignment> : ITypeAssigner
+    public abstract class MembershipAssignor<TMetadata, TAssignment> : IMembershipAssignor
         where TMetadata : IMemberMetadata
         where TAssignment : IMemberAssignment
     {
+        protected MembershipAssignor(string assignmentStrategy)
+        {
+            AssignmentStrategy = assignmentStrategy;
+        }
+
+        public string AssignmentStrategy { get; }
+
         protected abstract IImmutableDictionary<string, TAssignment> Assign(IImmutableDictionary<string, TMetadata> memberMetadata);
 
         public IImmutableDictionary<string, IMemberAssignment> AssignMembers(IImmutableDictionary<string, IMemberMetadata> memberMetadata)

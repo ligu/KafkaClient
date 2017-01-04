@@ -4,9 +4,9 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using KafkaClient.Assignment;
 using KafkaClient.Common;
 using KafkaClient.Protocol;
-using KafkaClient.Protocol.Types;
 
 namespace KafkaClient
 {
@@ -24,17 +24,17 @@ namespace KafkaClient
         {
         }
 
-        public Consumer(IRouter router, IConsumerConfiguration configuration = null, IImmutableDictionary<string, ITypeEncoder> encoders = null, bool leaveRouterOpen = true)
+        public Consumer(IRouter router, IConsumerConfiguration configuration = null, IImmutableDictionary<string, IMembershipEncoder> encoders = null, bool leaveRouterOpen = true)
         {
             _stopToken = new CancellationTokenSource();
             _router = router;
             _leaveRouterOpen = leaveRouterOpen;
             Configuration = configuration ?? new ConsumerConfiguration();
             _localMessages = ImmutableList<Message>.Empty;
-            _encoders = encoders ?? ImmutableDictionary<string, ITypeEncoder>.Empty;
+            _encoders = encoders ?? ImmutableDictionary<string, IMembershipEncoder>.Empty;
         }
 
-        private readonly IImmutableDictionary<string, ITypeEncoder> _encoders;
+        private readonly IImmutableDictionary<string, IMembershipEncoder> _encoders;
 
         public IConsumerConfiguration Configuration { get; }
 

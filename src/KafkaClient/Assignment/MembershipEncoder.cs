@@ -1,12 +1,13 @@
 using KafkaClient.Common;
+using KafkaClient.Protocol;
 
-namespace KafkaClient.Protocol.Types
+namespace KafkaClient.Assignment
 {
-    public abstract class TypeEncoder<TMetadata, TAssignment> : ITypeEncoder
+    public abstract class MembershipEncoder<TMetadata, TAssignment> : IMembershipEncoder
         where TMetadata : IMemberMetadata
         where TAssignment : IMemberAssignment
     {
-        protected TypeEncoder(string protocolType)
+        protected MembershipEncoder(string protocolType)
         {
             ProtocolType = protocolType;
         }
@@ -53,6 +54,6 @@ namespace KafkaClient.Protocol.Types
         protected abstract TMetadata DecodeMetadata(string assignmentStrategy, IKafkaReader reader, int expectedLength);
         protected abstract TAssignment DecodeAssignment(IKafkaReader reader, int expectedLength);
 
-        public abstract ITypeAssigner GetAssigner(string protocol);
+        public abstract IMembershipAssignor GetAssigner(string protocol);
     }
 }

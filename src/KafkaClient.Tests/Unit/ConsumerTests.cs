@@ -3,9 +3,9 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using KafkaClient.Assignment;
 using KafkaClient.Connections;
 using KafkaClient.Protocol;
-using KafkaClient.Protocol.Types;
 using NSubstitute;
 using NUnit.Framework;
 
@@ -175,7 +175,7 @@ namespace KafkaClient.Tests.Unit
             var consumer = new Consumer(router, encoders: ConnectionConfiguration.Defaults.Encoders());
             using (consumer) {
                 try {
-                    await consumer.JoinConsumerGroupAsync("group", ConsumerEncoder.ConsumerProtocol, new ByteTypeMetadata("mine", new byte[] { }), CancellationToken.None);
+                    await consumer.JoinConsumerGroupAsync("group", ConsumerEncoder.Protocol, new ByteTypeMetadata("mine", new byte[] { }), CancellationToken.None);
                 } catch (RequestException) {
                     // since the servers aren't available
                 }
@@ -192,7 +192,7 @@ namespace KafkaClient.Tests.Unit
             var consumer = Substitute.For<IConsumer>();
             consumer.SendHeartbeatAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
                     .Returns(_ => Task.FromResult(ErrorResponseCode.None));
-            var request = new JoinGroupRequest(TestConfig.GroupId(), TimeSpan.FromMilliseconds(heartbeatMilliseconds * 2), "", ConsumerEncoder.ConsumerProtocol, new [] { protocol });
+            var request = new JoinGroupRequest(TestConfig.GroupId(), TimeSpan.FromMilliseconds(heartbeatMilliseconds * 2), "", ConsumerEncoder.Protocol, new [] { protocol });
             var memberId = Guid.NewGuid().ToString("N");
             var response = new JoinGroupResponse(ErrorResponseCode.None, 1, protocol.Name, memberId, memberId, new []{ new JoinGroupResponse.Member(memberId, new ConsumerProtocolMetadata("mine")) });
             using (new ConsumerGroupMember(consumer, request, response, TestConfig.Log)) {
@@ -222,7 +222,7 @@ namespace KafkaClient.Tests.Unit
                             lastHeartbeat = DateTimeOffset.UtcNow;
                             return Task.FromResult(ErrorResponseCode.None);
                         });
-            var request = new JoinGroupRequest(TestConfig.GroupId(), TimeSpan.FromMilliseconds(heartbeatMilliseconds), "", ConsumerEncoder.ConsumerProtocol, new [] { protocol });
+            var request = new JoinGroupRequest(TestConfig.GroupId(), TimeSpan.FromMilliseconds(heartbeatMilliseconds), "", ConsumerEncoder.Protocol, new [] { protocol });
             var memberId = Guid.NewGuid().ToString("N");
             var response = new JoinGroupResponse(ErrorResponseCode.None, 1, protocol.Name, memberId, memberId, new []{ new JoinGroupResponse.Member(memberId, new ConsumerProtocolMetadata("mine")) });
             lastHeartbeat = DateTimeOffset.UtcNow;
@@ -245,7 +245,7 @@ namespace KafkaClient.Tests.Unit
             var consumer = Substitute.For<IConsumer>();
             consumer.SendHeartbeatAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
                     .Returns(Task.FromResult(ErrorResponseCode.NetworkException));
-            var request = new JoinGroupRequest(TestConfig.GroupId(), TimeSpan.FromMilliseconds(heartbeatMilliseconds), "", ConsumerEncoder.ConsumerProtocol, new [] { protocol });
+            var request = new JoinGroupRequest(TestConfig.GroupId(), TimeSpan.FromMilliseconds(heartbeatMilliseconds), "", ConsumerEncoder.Protocol, new [] { protocol });
             var memberId = Guid.NewGuid().ToString("N");
             var response = new JoinGroupResponse(ErrorResponseCode.None, 1, protocol.Name, memberId, memberId, new []{ new JoinGroupResponse.Member(memberId, new ConsumerProtocolMetadata("mine")) });
             using (new ConsumerGroupMember(consumer, request, response, TestConfig.Log)) {

@@ -1,8 +1,8 @@
 using KafkaClient.Common;
 
-namespace KafkaClient.Protocol.Types
+namespace KafkaClient.Assignment
 {
-    public interface ITypeEncoder
+    public interface IMembershipEncoder
     {
         string ProtocolType { get; }
 
@@ -12,6 +12,6 @@ namespace KafkaClient.Protocol.Types
         IMemberMetadata DecodeMetadata(string protocol, IKafkaReader reader);
         IMemberAssignment DecodeAssignment(IKafkaReader reader);
 
-        ITypeAssigner GetAssigner(string protocol);
+        IMembershipAssignor GetAssigner(string protocol);
     }
 }

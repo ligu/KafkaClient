@@ -5,9 +5,9 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using KafkaClient.Assignment;
 using KafkaClient.Common;
 using KafkaClient.Connections;
-using KafkaClient.Protocol.Types;
 
 namespace KafkaClient.Protocol
 {
@@ -150,22 +150,22 @@ namespace KafkaClient.Protocol
             return false;
         }
 
-        public static ITypeEncoder GetEncoder(this IRequestContext context, string protocolType = null)
+        public static IMembershipEncoder GetEncoder(this IRequestContext context, string protocolType = null)
         {
             var type = protocolType ?? context.ProtocolType;
-            ITypeEncoder encoder;
+            IMembershipEncoder encoder;
             if (type != null && context.Encoders.TryGetValue(type, out encoder) && encoder != null) return encoder;
 
             throw new ArgumentOutOfRangeException(nameof(protocolType), $"Unknown protocol type {protocolType}");
         }
 
-        public static IKafkaWriter Write(this IKafkaWriter writer, IMemberMetadata metadata, ITypeEncoder encoder)
+        public static IKafkaWriter Write(this IKafkaWriter writer, IMemberMetadata metadata, IMembershipEncoder encoder)
         {
             encoder.EncodeMetadata(writer, metadata);
             return writer;
         }
 
-        public static IKafkaWriter Write(this IKafkaWriter writer, IMemberAssignment assignment, ITypeEncoder encoder)
+        public static IKafkaWriter Write(this IKafkaWriter writer, IMemberAssignment assignment, IMembershipEncoder encoder)
         {
             encoder.EncodeAssignment(writer, assignment);
             return writer;

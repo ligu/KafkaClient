@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading;
 using System.Threading.Tasks;
+using KafkaClient.Assignment;
 using KafkaClient.Protocol;
-using KafkaClient.Protocol.Types;
 
 namespace KafkaClient
 {
@@ -49,7 +49,7 @@ namespace KafkaClient
 
         public static Task<IConsumerGroupMember> JoinConsumerGroupAsync(this IConsumer consumer, string groupId, ConsumerProtocolMetadata metadata, CancellationToken cancellationToken)
         {
-            return consumer.JoinConsumerGroupAsync(groupId, ConsumerEncoder.ConsumerProtocol, new[] { metadata }, cancellationToken);
+            return consumer.JoinConsumerGroupAsync(groupId, ConsumerEncoder.Protocol, new[] { metadata }, cancellationToken);
         }
 
         public static Task<IConsumerGroupMember> JoinConsumerGroupAsync(this IConsumer consumer, string groupId, string protocolType, IMemberMetadata metadata, CancellationToken cancellationToken)
