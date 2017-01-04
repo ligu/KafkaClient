@@ -49,6 +49,63 @@ namespace KafkaClient
         public int GenerationId { get; private set; }
 
         /// <summary>
+        /// State machine for Coordinator
+        /// 
+        /// See https://cwiki.apache.org/confluence/display/KAFKA/Kafka+Client-side+Assignment+Proposal
+        /// </summary>
+        /// <remarks>
+        ///               +--------------------+
+        ///               |                    |
+        ///           +--->        Down        |
+        ///           |   |                    |
+        ///           |   +---------+----------+
+        ///  Timeout  |             |
+        ///  expires  |             | JoinGroup/Heartbeat
+        ///  with     |             | received
+        ///  no       |             v
+        ///  group    |   +---------+----------+
+        ///  activity |   |                    +---v JoinGroup/Heartbeat
+        ///           |   |     Initialize     |   | return
+        ///           |   |                    +---v coordinator not ready
+        ///           |   +---------+----------+
+        ///           |             |
+        ///           |             | After reading
+        ///           |             | group state
+        ///           |             v
+        ///           |   +---------+----------+
+        ///           +---+                    +---v Heartbeat/SyncGroup
+        ///               |       Stable       |   | from
+        ///           +--->                    +---v active generation
+        ///           |   +---------+----------+
+        ///           |             |
+        ///           |             | JoinGroup
+        ///           |             | received
+        ///           |             v
+        ///           |   +---------+----------+
+        ///           |   |                    |
+        ///           |   |       Joining      |
+        ///           |   |                    |
+        /// Leader    |   +---------+----------+
+        /// SyncGroup |             |
+        /// or        |             | JoinGroup received
+        /// session   |             | from all members
+        /// timeout   |             v
+        ///           |   +---------+----------+
+        ///           |   |                    |
+        ///           +---+      AwaitSync     |
+        ///               |                    |
+        ///               +--------------------+
+        /// </remarks>
+        private enum CoordinatorState
+        {
+            Down,
+            Initialize,
+            Stable,
+            Joining,
+            AwaitSync
+        }
+
+        /// <summary>
         /// See https://cwiki.apache.org/confluence/display/KAFKA/Kafka+Client-side+Assignment+Proposal for details
         /// </summary>
         private async Task DedicatedHeartbeatTask()
@@ -57,33 +114,31 @@ namespace KafkaClient
                 // only allow one heartbeat to execute, dump out all other requests
                 if (Interlocked.Increment(ref _activeHeartbeatCount) != 1) return;
 
-                ErrorResponseCode? response = ErrorResponseCode.None;
-                var timestamp = DateTimeOffset.UtcNow;
-                while (!(_disposeToken.IsCancellationRequested || HeartbeatIsOverdue(timestamp))) {
+                CoordinatorState? state = CoordinatorState.Stable;
+                var response = ErrorResponseCode.None;
+                var lastHeartbeat = DateTimeOffset.UtcNow;
+                while (!(_disposeToken.IsCancellationRequested || IsOverdue(lastHeartbeat) || IsUnrecoverable(response))) {
                     try {
-                        switch (response) {
-                            // unrecoverable
-                            case ErrorResponseCode.UnknownMemberId:
-                            case ErrorResponseCode.IllegalGeneration:
-                                _disposeToken.Cancel();
-                                continue;
-
-                            case ErrorResponseCode.GroupLoadInProgress: // Down state
-                            case ErrorResponseCode.GroupCoordinatorNotAvailable: // Initialize state
-                            case ErrorResponseCode.None: // Stable state
+                        if (state == null) { // only update state if it was previously reset -- this allows for one state to move explicitly to another
+                            state = GetCoordinatorState(response);
+                        }
+                        switch (state) {
+                            case CoordinatorState.Down:
+                            case CoordinatorState.Initialize:
+                            case CoordinatorState.Stable:
                                 await Task.Delay(_heartbeatDelay, _disposeToken.Token).ConfigureAwait(false);
                                 break;
 
-                            case ErrorResponseCode.RebalanceInProgress: // Joining or AwaitSync state
+                            case CoordinatorState.Joining:
                                 await RejoinGroupAsync(_disposeToken.Token).ConfigureAwait(false);
-                                response = null; // => AwaitSync state
-                                timestamp = DateTimeOffset.UtcNow;
+                                state = CoordinatorState.AwaitSync;
+                                lastHeartbeat = DateTimeOffset.UtcNow;
                                 continue;
 
-                            case null: // AwaitSync state
+                            case CoordinatorState.AwaitSync:
                                 await SyncGroupAsync(_disposeToken.Token).ConfigureAwait(false);
-                                response = ErrorResponseCode.None; // => Stable state
-                                timestamp = DateTimeOffset.UtcNow;
+                                state = CoordinatorState.Stable;
+                                lastHeartbeat = DateTimeOffset.UtcNow;
                                 continue;
 
                             default:
@@ -91,9 +146,10 @@ namespace KafkaClient
                                 break;
                         }
 
+                        state = null; // clear so it gets set from the heartbeat response
                         response = await _consumer.SendHeartbeatAsync(GroupId, MemberId, GenerationId, _disposeToken.Token).ConfigureAwait(false);
-                        if (response.Value.IsSuccess()) {
-                            timestamp = DateTimeOffset.UtcNow;
+                        if (response.IsSuccess()) {
+                            lastHeartbeat = DateTimeOffset.UtcNow;
                         }
                     } catch (Exception ex) {
                         if (!(ex is TaskCanceledException)) {
@@ -112,9 +168,30 @@ namespace KafkaClient
             }
         }
 
-        private bool HeartbeatIsOverdue(DateTimeOffset lastHeartbeat)
+        private bool IsOverdue(DateTimeOffset lastHeartbeat)
         {
             return _heartbeatTimeout < DateTimeOffset.UtcNow - lastHeartbeat;
+        }
+
+        private bool IsUnrecoverable(ErrorResponseCode? response)
+        {
+            return response == ErrorResponseCode.IllegalGeneration 
+                || response == ErrorResponseCode.UnknownMemberId;
+        }
+
+        private CoordinatorState? GetCoordinatorState(ErrorResponseCode? response)
+        {
+            switch (response) {
+                case ErrorResponseCode.GroupLoadInProgress:          return CoordinatorState.Down;
+                case ErrorResponseCode.GroupCoordinatorNotAvailable: return CoordinatorState.Initialize;
+                case ErrorResponseCode.None:                         return CoordinatorState.Stable;
+                case ErrorResponseCode.RebalanceInProgress:          return CoordinatorState.Joining;
+                    // could be AwaitSync state -- nothing to distinguish them
+                case null:                                           return CoordinatorState.AwaitSync;
+
+                default:                                             return null;
+                    // no idea ...
+            }
         }
 
         private async Task RejoinGroupAsync(CancellationToken cancellationToken)
