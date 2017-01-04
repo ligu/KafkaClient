@@ -8,14 +8,11 @@ namespace KafkaClient.Tests
     {
         private static readonly byte[] Empty = {};
 
-        public ByteTypeMetadata(string protocolType, string assignmentStrategy, byte[] bytes)
+        public ByteTypeMetadata(string assignmentStrategy, byte[] bytes)
         {
             Bytes = bytes ?? Empty;
-            ProtocolType = protocolType;
             AssignmentStrategy = assignmentStrategy;
         }
-
-        public string ProtocolType { get; }
 
         public string AssignmentStrategy { get; }
 

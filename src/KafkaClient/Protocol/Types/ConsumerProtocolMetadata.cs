@@ -90,6 +90,5 @@ namespace KafkaClient.Protocol.Types
         }
 
         public string AssignmentStrategy { get; }
-        public string ProtocolType => ConsumerEncoder.ConsumerProtocol;
     }
 }

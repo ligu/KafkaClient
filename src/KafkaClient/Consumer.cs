@@ -79,7 +79,7 @@ namespace KafkaClient
 
         public async Task<IConsumerGroupMember> JoinConsumerGroupAsync(string groupId, string protocolType, IEnumerable<IMemberMetadata> metadata, CancellationToken cancellationToken, IConsumerGroupMember member = null)
         {
-            if (!_encoders.ContainsKey(protocolType)) throw new ArgumentOutOfRangeException(nameof(metadata), $"ProtocolType {protocolType} is unknown");
+            if (!_encoders.ContainsKey(protocolType ?? "")) throw new ArgumentOutOfRangeException(nameof(metadata), $"ProtocolType {protocolType} is unknown");
 
             var protocols = metadata.Select(m => new JoinGroupRequest.GroupProtocol(m));
             var request = new JoinGroupRequest(groupId, Configuration.GroupHeartbeat, member?.MemberId ?? "", protocolType, protocols, Configuration.GroupRebalanceTimeout);

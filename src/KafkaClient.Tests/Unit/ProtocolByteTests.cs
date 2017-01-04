@@ -383,7 +383,7 @@ namespace KafkaClient.Tests.Unit
             for (var p = 0; p < protocolsPerRequest; p++) {
                 var bytes = new byte[protocolsPerRequest*100];
                 _randomizer.NextBytes(bytes);
-                protocols.Add(new JoinGroupRequest.GroupProtocol(new ByteTypeMetadata(protocolType, "known", bytes)));
+                protocols.Add(new JoinGroupRequest.GroupProtocol(new ByteTypeMetadata("known", bytes)));
             }
             var request = new JoinGroupRequest(groupId, TimeSpan.FromMilliseconds(sessionTimeout), memberId, protocolType, protocols, version >= 1 ? (TimeSpan?)TimeSpan.FromMilliseconds(sessionTimeout * 2) : null);
 
@@ -406,7 +406,7 @@ namespace KafkaClient.Tests.Unit
             for (var m = 0; m < memberCount; m++) {
                 var bytes = new byte[memberCount*100];
                 _randomizer.NextBytes(bytes);
-                members.Add(new JoinGroupResponse.Member(memberId + m, new ByteTypeMetadata(protocol, "known", bytes)));
+                members.Add(new JoinGroupResponse.Member(memberId + m, new ByteTypeMetadata("known", bytes)));
             }
             var response = new JoinGroupResponse(errorCode, generationId, "known", leaderId, memberId, members);
 
@@ -614,7 +614,7 @@ namespace KafkaClient.Tests.Unit
                     _randomizer.NextBytes(metadata);
                     _randomizer.NextBytes(assignment);
 
-                    members.Add(new DescribeGroupsResponse.Member("member" + m, "client" + m, "host-" + m, new ByteTypeMetadata(protocolType, protocol, metadata), new ByteTypeAssignment(assignment)));
+                    members.Add(new DescribeGroupsResponse.Member("member" + m, "client" + m, "host-" + m, new ByteTypeMetadata(protocol, metadata), new ByteTypeAssignment(assignment)));
                 }
                 groups[g] = new DescribeGroupsResponse.Group(errorCode, groupId + g, state, protocolType, protocol, members);
             }

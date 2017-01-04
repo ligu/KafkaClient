@@ -25,7 +25,7 @@ namespace KafkaClient.Tests
 
         protected override ByteTypeMetadata DecodeMetadata(string assignmentStrategy, IKafkaReader reader, int expectedLength)
         {
-            return new ByteTypeMetadata(ProtocolType, assignmentStrategy, reader.ReadBytes());
+            return new ByteTypeMetadata(assignmentStrategy, reader.ReadBytes());
         }
 
         protected override ByteTypeAssignment DecodeAssignment(IKafkaReader reader, int expectedLength)
