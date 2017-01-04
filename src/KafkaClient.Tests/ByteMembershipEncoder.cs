@@ -1,4 +1,3 @@
-using System;
 using KafkaClient.Assignment;
 using KafkaClient.Common;
 
@@ -31,11 +30,6 @@ namespace KafkaClient.Tests
         protected override ByteTypeAssignment DecodeAssignment(IKafkaReader reader, int expectedLength)
         {
             return new ByteTypeAssignment(reader.ReadBytes());
-        }
-
-        public override IMembershipAssignor GetAssigner(string protocol)
-        {
-            throw new NotImplementedException();
         }
     }
 }

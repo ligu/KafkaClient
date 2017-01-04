@@ -426,7 +426,7 @@ namespace KafkaClient.Tests.Unit
             for (var p = 0; p < protocolsPerRequest; p++) {
                 var userData = new byte[protocolsPerRequest*100];
                 _randomizer.NextBytes(userData);
-                var metadata = new ConsumerProtocolMetadata(new []{ groupId, memberId, protocol }, protocol + p, 0, userData);
+                var metadata = new ConsumerProtocolMetadata(new []{ groupId, memberId, protocol }, protocol + p, userData, 0);
                 protocols.Add(new JoinGroupRequest.GroupProtocol(metadata));
             }
             var request = new JoinGroupRequest(groupId, TimeSpan.FromMilliseconds(sessionTimeout), memberId, ConsumerEncoder.Protocol, protocols);
@@ -451,7 +451,7 @@ namespace KafkaClient.Tests.Unit
             for (var m = 0; m < memberCount; m++) {
                 var userData = new byte[memberCount*100];
                 _randomizer.NextBytes(userData);
-                var metadata = new ConsumerProtocolMetadata(new []{ protocol, memberId, leaderId }, protocol, 0, userData);
+                var metadata = new ConsumerProtocolMetadata(new []{ protocol, memberId, leaderId }, protocol, userData, 0);
                 members.Add(new JoinGroupResponse.Member(memberId + m, metadata));
             }
             var response = new JoinGroupResponse(errorCode, generationId, protocol, leaderId, memberId, members);
@@ -552,7 +552,7 @@ namespace KafkaClient.Tests.Unit
                 for (var t = 0; t < assignmentsPerRequest; t++) {
                     topics.Add(new TopicPartition(groupId + t, t));
                 }
-                var assignment = new ConsumerMemberAssignment(0, topics);
+                var assignment = new ConsumerMemberAssignment(topics, 0);
                 assignments.Add(new SyncGroupRequest.GroupAssignment(protocolType + a, assignment));
             }
             var request = new SyncGroupRequest(groupId, generationId, memberId, assignments);
@@ -573,7 +573,7 @@ namespace KafkaClient.Tests.Unit
             for (var t = 0; t < memberCount; t++) {
                 topics.Add(new TopicPartition("topic foo" + t, t));
             }
-            var assignment = new ConsumerMemberAssignment(0, topics);
+            var assignment = new ConsumerMemberAssignment(topics, 0);
             var response = new SyncGroupResponse(errorCode, assignment);
 
             response.AssertCanEncodeDecodeResponse(0, encoder);
@@ -643,13 +643,13 @@ namespace KafkaClient.Tests.Unit
                     var memberId = "member" + m;
                     var userData = new byte[count*100];
                     _randomizer.NextBytes(userData);
-                    var metadata = new ConsumerProtocolMetadata(new []{ protocol, memberId, memberId }, protocol, 0, userData);
+                    var metadata = new ConsumerProtocolMetadata(new []{ protocol, memberId, memberId }, protocol, userData, 0);
 
                     var topics = new List<TopicPartition>();
                     for (var t = 0; t < count; t++) {
                         topics.Add(new TopicPartition("topic foo" + t, t));
                     }
-                    var assignment = new ConsumerMemberAssignment(0, topics);
+                    var assignment = new ConsumerMemberAssignment(topics, 0);
 
                     members.Add(new DescribeGroupsResponse.Member(memberId, "client" + m, "host-" + m, metadata, assignment));
                 }

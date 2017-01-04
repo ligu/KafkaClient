@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
 using KafkaClient.Common;
 using KafkaClient.Protocol;
 
@@ -7,10 +10,15 @@ namespace KafkaClient.Assignment
         where TMetadata : IMemberMetadata
         where TAssignment : IMemberAssignment
     {
-        protected MembershipEncoder(string protocolType)
+        protected MembershipEncoder(string protocolType, IEnumerable<IMembershipAssignor> assignors = null)
         {
             ProtocolType = protocolType;
+            _assignors = assignors != null 
+                ? assignors.ToImmutableDictionary(a => a.AssignmentStrategy)
+                : ImmutableDictionary<string, IMembershipAssignor>.Empty;
         }
+
+        private readonly IImmutableDictionary<string, IMembershipAssignor> _assignors;
 
         /// <inheritdoc />
         public string ProtocolType { get; }
@@ -54,6 +62,11 @@ namespace KafkaClient.Assignment
         protected abstract TMetadata DecodeMetadata(string assignmentStrategy, IKafkaReader reader, int expectedLength);
         protected abstract TAssignment DecodeAssignment(IKafkaReader reader, int expectedLength);
 
-        public abstract IMembershipAssignor GetAssigner(string protocol);
+        public IMembershipAssignor GetAssignor(string strategy)
+        {
+            IMembershipAssignor assignor;
+            if (!_assignors.TryGetValue(strategy ?? "", out assignor)) throw new ArgumentOutOfRangeException(nameof(strategy), $"Unknown strategy {strategy} for ProtocolType {ProtocolType}");
+            return assignor;
+        }
     }
 }

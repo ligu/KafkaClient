@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using KafkaClient.Common;
 using KafkaClient.Protocol;
@@ -9,8 +10,12 @@ namespace KafkaClient.Assignment
     {
         public const string Protocol = "consumer";
 
+        public ConsumerEncoder(params IMembershipAssignor[] assignors) : this((IEnumerable<IMembershipAssignor>)assignors)
+        {
+        }
+
         /// <inheritdoc />
-        public ConsumerEncoder() : base(Protocol)
+        public ConsumerEncoder(IEnumerable<IMembershipAssignor> assignors) : base(Protocol, assignors ?? ConsumerAssignor.Assignors)
         {
         }
 
@@ -23,7 +28,7 @@ namespace KafkaClient.Assignment
                 topicNames[t] = reader.ReadString();
             }
             var userData = reader.ReadBytes();
-            return new ConsumerProtocolMetadata(topicNames, assignmentStrategy, version, userData);
+            return new ConsumerProtocolMetadata(topicNames, assignmentStrategy, userData, version);
         }
 
         /// <inheritdoc />
@@ -42,7 +47,7 @@ namespace KafkaClient.Assignment
                     topics.Add(new TopicPartition(topicName, partitionId));
                 }
             }
-            return new ConsumerMemberAssignment(version, topics);
+            return new ConsumerMemberAssignment(topics, version);
         }
 
         /// <inheritdoc />
@@ -70,11 +75,6 @@ namespace KafkaClient.Assignment
                     writer.Write(partition.PartitionId);
                 }
             }
-        }
-
-        public override IMembershipAssignor GetAssigner(string protocol)
-        {
-            return new ConsumerAssignor();
         }
     }
 }

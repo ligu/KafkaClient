@@ -59,7 +59,6 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public async Task ProducerShouldReportCorrectNumberOfAsyncRequests()
         {
-            // var log = new ConsoleLog(); for (int i = 0; i < 100; i++) {
             var semaphore = new SemaphoreSlim(0);
             var routerProxy = new FakeBrokerRouter();
             //block the second call returning from send message async
@@ -86,7 +85,6 @@ namespace KafkaClient.Tests.Unit
                 await Task.Delay(2);
                 Assert.That(sendTask.IsCompleted, Is.True, "Send task should be marked as completed.");
                 Assert.That(producer.ActiveSenders, Is.EqualTo(0), "Async should now show zero count.");
-                // } log.DebugFormat(i.ToString());
             }
         }
 

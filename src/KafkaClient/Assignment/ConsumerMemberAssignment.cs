@@ -20,7 +20,7 @@ namespace KafkaClient.Assignment
     /// </summary>
     public class ConsumerMemberAssignment : IMemberAssignment, IEquatable<ConsumerMemberAssignment>
     {
-        public ConsumerMemberAssignment(short version = 0, IEnumerable<TopicPartition> partitionAssignments = null)
+        public ConsumerMemberAssignment(IEnumerable<TopicPartition> partitionAssignments = null, short version = 0)
         {
             Version = version;
             PartitionAssignments = ImmutableList<TopicPartition>.Empty.AddNotNullRange(partitionAssignments);

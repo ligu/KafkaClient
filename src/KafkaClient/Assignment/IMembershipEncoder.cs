@@ -12,6 +12,6 @@ namespace KafkaClient.Assignment
         IMemberMetadata DecodeMetadata(string protocol, IKafkaReader reader);
         IMemberAssignment DecodeAssignment(IKafkaReader reader);
 
-        IMembershipAssignor GetAssigner(string protocol);
+        IMembershipAssignor GetAssignor(string strategy);
     }
 }

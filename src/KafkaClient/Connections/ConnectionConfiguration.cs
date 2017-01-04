@@ -187,13 +187,19 @@ namespace KafkaClient.Connections
                     MaxConnectionAttempts);
             }
 
-            public static IImmutableDictionary<string, IMembershipEncoder> Encoders(IEnumerable<IMembershipEncoder> encoders = null)
+            public static IImmutableDictionary<string, IMembershipEncoder> Encoders(params IMembershipEncoder[] encoders)
+            {
+                return Encoders((IEnumerable<IMembershipEncoder>) encoders);
+            }
+
+            public static IImmutableDictionary<string, IMembershipEncoder> Encoders(IEnumerable<IMembershipEncoder> encoders)
             {
                 var defaultEncoders = encoders != null
                     ? encoders.ToImmutableDictionary(e => e.ProtocolType)
                     : ImmutableDictionary<string, IMembershipEncoder>.Empty;
                 if (!defaultEncoders.ContainsKey(ConsumerEncoder.Protocol)) {
-                    defaultEncoders = defaultEncoders.Add(ConsumerEncoder.Protocol, new ConsumerEncoder());
+                    var consumerEncoder = new ConsumerEncoder();
+                    defaultEncoders = defaultEncoders.Add(consumerEncoder.ProtocolType, consumerEncoder);
                 }
                 return defaultEncoders;
             }
