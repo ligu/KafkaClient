@@ -118,7 +118,7 @@ namespace KafkaClient
                 var metadata = memberMetadata.First().Value;
                 var encoder = _encoders[protocolType];
                 var assigner = encoder.GetAssignor(metadata.AssignmentStrategy);
-                var memberAssignment = assigner.AssignMembers(memberMetadata);
+                var memberAssignment = await assigner.AssignMembersAsync(_router, memberMetadata, cancellationToken);
                 groupAssignments = memberAssignment.Select(assignment => new SyncGroupRequest.GroupAssignment(assignment.Key, assignment.Value));
             }
             var request = new SyncGroupRequest(groupId, generationId, memberId, groupAssignments);

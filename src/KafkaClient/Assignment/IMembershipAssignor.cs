@@ -1,4 +1,6 @@
 using System.Collections.Immutable;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace KafkaClient.Assignment
 {
@@ -6,6 +8,6 @@ namespace KafkaClient.Assignment
     {
         string AssignmentStrategy { get; }
 
-        IImmutableDictionary<string, IMemberAssignment> AssignMembers(IImmutableDictionary<string, IMemberMetadata> memberMetadata);
+        Task<IImmutableDictionary<string, IMemberAssignment>> AssignMembersAsync(IRouter router, IImmutableDictionary<string, IMemberMetadata> memberMetadata, CancellationToken cancellationToken);
     }
 }

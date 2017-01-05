@@ -72,9 +72,8 @@ namespace KafkaClient.Tests.Unit
             }
         }
 
-
         [Test]
-        public async Task AssignmentSucceedsWhenStrategyExists([Values("type1", "type2")] string strategy)
+        public async Task AssignorFoundWhenStrategyExists([Values("type1", "type2")] string strategy)
         {
             var metadata = new ConsumerProtocolMetadata("mine", strategy);
 
@@ -101,5 +100,37 @@ namespace KafkaClient.Tests.Unit
                 }
             }
         }
+
+        [Test]
+        public async Task AssigmentSucceedsWhenStrategyExists()
+        {
+            var metadata = new ConsumerProtocolMetadata("mine");
+
+            var router = Substitute.For<IRouter>();
+            var conn = Substitute.For<IConnection>();
+            router.GetGroupBrokerAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                  .Returns(_ => Task.FromResult(new GroupBroker(_.Arg<string>(), 0, conn)));
+            conn.SendAsync(Arg.Any<JoinGroupRequest>(), Arg.Any<CancellationToken>(), Arg.Any<IRequestContext>())
+                  .Returns(_ => Task.FromResult(new JoinGroupResponse(ErrorResponseCode.None, 1, metadata.AssignmentStrategy, _.Arg<JoinGroupRequest>().MemberId, _.Arg<JoinGroupRequest>().MemberId, new []{ new JoinGroupResponse.Member(_.Arg<JoinGroupRequest>().MemberId, metadata) })));
+            conn.SendAsync(Arg.Any<SyncGroupRequest>(), Arg.Any<CancellationToken>(), Arg.Any<IRequestContext>())
+                  .Returns(_ => Task.FromResult(new SyncGroupResponse(ErrorResponseCode.None, new ConsumerMemberAssignment())));
+
+            var consumer = new Consumer(router, encoders: ConnectionConfiguration.Defaults.Encoders());
+            using (consumer) {
+                using (var member = await consumer.JoinConsumerGroupAsync("group", ConsumerEncoder.Protocol, metadata, CancellationToken.None)) {
+                    await consumer.SyncGroupAsync(
+                            member.GroupId, member.MemberId, member.GenerationId, member.ProtocolType,
+                            ImmutableDictionary<string, IMemberMetadata>.Empty.Add(
+                                metadata.AssignmentStrategy, metadata),
+                            CancellationToken.None);
+                }
+            }
+        }
+
+        // TESTS to write:
+        // base sticky strategy only assigns one topic & partition per member
+        // works with single topic and multiple
+        // spreads uniformly across partitions & topics
+        // when changing state, current position in partition is written (?)
     }
 }
