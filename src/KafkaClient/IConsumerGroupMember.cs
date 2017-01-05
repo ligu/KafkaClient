@@ -1,12 +1,12 @@
 ﻿using System;
-using System.Collections.Immutable;
 using System.Threading;
 using System.Threading.Tasks;
+using KafkaClient.Common;
 using KafkaClient.Protocol;
 
 namespace KafkaClient
 {
-    public interface IConsumerGroupMember : IGroupMember, IDisposable
+    public interface IConsumerGroupMember : IGroupMember, IAsyncDisposable
     {
         int GenerationId { get; }
         bool IsLeader { get; }
@@ -14,7 +14,6 @@ namespace KafkaClient
 
         void OnRejoin(JoinGroupResponse response);
 
-        //Task<IImmutableList<Message>> FetchMessagesAsync(int maxCount, CancellationToken cancellationToken);
-        //Task CommitOffsetsAsync(CancellationToken cancellationToken);
+        Task<IConsumerMessageBatch> FetchMessagesAsync(int maxCount, CancellationToken cancellationToken);
     }
 }

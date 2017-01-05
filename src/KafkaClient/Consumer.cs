@@ -13,7 +13,7 @@ namespace KafkaClient
     /// <summary>
     /// Simple consumer with access to a single topic
     /// </summary>
-    public class Consumer : IConsumer, IDisposable
+    public class Consumer : IConsumer
     {
         private readonly IRouter _router;
         private readonly bool _leaveRouterOpen;

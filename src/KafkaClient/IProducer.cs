@@ -2,11 +2,12 @@
 using System.Collections.Immutable;
 using System.Threading;
 using System.Threading.Tasks;
+using KafkaClient.Common;
 using KafkaClient.Protocol;
 
 namespace KafkaClient
 {
-    public interface IProducer : IKafkaClient
+    public interface IProducer : IAsyncDisposable
     {
         /// <summary>
         /// Send messages to the given topic.

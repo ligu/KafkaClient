@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Immutable;
 using KafkaClient.Assignment;
 using KafkaClient.Common;
+using KafkaClient.Protocol;
 
 namespace KafkaClient.Tests
 {
@@ -10,6 +12,7 @@ namespace KafkaClient.Tests
 
         public ByteTypeAssignment(byte[] bytes)
         {
+            PartitionAssignments = ImmutableList<TopicPartition>.Empty;
             Bytes = bytes ?? Empty;
         }
 
@@ -45,5 +48,6 @@ namespace KafkaClient.Tests
             return Bytes.HasEqualElementsInOrder(other.Bytes);
         }
 
+        public IImmutableList<TopicPartition> PartitionAssignments { get; }
     }
 }

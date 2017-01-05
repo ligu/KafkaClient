@@ -28,12 +28,12 @@ namespace KafkaClient.Assignment
     {
         private static readonly byte[] Empty = {};
 
-        public ConsumerProtocolMetadata(string topicName, string assignmentStrategy = ConsumerAssignor.Strategy, byte[] userData = null, short version = 0)
+        public ConsumerProtocolMetadata(string topicName, string assignmentStrategy = SimpleAssignor.Strategy, byte[] userData = null, short version = 0)
             : this(new []{ topicName }, assignmentStrategy, userData, version)
         {
         }
 
-        public ConsumerProtocolMetadata(IEnumerable<string> topicNames, string assignmentStrategy = ConsumerAssignor.Strategy, byte[] userData = null, short version = 0)
+        public ConsumerProtocolMetadata(IEnumerable<string> topicNames, string assignmentStrategy = SimpleAssignor.Strategy, byte[] userData = null, short version = 0)
         {
             AssignmentStrategy = assignmentStrategy;
             Version = version;

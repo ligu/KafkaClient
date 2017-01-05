@@ -59,7 +59,7 @@ namespace KafkaClient.Tests.Unit
 
             var assignor = Substitute.For<IMembershipAssignor>();
             assignor.AssignmentStrategy.ReturnsForAnyArgs(_ => strategy);
-            var encoders = ConnectionConfiguration.Defaults.Encoders(new ConsumerEncoder(new ConsumerAssignor(), assignor));
+            var encoders = ConnectionConfiguration.Defaults.Encoders(new ConsumerEncoder(new SimpleAssignor(), assignor));
             var consumer = new Consumer(router, encoders: encoders);
             using (consumer) {
                 using (var member = await consumer.JoinConsumerGroupAsync("group", ConsumerEncoder.Protocol, metadata, CancellationToken.None)) {
@@ -88,7 +88,7 @@ namespace KafkaClient.Tests.Unit
 
             var assignor = Substitute.For<IMembershipAssignor>();
             assignor.AssignmentStrategy.ReturnsForAnyArgs(_ => strategy);
-            var encoders = ConnectionConfiguration.Defaults.Encoders(new ConsumerEncoder(new ConsumerAssignor(), assignor));
+            var encoders = ConnectionConfiguration.Defaults.Encoders(new ConsumerEncoder(new SimpleAssignor(), assignor));
             var consumer = new Consumer(router, encoders: encoders);
             using (consumer) {
                 using (var member = await consumer.JoinConsumerGroupAsync("group", ConsumerEncoder.Protocol, metadata, CancellationToken.None)) {
@@ -131,7 +131,5 @@ namespace KafkaClient.Tests.Unit
         // can write a sticky assignor (ie no change for existing members)
         // can write a priority based assignor
         // can read messages from assigned partition(s)
-
-
     }
 }

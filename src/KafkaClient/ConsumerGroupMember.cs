@@ -157,7 +157,7 @@ namespace KafkaClient
                         }
                     }
                 }
-                await LeaveGroupAsync(CancellationToken.None);
+                await DisposeAsync(CancellationToken.None);
             } catch (Exception ex) {
                 if (!(ex is TaskCanceledException)) {
                     _log.Warn(() => LogEvent.Create(ex));
@@ -220,9 +220,9 @@ namespace KafkaClient
         /// <summary>
         /// Leave the consumer group and stop heartbeats.
         /// </summary>
-        public async Task LeaveGroupAsync(CancellationToken cancellationToken)
+        public async Task DisposeAsync(CancellationToken cancellationToken)
         {
-            //skip multiple calls to dispose
+            // skip multiple calls to dispose
             if (Interlocked.Increment(ref _disposeCount) != 1) return;
 
             _disposeToken.Cancel();
@@ -237,9 +237,14 @@ namespace KafkaClient
 
         public void Dispose()
         {
-            AsyncContext.Run(() => LeaveGroupAsync(CancellationToken.None));
+            AsyncContext.Run(() => DisposeAsync(CancellationToken.None));
         }
 
         public string ProtocolType { get; }
+
+        public Task<IConsumerMessageBatch> FetchMessagesAsync(int maxCount, CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

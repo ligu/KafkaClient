@@ -7,13 +7,13 @@ using KafkaClient.Protocol;
 
 namespace KafkaClient.Assignment
 {
-    public class ConsumerAssignor : MembershipAssignor<ConsumerProtocolMetadata, ConsumerMemberAssignment>
+    public class SimpleAssignor : MembershipAssignor<ConsumerProtocolMetadata, ConsumerMemberAssignment>
     {
-        public static ImmutableList<IMembershipAssignor> Assignors { get; } = ImmutableList<IMembershipAssignor>.Empty.Add(new ConsumerAssignor());
+        public static ImmutableList<IMembershipAssignor> Assignors { get; } = ImmutableList<IMembershipAssignor>.Empty.Add(new SimpleAssignor());
 
         public const string Strategy = "simple";
 
-        public ConsumerAssignor() : base(Strategy)
+        public SimpleAssignor() : base(Strategy)
         {
         }
 

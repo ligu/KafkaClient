@@ -15,7 +15,7 @@ namespace KafkaClient.Assignment
         }
 
         /// <inheritdoc />
-        public ConsumerEncoder(IEnumerable<IMembershipAssignor> assignors) : base(Protocol, assignors ?? ConsumerAssignor.Assignors)
+        public ConsumerEncoder(IEnumerable<IMembershipAssignor> assignors) : base(Protocol, assignors ?? SimpleAssignor.Assignors)
         {
         }
 

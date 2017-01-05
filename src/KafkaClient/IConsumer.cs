@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading;
 using System.Threading.Tasks;
@@ -7,7 +8,7 @@ using KafkaClient.Protocol;
 
 namespace KafkaClient
 {
-    public interface IConsumer
+    public interface IConsumer : IDisposable
     {
         /// <summary>
         /// Explicit fetch for topic/partition. This does not use consumer groups.
