@@ -41,18 +41,25 @@ namespace KafkaClient
         private ImmutableList<Message> _localMessages;
 
         /// <inheritdoc />
-        public async Task<IImmutableList<Message>> FetchMessagesAsync(string topicName, int partitionId, long offset, int maxCount, CancellationToken cancellationToken)
+        public async Task<IConsumerMessageBatch> FetchMessagesAsync(string topicName, int partitionId, long offset, int maxCount, CancellationToken cancellationToken)
         {
             if (offset < 0) throw new ArgumentOutOfRangeException(nameof(offset), offset, "must be >= 0");
 
+            var partition = new TopicPartition(topicName, partitionId);
+            var messages = await FetchMessagesAsync(partition, offset, maxCount, cancellationToken).ConfigureAwait(false);
+            return new MessageBatch(messages);
+        }
+
+        private async Task<IImmutableList<Message>> FetchMessagesAsync(TopicPartition partition, long offset, int maxCount, CancellationToken cancellationToken)
+        {
             // Previously fetched messages may contain everything we need
             var localIndex = _localMessages.FindIndex(m => m.Offset == offset);
             if (0 <= localIndex && localIndex + maxCount <= _localMessages.Count) return _localMessages.GetRange(localIndex, maxCount);
 
             var localCount = (0 <= localIndex && localIndex < _localMessages.Count) ? _localMessages.Count - localIndex : 0;
-            var request = new FetchRequest(new FetchRequest.Topic(topicName, partitionId, offset + localCount, Configuration.MaxPartitionFetchBytes), 
+            var request = new FetchRequest(new FetchRequest.Topic(partition.TopicName, partition.PartitionId, offset + localCount, Configuration.MaxPartitionFetchBytes), 
                 Configuration.MaxFetchServerWait, Configuration.MinFetchBytes, Configuration.MaxFetchBytes);
-            var response = await _router.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
+            var response = await _router.SendAsync(request, partition.TopicName, partition.PartitionId, cancellationToken).ConfigureAwait(false);
             var topic = response.Topics.SingleOrDefault();
 
             if (topic?.Messages?.Count == 0) return ImmutableList<Message>.Empty;
@@ -65,6 +72,26 @@ namespace KafkaClient
                 _localMessages = topic?.Messages?.ToImmutableList() ?? ImmutableList<Message>.Empty;
             }
             return _localMessages.GetRange(localIndex, Math.Min(maxCount, _localMessages.Count));
+        } 
+
+        private class MessageBatch : IConsumerMessageBatch
+        {
+            public MessageBatch(IImmutableList<Message> messages)
+            {
+                Messages = messages;
+            }
+
+            public IImmutableList<Message> Messages { get; }
+
+            public Task CommitAsync(CancellationToken cancellationToken)
+            {
+                throw new InvalidOperationException("There is no group associated with this message batch");
+            }
+
+            public Task CommitAsync(Message lastSuccessful, CancellationToken cancellationToken)
+            {
+                throw new InvalidOperationException("There is no group associated with this message batch");
+            }
         }
 
         public void Dispose()
@@ -127,6 +154,11 @@ namespace KafkaClient
                 throw request.ExtractExceptions(response);
             }
             return response.MemberAssignment;
+        }
+
+        public Task CommitOffsetAsync(string groupId, string topicName, int partitionId, long offset, CancellationToken cancellationToken)
+        {
+            return _router.CommitTopicOffsetAsync(topicName, partitionId, groupId, offset, cancellationToken);
         }
     }
 }

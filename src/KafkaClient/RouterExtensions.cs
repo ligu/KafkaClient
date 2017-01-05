@@ -104,37 +104,37 @@ namespace KafkaClient
         /// <param name="router">The router which provides the route and metadata.</param>
         /// <param name="topicName">Name of the topic to get offset information from.</param>
         /// <param name="partitionId">The partition to get offsets for.</param>
-        /// <param name="consumerGroup">The id of the consumer group</param>
+        /// <param name="groupId">The id of the consumer group</param>
         /// <param name="cancellationToken"></param>
-        public static async Task<OffsetFetchResponse.Topic> GetTopicOffsetAsync(this IRouter router, string topicName, int partitionId, string consumerGroup, CancellationToken cancellationToken)
+        public static async Task<OffsetFetchResponse.Topic> GetTopicOffsetAsync(this IRouter router, string topicName, int partitionId, string groupId, CancellationToken cancellationToken)
         {
-            var request = new OffsetFetchRequest(consumerGroup, new TopicPartition(topicName, partitionId));
-            var response = await router.SendAsync(request, topicName, partitionId, consumerGroup, cancellationToken).ConfigureAwait(false);
+            var request = new OffsetFetchRequest(groupId, new TopicPartition(topicName, partitionId));
+            var response = await router.SendAsync(request, topicName, partitionId, groupId, cancellationToken).ConfigureAwait(false);
             return response.Topics.SingleOrDefault(t => t.TopicName == topicName && t.PartitionId == partitionId);
         }
 
         /// <summary>
-        /// Get offsets for a single partitions of a given topic.
+        /// Commit offsets for a single partitions of a given topic.
         /// </summary>
         /// <param name="router">The router which provides the route and metadata.</param>
         /// <param name="topicName">Name of the topic to get offset information from.</param>
         /// <param name="partitionId">The partition to get offsets for.</param>
-        /// <param name="consumerGroup">The id of the consumer group</param>
+        /// <param name="groupId">The id of the consumer group</param>
         /// <param name="offset">The new offset</param>
         /// <param name="cancellationToken"></param>
-        public static async Task CommitTopicOffsetAsync(this IRouter router, string topicName, int partitionId, string consumerGroup, long offset, CancellationToken cancellationToken)
+        public static async Task CommitTopicOffsetAsync(this IRouter router, string topicName, int partitionId, string groupId, long offset, CancellationToken cancellationToken)
         {
-            var request = new OffsetCommitRequest(consumerGroup, new [] { new OffsetCommitRequest.Topic(topicName, partitionId, offset) });
-            await router.SendAsync(request, topicName, partitionId, consumerGroup, cancellationToken).ConfigureAwait(false);
+            var request = new OffsetCommitRequest(groupId, new [] { new OffsetCommitRequest.Topic(topicName, partitionId, offset) });
+            await router.SendAsync(request, topicName, partitionId, groupId, cancellationToken).ConfigureAwait(false);
         }
 
-        private static async Task<T> SendAsync<T>(this IRouter router, IRequest<T> request, string topicName, int partitionId, string consumerGroup, CancellationToken cancellationToken) where T : class, IResponse
+        private static async Task<T> SendAsync<T>(this IRouter router, IRequest<T> request, string topicName, int partitionId, string groupId, CancellationToken cancellationToken) where T : class, IResponse
         {
             try {
                 return await router.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
             } catch (RequestException ex) when (ex.ErrorCode == ErrorResponseCode.NotCoordinatorForGroup) {
                 // ensure the group exists, then retry
-                await router.SendAsync(new GroupCoordinatorRequest(consumerGroup), topicName, partitionId, cancellationToken).ConfigureAwait(false);
+                await router.SendAsync(new GroupCoordinatorRequest(groupId), topicName, partitionId, cancellationToken).ConfigureAwait(false);
                 return await router.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
             }
         }

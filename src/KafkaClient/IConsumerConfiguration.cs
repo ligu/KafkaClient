@@ -52,11 +52,10 @@ namespace KafkaClient
         IRetry GroupCoordinationRetry { get; }
 
         /// <summary>
-        /// The protocol name to use for this consumer.
+        /// The protocol type to use for this consumer.
         /// </summary>
-        string GroupProtocol { get; }
+        string ProtocolType { get; }
 
         // fetch buffer size multiplier -- do I still need this??
-
     }
 }

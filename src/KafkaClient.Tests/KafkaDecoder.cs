@@ -181,7 +181,7 @@ namespace KafkaClient.Tests
         private static IRequest OffsetCommitRequest(IRequestContext context, byte[] payload)
         {
             using (var reader = ReadHeader(payload)) {
-                var consumerGroup = reader.ReadString();
+                var groupId = reader.ReadString();
                 var generationId = 0;
                 string memberId = null; 
                 if (context.ApiVersion >= 1) {
@@ -215,14 +215,14 @@ namespace KafkaClient.Tests
                     }
                 }
 
-                return new OffsetCommitRequest(consumerGroup, offsetCommits, memberId, generationId, offsetRetention);
+                return new OffsetCommitRequest(groupId, offsetCommits, memberId, generationId, offsetRetention);
             }
         }
 
         private static IRequest OffsetFetchRequest(IRequestContext context, byte[] payload)
         {
             using (var reader = ReadHeader(payload)) {
-                var consumerGroup = reader.ReadString();
+                var groupId = reader.ReadString();
 
                 var topics = new List<TopicPartition>();
                 var count = reader.ReadInt32();
@@ -237,7 +237,7 @@ namespace KafkaClient.Tests
                     }
                 }
 
-                return new OffsetFetchRequest(consumerGroup, topics);
+                return new OffsetFetchRequest(groupId, topics);
             }
         }
         

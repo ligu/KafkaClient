@@ -233,6 +233,7 @@ namespace KafkaClient
                 await _heartbeatTask.WaitAsync(cancellationToken);
                 await _consumer.LeaveConsumerGroupAsync(GroupId, MemberId, cancellationToken);
             }
+            _memberAssignment = null;
         }
 
         public void Dispose()
@@ -245,6 +246,35 @@ namespace KafkaClient
         public Task<IConsumerMessageBatch> FetchMessagesAsync(int maxCount, CancellationToken cancellationToken)
         {
             throw new NotImplementedException();
+        }
+
+        private class MessageBatch : IConsumerMessageBatch
+        {
+            public MessageBatch(IImmutableList<Message> messages, TopicPartition partition, ConsumerGroupMember member)
+            {
+                Messages = messages;
+                _partition = partition;
+                _member = member;
+            }
+
+            public IImmutableList<Message> Messages { get; }
+            private readonly TopicPartition _partition;
+            private readonly ConsumerGroupMember _member;
+
+            public Task CommitAsync(CancellationToken cancellationToken)
+            {
+                return CommitAsync(Messages[Messages.Count - 1], cancellationToken);
+            }
+
+            public async Task CommitAsync(Message lastSuccessful, CancellationToken cancellationToken)
+            {
+                if (!(_member._memberAssignment?.PartitionAssignments.Contains(_partition) ?? false)) {
+                    throw new InvalidOperationException($"The topic/{_partition.TopicName}/partition/{_partition.PartitionId} is not assigned to member {_member.MemberId}");
+                }
+
+                var offset = lastSuccessful.Offset + 1;
+                await _member._consumer.CommitOffsetAsync(_member.GroupId, _partition.TopicName, _partition.PartitionId, offset, cancellationToken);
+            }
         }
     }
 }

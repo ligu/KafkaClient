@@ -22,7 +22,7 @@ namespace KafkaClient
             MaxPartitionFetchBytes = maxPartitionFetchBytes;
             GroupHeartbeat = heartbeatTimeout ?? TimeSpan.FromSeconds(Defaults.HeartbeatSeconds);
             GroupRebalanceTimeout = rebalanceTimeout ?? GroupHeartbeat;
-            GroupProtocol = protocolType ?? Defaults.ProtocolType;
+            ProtocolType = protocolType ?? Defaults.ProtocolType;
             GroupCoordinationRetry = coordinationRetry ?? Defaults.CoordinationRetry(GroupRebalanceTimeout);
         }
 
@@ -42,12 +42,12 @@ namespace KafkaClient
         /// <inheritdoc/>
         public IRetry GroupCoordinationRetry { get; }
         /// <inheritdoc/>
-        public string GroupProtocol { get; }
+        public string ProtocolType { get; }
 
         public static class Defaults
         {
             /// <summary>
-            /// The default <see cref="GroupProtocol"/>
+            /// The default <see cref="ConsumerConfiguration.ProtocolType"/>
             /// </summary>
             public const string ProtocolType = ConsumerEncoder.Protocol;
 

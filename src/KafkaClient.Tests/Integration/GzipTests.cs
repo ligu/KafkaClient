@@ -76,9 +76,9 @@ namespace KafkaClient.Tests.Integration
                         var results = await consumer.FetchMessagesAsync(offset, messages.Count, CancellationToken.None);
                         TestConfig.Log.Info(() => LogEvent.Create(">> End Consume"));
                         Assert.That(results, Is.Not.Null);
-                        Assert.That(results.Count, Is.EqualTo(messages.Count));
+                        Assert.That(results.Messages.Count, Is.EqualTo(messages.Count));
                         for (var i = 0; i < messages.Count; i++) {
-                            Assert.That(results[i].Value.ToUtf8String(), Is.EqualTo(i.ToString()));
+                            Assert.That(results.Messages[i].Value.ToUtf8String(), Is.EqualTo(i.ToString()));
                         }
                     }
                     TestConfig.Log.Info(() => LogEvent.Create(">> End EnsureGzipCanDecompressMessageFromKafka"));

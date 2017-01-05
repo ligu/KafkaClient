@@ -63,13 +63,13 @@ namespace KafkaClient.Tests.Integration
         {
             while (true) {
                 try {
-                    var messages = await consumer.FetchMessagesAsync(topicName, partitionId, offset, 100, CancellationToken.None);
+                    var batch = await consumer.FetchMessagesAsync(topicName, partitionId, offset, 100, CancellationToken.None);
 
-                    if (messages.Any()) {
-                        foreach (var message in messages) {
+                    if (batch.Messages.Any()) {
+                        foreach (var message in batch.Messages) {
                             TestConfig.Log.Info(() => LogEvent.Create($"Offset{message.Offset}"));
                         }
-                        offset = messages.Max(x => x.Offset) + 3;
+                        offset = batch.Messages.Max(x => x.Offset) + 3;
                     } else {
                         await Task.Delay(100);
                     }
