@@ -552,7 +552,9 @@ namespace KafkaClient.Tests.Unit
                 for (var t = 0; t < assignmentsPerRequest; t++) {
                     topics.Add(new TopicPartition(groupId + t, t));
                 }
-                var assignment = new ConsumerMemberAssignment(topics, 0);
+                var userData = new byte[assignmentsPerRequest*100];
+                _randomizer.NextBytes(userData);
+                var assignment = new ConsumerMemberAssignment(topics, userData, 0);
                 assignments.Add(new SyncGroupRequest.GroupAssignment(protocolType + a, assignment));
             }
             var request = new SyncGroupRequest(groupId, generationId, memberId, assignments);
@@ -573,7 +575,9 @@ namespace KafkaClient.Tests.Unit
             for (var t = 0; t < memberCount; t++) {
                 topics.Add(new TopicPartition("topic foo" + t, t));
             }
-            var assignment = new ConsumerMemberAssignment(topics, 0);
+            var userData = new byte[memberCount*100];
+            _randomizer.NextBytes(userData);
+            var assignment = new ConsumerMemberAssignment(topics, userData, 0);
             var response = new SyncGroupResponse(errorCode, assignment);
 
             response.AssertCanEncodeDecodeResponse(0, encoder);
@@ -649,7 +653,7 @@ namespace KafkaClient.Tests.Unit
                     for (var t = 0; t < count; t++) {
                         topics.Add(new TopicPartition("topic foo" + t, t));
                     }
-                    var assignment = new ConsumerMemberAssignment(topics, 0);
+                    var assignment = new ConsumerMemberAssignment(topics, userData, 0);
 
                     members.Add(new DescribeGroupsResponse.Member(memberId, "client" + m, "host-" + m, metadata, assignment));
                 }

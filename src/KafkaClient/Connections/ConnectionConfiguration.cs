@@ -198,7 +198,7 @@ namespace KafkaClient.Connections
                     ? encoders.ToImmutableDictionary(e => e.ProtocolType)
                     : ImmutableDictionary<string, IMembershipEncoder>.Empty;
                 if (!defaultEncoders.ContainsKey(ConsumerEncoder.Protocol)) {
-                    var consumerEncoder = new ConsumerEncoder();
+                    var consumerEncoder = new ConsumerEncoder(ConsumerAssignor.Assignors);
                     defaultEncoders = defaultEncoders.Add(consumerEncoder.ProtocolType, consumerEncoder);
                 }
                 return defaultEncoders;

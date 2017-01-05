@@ -47,7 +47,8 @@ namespace KafkaClient.Assignment
                     topics.Add(new TopicPartition(topicName, partitionId));
                 }
             }
-            return new ConsumerMemberAssignment(topics, version);
+            var userData = reader.ReadBytes();
+            return new ConsumerMemberAssignment(topics, userData, version);
         }
 
         /// <inheritdoc />
@@ -64,7 +65,7 @@ namespace KafkaClient.Assignment
             var topicGroups = value.PartitionAssignments.GroupBy(x => x.TopicName).ToList();
 
             writer.Write(value.Version)
-                    .Write(topicGroups.Count);
+                  .Write(topicGroups.Count);
 
             foreach (var topicGroup in topicGroups) {
                 var partitions = topicGroup.ToList();
@@ -75,6 +76,7 @@ namespace KafkaClient.Assignment
                     writer.Write(partition.PartitionId);
                 }
             }
+            writer.Write(value.UserData);
         }
     }
 }
