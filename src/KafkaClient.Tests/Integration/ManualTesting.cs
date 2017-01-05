@@ -6,7 +6,7 @@ using KafkaClient.Common;
 using KafkaClient.Protocol;
 using NUnit.Framework;
 
-namespace KafkaClient.Tests
+namespace KafkaClient.Tests.Integration
 {
     [TestFixture]
     internal class ManualTesting

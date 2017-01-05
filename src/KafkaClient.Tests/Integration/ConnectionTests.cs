@@ -9,11 +9,8 @@ using NUnit.Framework;
 
 namespace KafkaClient.Tests.Integration
 {
-    /// <summary>
-    /// Note these integration tests require an actively running kafka server defined in the app.config file.
-    /// </summary>
     [TestFixture]
-    public class KafkaConnectionTests
+    public class ConnectionTests
     {
         private Connection _conn;
 

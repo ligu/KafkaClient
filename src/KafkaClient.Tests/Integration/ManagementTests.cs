@@ -8,7 +8,7 @@ using NUnit.Framework;
 namespace KafkaClient.Tests.Integration
 {
     [TestFixture]
-    public class OffsetManagementTests
+    public class ManagementTests
     {
         private readonly KafkaOptions _options = new KafkaOptions(TestConfig.IntegrationUri, log: TestConfig.Log);
 
@@ -162,5 +162,9 @@ namespace KafkaClient.Tests.Integration
                 });
             }
         }
+
+        // TODO: can list topics
+        // TODO: can list consumer groups and offsets
+
     }
 }
