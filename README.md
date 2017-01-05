@@ -18,27 +18,26 @@ The original .Net project is a port of the [Apache Kafka protocol]. The wire pro
 Code Examples
 -----------
 ##### Producer
-```sh
+```csharp
 var options = new KafkaOptions(new Uri("http://SERVER1:9092"), new Uri("http://SERVER2:9092"));
+
 using(var client = new Producer(options)) {
      await client.SendMessageAsync("TestTopic", new Message("hello world"));
 }
-
-
 ```
+
 ##### Consumer
-```sh
+```csharp
 var options = new KafkaOptions(new Uri("http://SERVER1:9092"), new Uri("http://SERVER2:9092"));
 
 using (var router = new BrokerRouter(options)) {
 	var offset = await router.GetTopicOffsetAsync("TestTopic", 0, CancellationToken.None);
 
 	using (var consumer = new Consumer(router)) {
-		await consumer.FetchAsync(offset, 10, message => Console.WriteLine("Response: P{0},O{1} : {2}", message.Meta.PartitionId, message.Meta.Offset, message.Value), cancellationToken);
+	    await consumer.FetchAsync(offset, 10, message => Console.WriteLine("Response: P{0},O{1} : {2}", message.Meta.PartitionId, message.Meta.Offset, message.Value), cancellationToken);
 	}
 }
 ```
-
 
 Key Components
 -----------
@@ -50,10 +49,12 @@ Provides a high level abstraction for sending batches of messages to a Kafka clu
 
 ##### Consumer
 Provides a mechanism for fetching messages from a Kafka cluster.
-(To be extended to include functionality for consumer groups.)
+
+##### Consumer Assignment (`KafkaClient.Assignment`)
+Provides an extesible mechanism for assigning partitions to members of consumer groups, enabling complex coordination across multiple consumers of a set of Kafka topics. The default assignor (ConsumerAssignor) will round robin partition selection across topics.
 
 ##### Partition Selection (`KafkaClient.IPartitionSelector`)
-Provides the logic for routing requests to a particular topic to a partition.  The default selector (PartitionSelector) will use round robin partition selection if the key property on the message is null and a mod/hash of the key value if present.
+Provides the logic for routing requests to a particular topic to a partition. The default selector (PartitionSelector) will use round robin partition selection if the key property on the message is null and a mod/hash of the key value if present.
 
 ##### BrokerRouter (`KafkaClient.IBrokerRouter`)
 Provides routing for topics to partitions, topics and partitions to brokers, and cached access to topic metadata. This class also manages the multiple IConnections to each Kafka broker. Routing logic for partitions is provided by IPartitionSelector.
@@ -68,6 +69,9 @@ Status
 ** WARNING **
 This library is still work in progress and has not yet been deployed to production. It is also undergoing significant development, and breaking changes will occour.
 This notice will be removed once it's been stabilized and used in production.
+
+The biggest missing piece at this point is [stress testing](https://github.com/awr/KafkaClient/issues/17); more [comprehensive automated tests](https://github.com/awr/KafkaClient/issues/18) are also needed. For the full set, see the [backlog]
+(https://github.com/awr/KafkaClient/projects/1).
 
 [Apache Kafka protocol]:https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol
 [kafka-python]:https://github.com/mumrah/kafka-python

@@ -127,14 +127,11 @@ namespace KafkaClient.Tests.Unit
             }
         }
 
-        // unit TESTS to write:
-        // base sticky strategy only assigns one topic & partition per member
-        // works with single topic and multiple
-        // spreads uniformly across partitions & topics
-        // when changing state, current position in partition is written (?)
-        // state changes are as expected
+        // design unit TESTS to write:
         // can write a sticky assignor (ie no change for existing members)
         // can write a priority based assignor
-        // can compose assignors ?
+        // can read messages from assigned partition(s)
+
+
     }
 }

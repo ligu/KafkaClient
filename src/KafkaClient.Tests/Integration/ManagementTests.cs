@@ -162,9 +162,5 @@ namespace KafkaClient.Tests.Integration
                 });
             }
         }
-
-        // TODO: can list topics
-        // TODO: can list consumer groups and offsets
-
     }
 }
