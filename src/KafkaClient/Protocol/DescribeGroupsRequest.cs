@@ -16,7 +16,12 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class DescribeGroupsRequest : Request, IRequest<DescribeGroupsResponse>, IEquatable<DescribeGroupsRequest>
     {
-        public DescribeGroupsRequest(IEnumerable<string> groupIds = null) 
+        public DescribeGroupsRequest(params string[] groupIds) 
+            : this((IEnumerable<string>) groupIds)
+        {
+        }
+
+        public DescribeGroupsRequest(IEnumerable<string> groupIds) 
             : base(ApiKeyRequestType.DescribeGroups)
         {
             GroupIds = ImmutableList<string>.Empty.AddNotNullRange(groupIds);

@@ -18,10 +18,16 @@ namespace KafkaClient.Assignment
 
         public string AssignmentStrategy { get; }
 
-        protected abstract Task<IImmutableDictionary<string, TAssignment>> AssignAsync(IRouter router, IImmutableDictionary<string, TMetadata> memberMetadata, IImmutableDictionary<string, IMemberAssignment> previousAssignments, CancellationToken cancellationToken);
+        protected abstract Task<IImmutableDictionary<string, TAssignment>> AssignAsync(
+            IRouter router, 
+            IImmutableDictionary<string, TMetadata> memberMetadata, 
+            IImmutableDictionary<string, IMemberAssignment> previousAssignments, 
+            CancellationToken cancellationToken);
 
         public async Task<IImmutableDictionary<string, IMemberAssignment>> AssignMembersAsync(
-            IRouter router, IImmutableDictionary<string, IMemberMetadata> memberMetadata, IImmutableDictionary<string, IMemberAssignment> previousAssignments,
+            IRouter router, 
+            IImmutableDictionary<string, IMemberMetadata> memberMetadata, 
+            IImmutableDictionary<string, IMemberAssignment> previousAssignments,
             CancellationToken cancellationToken)
         {
             if (memberMetadata == null) throw new ArgumentNullException(nameof(memberMetadata));

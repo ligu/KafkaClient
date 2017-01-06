@@ -188,13 +188,10 @@ namespace KafkaClient
 
         public async Task<IImmutableDictionary<string, IMemberAssignment>> SyncGroupAsync(string groupId, string memberId, int generationId, string protocolType, 
             IImmutableDictionary<string, IMemberMetadata> memberMetadata,
-            IImmutableDictionary<string, IMemberAssignment> previousAssignments, 
+            IImmutableDictionary<string, IMemberAssignment> currentAssignments, 
             CancellationToken cancellationToken)
         {
-            var metadata = memberMetadata.First().Value;
-            var encoder = _encoders[protocolType];
-            var assigner = encoder.GetAssignor(metadata.AssignmentStrategy);
-            var memberAssignments = await assigner.AssignMembersAsync(_router, memberMetadata, previousAssignments, cancellationToken).ConfigureAwait(false);
+            var memberAssignments = await AssignMembersAsync(groupId, protocolType, memberMetadata, currentAssignments, cancellationToken);
             var groupAssignments = memberAssignments.Select(assignment => new SyncGroupRequest.GroupAssignment(assignment.Key, assignment.Value));
 
             var request = new SyncGroupRequest(groupId, generationId, memberId, groupAssignments);
@@ -203,6 +200,27 @@ namespace KafkaClient
                 throw request.ExtractExceptions(response);
             }
             return memberAssignments;
+        }
+
+        private async Task<IImmutableDictionary<string, IMemberAssignment>> AssignMembersAsync(string groupId, string protocolType, 
+            IImmutableDictionary<string, IMemberMetadata> memberMetadata, 
+            IImmutableDictionary<string, IMemberAssignment> currentAssignments,
+            CancellationToken cancellationToken)
+        {
+            var metadata = memberMetadata.First().Value;
+            var encoder = _encoders[protocolType];
+            var assigner = encoder.GetAssignor(metadata.AssignmentStrategy);
+
+            if (currentAssignments == ImmutableDictionary<string, IMemberAssignment>.Empty) {
+                // should only happen when the leader is changed
+                var request = new DescribeGroupsRequest(groupId);
+                var response = await _router.SendAsync(request, groupId, cancellationToken).ConfigureAwait(false);
+                var group = response.Groups.SingleOrDefault(g => g.GroupId == groupId);
+                if (group != null) {
+                    currentAssignments = group.Members.ToImmutableDictionary(m => m.MemberId, m => m.MemberAssignment);
+                }
+            }
+            return await assigner.AssignMembersAsync(_router, memberMetadata, currentAssignments, cancellationToken).ConfigureAwait(false);
         }
 
         public async Task<IMemberAssignment> SyncGroupAsync(string groupId, string memberId, int generationId, string protocolType, CancellationToken cancellationToken)

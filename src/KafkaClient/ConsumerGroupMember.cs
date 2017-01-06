@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
@@ -41,8 +40,7 @@ namespace KafkaClient
         private readonly ILog _log;
         private ImmutableDictionary<string, IMemberMetadata> _memberMetadata = ImmutableDictionary<string, IMemberMetadata>.Empty;
         private IImmutableDictionary<string, IMemberAssignment> _memberAssignments = ImmutableDictionary<string, IMemberAssignment>.Empty;
-
-        private IMemberAssignment Assignment => _memberAssignments[MemberId];
+        private IMemberAssignment _assignment;
 
         public string GroupId { get; }
         public string MemberId { get; }
@@ -215,10 +213,12 @@ namespace KafkaClient
         private async Task SyncGroupAsync(CancellationToken cancellationToken)
         {
             if (IsLeader) {
-                _memberAssignments = await _consumer.SyncGroupAsync(GroupId, MemberId, GenerationId, ProtocolType, _memberMetadata, _memberAssignments, cancellationToken);
+                var memberAssignments = await _consumer.SyncGroupAsync(GroupId, MemberId, GenerationId, ProtocolType, _memberMetadata, _memberAssignments, cancellationToken);
+                _assignment = memberAssignments[MemberId];
+                _memberAssignments = memberAssignments;
             } else {
-                var assignment = await _consumer.SyncGroupAsync(GroupId, MemberId, GenerationId, ProtocolType, cancellationToken);
-                _memberAssignments = ImmutableDictionary<string, IMemberAssignment>.Empty.Add(MemberId, assignment);
+                _assignment = await _consumer.SyncGroupAsync(GroupId, MemberId, GenerationId, ProtocolType, cancellationToken);
+                _memberAssignments = ImmutableDictionary<string, IMemberAssignment>.Empty;
             }
         }
 
@@ -251,7 +251,7 @@ namespace KafkaClient
         public async Task<IConsumerMessageBatch> FetchMessagesAsync(int maxCount, CancellationToken cancellationToken)
         {
             // TODO: what if there are more than one assignments for this group member??
-            var partition = Assignment.PartitionAssignments[0];
+            var partition = _assignment?.PartitionAssignments[0];
             var batch = await _consumer.FetchMessagesAsync(GroupId, partition.TopicName, partition.PartitionId, maxCount, cancellationToken);
             return new MessageBatch(batch, partition, this);
         }
@@ -271,7 +271,7 @@ namespace KafkaClient
 
             private void TestValidity()
             {
-                if (!(_member.Assignment?.PartitionAssignments.Contains(_partition) ?? false)) {
+                if (!(_member._assignment?.PartitionAssignments.Contains(_partition) ?? false)) {
                     throw new InvalidOperationException($"The topic/{_partition.TopicName}/partition/{_partition.PartitionId} is not assigned to member {_member.MemberId}");
                 }
             }

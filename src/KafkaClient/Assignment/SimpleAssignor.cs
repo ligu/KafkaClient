@@ -7,32 +7,45 @@ using KafkaClient.Protocol;
 
 namespace KafkaClient.Assignment
 {
+    /// <summary>
+    /// An Assignor whose first priority is to be sticky to previous assignments, even if this leaves some (new) members without assignments.
+    /// </summary>
     public class SimpleAssignor : MembershipAssignor<ConsumerProtocolMetadata, ConsumerMemberAssignment>
     {
         public static ImmutableList<IMembershipAssignor> Assignors { get; } = ImmutableList<IMembershipAssignor>.Empty.Add(new SimpleAssignor());
 
-        public const string Strategy = "simple";
+        public const string Strategy = "sticky";
 
         public SimpleAssignor() : base(Strategy)
         {
         }
 
         protected override async Task<IImmutableDictionary<string, ConsumerMemberAssignment>> AssignAsync(
-            IRouter router, IImmutableDictionary<string, ConsumerProtocolMetadata> memberMetadata, IImmutableDictionary<string, IMemberAssignment> previousAssignments,
+            IRouter router, 
+            IImmutableDictionary<string, ConsumerProtocolMetadata> memberMetadata, 
+            IImmutableDictionary<string, IMemberAssignment> previousAssignments,
             CancellationToken cancellationToken)
         {
             var topicNames = memberMetadata.Values.SelectMany(m => m.Subscriptions).Distinct().ToList();
             var topicMetadata = await router.GetTopicMetadataAsync(topicNames, cancellationToken);
+            var partitions = new HashSet<TopicPartition>(topicMetadata.SelectMany(t => t.Partitions.Select(p => new TopicPartition(t.TopicName, p.PartitionId))));
 
-            var keys = memberMetadata.Keys.ToImmutableArray();
             var assignments = memberMetadata.Keys.ToDictionary(_ => _, _ => new List<TopicPartition>());
-// TODO: ensure that old values are applied first
-            var index = -1;
-            foreach (var partition in topicMetadata.SelectMany(t => t.Partitions.Select(p => new TopicPartition(t.TopicName, p.PartitionId))).OrderBy(_ => _.PartitionId).ToList()) {
-                if (++index >= keys.Length) break;
+            foreach (var currentAssignment in previousAssignments) {
+                foreach (var partition in currentAssignment.Value.PartitionAssignments) {
+                    List<TopicPartition> assignment;
+                    if (partitions.Contains(partition) && assignments.TryGetValue(currentAssignment.Key, out assignment)) {
+                        assignment.Add(partition);
+                        partitions.Remove(partition);
+                    }
+                }
+            }
 
-                var key = keys[index];
-                assignments[key].Add(partition);
+            var memberIds = assignments.OrderBy(a => a.Value.Count).Select(a => a.Key).ToImmutableArray();
+            var memberIndex = 0;
+            foreach (var partition in partitions.OrderBy(_ => _.PartitionId)) {
+                 var memberId = memberIds[memberIndex++ % memberIds.Length];
+                assignments[memberId].Add(partition);
             }
 
             return assignments.ToImmutableDictionary(pair => pair.Key, pair => new ConsumerMemberAssignment(pair.Value));

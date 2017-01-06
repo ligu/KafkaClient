@@ -56,6 +56,8 @@ namespace KafkaClient.Tests.Unit
                   .Returns(_ => Task.FromResult(new JoinGroupResponse(ErrorResponseCode.None, 1, metadata.AssignmentStrategy, _.Arg<JoinGroupRequest>().MemberId, _.Arg<JoinGroupRequest>().MemberId, new []{ new JoinGroupResponse.Member(_.Arg<JoinGroupRequest>().MemberId, metadata) })));
             conn.SendAsync(Arg.Any<SyncGroupRequest>(), Arg.Any<CancellationToken>(), Arg.Any<IRequestContext>())
                   .Returns(_ => Task.FromResult(new SyncGroupResponse(ErrorResponseCode.None, new ConsumerMemberAssignment())));
+            conn.SendAsync(Arg.Any<DescribeGroupsRequest>(), Arg.Any<CancellationToken>(), Arg.Any<IRequestContext>())
+                  .Returns(_ => Task.FromResult(new DescribeGroupsResponse(null)));
 
             var assignor = Substitute.For<IMembershipAssignor>();
             assignor.AssignmentStrategy.ReturnsForAnyArgs(_ => strategy);
@@ -85,6 +87,8 @@ namespace KafkaClient.Tests.Unit
                   .Returns(_ => Task.FromResult(new JoinGroupResponse(ErrorResponseCode.None, 1, metadata.AssignmentStrategy, _.Arg<JoinGroupRequest>().MemberId, _.Arg<JoinGroupRequest>().MemberId, new []{ new JoinGroupResponse.Member(_.Arg<JoinGroupRequest>().MemberId, metadata) })));
             conn.SendAsync(Arg.Any<SyncGroupRequest>(), Arg.Any<CancellationToken>(), Arg.Any<IRequestContext>())
                   .Returns(_ => Task.FromResult(new SyncGroupResponse(ErrorResponseCode.None, new ConsumerMemberAssignment())));
+            conn.SendAsync(Arg.Any<DescribeGroupsRequest>(), Arg.Any<CancellationToken>(), Arg.Any<IRequestContext>())
+                  .Returns(_ => Task.FromResult(new DescribeGroupsResponse(null)));
 
             var assignor = Substitute.For<IMembershipAssignor>();
             assignor.AssignmentStrategy.ReturnsForAnyArgs(_ => strategy);
@@ -114,6 +118,8 @@ namespace KafkaClient.Tests.Unit
                   .Returns(_ => Task.FromResult(new JoinGroupResponse(ErrorResponseCode.None, 1, metadata.AssignmentStrategy, _.Arg<JoinGroupRequest>().MemberId, _.Arg<JoinGroupRequest>().MemberId, new []{ new JoinGroupResponse.Member(_.Arg<JoinGroupRequest>().MemberId, metadata) })));
             conn.SendAsync(Arg.Any<SyncGroupRequest>(), Arg.Any<CancellationToken>(), Arg.Any<IRequestContext>())
                   .Returns(_ => Task.FromResult(new SyncGroupResponse(ErrorResponseCode.None, new ConsumerMemberAssignment())));
+            conn.SendAsync(Arg.Any<DescribeGroupsRequest>(), Arg.Any<CancellationToken>(), Arg.Any<IRequestContext>())
+                  .Returns(_ => Task.FromResult(new DescribeGroupsResponse(null)));
 
             var consumer = new Consumer(router, encoders: ConnectionConfiguration.Defaults.Encoders());
             using (consumer) {
@@ -128,12 +134,10 @@ namespace KafkaClient.Tests.Unit
         }
 
         // design unit TESTS to write:
-        // can write a sticky assignor (ie no change for existing members)
-        // - when not enough info is available to be sticky, make sure we request more (so we are sticky). This will dramatically reduce thrashing which client has which topic/partition
-        // can write a priority based assignor
-        // can read messages from assigned partition(s)
         // (async) locking is done correctly in the group member
         // linked list crawling for next flows nicely in code
         // dealing correctly with losing ownership
+        // can read messages from assigned partition(s)
+        // can write a priority based assignor
     }
 }
