@@ -40,7 +40,9 @@ namespace KafkaClient
         private readonly TimeSpan _heartbeatTimeout;
         private readonly ILog _log;
         private ImmutableDictionary<string, IMemberMetadata> _memberMetadata = ImmutableDictionary<string, IMemberMetadata>.Empty;
-        private IMemberAssignment _memberAssignment;
+        private IImmutableDictionary<string, IMemberAssignment> _memberAssignments = ImmutableDictionary<string, IMemberAssignment>.Empty;
+
+        private IMemberAssignment Assignment => _memberAssignments[MemberId];
 
         public string GroupId { get; }
         public string MemberId { get; }
@@ -197,24 +199,27 @@ namespace KafkaClient
         private async Task RejoinGroupAsync(CancellationToken cancellationToken)
         {
             // on success, this will call OnRejoin before returning
-            await _consumer.JoinConsumerGroupAsync(GroupId, ProtocolType, _memberMetadata.Values, cancellationToken, this);
+            await _consumer.JoinConsumerGroupAsync(GroupId, ProtocolType, IsLeader ? _memberMetadata.Values : null, cancellationToken, this);
         }
 
         public void OnRejoin(JoinGroupResponse response)
         {
             if (response.MemberId != MemberId) throw new ArgumentOutOfRangeException(nameof(response), $"Member is not valid ({MemberId} != {response.MemberId})");
 
-            // TODO: async lock
+            // TODO: async lock ?
             IsLeader = response.LeaderId == MemberId;
             GenerationId = response.GenerationId;
-            _memberMetadata = IsLeader 
-                ? ImmutableDictionary<string, IMemberMetadata>.Empty.AddRange(response.Members.Select(m => new KeyValuePair<string, IMemberMetadata>(m.MemberId, m.Metadata))) 
-                : ImmutableDictionary<string, IMemberMetadata>.Empty;
+            _memberMetadata = response.Members.ToImmutableDictionary(member => member.MemberId, member => member.Metadata);
         }
 
         private async Task SyncGroupAsync(CancellationToken cancellationToken)
         {
-            _memberAssignment = await _consumer.SyncGroupAsync(GroupId, MemberId, GenerationId, ProtocolType, IsLeader ? _memberMetadata : ImmutableDictionary<string, IMemberMetadata>.Empty, cancellationToken);
+            if (IsLeader) {
+                _memberAssignments = await _consumer.SyncGroupAsync(GroupId, MemberId, GenerationId, ProtocolType, _memberMetadata, _memberAssignments, cancellationToken);
+            } else {
+                var assignment = await _consumer.SyncGroupAsync(GroupId, MemberId, GenerationId, ProtocolType, cancellationToken);
+                _memberAssignments = ImmutableDictionary<string, IMemberAssignment>.Empty.Add(MemberId, assignment);
+            }
         }
 
         /// <summary>
@@ -233,7 +238,7 @@ namespace KafkaClient
                 await _heartbeatTask.WaitAsync(cancellationToken);
                 await _consumer.LeaveConsumerGroupAsync(GroupId, MemberId, cancellationToken);
             }
-            _memberAssignment = null;
+            _memberAssignments = ImmutableDictionary<string, IMemberAssignment>.Empty;
         }
 
         public void Dispose()
@@ -245,7 +250,8 @@ namespace KafkaClient
 
         public async Task<IConsumerMessageBatch> FetchMessagesAsync(int maxCount, CancellationToken cancellationToken)
         {
-            var partition = _memberAssignment.PartitionAssignments[0];
+            // TODO: what if there are more than one assignments for this group member??
+            var partition = Assignment.PartitionAssignments[0];
             var batch = await _consumer.FetchMessagesAsync(GroupId, partition.TopicName, partition.PartitionId, maxCount, cancellationToken);
             return new MessageBatch(batch, partition, this);
         }
@@ -265,7 +271,7 @@ namespace KafkaClient
 
             private void TestValidity()
             {
-                if (!(_member._memberAssignment?.PartitionAssignments.Contains(_partition) ?? false)) {
+                if (!(_member.Assignment?.PartitionAssignments.Contains(_partition) ?? false)) {
                     throw new InvalidOperationException($"The topic/{_partition.TopicName}/partition/{_partition.PartitionId} is not assigned to member {_member.MemberId}");
                 }
             }

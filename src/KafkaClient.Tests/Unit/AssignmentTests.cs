@@ -31,8 +31,8 @@ namespace KafkaClient.Tests.Unit
                     using (var member = await consumer.JoinConsumerGroupAsync("group", ConsumerEncoder.Protocol, metadata, CancellationToken.None)) {
                         await consumer.SyncGroupAsync(
                                 member.GroupId, member.MemberId, member.GenerationId, member.ProtocolType,
-                                ImmutableDictionary<string, IMemberMetadata>.Empty.Add(
-                                    metadata.AssignmentStrategy, metadata),
+                                ImmutableDictionary<string, IMemberMetadata>.Empty.Add(metadata.AssignmentStrategy, metadata),
+                                ImmutableDictionary<string, IMemberAssignment>.Empty,
                                 CancellationToken.None)
                             ;
                     }
@@ -65,8 +65,8 @@ namespace KafkaClient.Tests.Unit
                 using (var member = await consumer.JoinConsumerGroupAsync("group", ConsumerEncoder.Protocol, metadata, CancellationToken.None)) {
                     await consumer.SyncGroupAsync(
                             member.GroupId, member.MemberId, member.GenerationId, member.ProtocolType,
-                            ImmutableDictionary<string, IMemberMetadata>.Empty.Add(
-                                metadata.AssignmentStrategy, metadata),
+                            ImmutableDictionary<string, IMemberMetadata>.Empty.Add(metadata.AssignmentStrategy, metadata),
+                            ImmutableDictionary<string, IMemberAssignment>.Empty,
                             CancellationToken.None);
                 }
             }
@@ -94,8 +94,8 @@ namespace KafkaClient.Tests.Unit
                 using (var member = await consumer.JoinConsumerGroupAsync("group", ConsumerEncoder.Protocol, metadata, CancellationToken.None)) {
                     await consumer.SyncGroupAsync(
                             member.GroupId, member.MemberId, member.GenerationId, member.ProtocolType,
-                            ImmutableDictionary<string, IMemberMetadata>.Empty.Add(
-                                metadata.AssignmentStrategy, metadata),
+                            ImmutableDictionary<string, IMemberMetadata>.Empty.Add(metadata.AssignmentStrategy, metadata),
+                            ImmutableDictionary<string, IMemberAssignment>.Empty,
                             CancellationToken.None);
                 }
             }
@@ -120,8 +120,8 @@ namespace KafkaClient.Tests.Unit
                 using (var member = await consumer.JoinConsumerGroupAsync("group", ConsumerEncoder.Protocol, metadata, CancellationToken.None)) {
                     await consumer.SyncGroupAsync(
                             member.GroupId, member.MemberId, member.GenerationId, member.ProtocolType,
-                            ImmutableDictionary<string, IMemberMetadata>.Empty.Add(
-                                metadata.AssignmentStrategy, metadata),
+                            ImmutableDictionary<string, IMemberMetadata>.Empty.Add(metadata.AssignmentStrategy, metadata),
+                            ImmutableDictionary<string, IMemberAssignment>.Empty,
                             CancellationToken.None);
                 }
             }
@@ -129,7 +129,11 @@ namespace KafkaClient.Tests.Unit
 
         // design unit TESTS to write:
         // can write a sticky assignor (ie no change for existing members)
+        // - when not enough info is available to be sticky, make sure we request more (so we are sticky). This will dramatically reduce thrashing which client has which topic/partition
         // can write a priority based assignor
         // can read messages from assigned partition(s)
+        // (async) locking is done correctly in the group member
+        // linked list crawling for next flows nicely in code
+        // dealing correctly with losing ownership
     }
 }

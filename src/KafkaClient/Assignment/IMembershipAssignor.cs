@@ -8,6 +8,6 @@ namespace KafkaClient.Assignment
     {
         string AssignmentStrategy { get; }
 
-        Task<IImmutableDictionary<string, IMemberAssignment>> AssignMembersAsync(IRouter router, IImmutableDictionary<string, IMemberMetadata> memberMetadata, CancellationToken cancellationToken);
+        Task<IImmutableDictionary<string, IMemberAssignment>> AssignMembersAsync(IRouter router, IImmutableDictionary<string, IMemberMetadata> memberMetadata, IImmutableDictionary<string, IMemberAssignment> previousAssignments, CancellationToken cancellationToken);
     }
 }

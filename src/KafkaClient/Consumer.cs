@@ -156,7 +156,7 @@ namespace KafkaClient
         {
             if (!_encoders.ContainsKey(protocolType ?? "")) throw new ArgumentOutOfRangeException(nameof(metadata), $"ProtocolType {protocolType} is unknown");
 
-            var protocols = metadata.Select(m => new JoinGroupRequest.GroupProtocol(m));
+            var protocols = metadata?.Select(m => new JoinGroupRequest.GroupProtocol(m));
             var request = new JoinGroupRequest(groupId, Configuration.GroupHeartbeat, member?.MemberId ?? "", protocolType, protocols, Configuration.GroupRebalanceTimeout);
             var response = await _router.SendAsync(request, groupId, cancellationToken, retryPolicy: Configuration.GroupCoordinationRetry).ConfigureAwait(false);
             if (!response.ErrorCode.IsSuccess()) {
@@ -186,17 +186,28 @@ namespace KafkaClient
             return response.ErrorCode;
         }
 
-        public async Task<IMemberAssignment> SyncGroupAsync(string groupId, string memberId, int generationId, string protocolType, IImmutableDictionary<string, IMemberMetadata> memberMetadata, CancellationToken cancellationToken)
+        public async Task<IImmutableDictionary<string, IMemberAssignment>> SyncGroupAsync(string groupId, string memberId, int generationId, string protocolType, 
+            IImmutableDictionary<string, IMemberMetadata> memberMetadata,
+            IImmutableDictionary<string, IMemberAssignment> previousAssignments, 
+            CancellationToken cancellationToken)
         {
-            IEnumerable<SyncGroupRequest.GroupAssignment> groupAssignments = null;
-            if (memberMetadata?.Count > 0) {
-                var metadata = memberMetadata.First().Value;
-                var encoder = _encoders[protocolType];
-                var assigner = encoder.GetAssignor(metadata.AssignmentStrategy);
-                var memberAssignment = await assigner.AssignMembersAsync(_router, memberMetadata, cancellationToken).ConfigureAwait(false);
-                groupAssignments = memberAssignment.Select(assignment => new SyncGroupRequest.GroupAssignment(assignment.Key, assignment.Value));
-            }
+            var metadata = memberMetadata.First().Value;
+            var encoder = _encoders[protocolType];
+            var assigner = encoder.GetAssignor(metadata.AssignmentStrategy);
+            var memberAssignments = await assigner.AssignMembersAsync(_router, memberMetadata, previousAssignments, cancellationToken).ConfigureAwait(false);
+            var groupAssignments = memberAssignments.Select(assignment => new SyncGroupRequest.GroupAssignment(assignment.Key, assignment.Value));
+
             var request = new SyncGroupRequest(groupId, generationId, memberId, groupAssignments);
+            var response = await _router.SendAsync(request, groupId, cancellationToken, retryPolicy: Configuration.GroupCoordinationRetry).ConfigureAwait(false);
+            if (!response.ErrorCode.IsSuccess()) {
+                throw request.ExtractExceptions(response);
+            }
+            return memberAssignments;
+        }
+
+        public async Task<IMemberAssignment> SyncGroupAsync(string groupId, string memberId, int generationId, string protocolType, CancellationToken cancellationToken)
+        {
+            var request = new SyncGroupRequest(groupId, generationId, memberId);
             var response = await _router.SendAsync(request, groupId, cancellationToken, retryPolicy: Configuration.GroupCoordinationRetry).ConfigureAwait(false);
             if (!response.ErrorCode.IsSuccess()) {
                 throw request.ExtractExceptions(response);

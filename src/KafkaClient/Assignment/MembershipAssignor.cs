@@ -18,14 +18,16 @@ namespace KafkaClient.Assignment
 
         public string AssignmentStrategy { get; }
 
-        protected abstract Task<IImmutableDictionary<string, TAssignment>> AssignAsync(IRouter router, IImmutableDictionary<string, TMetadata> memberMetadata, CancellationToken cancellationToken);
+        protected abstract Task<IImmutableDictionary<string, TAssignment>> AssignAsync(IRouter router, IImmutableDictionary<string, TMetadata> memberMetadata, IImmutableDictionary<string, IMemberAssignment> previousAssignments, CancellationToken cancellationToken);
 
-        public async Task<IImmutableDictionary<string, IMemberAssignment>> AssignMembersAsync(IRouter router, IImmutableDictionary<string, IMemberMetadata> memberMetadata, CancellationToken cancellationToken)
+        public async Task<IImmutableDictionary<string, IMemberAssignment>> AssignMembersAsync(
+            IRouter router, IImmutableDictionary<string, IMemberMetadata> memberMetadata, IImmutableDictionary<string, IMemberAssignment> previousAssignments,
+            CancellationToken cancellationToken)
         {
             if (memberMetadata == null) throw new ArgumentNullException(nameof(memberMetadata));
 
             var typedMetadata = memberMetadata.Select(pair => new KeyValuePair<string, TMetadata>(pair.Key, (TMetadata)pair.Value)).ToImmutableDictionary();
-            var typedAssignment = await AssignAsync(router, typedMetadata, cancellationToken);
+            var typedAssignment = await AssignAsync(router, typedMetadata, previousAssignments ?? ImmutableDictionary<string, IMemberAssignment>.Empty, cancellationToken);
             return typedAssignment.Select(pair => new KeyValuePair<string, IMemberAssignment>(pair.Key, pair.Value)).ToImmutableDictionary();
         }
     }

@@ -17,13 +17,16 @@ namespace KafkaClient.Assignment
         {
         }
 
-        protected override async Task<IImmutableDictionary<string, ConsumerMemberAssignment>> AssignAsync(IRouter router, IImmutableDictionary<string, ConsumerProtocolMetadata> memberMetadata, CancellationToken cancellationToken)
+        protected override async Task<IImmutableDictionary<string, ConsumerMemberAssignment>> AssignAsync(
+            IRouter router, IImmutableDictionary<string, ConsumerProtocolMetadata> memberMetadata, IImmutableDictionary<string, IMemberAssignment> previousAssignments,
+            CancellationToken cancellationToken)
         {
             var topicNames = memberMetadata.Values.SelectMany(m => m.Subscriptions).Distinct().ToList();
             var topicMetadata = await router.GetTopicMetadataAsync(topicNames, cancellationToken);
 
             var keys = memberMetadata.Keys.ToImmutableArray();
             var assignments = memberMetadata.Keys.ToDictionary(_ => _, _ => new List<TopicPartition>());
+// TODO: ensure that old values are applied first
             var index = -1;
             foreach (var partition in topicMetadata.SelectMany(t => t.Partitions.Select(p => new TopicPartition(t.TopicName, p.PartitionId))).OrderBy(_ => _.PartitionId).ToList()) {
                 if (++index >= keys.Length) break;

@@ -21,7 +21,8 @@ namespace KafkaClient
         IConsumerConfiguration Configuration { get; }
 
         Task<IConsumerGroupMember> JoinConsumerGroupAsync(string groupId, string protocolType, IEnumerable<IMemberMetadata> metadata, CancellationToken cancellationToken, IConsumerGroupMember member = null);
-        Task<IMemberAssignment> SyncGroupAsync(string groupId, string memberId, int generationId, string protocolType, IImmutableDictionary<string, IMemberMetadata> memberMetadata, CancellationToken cancellationToken);
+        Task<IImmutableDictionary<string, IMemberAssignment>> SyncGroupAsync(string groupId, string memberId, int generationId, string protocolType, IImmutableDictionary<string, IMemberMetadata> memberMetadata, IImmutableDictionary<string, IMemberAssignment> previousAssignments, CancellationToken cancellationToken);
+        Task<IMemberAssignment> SyncGroupAsync(string groupId, string memberId, int generationId, string protocolType, CancellationToken cancellationToken);
         Task<ErrorResponseCode> SendHeartbeatAsync(string groupId, string memberId, int generationId, CancellationToken cancellationToken);
         Task<IConsumerMessageBatch> FetchMessagesAsync(string groupId, string topicName, int partitionId, int maxCount, CancellationToken cancellationToken);
         Task LeaveConsumerGroupAsync(string groupId, string memberId, CancellationToken cancellationToken, bool awaitResponse = true);

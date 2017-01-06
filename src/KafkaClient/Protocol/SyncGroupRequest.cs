@@ -11,7 +11,7 @@ namespace KafkaClient.Protocol
     ///   GroupId => string
     ///   GroupGenerationId => int32
     ///   MemberId => string
-    ///   GroupAssignment => MemberId MemberAssignment
+    ///   GroupAssignment => MemberId MemberAssignment -- only the leader should specify group assignments
     ///     MemberId => string
     ///     MemberAssignment => bytes
     /// 
@@ -20,7 +20,7 @@ namespace KafkaClient.Protocol
     public class SyncGroupRequest : GroupRequest, IRequest<SyncGroupResponse>, IEquatable<SyncGroupRequest>
     {
         /// <inheritdoc />
-        public SyncGroupRequest(string groupId, int groupGenerationId, string memberId, IEnumerable<GroupAssignment> groupAssignments) 
+        public SyncGroupRequest(string groupId, int groupGenerationId, string memberId, IEnumerable<GroupAssignment> groupAssignments = null) 
             : base(ApiKeyRequestType.SyncGroup, groupId, memberId, groupGenerationId)
         {
             GroupAssignments = ImmutableList<GroupAssignment>.Empty.AddNotNullRange(groupAssignments);
