@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
@@ -23,7 +24,7 @@ namespace KafkaClient
             MemberId = response.MemberId;
             ProtocolType = request.ProtocolType;
 
-            OnRejoin(response);
+            OnJoinGroup(response);
 
             // This thread will heartbeat on the appropriate frequency
             _heartbeatDelay = TimeSpan.FromMilliseconds(request.SessionTimeout.TotalMilliseconds / 2);
@@ -38,15 +39,16 @@ namespace KafkaClient
         private readonly TimeSpan _heartbeatDelay;
         private readonly TimeSpan _heartbeatTimeout;
         private readonly ILog _log;
+
+        private readonly AsyncLock _lock = new AsyncLock();
         private ImmutableDictionary<string, IMemberMetadata> _memberMetadata = ImmutableDictionary<string, IMemberMetadata>.Empty;
         private IImmutableDictionary<string, IMemberAssignment> _memberAssignments = ImmutableDictionary<string, IMemberAssignment>.Empty;
         private IMemberAssignment _assignment;
+        public bool IsLeader { get; private set; }
+        public int GenerationId { get; private set; }
 
         public string GroupId { get; }
         public string MemberId { get; }
-
-        public bool IsLeader { get; private set; }
-        public int GenerationId { get; private set; }
 
         /// <summary>
         /// State machine for Coordinator
@@ -130,7 +132,7 @@ namespace KafkaClient
                                 break;
 
                             case CoordinatorState.Joining:
-                                await RejoinGroupAsync(_disposeToken.Token).ConfigureAwait(false);
+                                await JoinGroupAsync(_disposeToken.Token).ConfigureAwait(false);
                                 state = CoordinatorState.AwaitSync;
                                 lastHeartbeat = DateTimeOffset.UtcNow;
                                 continue;
@@ -194,31 +196,40 @@ namespace KafkaClient
             }
         }
 
-        private async Task RejoinGroupAsync(CancellationToken cancellationToken)
+        private async Task JoinGroupAsync(CancellationToken cancellationToken)
         {
             // on success, this will call OnRejoin before returning
-            await _consumer.JoinConsumerGroupAsync(GroupId, ProtocolType, IsLeader ? _memberMetadata.Values : null, cancellationToken, this);
+            IEnumerable<IMemberMetadata> memberMetadata = null;
+            using (_lock.Lock()) {
+                if (IsLeader) {
+                    memberMetadata = _memberMetadata.Values;
+                }
+            }
+            await _consumer.JoinConsumerGroupAsync(GroupId, ProtocolType, memberMetadata, cancellationToken, this);
         }
 
-        public void OnRejoin(JoinGroupResponse response)
+        public void OnJoinGroup(JoinGroupResponse response)
         {
             if (response.MemberId != MemberId) throw new ArgumentOutOfRangeException(nameof(response), $"Member is not valid ({MemberId} != {response.MemberId})");
 
-            // TODO: async lock ?
-            IsLeader = response.LeaderId == MemberId;
-            GenerationId = response.GenerationId;
-            _memberMetadata = response.Members.ToImmutableDictionary(member => member.MemberId, member => member.Metadata);
+            using (_lock.Lock()) {
+                IsLeader = response.LeaderId == MemberId;
+                GenerationId = response.GenerationId;
+                _memberMetadata = response.Members.ToImmutableDictionary(member => member.MemberId, member => member.Metadata);
+            }
         }
 
         private async Task SyncGroupAsync(CancellationToken cancellationToken)
         {
-            if (IsLeader) {
-                var memberAssignments = await _consumer.SyncGroupAsync(GroupId, MemberId, GenerationId, ProtocolType, _memberMetadata, _memberAssignments, cancellationToken);
-                _assignment = memberAssignments[MemberId];
-                _memberAssignments = memberAssignments;
-            } else {
-                _assignment = await _consumer.SyncGroupAsync(GroupId, MemberId, GenerationId, ProtocolType, cancellationToken);
-                _memberAssignments = ImmutableDictionary<string, IMemberAssignment>.Empty;
+            using (await _lock.LockAsync(cancellationToken)) {
+                if (IsLeader) {
+                    var memberAssignments = await _consumer.SyncGroupAsync(GroupId, MemberId, GenerationId, ProtocolType, _memberMetadata, _memberAssignments, cancellationToken);
+                    _assignment = memberAssignments[MemberId];
+                    _memberAssignments = memberAssignments;
+                } else {
+                    _assignment = await _consumer.SyncGroupAsync(GroupId, MemberId, GenerationId, ProtocolType, cancellationToken);
+                    _memberAssignments = ImmutableDictionary<string, IMemberAssignment>.Empty;
+                }
             }
         }
 
@@ -238,7 +249,7 @@ namespace KafkaClient
                 await _heartbeatTask.WaitAsync(cancellationToken);
                 await _consumer.LeaveConsumerGroupAsync(GroupId, MemberId, cancellationToken);
             }
-            _memberAssignments = ImmutableDictionary<string, IMemberAssignment>.Empty;
+            _assignment = null;
         }
 
         public void Dispose()
@@ -250,10 +261,12 @@ namespace KafkaClient
 
         public async Task<IConsumerMessageBatch> FetchMessagesAsync(int maxCount, CancellationToken cancellationToken)
         {
-            // TODO: what if there are more than one assignments for this group member??
-            var partition = _assignment?.PartitionAssignments[0];
-            var batch = await _consumer.FetchMessagesAsync(GroupId, partition.TopicName, partition.PartitionId, maxCount, cancellationToken);
-            return new MessageBatch(batch, partition, this);
+            using (await _lock.LockAsync(cancellationToken)) {
+                // TODO: what if there are more than one assignments for this group member??
+                var partition = _assignment?.PartitionAssignments[0];
+                var batch = await _consumer.FetchMessagesAsync(GroupId, partition.TopicName, partition.PartitionId, maxCount, cancellationToken);
+                return new MessageBatch(batch, partition, this);
+            }
         }
 
         private class MessageBatch : IConsumerMessageBatch
@@ -272,7 +285,8 @@ namespace KafkaClient
             private void TestValidity()
             {
                 if (!(_member._assignment?.PartitionAssignments.Contains(_partition) ?? false)) {
-                    throw new InvalidOperationException($"The topic/{_partition.TopicName}/partition/{_partition.PartitionId} is not assigned to member {_member.MemberId}");
+                    throw new InvalidOperationException(
+                        $"The topic/{_partition.TopicName}/partition/{_partition.PartitionId} is not assigned to member {_member.MemberId}");
                 }
             }
 

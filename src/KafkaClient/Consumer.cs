@@ -164,7 +164,7 @@ namespace KafkaClient
             }
 
             if (member != null) {
-                member.OnRejoin(response);
+                member.OnJoinGroup(response);
                 return member;
             }
             return new ConsumerGroupMember(this, request, response, _router.Log);

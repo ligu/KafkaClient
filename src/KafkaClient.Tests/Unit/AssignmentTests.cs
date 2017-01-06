@@ -135,6 +135,7 @@ namespace KafkaClient.Tests.Unit
 
         // design unit TESTS to write:
         // (async) locking is done correctly in the group member
+        // what if there are more than one assignments for a group member??
         // linked list crawling for next flows nicely in code
         // dealing correctly with losing ownership
         // can read messages from assigned partition(s)
