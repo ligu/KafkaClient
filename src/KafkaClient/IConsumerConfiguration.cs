@@ -26,6 +26,11 @@ namespace KafkaClient
         int? MinFetchBytes { get; }
 
         /// <summary>
+        /// Multiplier to use when encountering a <see cref="KafkaClient.Protocol.BufferUnderRunException"/> on Fetching messages.
+        /// </summary>
+        int? FetchByteMultiplier { get; }
+
+        /// <summary>
         /// The max wait time is the maximum amount of time to block waiting if insufficient data is available at the time the request is issued in a FetchRequest (<see cref="KafkaClient.Protocol.FetchRequest.MaxWaitTime"/>).
         /// </summary>
         TimeSpan? MaxFetchServerWait { get; }
@@ -55,7 +60,5 @@ namespace KafkaClient
         /// The protocol type to use for this consumer.
         /// </summary>
         string ProtocolType { get; }
-
-        // fetch buffer size multiplier -- do I still need this??
     }
 }

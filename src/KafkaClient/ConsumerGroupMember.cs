@@ -243,37 +243,46 @@ namespace KafkaClient
 
         public string ProtocolType { get; }
 
-        public Task<IConsumerMessageBatch> FetchMessagesAsync(int maxCount, CancellationToken cancellationToken)
+        public async Task<IConsumerMessageBatch> FetchMessagesAsync(int maxCount, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            var partition = _memberAssignment.PartitionAssignments[0];
+            var batch = await _consumer.FetchMessagesAsync(GroupId, partition.TopicName, partition.PartitionId, maxCount, cancellationToken);
+            return new MessageBatch(batch, partition, this);
         }
 
         private class MessageBatch : IConsumerMessageBatch
         {
-            public MessageBatch(IImmutableList<Message> messages, TopicPartition partition, ConsumerGroupMember member)
+            private readonly IConsumerMessageBatch _batch;
+            private readonly TopicPartition _partition;
+            private readonly ConsumerGroupMember _member;
+
+            public MessageBatch(IConsumerMessageBatch batch, TopicPartition partition, ConsumerGroupMember member)
             {
-                Messages = messages;
+                _batch = batch;
                 _partition = partition;
                 _member = member;
             }
 
-            public IImmutableList<Message> Messages { get; }
-            private readonly TopicPartition _partition;
-            private readonly ConsumerGroupMember _member;
-
-            public Task CommitAsync(CancellationToken cancellationToken)
-            {
-                return CommitAsync(Messages[Messages.Count - 1], cancellationToken);
-            }
-
-            public async Task CommitAsync(Message lastSuccessful, CancellationToken cancellationToken)
+            private void TestValidity()
             {
                 if (!(_member._memberAssignment?.PartitionAssignments.Contains(_partition) ?? false)) {
                     throw new InvalidOperationException($"The topic/{_partition.TopicName}/partition/{_partition.PartitionId} is not assigned to member {_member.MemberId}");
                 }
+            }
 
-                var offset = lastSuccessful.Offset + 1;
-                await _member._consumer.CommitOffsetAsync(_member.GroupId, _partition.TopicName, _partition.PartitionId, offset, cancellationToken);
+            public IImmutableList<Message> Messages => _batch.Messages;
+
+
+            public Task CommitAsync(Message lastSuccessful, CancellationToken cancellationToken)
+            {
+                TestValidity();
+                return _batch.CommitAsync(lastSuccessful, cancellationToken);
+            }
+
+            public Task<IConsumerMessageBatch> FetchNextAsync(int maxCount, CancellationToken cancellationToken)
+            {
+                TestValidity();
+                return _batch.FetchNextAsync(maxCount, cancellationToken);
             }
         }
     }

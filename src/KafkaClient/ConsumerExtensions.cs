@@ -54,5 +54,12 @@ namespace KafkaClient
         {
             return consumer.JoinConsumerGroupAsync(groupId, protocolType, new[] { metadata }, cancellationToken);
         }
+
+        public static Task CommitAsync(this IConsumerMessageBatch batch, CancellationToken cancellationToken)
+        {
+            if (batch.Messages.Count == 0) return Task.FromResult(0);
+
+            return batch.CommitAsync(batch.Messages[batch.Messages.Count - 1], cancellationToken);
+        }
     }
 }

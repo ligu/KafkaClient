@@ -243,7 +243,7 @@ namespace KafkaClient.Tests.Integration
         }
 
         [Test]
-        public async Task FetchMessagesBufferUnderRunTest()
+        public async Task FetchMessagesBufferUnderRunNoMultiplier()
         {
             using (var router = new Router(_options)) {
                 await router.TemporaryTopicAsync(async topicName => {
@@ -264,9 +264,35 @@ namespace KafkaClient.Tests.Integration
                                 // Now let's consume
                                 await consumer.FetchMessagesAsync(offset, 5, CancellationToken.None);
                                 Assert.Fail("should have thrown BufferUnderRunException");
-                            } catch (BufferUnderRunException ex) {
-                                Console.WriteLine(ex.ToString());
+                            } catch (BufferUnderRunException) {
+                                // Console.WriteLine(ex.ToString());
                             }
+                        }
+                    }
+                });
+            }
+        }
+
+        [Test]
+        public async Task FetchMessagesBufferUnderRunWithMultiplier()
+        {
+            using (var router = new Router(_options)) {
+                await router.TemporaryTopicAsync(async topicName => {
+                    var smallMessageSet = 4096 / 3;
+
+                    using (var producer = new Producer(router)) {
+                        using (var consumer = new Consumer(router, new ConsumerConfiguration(maxPartitionFetchBytes: smallMessageSet, fetchByteMultiplier: 2))) {
+                            var offset = await router.GetTopicOffsetAsync(topicName, _partitionId, CancellationToken.None);
+
+                            // Creating 5 messages
+                            var messages = CreateTestMessages(10, 4096);
+
+                            await producer.SendMessagesAsync(
+                                messages, topicName, _partitionId,
+                                new SendMessageConfiguration(ackTimeout: TimeSpan.FromSeconds(3)), CancellationToken.None);
+
+                            // Now let's consume
+                            await consumer.FetchMessagesAsync(offset, 5, CancellationToken.None);
                         }
                     }
                 });

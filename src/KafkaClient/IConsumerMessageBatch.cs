@@ -8,7 +8,7 @@ namespace KafkaClient
     public interface IConsumerMessageBatch
     {
         IImmutableList<Message> Messages { get; }
-        Task CommitAsync(CancellationToken cancellationToken);
         Task CommitAsync(Message lastSuccessful, CancellationToken cancellationToken);
+        Task<IConsumerMessageBatch> FetchNextAsync(int maxCount, CancellationToken cancellationToken);
     }
 }

@@ -11,6 +11,7 @@ namespace KafkaClient
             int? minFetchBytes = null, 
             int? maxFetchBytes = null, 
             int? maxPartitionFetchBytes = null,
+            int? fetchByteMultiplier = null,
             TimeSpan? heartbeatTimeout = null,
             TimeSpan? rebalanceTimeout = null,
             string protocolType = null,
@@ -19,6 +20,7 @@ namespace KafkaClient
             MaxFetchServerWait = maxServerWait;
             MinFetchBytes = minFetchBytes;
             MaxFetchBytes = maxFetchBytes;
+            FetchByteMultiplier = fetchByteMultiplier;
             MaxPartitionFetchBytes = maxPartitionFetchBytes;
             GroupHeartbeat = heartbeatTimeout ?? TimeSpan.FromSeconds(Defaults.HeartbeatSeconds);
             GroupRebalanceTimeout = rebalanceTimeout ?? GroupHeartbeat;
@@ -32,6 +34,8 @@ namespace KafkaClient
         public int? MaxPartitionFetchBytes { get; }
         /// <inheritdoc/>
         public int? MinFetchBytes { get; }
+        /// <inheritdoc/>
+        public int? FetchByteMultiplier { get; }
         /// <inheritdoc/>
         public TimeSpan? MaxFetchServerWait { get; }
 
