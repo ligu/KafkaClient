@@ -124,7 +124,7 @@ namespace KafkaClient.Tests.Integration
                             var fetched = 0;
                             stopwatch.Restart();
                             while (fetched < totalMessages) {
-                                var doneFetch = consumer.FetchMessagesAsync(offset.TopicName, offset.PartitionId, offset.Offset + fetched, totalMessages, CancellationToken.None);
+                                var doneFetch = consumer.FetchBatchAsync(offset.TopicName, offset.PartitionId, offset.Offset + fetched, totalMessages, CancellationToken.None);
                                 var delay = Task.Delay((int) Math.Max(0, maxTimeToRun.TotalMilliseconds - stopwatch.ElapsedMilliseconds));
                                 await Task.WhenAny(doneFetch, delay);
                                 if (delay.IsCompleted && !doneFetch.IsCompleted) {

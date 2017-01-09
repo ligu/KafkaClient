@@ -8,9 +8,9 @@ namespace KafkaClient
 {
     public static class ConsumerExtensions
     {
-        public static Task<IConsumerMessageBatch> FetchMessagesAsync(this IConsumer consumer, OffsetResponse.Topic offset, int maxCount, CancellationToken cancellationToken)
+        public static Task<IConsumerMessageBatch> FetchBatchAsync(this IConsumer consumer, OffsetResponse.Topic offset, int maxCount, CancellationToken cancellationToken)
         {
-            return consumer.FetchMessagesAsync(offset.TopicName, offset.PartitionId, offset.Offset, maxCount, cancellationToken);
+            return consumer.FetchBatchAsync(offset.TopicName, offset.PartitionId, offset.Offset, maxCount, cancellationToken);
         }
 
         public static Task<int> FetchAsync(this IConsumer consumer, OffsetResponse.Topic offset, int batchSize, Func<IConsumerMessageBatch, Task> onMessagesAsync, CancellationToken cancellationToken)
@@ -38,7 +38,7 @@ namespace KafkaClient
         {
             var total = 0;
             while (!cancellationToken.IsCancellationRequested) {
-                var fetched = await consumer.FetchMessagesAsync(topicName, partitionId, offset + total, batchSize, cancellationToken);
+                var fetched = await consumer.FetchBatchAsync(topicName, partitionId, offset + total, batchSize, cancellationToken);
                 await onMessagesAsync(fetched);
                 total += fetched.Messages.Count;
             }
@@ -60,6 +60,12 @@ namespace KafkaClient
             if (batch.Messages.Count == 0) return Task.FromResult(0);
 
             return batch.CommitAsync(batch.Messages[batch.Messages.Count - 1], cancellationToken);
+        }
+
+        public static Task CommitAsync(this IConsumerMessageBatch batch, Message message, CancellationToken cancellationToken)
+        {
+            batch.MarkSuccessful(message);
+            return batch.CommitMarkedAsync(cancellationToken);
         }
     }
 }

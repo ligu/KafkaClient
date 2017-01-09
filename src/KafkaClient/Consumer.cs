@@ -35,16 +35,16 @@ namespace KafkaClient
         public IConsumerConfiguration Configuration { get; }
 
         /// <inheritdoc />
-        public async Task<IConsumerMessageBatch> FetchMessagesAsync(string topicName, int partitionId, long offset, int maxCount, CancellationToken cancellationToken)
+        public async Task<IConsumerMessageBatch> FetchBatchAsync(string topicName, int partitionId, long offset, int maxCount, CancellationToken cancellationToken)
         {
             if (offset < 0) throw new ArgumentOutOfRangeException(nameof(offset), offset, "must be >= 0");
 
-            var messages = await FetchMessagesAsync(ImmutableList<Message>.Empty, topicName, partitionId, offset, maxCount, cancellationToken).ConfigureAwait(false);
+            var messages = await FetchBatchAsync(ImmutableList<Message>.Empty, topicName, partitionId, offset, maxCount, cancellationToken).ConfigureAwait(false);
             return new MessageBatch(messages, new TopicPartition(topicName, partitionId), offset, maxCount, this);
         }
 
         /// <inheritdoc />
-        public async Task<IConsumerMessageBatch> FetchMessagesAsync(string groupId, string topicName, int partitionId, int maxCount, CancellationToken cancellationToken)
+        public async Task<IConsumerMessageBatch> FetchBatchAsync(string groupId, string topicName, int partitionId, int maxCount, CancellationToken cancellationToken)
         {
             var request = new OffsetFetchRequest(groupId, new TopicPartition(topicName, partitionId));
             var response = await _router.SendAsync(request, groupId, cancellationToken).ConfigureAwait(false);
@@ -52,25 +52,25 @@ namespace KafkaClient
                 throw request.ExtractExceptions(response);
             }
 
-            return await FetchMessagesAsync(groupId, topicName, partitionId, response.Topics[0].Offset, maxCount, cancellationToken).ConfigureAwait(false);
+            return await FetchBatchAsync(groupId, topicName, partitionId, response.Topics[0].Offset, maxCount, cancellationToken).ConfigureAwait(false);
         }
 
-        public async Task<IConsumerMessageBatch> FetchMessagesAsync(string groupId, string topicName, int partitionId, long offset, int maxCount, CancellationToken cancellationToken)
+        public async Task<IConsumerMessageBatch> FetchBatchAsync(string groupId, string topicName, int partitionId, long offset, int maxCount, CancellationToken cancellationToken)
         {
             if (offset < 0) throw new ArgumentOutOfRangeException(nameof(offset), offset, "must be >= 0");
 
-            var messages = await FetchMessagesAsync(ImmutableList<Message>.Empty, topicName, partitionId, offset, maxCount, cancellationToken).ConfigureAwait(false);
+            var messages = await FetchBatchAsync(ImmutableList<Message>.Empty, topicName, partitionId, offset, maxCount, cancellationToken).ConfigureAwait(false);
             return new MessageBatch(messages, new TopicPartition(topicName, partitionId), offset, maxCount, this, groupId);
         }
 
-        private async Task<ImmutableList<Message>> FetchMessagesAsync(ImmutableList<Message> existingMessages, string topicName, int partitionId, long offset, int count, CancellationToken cancellationToken)
+        private async Task<ImmutableList<Message>> FetchBatchAsync(ImmutableList<Message> existingMessages, string topicName, int partitionId, long offset, int count, CancellationToken cancellationToken)
         {
             var extracted = ExtractMessages(existingMessages, offset);
             var fetchOffset = extracted == ImmutableList<Message>.Empty
                 ? offset
                 : extracted[extracted.Count - 1].Offset + 1;
             var fetched = extracted.Count < count
-                ? await FetchMessagesAsync(topicName, partitionId, fetchOffset, cancellationToken)
+                ? await FetchBatchAsync(topicName, partitionId, fetchOffset, cancellationToken)
                 : ImmutableList<Message>.Empty;
 
             if (extracted == ImmutableList<Message>.Empty) return fetched;
@@ -88,7 +88,7 @@ namespace KafkaClient
             return ImmutableList<Message>.Empty;
         }
 
-        private async Task<ImmutableList<Message>> FetchMessagesAsync(string topicName, int partitionId, long offset, CancellationToken cancellationToken)
+        private async Task<ImmutableList<Message>> FetchBatchAsync(string topicName, int partitionId, long offset, CancellationToken cancellationToken)
         {
             var topic = new FetchRequest.Topic(topicName, partitionId, offset, Configuration.MaxPartitionFetchBytes);
             FetchResponse response = null;
@@ -109,7 +109,8 @@ namespace KafkaClient
         {
             public MessageBatch(ImmutableList<Message> messages, TopicPartition partition, long offset, int maxCount, Consumer consumer, string groupId = null)
             {
-                _offset = offset;
+                _offsetMarked = offset;
+                _offsetCommitted = offset;
                 _allMessages = messages;
                 Messages = messages.Count > maxCount
                     ? messages.GetRange(0, maxCount)
@@ -124,21 +125,43 @@ namespace KafkaClient
             private readonly TopicPartition _partition;
             private readonly Consumer _consumer;
             private readonly string _groupId;
-            private long _offset;
-
-            public async Task CommitAsync(Message lastSuccessful, CancellationToken cancellationToken)
-            {
-                var offset = lastSuccessful.Offset + 1;
-                if (_groupId != null) {
-                    await _consumer._router.CommitTopicOffsetAsync(_partition.TopicName, _partition.PartitionId, _groupId, offset, cancellationToken).ConfigureAwait(false);
-                }
-                _offset = offset;
-            }
+            private long _offsetMarked;
+            private long _offsetCommitted;
+            private int _disposeCount = 0;
 
             public async Task<IConsumerMessageBatch> FetchNextAsync(int maxCount, CancellationToken cancellationToken)
             {
-                var messages = await _consumer.FetchMessagesAsync(_allMessages, _partition.TopicName, _partition.PartitionId, _offset, maxCount, cancellationToken).ConfigureAwait(false);
-                return new MessageBatch(messages, _partition, _offset, maxCount, _consumer, _groupId);
+                var offset = await CommitMarkedAsync(cancellationToken);
+                var messages = await _consumer.FetchBatchAsync(_allMessages, _partition.TopicName, _partition.PartitionId, offset, maxCount, cancellationToken).ConfigureAwait(false);
+                return new MessageBatch(messages, _partition, offset, maxCount, _consumer, _groupId);
+            }
+
+            public void MarkSuccessful(Message message)
+            {
+                if (_disposeCount > 0) throw new ObjectDisposedException($"The topic/{_partition.TopicName}/partition/{_partition.PartitionId} batch is disposed.");
+                var offset = message.Offset + 1;
+                if (_offsetMarked > offset) throw new ArgumentOutOfRangeException(nameof(message), $"Marked offset is {_offsetMarked}, cannot mark previous offset of {offset}.");
+                _offsetMarked = message.Offset + 1;
+            }
+
+            public async Task<long> CommitMarkedAsync(CancellationToken cancellationToken)
+            {
+                if (_disposeCount > 0) throw new ObjectDisposedException($"The topic/{_partition.TopicName}/partition/{_partition.PartitionId} batch is disposed.");
+
+                var offset = _offsetMarked;
+                var committed = _offsetCommitted;
+                if (offset <= committed) return committed;
+
+                if (_groupId != null) {
+                    await _consumer._router.CommitTopicOffsetAsync(_partition.TopicName, _partition.PartitionId, _groupId, offset, cancellationToken).ConfigureAwait(false);
+                }
+                _offsetCommitted = offset;
+                return offset;
+            }
+
+            public void Dispose()
+            {
+                Interlocked.Increment(ref _disposeCount);
             }
         }
 

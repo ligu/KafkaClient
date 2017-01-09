@@ -69,7 +69,7 @@ namespace KafkaClient.Tests.Integration
                             await producer.SendMessagesAsync(messages, topicName, _partitionId, new SendMessageConfiguration(ackTimeout: TimeSpan.FromSeconds(3)), CancellationToken.None);
 
                             // Consume messages, and check
-                            var result = await consumer.FetchMessagesAsync(offset, 5, CancellationToken.None);
+                            var result = await consumer.FetchBatchAsync(offset, 5, CancellationToken.None);
                             CheckMessages(messages, result);
                         }
                     }
@@ -91,11 +91,11 @@ namespace KafkaClient.Tests.Integration
                             await producer.SendMessagesAsync(messages, topicName, _partitionId, new SendMessageConfiguration(ackTimeout: TimeSpan.FromSeconds(3)), CancellationToken.None);
 
                             // Consume messages, and check
-                            var result = await consumer.FetchMessagesAsync(offset, 5, CancellationToken.None);
+                            var result = await consumer.FetchBatchAsync(offset, 5, CancellationToken.None);
                             CheckMessages(messages.Take(5).ToList(), result);
 
                             // Now let's consume again
-                            result = await consumer.FetchMessagesAsync(offset.TopicName, offset.PartitionId, offset.Offset + 5, 5, CancellationToken.None);
+                            result = await consumer.FetchBatchAsync(offset.TopicName, offset.PartitionId, offset.Offset + 5, 5, CancellationToken.None);
                             CheckMessages(messages.Skip(5).ToList(), result);
                         }
                     }
@@ -117,11 +117,11 @@ namespace KafkaClient.Tests.Integration
                             await producer.SendMessagesAsync(messages, topicName, _partitionId, new SendMessageConfiguration(ackTimeout: TimeSpan.FromSeconds(3)), CancellationToken.None);
 
                             // Consume messages, and check
-                            var result = await consumer.FetchMessagesAsync(offset, 7, CancellationToken.None);
+                            var result = await consumer.FetchBatchAsync(offset, 7, CancellationToken.None);
                             CheckMessages(messages.Take(7).ToList(), result);
 
                             // Now let's consume again
-                            result = await consumer.FetchMessagesAsync(offset.TopicName, offset.PartitionId, offset.Offset + 5, 2, CancellationToken.None);
+                            result = await consumer.FetchBatchAsync(offset.TopicName, offset.PartitionId, offset.Offset + 5, 2, CancellationToken.None);
                             CheckMessages(messages.Skip(8).ToList(), result);
                         }
                     }
@@ -143,11 +143,11 @@ namespace KafkaClient.Tests.Integration
                             await producer.SendMessagesAsync(messages, topicName, _partitionId, new SendMessageConfiguration(ackTimeout: TimeSpan.FromSeconds(3)), CancellationToken.None);
 
                             // Consume messages, and check
-                            var result = await consumer.FetchMessagesAsync(offset, 5, CancellationToken.None);
+                            var result = await consumer.FetchBatchAsync(offset, 5, CancellationToken.None);
                             CheckMessages(messages.Take(5).ToList(), result);
 
                             // Now let's consume again
-                            result = await consumer.FetchMessagesAsync(offset.TopicName, offset.PartitionId, offset.Offset + 5, 5, CancellationToken.None);
+                            result = await consumer.FetchBatchAsync(offset.TopicName, offset.PartitionId, offset.Offset + 5, 5, CancellationToken.None);
                             CheckMessages(messages.Skip(5).ToList(), result);
                         }
                     }
@@ -164,7 +164,7 @@ namespace KafkaClient.Tests.Integration
                         var offset = await router.GetTopicOffsetAsync(TestConfig.TopicName(), _partitionId, CancellationToken.None);
 
                         // Now let's consume
-                        var result = await consumer.FetchMessagesAsync(offset, 5, CancellationToken.None);
+                        var result = await consumer.FetchBatchAsync(offset, 5, CancellationToken.None);
                         Assert.AreEqual(0, result.Messages.Count, "Should not get any messages");
                     }
                 });
@@ -181,7 +181,7 @@ namespace KafkaClient.Tests.Integration
 
                         try {
                             // Now let's consume
-                            await consumer.FetchMessagesAsync(offset.TopicName, offset.PartitionId, offset.Offset + 1, 5, CancellationToken.None);
+                            await consumer.FetchBatchAsync(offset.TopicName, offset.PartitionId, offset.Offset + 1, 5, CancellationToken.None);
                             Assert.Fail("should have thrown FetchOutOfRangeException");
                         } catch (FetchOutOfRangeException ex) when (ex.Message.StartsWith("Kafka returned OffsetOutOfRange for Fetch request")) {
                             Console.WriteLine(ex.ToString());
@@ -200,7 +200,7 @@ namespace KafkaClient.Tests.Integration
                         var offset = -1;
 
                         // Now let's consume
-                        Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await consumer.FetchMessagesAsync(topicName, _partitionId, offset, 5, CancellationToken.None));
+                        Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await consumer.FetchBatchAsync(topicName, _partitionId, offset, 5, CancellationToken.None));
                     }
                 });
             }
@@ -217,7 +217,7 @@ namespace KafkaClient.Tests.Integration
 
                     // Now let's consume
                     try {
-                        await consumer.FetchMessagesAsync(topicName, _partitionId, offset, 5, CancellationToken.None);
+                        await consumer.FetchBatchAsync(topicName, _partitionId, offset, 5, CancellationToken.None);
                         Assert.Fail("should have thrown CachedMetadataException");
                     } catch (CachedMetadataException ex) when (ex.Message.StartsWith("Unable to refresh metadata")) {
                         // expected
@@ -236,7 +236,7 @@ namespace KafkaClient.Tests.Integration
                         var partitionId = 100;
 
                         Assert.ThrowsAsync<CachedMetadataException>(
-                            async () => await consumer.FetchMessagesAsync(topicName, partitionId, offset, 5, CancellationToken.None));
+                            async () => await consumer.FetchBatchAsync(topicName, partitionId, offset, 5, CancellationToken.None));
                     }
                 });
             }
@@ -262,7 +262,7 @@ namespace KafkaClient.Tests.Integration
 
                             try {
                                 // Now let's consume
-                                await consumer.FetchMessagesAsync(offset, 5, CancellationToken.None);
+                                await consumer.FetchBatchAsync(offset, 5, CancellationToken.None);
                                 Assert.Fail("should have thrown BufferUnderRunException");
                             } catch (BufferUnderRunException) {
                                 // Console.WriteLine(ex.ToString());
@@ -292,7 +292,7 @@ namespace KafkaClient.Tests.Integration
                                 new SendMessageConfiguration(ackTimeout: TimeSpan.FromSeconds(3)), CancellationToken.None);
 
                             // Now let's consume
-                            await consumer.FetchMessagesAsync(offset, 5, CancellationToken.None);
+                            await consumer.FetchBatchAsync(offset, 5, CancellationToken.None);
                         }
                     }
                 });
@@ -518,7 +518,7 @@ namespace KafkaClient.Tests.Integration
                         offsetResponse = responseAckLevel1.Offset;
                     }
                     using (var consumer = new Consumer(router, new ConsumerConfiguration(maxServerWait: TimeSpan.Zero))) {
-                        var result = await consumer.FetchMessagesAsync(topicName, 0, offsetResponse, 1, CancellationToken.None);
+                        var result = await consumer.FetchBatchAsync(topicName, 0, offsetResponse, 1, CancellationToken.None);
                         Assert.AreEqual(messge.ToString(), result.Messages[0].Value.ToUtf8String());
                     }
                 });
@@ -548,10 +548,10 @@ namespace KafkaClient.Tests.Integration
                         }
 
                         using (var consumer = new Consumer(router, new ConsumerConfiguration(maxServerWait: TimeSpan.Zero))) {
-                            var results1 = await consumer.FetchMessagesAsync(offset, totalMessages, CancellationToken.None);
+                            var results1 = await consumer.FetchBatchAsync(offset, totalMessages, CancellationToken.None);
                             TestConfig.Log.Info(() => LogEvent.Create($"Message order:  {string.Join(", ", results1.Messages.Select(x => x.Value.ToUtf8String()).ToList())}"));
 
-                            var results2 = await consumer.FetchMessagesAsync(offset, totalMessages, CancellationToken.None);
+                            var results2 = await consumer.FetchBatchAsync(offset, totalMessages, CancellationToken.None);
                             TestConfig.Log.Info(() => LogEvent.Create($"Message order:  {string.Join(", ", results2.Messages.Select(x => x.Value.ToUtf8String()).ToList())}"));
 
                             Assert.That(results1.Messages.Count, Is.EqualTo(results2.Messages.Count));
@@ -580,7 +580,7 @@ namespace KafkaClient.Tests.Integration
                         }
 
                         using (var consumer = new Consumer(router, new ConsumerConfiguration(maxServerWait: TimeSpan.Zero))) {
-                            var results = await consumer.FetchMessagesAsync(offset, totalMessages, CancellationToken.None);
+                            var results = await consumer.FetchBatchAsync(offset, totalMessages, CancellationToken.None);
                             TestConfig.Log.Info(() => LogEvent.Create($"Message order:  {string.Join(", ", results.Messages.Select(x => x.Value.ToUtf8String()).ToList())}"));
 
                             Assert.That(results.Messages.Count, Is.EqualTo(totalMessages));
@@ -629,7 +629,7 @@ namespace KafkaClient.Tests.Integration
                             var fetched = ImmutableList<Message>.Empty;
                             stopwatch.Restart();
                             while (fetched.Count < totalMessages) {
-                                var doneFetch = consumer.FetchMessagesAsync(offset.TopicName, offset.PartitionId, offset.Offset + fetched.Count, totalMessages, CancellationToken.None);
+                                var doneFetch = consumer.FetchBatchAsync(offset.TopicName, offset.PartitionId, offset.Offset + fetched.Count, totalMessages, CancellationToken.None);
                                 var delay = Task.Delay((int) Math.Max(0, maxTimeToRun.TotalMilliseconds - stopwatch.ElapsedMilliseconds));
                                 await Task.WhenAny(doneFetch, delay);
                                 if (delay.IsCompleted && !doneFetch.IsCompleted) {
@@ -648,7 +648,6 @@ namespace KafkaClient.Tests.Integration
                 });
             }
         }
-
 
         //[Test]
         //public async Task ConsumerShouldNotLoseMessageWhenBlocked()
@@ -750,6 +749,57 @@ namespace KafkaClient.Tests.Integration
                             Assert.That(member.IsLeader, Is.True);
                         }
                     }
+                });
+            }
+        }
+
+        [Test]
+        [TestCase(10, 10)]
+        [TestCase(1000, 100)]
+        [TestCase(1000, 500)]
+        public async Task CanConsumerFromGroup(int totalMessages, int count)
+        {
+            using (var router = new Router(TestConfig.IntegrationUri, log: TestConfig.Log)) {
+                await router.TemporaryTopicAsync(async topicName => {
+                    using (var producer = new Producer(router, new ProducerConfiguration(batchSize: totalMessages / 10, batchMaxDelay: TimeSpan.FromMilliseconds(25)))) {
+                        //var offset = await producer.Router.GetTopicOffsetAsync(TestConfig.TopicName(), 0, CancellationToken.None);
+
+                        var messages = new List<Message>();
+                        for (var i = 0; i < totalMessages; i++) {
+                            messages.Add(new Message(i.ToString()));
+                        }
+                        await producer.SendMessagesAsync(messages, topicName, 0, CancellationToken.None);
+                    }
+
+                    var fetched = 0;
+                    using (var consumer = new Consumer(router, _consumerConfig, _config.Encoders)) {
+                        var groupId = TestConfig.GroupId();
+                        using (var member = await consumer.JoinConsumerGroupAsync(groupId, new ConsumerProtocolMetadata(topicName), CancellationToken.None)) {
+                            while (fetched < totalMessages) {
+                                var fetchTasks = new List<Task>();
+                                for (var batch = await member.FetchBatchAsync(count, CancellationToken.None); batch != MessageBatch.Empty; batch = await member.FetchBatchAsync(count, CancellationToken.None)) {
+                                    var currentBatch = batch;
+                                    fetchTasks.Add(Task.Run(
+                                        async () => {
+                                            for (var i = 0; i < currentBatch.Messages.Count; i++) {
+                                                await Task.Delay(5);
+                                                currentBatch.MarkSuccessful(currentBatch.Messages[i]);
+                                                Interlocked.Increment(ref fetched);
+                                            }
+                                            while ((currentBatch = await currentBatch.FetchNextAsync(count, CancellationToken.None)) != MessageBatch.Empty) {
+                                                for (var i = 0; i < currentBatch.Messages.Count; i++) {
+                                                    await Task.Delay(5);
+                                                    currentBatch.MarkSuccessful(currentBatch.Messages[i]);
+                                                    Interlocked.Increment(ref fetched);
+                                                }
+                                            }
+                                        }));
+                                }
+                                await Task.WhenAll(fetchTasks);
+                            }
+                        }
+                    }
+                    Assert.That(fetched, Is.EqualTo(totalMessages));
                 });
             }
         }

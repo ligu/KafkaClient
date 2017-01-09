@@ -18,6 +18,12 @@ namespace KafkaClient
         /// </summary>
         void OnJoinGroup(JoinGroupResponse response);
 
-        Task<IConsumerMessageBatch> FetchMessagesAsync(int maxCount, CancellationToken cancellationToken);
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="maxCount"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns><see cref="MeMessageBatch.Empty> if no more topic/partitions are available currently.</returns>
+        Task<IConsumerMessageBatch> FetchBatchAsync(int maxCount, CancellationToken cancellationToken);
     }
 }
