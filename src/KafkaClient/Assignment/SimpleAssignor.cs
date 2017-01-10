@@ -31,7 +31,7 @@ namespace KafkaClient.Assignment
             var partitions = new HashSet<TopicPartition>(topicMetadata.SelectMany(t => t.Partitions.Select(p => new TopicPartition(t.TopicName, p.PartitionId))));
 
             var assignments = memberMetadata.Keys.ToDictionary(_ => _, _ => new List<TopicPartition>());
-            foreach (var currentAssignment in previousAssignments) {
+            foreach (var currentAssignment in previousAssignments.Where(a => a.Value != null)) {
                 foreach (var partition in currentAssignment.Value.PartitionAssignments) {
                     List<TopicPartition> assignment;
                     if (partitions.Contains(partition) && assignments.TryGetValue(currentAssignment.Key, out assignment)) {

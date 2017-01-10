@@ -41,6 +41,7 @@ namespace KafkaClient
         private readonly ILog _log;
 
         private readonly AsyncLock _lock = new AsyncLock();
+        private readonly AsyncManualResetEvent _isAssigned = new AsyncManualResetEvent(false);
         private ImmutableDictionary<string, IMemberMetadata> _memberMetadata = ImmutableDictionary<string, IMemberMetadata>.Empty;
         private IImmutableDictionary<string, IMemberAssignment> _memberAssignments = ImmutableDictionary<string, IMemberAssignment>.Empty;
         private IImmutableDictionary<TopicPartition, IConsumerMessageBatch> _batches = ImmutableDictionary<TopicPartition, IConsumerMessageBatch>.Empty;
@@ -117,7 +118,7 @@ namespace KafkaClient
                 // only allow one heartbeat to execute, dump out all other requests
                 if (Interlocked.Increment(ref _activeHeartbeatCount) != 1) return;
 
-                // TODO: if leader, can we skip the initial hit for synching?
+                // if IsLeader == true, can we skip the initial hit for synching?
                 CoordinatorState? state = CoordinatorState.AwaitSync;
                 var response = ErrorResponseCode.None;
                 var lastHeartbeat = DateTimeOffset.UtcNow;
@@ -243,6 +244,7 @@ namespace KafkaClient
                     invalidPartition.Value.Dispose();
                 }
                 _batches = _batches.RemoveRange(invalidPartitions.Select(pair => pair.Key));
+                _isAssigned.Set();
             }
         }
 
@@ -282,19 +284,20 @@ namespace KafkaClient
 
         public async Task<IConsumerMessageBatch> FetchBatchAsync(int maxCount, CancellationToken cancellationToken)
         {
+            await _isAssigned.WaitAsync(cancellationToken);
             using (await _lock.LockAsync(cancellationToken)) {
                 if (_disposeCount > 0) throw new ObjectDisposedException($"Member {MemberId} is no longer valid");
                 if (_assignment == null) return MessageBatch.Empty;
 
                 foreach (var partition in _assignment.PartitionAssignments) {
                     if (!_batches.ContainsKey(partition)) {
-                        var batch = await _consumer.FetchBatchAsync(GroupId, partition.TopicName, partition.PartitionId, maxCount, cancellationToken);
+                        var batch = await _consumer.FetchBatchAsync(GroupId, MemberId, GenerationId, partition.TopicName, partition.PartitionId, maxCount, cancellationToken);
                         _batches = _batches.Add(partition, batch);
-                        return MessageBatch.Empty;
+                        return batch;
                     }
                 }
             }
-            return null;
+            return MessageBatch.Empty;
         }
     }
 }

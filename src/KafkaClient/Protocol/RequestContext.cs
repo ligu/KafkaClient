@@ -14,7 +14,7 @@ namespace KafkaClient.Protocol
             CorrelationId = correlationId.GetValueOrDefault(1);
             ApiVersion = version;
             ClientId = clientId ?? DefaultClientId;
-            Encoders = encoders ?? ImmutableDictionary<string, IMembershipEncoder>.Empty;
+            Encoders = encoders;
             ProtocolType = protocolType;
             OnProduceRequestMessages = onProduceRequestMessages;
         }

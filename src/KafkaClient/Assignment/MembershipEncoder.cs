@@ -44,7 +44,8 @@ namespace KafkaClient.Assignment
         {
             var expectedLength = reader.ReadInt32();
             if (!reader.Available(expectedLength)) throw new BufferUnderRunException($"{ProtocolType} Metadata size of {expectedLength} is not fully available.");
-            
+
+            if (expectedLength == 0) return null;
             return DecodeMetadata(assignmentStrategy, reader, expectedLength);
         }
 
@@ -54,6 +55,7 @@ namespace KafkaClient.Assignment
             var expectedLength = reader.ReadInt32();
             if (!reader.Available(expectedLength)) throw new BufferUnderRunException($"{ProtocolType} Assignment size of {expectedLength} is not fully available.");
             
+            if (expectedLength == 0) return null;
             return DecodeAssignment(reader, expectedLength);
         }
 

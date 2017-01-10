@@ -754,42 +754,49 @@ namespace KafkaClient.Tests.Integration
         }
 
         [Test]
-        [TestCase(10, 10)]
         [TestCase(1000, 100)]
         [TestCase(1000, 500)]
-        public async Task CanConsumerFromGroup(int totalMessages, int count)
+        public async Task CanConsumeFromGroup(int totalMessages, int count)
         {
             using (var router = new Router(TestConfig.IntegrationUri, log: TestConfig.Log)) {
                 await router.TemporaryTopicAsync(async topicName => {
-                    using (var producer = new Producer(router, new ProducerConfiguration(batchSize: totalMessages / 10, batchMaxDelay: TimeSpan.FromMilliseconds(25)))) {
-                        //var offset = await producer.Router.GetTopicOffsetAsync(TestConfig.TopicName(), 0, CancellationToken.None);
+                    var groupId = TestConfig.GroupId();
 
-                        var messages = new List<Message>();
-                        for (var i = 0; i < totalMessages; i++) {
-                            messages.Add(new Message(i.ToString()));
+                    using (var producer = new Producer(router, new ProducerConfiguration(batchSize: totalMessages / 10, batchMaxDelay: TimeSpan.FromMilliseconds(25)))) {
+                        var offset = await router.GetTopicOffsetAsync(topicName, 0, CancellationToken.None);
+                        var groupOffset = await router.GetTopicOffsetAsync(topicName, 0, groupId, CancellationToken.None);
+
+                        var missingMessages = Math.Max(0, totalMessages + groupOffset.Offset - offset.Offset);
+                        if (missingMessages > 0) {
+                            var messages = new List<Message>();
+                            for (var i = 0; i < missingMessages; i++) {
+                                messages.Add(new Message(i.ToString()));
+                            }
+                            await producer.SendMessagesAsync(messages, topicName, 0, CancellationToken.None);
                         }
-                        await producer.SendMessagesAsync(messages, topicName, 0, CancellationToken.None);
                     }
 
                     var fetched = 0;
                     using (var consumer = new Consumer(router, _consumerConfig, _config.Encoders)) {
-                        var groupId = TestConfig.GroupId();
                         using (var member = await consumer.JoinConsumerGroupAsync(groupId, new ConsumerProtocolMetadata(topicName), CancellationToken.None)) {
                             while (fetched < totalMessages) {
                                 var fetchTasks = new List<Task>();
                                 for (var batch = await member.FetchBatchAsync(count, CancellationToken.None); batch != MessageBatch.Empty; batch = await member.FetchBatchAsync(count, CancellationToken.None)) {
                                     var currentBatch = batch;
                                     fetchTasks.Add(Task.Run(
-                                        async () => {
-                                            for (var i = 0; i < currentBatch.Messages.Count; i++) {
+                                        async () =>
+                                        {
+                                            foreach (var message in currentBatch.Messages) {
                                                 await Task.Delay(5);
-                                                currentBatch.MarkSuccessful(currentBatch.Messages[i]);
+                                                currentBatch.MarkSuccessful(message);
                                                 Interlocked.Increment(ref fetched);
                                             }
-                                            while ((currentBatch = await currentBatch.FetchNextAsync(count, CancellationToken.None)) != MessageBatch.Empty) {
-                                                for (var i = 0; i < currentBatch.Messages.Count; i++) {
+                                            while (fetched < totalMessages) {
+                                                currentBatch = await currentBatch.FetchNextAsync(count, CancellationToken.None);
+                                                if (currentBatch.Messages.Count == 0) break;
+                                                foreach (var message in currentBatch.Messages) {
                                                     await Task.Delay(5);
-                                                    currentBatch.MarkSuccessful(currentBatch.Messages[i]);
+                                                    currentBatch.MarkSuccessful(message);
                                                     Interlocked.Increment(ref fetched);
                                                 }
                                             }

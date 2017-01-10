@@ -3,7 +3,6 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using KafkaClient.Connections;
 using KafkaClient.Protocol;
 using NUnit.Framework;
 
@@ -50,6 +49,12 @@ namespace KafkaClient.Tests
             } catch (RequestException ex) when (ex.ErrorCode == ErrorResponseCode.TopicAlreadyExists) {
                 // ignore already exists
             }
+        }
+
+        public static async Task CommitTopicOffsetAsync(this IRouter router, string topicName, int partitionId, string groupId, long offset, CancellationToken cancellationToken)
+        {
+            var request = new OffsetCommitRequest(groupId, new [] { new OffsetCommitRequest.Topic(topicName, partitionId, offset) });
+            await router.SendAsync(request, topicName, partitionId, groupId, cancellationToken).ConfigureAwait(false);
         }
     }
 }

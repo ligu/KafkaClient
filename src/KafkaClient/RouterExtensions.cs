@@ -113,22 +113,7 @@ namespace KafkaClient
             return response.Topics.SingleOrDefault(t => t.TopicName == topicName && t.PartitionId == partitionId);
         }
 
-        /// <summary>
-        /// Commit offsets for a single partitions of a given topic.
-        /// </summary>
-        /// <param name="router">The router which provides the route and metadata.</param>
-        /// <param name="topicName">Name of the topic to get offset information from.</param>
-        /// <param name="partitionId">The partition to get offsets for.</param>
-        /// <param name="groupId">The id of the consumer group</param>
-        /// <param name="offset">The new offset</param>
-        /// <param name="cancellationToken"></param>
-        public static async Task CommitTopicOffsetAsync(this IRouter router, string topicName, int partitionId, string groupId, long offset, CancellationToken cancellationToken)
-        {
-            var request = new OffsetCommitRequest(groupId, new [] { new OffsetCommitRequest.Topic(topicName, partitionId, offset) });
-            await router.SendAsync(request, topicName, partitionId, groupId, cancellationToken).ConfigureAwait(false);
-        }
-
-        private static async Task<T> SendAsync<T>(this IRouter router, IRequest<T> request, string topicName, int partitionId, string groupId, CancellationToken cancellationToken) where T : class, IResponse
+        public static async Task<T> SendAsync<T>(this IRouter router, IRequest<T> request, string topicName, int partitionId, string groupId, CancellationToken cancellationToken) where T : class, IResponse
         {
             try {
                 return await router.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);

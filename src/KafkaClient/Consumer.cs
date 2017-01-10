@@ -12,7 +12,6 @@ namespace KafkaClient
 {
     public class Consumer : IConsumer
     {
-        private readonly IRouter _router;
         private readonly bool _leaveRouterOpen;
         private readonly CancellationTokenSource _stopToken;
 
@@ -24,7 +23,7 @@ namespace KafkaClient
         public Consumer(IRouter router, IConsumerConfiguration configuration = null, IImmutableDictionary<string, IMembershipEncoder> encoders = null, bool leaveRouterOpen = true)
         {
             _stopToken = new CancellationTokenSource();
-            _router = router;
+            Router = router;
             _leaveRouterOpen = leaveRouterOpen;
             Configuration = configuration ?? new ConsumerConfiguration();
             _encoders = encoders ?? ImmutableDictionary<string, IMembershipEncoder>.Empty;
@@ -33,6 +32,8 @@ namespace KafkaClient
         private readonly IImmutableDictionary<string, IMembershipEncoder> _encoders;
 
         public IConsumerConfiguration Configuration { get; }
+
+        public IRouter Router { get; }
 
         /// <inheritdoc />
         public async Task<IConsumerMessageBatch> FetchBatchAsync(string topicName, int partitionId, long offset, int maxCount, CancellationToken cancellationToken)
@@ -44,23 +45,23 @@ namespace KafkaClient
         }
 
         /// <inheritdoc />
-        public async Task<IConsumerMessageBatch> FetchBatchAsync(string groupId, string topicName, int partitionId, int maxCount, CancellationToken cancellationToken)
+        public async Task<IConsumerMessageBatch> FetchBatchAsync(string groupId, string memberId, int generationId, string topicName, int partitionId, int maxCount, CancellationToken cancellationToken)
         {
             var request = new OffsetFetchRequest(groupId, new TopicPartition(topicName, partitionId));
-            var response = await _router.SendAsync(request, groupId, cancellationToken).ConfigureAwait(false);
+            var response = await Router.SendAsync(request, groupId, cancellationToken).ConfigureAwait(false);
             if (!response.Errors.All(e => e.IsSuccess())) {
                 throw request.ExtractExceptions(response);
             }
 
-            return await FetchBatchAsync(groupId, topicName, partitionId, response.Topics[0].Offset, maxCount, cancellationToken).ConfigureAwait(false);
+            return await FetchBatchAsync(groupId, memberId, generationId, topicName, partitionId, response.Topics[0].Offset + 1, maxCount, cancellationToken).ConfigureAwait(false);
         }
 
-        public async Task<IConsumerMessageBatch> FetchBatchAsync(string groupId, string topicName, int partitionId, long offset, int maxCount, CancellationToken cancellationToken)
+        public async Task<IConsumerMessageBatch> FetchBatchAsync(string groupId, string memberId, int generationId, string topicName, int partitionId, long offset, int maxCount, CancellationToken cancellationToken)
         {
             if (offset < 0) throw new ArgumentOutOfRangeException(nameof(offset), offset, "must be >= 0");
 
             var messages = await FetchBatchAsync(ImmutableList<Message>.Empty, topicName, partitionId, offset, maxCount, cancellationToken).ConfigureAwait(false);
-            return new MessageBatch(messages, new TopicPartition(topicName, partitionId), offset, maxCount, this, groupId);
+            return new MessageBatch(messages, new TopicPartition(topicName, partitionId), offset, maxCount, this, groupId, memberId, generationId);
         }
 
         private async Task<ImmutableList<Message>> FetchBatchAsync(ImmutableList<Message> existingMessages, string topicName, int partitionId, long offset, int count, CancellationToken cancellationToken)
@@ -95,10 +96,10 @@ namespace KafkaClient
             for (var attempt = 0; response == null && attempt < 8; attempt++) { // at a (minimum) multiplier of 2, this results in a total factor of 256
                 var request = new FetchRequest(topic, Configuration.MaxFetchServerWait, Configuration.MinFetchBytes, Configuration.MaxFetchBytes);
                 try {
-                    response = await _router.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
+                    response = await Router.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
                 } catch (BufferUnderRunException ex) {
                     if (!(Configuration.FetchByteMultiplier.GetValueOrDefault() > 1 && topic.MaxBytes > 0)) throw;
-                    _router.Log.Warn(() => LogEvent.Create(ex, $"Retrying Fetch Request with multiplier {Configuration.FetchByteMultiplier}"));
+                    Router.Log.Warn(() => LogEvent.Create(ex, $"Retrying Fetch Request with multiplier {Configuration.FetchByteMultiplier}"));
                     topic = new FetchRequest.Topic(topic.TopicName, topic.PartitionId, topic.Offset, topic.MaxBytes * Configuration.FetchByteMultiplier.Value);
                 }
             }
@@ -107,7 +108,7 @@ namespace KafkaClient
 
         private class MessageBatch : IConsumerMessageBatch
         {
-            public MessageBatch(ImmutableList<Message> messages, TopicPartition partition, long offset, int maxCount, Consumer consumer, string groupId = null)
+            public MessageBatch(ImmutableList<Message> messages, TopicPartition partition, long offset, int maxCount, Consumer consumer, string groupId = null, string memberId = null, int generationId = -1)
             {
                 _offsetMarked = offset;
                 _offsetCommitted = offset;
@@ -118,6 +119,8 @@ namespace KafkaClient
                 _partition = partition;
                 _consumer = consumer;
                 _groupId = groupId;
+                _memberId = memberId;
+                _generationId = generationId;
             }
 
             public IImmutableList<Message> Messages { get; }
@@ -125,6 +128,8 @@ namespace KafkaClient
             private readonly TopicPartition _partition;
             private readonly Consumer _consumer;
             private readonly string _groupId;
+            private readonly string _memberId;
+            private readonly int _generationId;
             private long _offsetMarked;
             private long _offsetCommitted;
             private int _disposeCount = 0;
@@ -133,7 +138,7 @@ namespace KafkaClient
             {
                 var offset = await CommitMarkedAsync(cancellationToken);
                 var messages = await _consumer.FetchBatchAsync(_allMessages, _partition.TopicName, _partition.PartitionId, offset, maxCount, cancellationToken).ConfigureAwait(false);
-                return new MessageBatch(messages, _partition, offset, maxCount, _consumer, _groupId);
+                return new MessageBatch(messages, _partition, offset, maxCount, _consumer);
             }
 
             public void MarkSuccessful(Message message)
@@ -152,8 +157,9 @@ namespace KafkaClient
                 var committed = _offsetCommitted;
                 if (offset <= committed) return committed;
 
-                if (_groupId != null) {
-                    await _consumer._router.CommitTopicOffsetAsync(_partition.TopicName, _partition.PartitionId, _groupId, offset, cancellationToken).ConfigureAwait(false);
+                if (_groupId != null && _memberId != null) {
+                    var request = new OffsetCommitRequest(_groupId, new[] { new OffsetCommitRequest.Topic(_partition.TopicName, _partition.PartitionId, offset) }, _memberId, _generationId);
+                    await _consumer.Router.SendAsync(request, _partition.TopicName, _partition.PartitionId, _groupId, cancellationToken).ConfigureAwait(false);
                 }
                 _offsetCommitted = offset;
                 return offset;
@@ -169,7 +175,7 @@ namespace KafkaClient
         {
             using (_stopToken) {
                 if (_leaveRouterOpen) return;
-                using (_router)
+                using (Router)
                 {
                 }
             }
@@ -181,7 +187,7 @@ namespace KafkaClient
 
             var protocols = metadata?.Select(m => new JoinGroupRequest.GroupProtocol(m));
             var request = new JoinGroupRequest(groupId, Configuration.GroupHeartbeat, member?.MemberId ?? "", protocolType, protocols, Configuration.GroupRebalanceTimeout);
-            var response = await _router.SendAsync(request, groupId, cancellationToken, retryPolicy: Configuration.GroupCoordinationRetry).ConfigureAwait(false);
+            var response = await Router.SendAsync(request, groupId, cancellationToken, retryPolicy: Configuration.GroupCoordinationRetry).ConfigureAwait(false);
             if (!response.ErrorCode.IsSuccess()) {
                 throw request.ExtractExceptions(response);
             }
@@ -190,13 +196,13 @@ namespace KafkaClient
                 member.OnJoinGroup(response);
                 return member;
             }
-            return new ConsumerGroupMember(this, request, response, _router.Log);
+            return new ConsumerGroupMember(this, request, response, Router.Log);
         }
 
         public async Task LeaveConsumerGroupAsync(string groupId, string memberId, CancellationToken cancellationToken, bool awaitResponse = true)
         {
             var request = new LeaveGroupRequest(groupId, memberId, awaitResponse);
-            var response = await _router.SendAsync(request, groupId, cancellationToken, retryPolicy: Configuration.GroupCoordinationRetry).ConfigureAwait(false);
+            var response = await Router.SendAsync(request, groupId, cancellationToken, retryPolicy: Configuration.GroupCoordinationRetry).ConfigureAwait(false);
             if (awaitResponse && !response.ErrorCode.IsSuccess()) {
                 throw request.ExtractExceptions(response);
             }
@@ -205,7 +211,7 @@ namespace KafkaClient
         public async Task<ErrorResponseCode> SendHeartbeatAsync(string groupId, string memberId, int generationId, CancellationToken cancellationToken)
         {
             var request = new HeartbeatRequest(groupId, generationId, memberId);
-            var response = await _router.SendAsync(request, groupId, cancellationToken, retryPolicy: Configuration.GroupCoordinationRetry).ConfigureAwait(false);
+            var response = await Router.SendAsync(request, groupId, cancellationToken, retryPolicy: Configuration.GroupCoordinationRetry).ConfigureAwait(false);
             return response.ErrorCode;
         }
 
@@ -218,7 +224,7 @@ namespace KafkaClient
             var groupAssignments = memberAssignments.Select(assignment => new SyncGroupRequest.GroupAssignment(assignment.Key, assignment.Value));
 
             var request = new SyncGroupRequest(groupId, generationId, memberId, groupAssignments);
-            var response = await _router.SendAsync(request, groupId, cancellationToken, retryPolicy: Configuration.GroupCoordinationRetry).ConfigureAwait(false);
+            var response = await Router.SendAsync(request, groupId, cancellationToken, retryPolicy: Configuration.GroupCoordinationRetry, context: new RequestContext(protocolType: protocolType)).ConfigureAwait(false);
             if (!response.ErrorCode.IsSuccess()) {
                 throw request.ExtractExceptions(response);
             }
@@ -237,19 +243,19 @@ namespace KafkaClient
             if (currentAssignments == ImmutableDictionary<string, IMemberAssignment>.Empty) {
                 // should only happen when the leader is changed
                 var request = new DescribeGroupsRequest(groupId);
-                var response = await _router.SendAsync(request, groupId, cancellationToken).ConfigureAwait(false);
+                var response = await Router.SendAsync(request, groupId, cancellationToken).ConfigureAwait(false);
                 var group = response.Groups.SingleOrDefault(g => g.GroupId == groupId);
                 if (group != null) {
                     currentAssignments = group.Members.ToImmutableDictionary(m => m.MemberId, m => m.MemberAssignment);
                 }
             }
-            return await assigner.AssignMembersAsync(_router, memberMetadata, currentAssignments, cancellationToken).ConfigureAwait(false);
+            return await assigner.AssignMembersAsync(Router, memberMetadata, currentAssignments, cancellationToken).ConfigureAwait(false);
         }
 
         public async Task<IMemberAssignment> SyncGroupAsync(string groupId, string memberId, int generationId, string protocolType, CancellationToken cancellationToken)
         {
             var request = new SyncGroupRequest(groupId, generationId, memberId);
-            var response = await _router.SendAsync(request, groupId, cancellationToken, retryPolicy: Configuration.GroupCoordinationRetry).ConfigureAwait(false);
+            var response = await Router.SendAsync(request, groupId, cancellationToken, retryPolicy: Configuration.GroupCoordinationRetry).ConfigureAwait(false);
             if (!response.ErrorCode.IsSuccess()) {
                 throw request.ExtractExceptions(response);
             }
