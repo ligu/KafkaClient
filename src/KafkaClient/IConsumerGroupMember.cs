@@ -27,6 +27,6 @@ namespace KafkaClient
         /// <param name="maxCount"></param>
         /// <param name="cancellationToken"></param>
         /// <returns><see cref="MessageBatch.Empty"> if no more topic/partitions are available currently.</returns>
-        Task<IConsumerMessageBatch> FetchBatchAsync(int maxCount, CancellationToken cancellationToken);
+        Task<IMessageBatch> FetchBatchAsync(int maxCount, CancellationToken cancellationToken);
     }
 }

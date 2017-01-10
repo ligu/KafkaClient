@@ -36,7 +36,7 @@ namespace KafkaClient
         public IRouter Router { get; }
 
         /// <inheritdoc />
-        public async Task<IConsumerMessageBatch> FetchBatchAsync(string topicName, int partitionId, long offset, int maxCount, CancellationToken cancellationToken)
+        public async Task<IMessageBatch> FetchBatchAsync(string topicName, int partitionId, long offset, int maxCount, CancellationToken cancellationToken)
         {
             if (offset < 0) throw new ArgumentOutOfRangeException(nameof(offset), offset, "must be >= 0");
 
@@ -45,7 +45,7 @@ namespace KafkaClient
         }
 
         /// <inheritdoc />
-        public async Task<IConsumerMessageBatch> FetchBatchAsync(string groupId, string memberId, int generationId, string topicName, int partitionId, int maxCount, CancellationToken cancellationToken)
+        public async Task<IMessageBatch> FetchBatchAsync(string groupId, string memberId, int generationId, string topicName, int partitionId, int maxCount, CancellationToken cancellationToken)
         {
             var request = new OffsetFetchRequest(groupId, new TopicPartition(topicName, partitionId));
             var response = await Router.SendAsync(request, groupId, cancellationToken).ConfigureAwait(false);
@@ -56,7 +56,7 @@ namespace KafkaClient
             return await FetchBatchAsync(groupId, memberId, generationId, topicName, partitionId, response.Topics[0].Offset + 1, maxCount, cancellationToken).ConfigureAwait(false);
         }
 
-        public async Task<IConsumerMessageBatch> FetchBatchAsync(string groupId, string memberId, int generationId, string topicName, int partitionId, long offset, int maxCount, CancellationToken cancellationToken)
+        public async Task<IMessageBatch> FetchBatchAsync(string groupId, string memberId, int generationId, string topicName, int partitionId, long offset, int maxCount, CancellationToken cancellationToken)
         {
             if (offset < 0) throw new ArgumentOutOfRangeException(nameof(offset), offset, "must be >= 0");
 
@@ -106,13 +106,14 @@ namespace KafkaClient
             return response.Topics.SingleOrDefault()?.Messages?.ToImmutableList() ?? ImmutableList<Message>.Empty;
         }
 
-        private class MessageBatch : IConsumerMessageBatch
+        private class MessageBatch : IMessageBatch
         {
             public MessageBatch(ImmutableList<Message> messages, TopicPartition partition, long offset, int maxCount, Consumer consumer, string groupId = null, string memberId = null, int generationId = -1)
             {
                 _offsetMarked = offset;
                 _offsetCommitted = offset;
                 _allMessages = messages;
+                _maxCount = maxCount;
                 Messages = messages.Count > maxCount
                     ? messages.GetRange(0, maxCount)
                     : messages;
@@ -124,6 +125,7 @@ namespace KafkaClient
             }
 
             public IImmutableList<Message> Messages { get; }
+            private readonly int _maxCount;
             private readonly ImmutableList<Message> _allMessages;
             private readonly TopicPartition _partition;
             private readonly Consumer _consumer;
@@ -134,11 +136,11 @@ namespace KafkaClient
             private long _offsetCommitted;
             private int _disposeCount = 0;
 
-            public async Task<IConsumerMessageBatch> FetchNextAsync(int maxCount, CancellationToken cancellationToken)
+            public async Task<IMessageBatch> FetchNextAsync(CancellationToken cancellationToken)
             {
                 var offset = await CommitMarkedAsync(cancellationToken);
-                var messages = await _consumer.FetchBatchAsync(_allMessages, _partition.TopicName, _partition.PartitionId, offset, maxCount, cancellationToken).ConfigureAwait(false);
-                return new MessageBatch(messages, _partition, offset, maxCount, _consumer);
+                var messages = await _consumer.FetchBatchAsync(_allMessages, _partition.TopicName, _partition.PartitionId, offset, _maxCount, cancellationToken).ConfigureAwait(false);
+                return new MessageBatch(messages, _partition, offset, _maxCount, _consumer);
             }
 
             public void MarkSuccessful(Message message)

@@ -44,7 +44,7 @@ namespace KafkaClient
         private readonly AsyncManualResetEvent _isAssigned = new AsyncManualResetEvent(false);
         private ImmutableDictionary<string, IMemberMetadata> _memberMetadata = ImmutableDictionary<string, IMemberMetadata>.Empty;
         private IImmutableDictionary<string, IMemberAssignment> _memberAssignments = ImmutableDictionary<string, IMemberAssignment>.Empty;
-        private IImmutableDictionary<TopicPartition, IConsumerMessageBatch> _batches = ImmutableDictionary<TopicPartition, IConsumerMessageBatch>.Empty;
+        private IImmutableDictionary<TopicPartition, IMessageBatch> _batches = ImmutableDictionary<TopicPartition, IMessageBatch>.Empty;
         private IMemberAssignment _assignment;
         public bool IsLeader { get; private set; }
         public int GenerationId { get; private set; }
@@ -271,7 +271,7 @@ namespace KafkaClient
                 foreach (var batch in _batches.Values) {
                     batch.Dispose();
                 }
-                _batches = ImmutableDictionary<TopicPartition, IConsumerMessageBatch>.Empty;
+                _batches = ImmutableDictionary<TopicPartition, IMessageBatch>.Empty;
             }
         }
 
@@ -282,7 +282,7 @@ namespace KafkaClient
 
         public string ProtocolType { get; }
 
-        public async Task<IConsumerMessageBatch> FetchBatchAsync(int maxCount, CancellationToken cancellationToken)
+        public async Task<IMessageBatch> FetchBatchAsync(int maxCount, CancellationToken cancellationToken)
         {
             await _isAssigned.WaitAsync(cancellationToken);
             using (await _lock.LockAsync(cancellationToken)) {

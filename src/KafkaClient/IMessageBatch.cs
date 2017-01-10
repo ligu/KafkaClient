@@ -6,11 +6,11 @@ using KafkaClient.Protocol;
 
 namespace KafkaClient
 {
-    public interface IConsumerMessageBatch : IDisposable
+    public interface IMessageBatch : IDisposable
     {
         IImmutableList<Message> Messages { get; }
         void MarkSuccessful(Message message);
         Task<long> CommitMarkedAsync(CancellationToken cancellationToken);
-        Task<IConsumerMessageBatch> FetchNextAsync(int maxCount, CancellationToken cancellationToken);
+        Task<IMessageBatch> FetchNextAsync(CancellationToken cancellationToken);
     }
 }

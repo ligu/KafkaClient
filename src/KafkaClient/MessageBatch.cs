@@ -6,7 +6,7 @@ using KafkaClient.Protocol;
 
 namespace KafkaClient
 {
-    public class MessageBatch : IConsumerMessageBatch, IEquatable<MessageBatch>
+    public class MessageBatch : IMessageBatch
     {
         public static readonly MessageBatch Empty = new MessageBatch();
 
@@ -29,34 +29,9 @@ namespace KafkaClient
             return Task.FromResult(0L);
         }
 
-        public Task<IConsumerMessageBatch> FetchNextAsync(int maxCount, CancellationToken cancellationToken)
+        public Task<IMessageBatch> FetchNextAsync(CancellationToken cancellationToken)
         {
-            return Task.FromResult((IConsumerMessageBatch)Empty);
-        }
-
-        public override bool Equals(object obj)
-        {
-            return Equals(obj as MessageBatch);
-        }
-
-        public bool Equals(MessageBatch other)
-        {
-            return ReferenceEquals(this, other);
-        }
-
-        public override int GetHashCode()
-        {
-            return 0;
-        }
-
-        public static bool operator ==(MessageBatch left, MessageBatch right)
-        {
-            return Equals(left, right);
-        }
-
-        public static bool operator !=(MessageBatch left, MessageBatch right)
-        {
-            return !Equals(left, right);
+            return Task.FromResult((IMessageBatch)Empty);
         }
     }
 }
