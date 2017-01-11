@@ -96,7 +96,7 @@ namespace KafkaClient.Tests.Unit
         public async Task BrokerRouteShouldCycleThroughEachBrokerUntilOneIsFoundForGroup()
         {
             var routerProxy = new BrokerRouterProxy();
-            routerProxy.Connection1.Add(ApiKeyRequestType.GroupCoordinator, () => { throw new Exception("some error"); });
+            routerProxy.Connection1.Add(ApiKeyRequestType.GroupCoordinator, _ => { throw new Exception("some error"); });
             var router = routerProxy.Create();
             await router.GetGroupBrokerAsync(TestTopic, CancellationToken.None);
             var result = router.GetGroupBroker(TestTopic);
@@ -109,8 +109,8 @@ namespace KafkaClient.Tests.Unit
         public async Task BrokerRouteShouldThrowIfCycleCouldNotConnectToAnyServerForGroup()
         {
             var routerProxy = new BrokerRouterProxy();
-            routerProxy.Connection1.Add(ApiKeyRequestType.GroupCoordinator, () => { throw new Exception("some error"); });
-            routerProxy.Connection2.Add(ApiKeyRequestType.GroupCoordinator, () => { throw new Exception("some error"); });
+            routerProxy.Connection1.Add(ApiKeyRequestType.GroupCoordinator, _ => { throw new Exception("some error"); });
+            routerProxy.Connection2.Add(ApiKeyRequestType.GroupCoordinator, _ => { throw new Exception("some error"); });
             var router = routerProxy.Create();
 
             Assert.ThrowsAsync<CachedMetadataException>(async () => await router.GetGroupBrokerAsync(TestTopic, CancellationToken.None));
@@ -181,7 +181,7 @@ namespace KafkaClient.Tests.Unit
         public async Task BrokerRouteShouldCycleThroughEachBrokerUntilOneIsFound()
         {
             var routerProxy = new BrokerRouterProxy();
-            routerProxy.Connection1.Add(ApiKeyRequestType.Metadata, () => { throw new Exception("some error"); });
+            routerProxy.Connection1.Add(ApiKeyRequestType.Metadata, _ => { throw new Exception("some error"); });
             var router = routerProxy.Create();
             await router.GetTopicMetadataAsync(TestTopic, CancellationToken.None);
             var result = router.GetTopicMetadata(TestTopic);
@@ -194,8 +194,8 @@ namespace KafkaClient.Tests.Unit
         public async Task BrokerRouteShouldThrowIfCycleCouldNotConnectToAnyServer()
         {
             var routerProxy = new BrokerRouterProxy();
-            routerProxy.Connection1.Add(ApiKeyRequestType.Metadata, () => { throw new Exception("some error"); });
-            routerProxy.Connection2.Add(ApiKeyRequestType.Metadata, () => { throw new Exception("some error"); });
+            routerProxy.Connection1.Add(ApiKeyRequestType.Metadata, _ => { throw new Exception("some error"); });
+            routerProxy.Connection2.Add(ApiKeyRequestType.Metadata, _ => { throw new Exception("some error"); });
             var router = routerProxy.Create();
 
             Assert.ThrowsAsync<ConnectionException>(async () => await router.GetTopicMetadataAsync(TestTopic, CancellationToken.None));
@@ -357,7 +357,7 @@ namespace KafkaClient.Tests.Unit
 
             var routerProxy = new BrokerRouterProxy();
 #pragma warning disable 1998
-            routerProxy.Connection1.Add(ApiKeyRequestType.Metadata, async () => metadataResponse);
+            routerProxy.Connection1.Add(ApiKeyRequestType.Metadata, async _ => metadataResponse);
 #pragma warning restore 1998
 
             Assert.Throws<CachedMetadataException>(() => routerProxy.Create().GetTopicBroker(TestTopic, 1));
@@ -371,7 +371,7 @@ namespace KafkaClient.Tests.Unit
 
             var routerProxy = new BrokerRouterProxy();
 #pragma warning disable 1998
-            routerProxy.Connection1.Add(ApiKeyRequestType.Metadata, async () => metadataResponse);
+            routerProxy.Connection1.Add(ApiKeyRequestType.Metadata, async _ => metadataResponse);
 #pragma warning restore 1998
             var router = routerProxy.Create();
             await router.GetTopicMetadataAsync(TestTopic, CancellationToken.None);
@@ -411,7 +411,7 @@ namespace KafkaClient.Tests.Unit
 
             var routerProxy = new BrokerRouterProxy();
 #pragma warning disable 1998
-            routerProxy.Connection1.Add(ApiKeyRequestType.Metadata, async () => metadataResponse);
+            routerProxy.Connection1.Add(ApiKeyRequestType.Metadata, async _ => metadataResponse);
 #pragma warning restore 1998
 
             Assert.Throws<CachedMetadataException>(() => routerProxy.Create().GetTopicBroker(TestTopic, new byte[] {}));
@@ -426,7 +426,7 @@ namespace KafkaClient.Tests.Unit
             var routerProxy = new BrokerRouterProxy();
             var router = routerProxy.Connection1;
 #pragma warning disable 1998
-            routerProxy.Connection1.Add(ApiKeyRequestType.Metadata, async () => metadataResponse);
+            routerProxy.Connection1.Add(ApiKeyRequestType.Metadata, async _ => metadataResponse);
 #pragma warning restore 1998
             var routerProxy1 = routerProxy.Create();
             await routerProxy1.GetTopicMetadataAsync(TestTopic, CancellationToken.None);

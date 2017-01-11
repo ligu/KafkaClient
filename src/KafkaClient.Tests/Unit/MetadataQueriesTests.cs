@@ -27,7 +27,7 @@ namespace KafkaClient.Tests.Unit
         public void GetTopicOffsetShouldThrowAnyException()
         {
             var routerProxy = new BrokerRouterProxy();
-            routerProxy.Connection1.Add(ApiKeyRequestType.Offset, () => { throw new Exception("test 99"); });
+            routerProxy.Connection1.Add(ApiKeyRequestType.Offset, _ => { throw new Exception("test 99"); });
             var router = routerProxy.Create();
 
             router.GetTopicOffsetsAsync(BrokerRouterProxy.TestTopic, 2,  -1, CancellationToken.None).ContinueWith(t =>

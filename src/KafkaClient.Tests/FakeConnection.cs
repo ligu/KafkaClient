@@ -9,7 +9,7 @@ using KafkaClient.Protocol;
 
 namespace KafkaClient.Tests
 {
-    public class FakeConnection : IConnection, IEnumerable<KeyValuePair<ApiKeyRequestType, Func<Task<IResponse>>>>
+    public class FakeConnection : IConnection, IEnumerable<KeyValuePair<ApiKeyRequestType, Func<IRequestContext, Task<IResponse>>>>
     {
         public FakeConnection(Uri address)
         {
@@ -28,11 +28,11 @@ namespace KafkaClient.Tests
         }
         private readonly ConcurrentDictionary<ApiKeyRequestType, long> _requestCounts = new ConcurrentDictionary<ApiKeyRequestType, long>();
 
-        public void Add(ApiKeyRequestType requestType, Func<Task<IResponse>> responseFunc)
+        public void Add(ApiKeyRequestType requestType, Func<IRequestContext, Task<IResponse>> responseFunc)
         {
             _responseFunctions.AddOrUpdate(requestType, responseFunc, (k, v) => responseFunc);
         }
-        private readonly ConcurrentDictionary<ApiKeyRequestType, Func<Task<IResponse>>> _responseFunctions = new ConcurrentDictionary<ApiKeyRequestType, Func<Task<IResponse>>>();
+        private readonly ConcurrentDictionary<ApiKeyRequestType, Func<IRequestContext, Task<IResponse>>> _responseFunctions = new ConcurrentDictionary<ApiKeyRequestType, Func<IRequestContext, Task<IResponse>>>();
 
         public Endpoint Endpoint { get; }
 
@@ -41,9 +41,10 @@ namespace KafkaClient.Tests
         {
             var count = _requestCounts.AddOrUpdate(request.ApiKey, 1L, (type, current) => current + 1);
 
-            Func<Task<IResponse>> responseFunc;
+            Func<IRequestContext, Task<IResponse>> responseFunc;
             if (_responseFunctions.TryGetValue(request.ApiKey, out responseFunc)) {
-                return (T) await responseFunc();
+
+                return (T) await responseFunc(new RequestContext((int)count, context?.ApiVersion, context?.ClientId, context?.Encoders, context?.ProtocolType, context?.OnProduceRequestMessages));
             }
 
             throw new NotImplementedException(typeof(T).FullName);
@@ -58,7 +59,7 @@ namespace KafkaClient.Tests
             throw new NotImplementedException();
         }
 
-        IEnumerator<KeyValuePair<ApiKeyRequestType, Func<Task<IResponse>>>> IEnumerable<KeyValuePair<ApiKeyRequestType, Func<Task<IResponse>>>>.GetEnumerator()
+        IEnumerator<KeyValuePair<ApiKeyRequestType, Func<IRequestContext, Task<IResponse>>>> IEnumerable<KeyValuePair<ApiKeyRequestType, Func<IRequestContext, Task<IResponse>>>>.GetEnumerator()
         {
             throw new NotImplementedException();
         }

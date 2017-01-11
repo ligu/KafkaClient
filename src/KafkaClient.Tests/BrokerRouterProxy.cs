@@ -32,15 +32,15 @@ namespace KafkaClient.Tests
             //setup mock IConnection
 #pragma warning disable 1998
             Connection1 = new FakeConnection(new Uri("http://localhost:1")) {
-                { ApiKeyRequestType.Produce, async () => new ProduceResponse(new ProduceResponse.Topic(TestTopic, 0, ErrorResponseCode.None, _offset1++)) },
-                { ApiKeyRequestType.Metadata, async () => await MetadataResponse() },
-                { ApiKeyRequestType.GroupCoordinator, async () => await GroupCoordinatorResponse() },
-                { ApiKeyRequestType.Offset, async () => new OffsetResponse(
+                { ApiKeyRequestType.Produce, async _ => new ProduceResponse(new ProduceResponse.Topic(TestTopic, 0, ErrorResponseCode.None, _offset1++)) },
+                { ApiKeyRequestType.Metadata, async _ => await MetadataResponse() },
+                { ApiKeyRequestType.GroupCoordinator, async _ => await GroupCoordinatorResponse() },
+                { ApiKeyRequestType.Offset, async _ => new OffsetResponse(
                     new[] {
                         new OffsetResponse.Topic(TestTopic, 0, ErrorResponseCode.None, 0L),
                         new OffsetResponse.Topic(TestTopic, 0, ErrorResponseCode.None, 99L)
                     }) },
-                { ApiKeyRequestType.Fetch, async () => {
+                { ApiKeyRequestType.Fetch, async _ => {
                         await Task.Delay(500);
                         return null;
                     }
@@ -48,15 +48,15 @@ namespace KafkaClient.Tests
             };
 
             Connection2 = new FakeConnection(new Uri("http://localhost:2")) {
-                { ApiKeyRequestType.Produce, async () => new ProduceResponse(new ProduceResponse.Topic(TestTopic, 1, ErrorResponseCode.None, _offset2++)) },
-                { ApiKeyRequestType.Metadata, async () => await MetadataResponse() },
-                { ApiKeyRequestType.GroupCoordinator, async () => await GroupCoordinatorResponse() },
-                { ApiKeyRequestType.Offset, async () => new OffsetResponse(
+                { ApiKeyRequestType.Produce, async _ => new ProduceResponse(new ProduceResponse.Topic(TestTopic, 1, ErrorResponseCode.None, _offset2++)) },
+                { ApiKeyRequestType.Metadata, async _ => await MetadataResponse() },
+                { ApiKeyRequestType.GroupCoordinator, async _ => await GroupCoordinatorResponse() },
+                { ApiKeyRequestType.Offset, async _ => new OffsetResponse(
                     new[] {
                         new OffsetResponse.Topic(TestTopic, 1, ErrorResponseCode.None, 0L),
                         new OffsetResponse.Topic(TestTopic, 1, ErrorResponseCode.None, 100L)
                     }) },
-                { ApiKeyRequestType.Fetch, async () => {
+                { ApiKeyRequestType.Fetch, async _ => {
                         await Task.Delay(500);
                         return null;
                     }
