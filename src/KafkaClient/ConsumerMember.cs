@@ -11,14 +11,14 @@ using Nito.AsyncEx;
 
 namespace KafkaClient
 {
-    public class ConsumerGroupMember : IConsumerGroupMember
+    public class ConsumerMember : IConsumerMember
     {
         private readonly IConsumer _consumer;
 
-        public ConsumerGroupMember(IConsumer consumer, JoinGroupRequest request, JoinGroupResponse response, ILog log = null)
+        public ConsumerMember(IConsumer consumer, JoinGroupRequest request, JoinGroupResponse response, ILog log = null)
         {
             _consumer = consumer;
-            _log = log ?? TraceLog.Log;
+            Log = log ?? consumer.Router?.Log ?? TraceLog.Log;
 
             GroupId = request.GroupId;
             MemberId = response.MemberId;
@@ -38,7 +38,6 @@ namespace KafkaClient
         private readonly Task _heartbeatTask;
         private readonly TimeSpan _heartbeatDelay;
         private readonly TimeSpan _heartbeatTimeout;
-        private readonly ILog _log;
 
         private readonly AsyncLock _lock = new AsyncLock();
         private readonly AsyncManualResetEvent _isAssigned = new AsyncManualResetEvent(false);
@@ -46,6 +45,8 @@ namespace KafkaClient
         private IImmutableDictionary<string, IMemberAssignment> _memberAssignments = ImmutableDictionary<string, IMemberAssignment>.Empty;
         private IImmutableDictionary<TopicPartition, IMessageBatch> _batches = ImmutableDictionary<TopicPartition, IMessageBatch>.Empty;
         private IMemberAssignment _assignment;
+
+        public ILog Log { get; }
         public bool IsLeader { get; private set; }
         public int GenerationId { get; private set; }
 
@@ -156,20 +157,18 @@ namespace KafkaClient
                         if (response.IsSuccess()) {
                             lastHeartbeat = DateTimeOffset.UtcNow;
                         }
+                    } catch (OperationCanceledException) { // cancellation token fired while attempting to get tasks: normal behavior
                     } catch (Exception ex) {
-                        if (!(ex is TaskCanceledException)) {
-                            _log.Warn(() => LogEvent.Create(ex));
-                        }
+                        Log.Warn(() => LogEvent.Create(ex));
                     }
                 }
                 await DisposeAsync(CancellationToken.None);
+            } catch (OperationCanceledException) { // cancellation token fired while attempting to get tasks: normal behavior
             } catch (Exception ex) {
-                if (!(ex is TaskCanceledException)) {
-                    _log.Warn(() => LogEvent.Create(ex));
-                }
+                Log.Warn(() => LogEvent.Create(ex));
             } finally {
                 Interlocked.Decrement(ref _activeHeartbeatCount);
-                _log.Info(() => LogEvent.Create($"Stopped heartbeat for {GroupId}/{MemberId}"));
+                Log.Info(() => LogEvent.Create($"Stopped heartbeat for {GroupId}/{MemberId}"));
             }
         }
 
@@ -210,7 +209,7 @@ namespace KafkaClient
                     memberMetadata = _memberMetadata.Values;
                 }
             }
-            await _consumer.JoinConsumerGroupAsync(GroupId, ProtocolType, memberMetadata, cancellationToken, this);
+            await _consumer.JoinGroupAsync(GroupId, ProtocolType, memberMetadata, cancellationToken, this);
         }
 
         public void OnJoinGroup(JoinGroupResponse response)
@@ -261,10 +260,10 @@ namespace KafkaClient
                 await Task.WhenAll(_batches.Values.Select(b => b.CommitMarkedAsync(cancellationToken)));
                 if (cancellationToken == CancellationToken.None) {
                     await Task.WhenAny(_heartbeatTask, Task.Delay(TimeSpan.FromSeconds(1), cancellationToken));
-                    await _consumer.LeaveConsumerGroupAsync(GroupId, MemberId, cancellationToken, false);
+                    await _consumer.LeaveGroupAsync(GroupId, MemberId, cancellationToken, false);
                 } else {
                     await _heartbeatTask.WaitAsync(cancellationToken);
-                    await _consumer.LeaveConsumerGroupAsync(GroupId, MemberId, cancellationToken);
+                    await _consumer.LeaveGroupAsync(GroupId, MemberId, cancellationToken);
                 }
                 _assignment = null;
                 _memberAssignments = ImmutableDictionary<string, IMemberAssignment>.Empty;

@@ -1,15 +1,18 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using KafkaClient.Common;
 using KafkaClient.Protocol;
 
 namespace KafkaClient
 {
-    public interface IConsumerGroupMember : IGroupMember, IDisposable
+    public interface IConsumerMember : IGroupMember, IDisposable
     {
         int GenerationId { get; }
         bool IsLeader { get; }
         string ProtocolType { get; }
+
+        ILog Log { get; }
 
         /// <summary>
         /// Called from the consumer, in the Joining state.

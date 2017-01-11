@@ -847,7 +847,7 @@ namespace KafkaClient.Tests.Integration
                                     }
                                 }
                                 router.Log.Info(() => LogEvent.Create($"Finished batch of {batch.Messages.Count} at {fetched}"));
-                            }, count, router.Log, cancellationToken);
+                            }, count, cancellationToken);
                         }
                     }
                     Assert.That(fetched, Is.EqualTo(totalMessages));

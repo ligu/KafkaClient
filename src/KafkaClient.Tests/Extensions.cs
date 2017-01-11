@@ -56,5 +56,20 @@ namespace KafkaClient.Tests
             var request = new OffsetCommitRequest(groupId, new [] { new OffsetCommitRequest.Topic(topicName, partitionId, offset) });
             await router.SendAsync(request, topicName, partitionId, groupId, cancellationToken).ConfigureAwait(false);
         }
+
+        public static Task<IMessageBatch> FetchBatchAsync(this IConsumer consumer, OffsetResponse.Topic offset, int batchSize, CancellationToken cancellationToken)
+        {
+            return consumer.FetchBatchAsync(offset.TopicName, offset.PartitionId, offset.Offset, batchSize, cancellationToken);
+        }
+
+        public static Task<int> FetchAsync(this IConsumer consumer, Func<IMessageBatch, CancellationToken, Task> onMessagesAsync, OffsetResponse.Topic offset, int batchSize, CancellationToken cancellationToken)
+        {
+            return consumer.FetchAsync(onMessagesAsync, offset.TopicName, offset.PartitionId, offset.Offset, batchSize, cancellationToken);
+        }
+
+        public static Task<int> FetchAsync(this IConsumer consumer, Func<Message, CancellationToken, Task> onMessageAsync, OffsetResponse.Topic offset, int batchSize, CancellationToken cancellationToken)
+        {
+            return consumer.FetchAsync(onMessageAsync, offset.TopicName, offset.PartitionId, offset.Offset, batchSize, cancellationToken);
+        }
     }
 }

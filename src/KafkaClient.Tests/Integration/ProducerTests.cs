@@ -153,14 +153,13 @@ namespace KafkaClient.Tests.Integration
                         using (var source = new CancellationTokenSource()) {
                             var i = 0;
                             await consumer.FetchAsync(
-                                offset, 20, message =>
-                                {
+                                (message, token) => {
                                     Assert.That(message.Value.ToUtf8String(), Is.EqualTo(i++.ToString()));
                                     if (i >= 20) {
                                         source.Cancel();
                                     }
                                     return Task.FromResult(0);
-                                }, source.Token);
+                                }, offset, 20, source.Token);
                         }
                     }
                 });

@@ -186,7 +186,7 @@ namespace KafkaClient
             }
         }
 
-        public async Task<IConsumerGroupMember> JoinConsumerGroupAsync(string groupId, string protocolType, IEnumerable<IMemberMetadata> metadata, CancellationToken cancellationToken, IConsumerGroupMember member = null)
+        public async Task<IConsumerMember> JoinGroupAsync(string groupId, string protocolType, IEnumerable<IMemberMetadata> metadata, CancellationToken cancellationToken, IConsumerMember member = null)
         {
             if (!_encoders.ContainsKey(protocolType ?? "")) throw new ArgumentOutOfRangeException(nameof(metadata), $"ProtocolType {protocolType} is unknown");
 
@@ -201,10 +201,10 @@ namespace KafkaClient
                 member.OnJoinGroup(response);
                 return member;
             }
-            return new ConsumerGroupMember(this, request, response, Router.Log);
+            return new ConsumerMember(this, request, response);
         }
 
-        public async Task LeaveConsumerGroupAsync(string groupId, string memberId, CancellationToken cancellationToken, bool awaitResponse = true)
+        public async Task LeaveGroupAsync(string groupId, string memberId, CancellationToken cancellationToken, bool awaitResponse = true)
         {
             var request = new LeaveGroupRequest(groupId, memberId, awaitResponse);
             var response = await Router.SendAsync(request, groupId, cancellationToken, retryPolicy: Configuration.GroupCoordinationRetry).ConfigureAwait(false);
