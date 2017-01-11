@@ -128,6 +128,7 @@ namespace KafkaClient
                         if (state == null) { // only update state if it was previously reset -- this allows for one state to move explicitly to another
                             state = GetCoordinatorState(response);
                         }
+                        Log.Info(() => LogEvent.Create($"Member {MemberId} has state {state}"));
                         switch (state) {
                             case CoordinatorState.Down:
                             case CoordinatorState.Initialize:

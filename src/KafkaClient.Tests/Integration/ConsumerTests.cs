@@ -855,6 +855,52 @@ namespace KafkaClient.Tests.Integration
             }
         }
 
+        [Test]
+        //[TestCase(2)]
+        //[TestCase(5)]
+        public async Task CanConsumeFromMultipleGroups()
+        {
+            int members = 2;
+            var cancellation = new CancellationTokenSource();
+            var cancellationToken = cancellation.Token;
+            var totalMessages = 100;
+            using (var router = new Router(TestConfig.IntegrationUri, log: TestConfig.Log)) {
+                await router.TemporaryTopicAsync(async topicName => {
+                    var groupId = TestConfig.GroupId();
+
+                    await ProduceMessages(router, topicName, groupId, totalMessages);
+
+                    var fetched = 0;
+                    using (var consumer = new Consumer(router, _consumerConfig, _config.Encoders)) {
+                        var tasks = new List<Task>();
+                        for (var index = 0; index < members; index++) {
+                            var memberIndex = index;
+                            tasks.Add(Task.Run(
+                                async () => {
+                                    using (var member = await consumer.JoinConsumerGroupAsync(groupId, new ConsumerProtocolMetadata(topicName), cancellationToken)) {
+                                        await member.FetchAsync(async (batch, token) => {
+                                            router.Log.Info(() => LogEvent.Create($"{memberIndex} Starting batch of {batch.Messages.Count}"));
+                                            foreach (var message in batch.Messages) {
+                                                batch.MarkSuccessful(message);
+                                                await Task.Delay(1);
+                                                if (Interlocked.Increment(ref fetched) >= totalMessages) {
+                                                    cancellation.Cancel();
+                                                    break;
+                                                }
+                                            }
+                                            router.Log.Info(() => LogEvent.Create($"{memberIndex} Finished batch of {batch.Messages.Count} at {fetched}"));
+                                        }, cancellationToken, 10);
+                                    }
+                                }, cancellationToken));
+                        }
+                        tasks.Add(Task.Delay(TimeSpan.FromMinutes(2), cancellationToken));
+                        await Task.WhenAll(tasks);
+                    }
+                    Assert.That(fetched, Is.EqualTo(totalMessages));
+                });
+            }
+        }
+
         #region helpers
 
         private void CheckMessages(List<Message> expected, IMessageBatch actual)

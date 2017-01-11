@@ -77,7 +77,7 @@ namespace KafkaClient.Connections
             if (!version.HasValue) {
                 version = await GetVersionAsync(request.ApiKey, token).ConfigureAwait(false);
             }
-            context = new RequestContext(NextCorrelationId(), version, context?.ClientId, context?.Encoders ?? _configuration.Encoders, context?.ProtocolType ?? request.ProtocolType, context?.OnProduceRequestMessages ?? _configuration.OnProduceRequestMessages);
+            context = new RequestContext(NextCorrelationId(), version, context?.ClientId, context?.Encoders ?? _configuration.Encoders, context?.ProtocolType, context?.OnProduceRequestMessages ?? _configuration.OnProduceRequestMessages);
 
             var payload = KafkaEncoder.Encode(context, request);
             _log.Info(() => LogEvent.Create($"Sending {request.ApiKey} with correlation id {context.CorrelationId} (v {version.GetValueOrDefault()}, {payload.Buffer.Length} bytes) to {Endpoint}"));
@@ -262,7 +262,9 @@ namespace KafkaClient.Connections
             if (asyncRequestItem == null) return;
 
             AsyncRequestItem request;
-            _requestsByCorrelation.TryRemove(asyncRequestItem.CorrelationId, out request);
+            if (_requestsByCorrelation.TryRemove(asyncRequestItem.CorrelationId, out request)) {
+                _log.Info(() => LogEvent.Create($"Removed request {asyncRequestItem.RequestType} with correlation id {asyncRequestItem.CorrelationId} from request queue (timed out)."));
+            }
 
             if (_disposeToken.IsCancellationRequested) {
                 asyncRequestItem.ReceiveTask.TrySetException(new ObjectDisposedException("The object is being disposed and the connection is closing."));

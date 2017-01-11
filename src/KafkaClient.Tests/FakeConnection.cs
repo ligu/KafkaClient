@@ -9,7 +9,7 @@ using KafkaClient.Protocol;
 
 namespace KafkaClient.Tests
 {
-    public class FakeConnection : IConnection, IEnumerable<KeyValuePair<ApiKeyRequestType, Func<IRequestContext, Task<IResponse>>>>
+    public class FakeConnection : IConnection, IEnumerable<KeyValuePair<ApiKeyRequestType, Func<IRequestContext, Task<IResponse>>>>, IEnumerable<KeyValuePair<ApiKeyRequestType, Func<IRequest, IRequestContext, Task<IResponse>>>>
     {
         public FakeConnection(Uri address)
         {
@@ -30,21 +30,32 @@ namespace KafkaClient.Tests
 
         public void Add(ApiKeyRequestType requestType, Func<IRequestContext, Task<IResponse>> responseFunc)
         {
-            _responseFunctions.AddOrUpdate(requestType, responseFunc, (k, v) => responseFunc);
+            _contextFunctions.AddOrUpdate(requestType, responseFunc, (k, v) => responseFunc);
         }
-        private readonly ConcurrentDictionary<ApiKeyRequestType, Func<IRequestContext, Task<IResponse>>> _responseFunctions = new ConcurrentDictionary<ApiKeyRequestType, Func<IRequestContext, Task<IResponse>>>();
+        private readonly ConcurrentDictionary<ApiKeyRequestType, Func<IRequestContext, Task<IResponse>>> _contextFunctions = new ConcurrentDictionary<ApiKeyRequestType, Func<IRequestContext, Task<IResponse>>>();
+
+        public void Add(ApiKeyRequestType requestType, Func<IRequest, IRequestContext, Task<IResponse>> responseFunc)
+        {
+            _requestFunctions.AddOrUpdate(requestType, responseFunc, (k, v) => responseFunc);
+        }
+        private readonly ConcurrentDictionary<ApiKeyRequestType, Func<IRequest, IRequestContext, Task<IResponse>>> _requestFunctions = new ConcurrentDictionary<ApiKeyRequestType, Func<IRequest, IRequestContext, Task<IResponse>>>();
 
         public Endpoint Endpoint { get; }
 
         /// <exception cref="Exception">A delegate callback throws an exception.</exception>
         public async Task<T> SendAsync<T>(IRequest<T> request, CancellationToken token, IRequestContext context = null) where T : class, IResponse
         {
-            var count = _requestCounts.AddOrUpdate(request.ApiKey, 1L, (type, current) => current + 1);
+            var count = (int)_requestCounts.AddOrUpdate(request.ApiKey, 1L, (type, current) => current + 1);
+            context = new RequestContext(count, context?.ApiVersion, context?.ClientId, context?.Encoders, context?.ProtocolType, context?.OnProduceRequestMessages);
 
-            Func<IRequestContext, Task<IResponse>> responseFunc;
-            if (_responseFunctions.TryGetValue(request.ApiKey, out responseFunc)) {
+            Func<IRequestContext, Task<IResponse>> contextFunc;
+            if (_contextFunctions.TryGetValue(request.ApiKey, out contextFunc)) {
+                return (T) await contextFunc(context);
+            }
 
-                return (T) await responseFunc(new RequestContext((int)count, context?.ApiVersion, context?.ClientId, context?.Encoders, context?.ProtocolType, context?.OnProduceRequestMessages));
+            Func<IRequest, IRequestContext, Task<IResponse>> requestFunc;
+            if (_requestFunctions.TryGetValue(request.ApiKey, out requestFunc)) {
+                return (T) await requestFunc(request, context);
             }
 
             throw new NotImplementedException(typeof(T).FullName);
@@ -60,6 +71,11 @@ namespace KafkaClient.Tests
         }
 
         IEnumerator<KeyValuePair<ApiKeyRequestType, Func<IRequestContext, Task<IResponse>>>> IEnumerable<KeyValuePair<ApiKeyRequestType, Func<IRequestContext, Task<IResponse>>>>.GetEnumerator()
+        {
+            throw new NotImplementedException();
+        }
+
+        IEnumerator<KeyValuePair<ApiKeyRequestType, Func<IRequest, IRequestContext, Task<IResponse>>>> IEnumerable<KeyValuePair<ApiKeyRequestType, Func<IRequest, IRequestContext, Task<IResponse>>>>.GetEnumerator()
         {
             throw new NotImplementedException();
         }

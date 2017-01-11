@@ -43,12 +43,13 @@ namespace KafkaClient.Protocol
     public class JoinGroupRequest : Request, IRequest<JoinGroupResponse>, IGroupMember, IEquatable<JoinGroupRequest>
     {
         public JoinGroupRequest(string groupId, TimeSpan sessionTimeout, string memberId, string protocolType, IEnumerable<GroupProtocol> groupProtocols, TimeSpan? rebalanceTimeout = null) 
-            : base(ApiKeyRequestType.JoinGroup, protocolType: protocolType)
+            : base(ApiKeyRequestType.JoinGroup)
         {
             GroupId = groupId;
             SessionTimeout = sessionTimeout;
             RebalanceTimeout = rebalanceTimeout ?? SessionTimeout;
             MemberId = memberId;
+            ProtocolType = protocolType;
             GroupProtocols = ImmutableList<GroupProtocol>.Empty.AddNotNullRange(groupProtocols);
         }
 
@@ -61,6 +62,9 @@ namespace KafkaClient.Protocol
 
         /// <inheritdoc />
         public string MemberId { get; }
+
+        /// <inheritdoc />
+        public string ProtocolType { get; }
 
         #region Equality
 

@@ -194,7 +194,7 @@ namespace KafkaClient
 
             var protocols = metadata?.Select(m => new JoinGroupRequest.GroupProtocol(m));
             var request = new JoinGroupRequest(groupId, Configuration.GroupHeartbeat, member?.MemberId ?? "", protocolType, protocols, Configuration.GroupRebalanceTimeout);
-            var response = await Router.SendAsync(request, groupId, cancellationToken, retryPolicy: Configuration.GroupCoordinationRetry).ConfigureAwait(false);
+            var response = await Router.SendAsync(request, groupId, cancellationToken, retryPolicy: Configuration.GroupCoordinationRetry, context: new RequestContext(protocolType: protocolType)).ConfigureAwait(false);
             if (!response.ErrorCode.IsSuccess()) {
                 throw request.ExtractExceptions(response);
             }
@@ -248,7 +248,7 @@ namespace KafkaClient
             var assigner = encoder.GetAssignor(metadata.AssignmentStrategy);
 
             if (currentAssignments == ImmutableDictionary<string, IMemberAssignment>.Empty) {
-                // should only happen when the leader is changed
+                // should only happen when the leader is changed (or new)
                 var request = new DescribeGroupsRequest(groupId);
                 var response = await Router.SendAsync(request, groupId, cancellationToken).ConfigureAwait(false);
                 var group = response.Groups.SingleOrDefault(g => g.GroupId == groupId);
