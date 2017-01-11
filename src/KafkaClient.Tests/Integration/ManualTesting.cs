@@ -63,7 +63,7 @@ namespace KafkaClient.Tests.Integration
         {
             while (true) {
                 try {
-                    var batch = await consumer.FetchBatchAsync(topicName, partitionId, offset, 100, CancellationToken.None);
+                    var batch = await consumer.FetchBatchAsync(topicName, partitionId, offset, CancellationToken.None, 100);
 
                     if (batch.Messages.Any()) {
                         foreach (var message in batch.Messages) {

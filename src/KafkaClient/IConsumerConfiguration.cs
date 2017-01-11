@@ -31,6 +31,11 @@ namespace KafkaClient
         int? FetchByteMultiplier { get; }
 
         /// <summary>
+        /// The expected size of a batch for fetches, if none specified.
+        /// </summary>
+        int BatchSize { get; }
+
+        /// <summary>
         /// The max wait time is the maximum amount of time to block waiting if insufficient data is available at the time the request is issued in a FetchRequest (<see cref="KafkaClient.Protocol.FetchRequest.MaxWaitTime"/>).
         /// </summary>
         TimeSpan? MaxFetchServerWait { get; }

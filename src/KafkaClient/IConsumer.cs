@@ -13,7 +13,7 @@ namespace KafkaClient
         /// <summary>
         /// Explicit fetch for topic/partition. This does not use consumer groups.
         /// </summary>
-        Task<IMessageBatch> FetchBatchAsync(string topicName, int partitionId, long offset, int batchSize, CancellationToken cancellationToken);
+        Task<IMessageBatch> FetchBatchAsync(string topicName, int partitionId, long offset, CancellationToken cancellationToken, int? batchSize = null);
 
         /// <summary>
         /// The configuration for various limits and for consume defaults
@@ -26,7 +26,7 @@ namespace KafkaClient
         Task<IImmutableDictionary<string, IMemberAssignment>> SyncGroupAsync(string groupId, string memberId, int generationId, string protocolType, IImmutableDictionary<string, IMemberMetadata> memberMetadata, IImmutableDictionary<string, IMemberAssignment> currentAssignments, CancellationToken cancellationToken);
         Task<IMemberAssignment> SyncGroupAsync(string groupId, string memberId, int generationId, string protocolType, CancellationToken cancellationToken);
         Task<ErrorResponseCode> SendHeartbeatAsync(string groupId, string memberId, int generationId, CancellationToken cancellationToken);
-        Task<IMessageBatch> FetchBatchAsync(string groupId, string memberId, int generationId, string topicName, int partitionId, int batchSize, CancellationToken cancellationToken);
+        Task<IMessageBatch> FetchBatchAsync(string groupId, string memberId, int generationId, string topicName, int partitionId, CancellationToken cancellationToken, int? batchSize = null);
         Task LeaveGroupAsync(string groupId, string memberId, CancellationToken cancellationToken, bool awaitResponse = true);
     }
 }

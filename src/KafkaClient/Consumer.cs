@@ -36,16 +36,17 @@ namespace KafkaClient
         public IRouter Router { get; }
 
         /// <inheritdoc />
-        public async Task<IMessageBatch> FetchBatchAsync(string topicName, int partitionId, long offset, int batchSize, CancellationToken cancellationToken)
+        public async Task<IMessageBatch> FetchBatchAsync(string topicName, int partitionId, long offset, CancellationToken cancellationToken, int? batchSize = null)
         {
             if (offset < 0) throw new ArgumentOutOfRangeException(nameof(offset), offset, "must be >= 0");
 
-            var messages = await FetchBatchAsync(ImmutableList<Message>.Empty, topicName, partitionId, offset, batchSize, cancellationToken).ConfigureAwait(false);
-            return new MessageBatch(messages, new TopicPartition(topicName, partitionId), offset, batchSize, this);
+            var count = batchSize.GetValueOrDefault(Configuration.BatchSize);
+            var messages = await FetchBatchAsync(ImmutableList<Message>.Empty, topicName, partitionId, offset, count, cancellationToken).ConfigureAwait(false);
+            return new MessageBatch(messages, new TopicPartition(topicName, partitionId), offset, count, this);
         }
 
         /// <inheritdoc />
-        public async Task<IMessageBatch> FetchBatchAsync(string groupId, string memberId, int generationId, string topicName, int partitionId, int batchSize, CancellationToken cancellationToken)
+        public async Task<IMessageBatch> FetchBatchAsync(string groupId, string memberId, int generationId, string topicName, int partitionId, CancellationToken cancellationToken, int? batchSize = null)
         {
             var request = new OffsetFetchRequest(groupId, new TopicPartition(topicName, partitionId));
             var response = await Router.SendAsync(request, groupId, cancellationToken).ConfigureAwait(false);
@@ -53,15 +54,16 @@ namespace KafkaClient
                 throw request.ExtractExceptions(response);
             }
 
-            return await FetchBatchAsync(groupId, memberId, generationId, topicName, partitionId, response.Topics[0].Offset + 1, batchSize, cancellationToken).ConfigureAwait(false);
+            return await FetchBatchAsync(groupId, memberId, generationId, topicName, partitionId, response.Topics[0].Offset + 1, cancellationToken, batchSize).ConfigureAwait(false);
         }
 
-        public async Task<IMessageBatch> FetchBatchAsync(string groupId, string memberId, int generationId, string topicName, int partitionId, long offset, int batchSize, CancellationToken cancellationToken)
+        public async Task<IMessageBatch> FetchBatchAsync(string groupId, string memberId, int generationId, string topicName, int partitionId, long offset, CancellationToken cancellationToken, int? batchSize = null)
         {
             if (offset < 0) throw new ArgumentOutOfRangeException(nameof(offset), offset, "must be >= 0");
 
-            var messages = await FetchBatchAsync(ImmutableList<Message>.Empty, topicName, partitionId, offset, batchSize, cancellationToken).ConfigureAwait(false);
-            return new MessageBatch(messages, new TopicPartition(topicName, partitionId), offset, batchSize, this, groupId, memberId, generationId);
+            var count = batchSize.GetValueOrDefault(Configuration.BatchSize);
+            var messages = await FetchBatchAsync(ImmutableList<Message>.Empty, topicName, partitionId, offset, count, cancellationToken).ConfigureAwait(false);
+            return new MessageBatch(messages, new TopicPartition(topicName, partitionId), offset, count, this, groupId, memberId, generationId);
         }
 
         private async Task<ImmutableList<Message>> FetchBatchAsync(ImmutableList<Message> existingMessages, string topicName, int partitionId, long offset, int count, CancellationToken cancellationToken)
@@ -71,7 +73,7 @@ namespace KafkaClient
                 ? offset
                 : extracted[extracted.Count - 1].Offset + 1;
             var fetched = extracted.Count < count
-                ? await FetchBatchAsync(topicName, partitionId, fetchOffset, cancellationToken)
+                ? await FetchMessagesAsync(topicName, partitionId, fetchOffset, cancellationToken)
                 : ImmutableList<Message>.Empty;
 
             if (extracted == ImmutableList<Message>.Empty) return fetched;
@@ -89,7 +91,7 @@ namespace KafkaClient
             return ImmutableList<Message>.Empty;
         }
 
-        private async Task<ImmutableList<Message>> FetchBatchAsync(string topicName, int partitionId, long offset, CancellationToken cancellationToken)
+        private async Task<ImmutableList<Message>> FetchMessagesAsync(string topicName, int partitionId, long offset, CancellationToken cancellationToken)
         {
             var topic = new FetchRequest.Topic(topicName, partitionId, offset, Configuration.MaxPartitionFetchBytes);
             FetchResponse response = null;

@@ -281,7 +281,7 @@ namespace KafkaClient
 
         public string ProtocolType { get; }
 
-        public async Task<IMessageBatch> FetchBatchAsync(int batchSize, CancellationToken cancellationToken)
+        public async Task<IMessageBatch> FetchBatchAsync(CancellationToken cancellationToken, int? batchSize = null)
         {
             await _isAssigned.WaitAsync(cancellationToken);
             using (await _lock.LockAsync(cancellationToken)) {
@@ -290,7 +290,7 @@ namespace KafkaClient
 
                 foreach (var partition in _assignment.PartitionAssignments) {
                     if (!_batches.ContainsKey(partition)) {
-                        var batch = await _consumer.FetchBatchAsync(GroupId, MemberId, GenerationId, partition.TopicName, partition.PartitionId, batchSize, cancellationToken);
+                        var batch = await _consumer.FetchBatchAsync(GroupId, MemberId, GenerationId, partition.TopicName, partition.PartitionId, cancellationToken, batchSize);
                         _batches = _batches.Add(partition, batch);
                         return batch;
                     }

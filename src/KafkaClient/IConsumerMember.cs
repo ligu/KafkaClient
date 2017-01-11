@@ -29,6 +29,6 @@ namespace KafkaClient
         /// Subsequent calls to this function will result in new batches for each assignment. Once all active assignments have been given,
         /// the <see cref="MessageBatch.Empty"/> result will be used as an indication of nothing being currently available.
         /// </summary>
-        Task<IMessageBatch> FetchBatchAsync(int batchSize, CancellationToken cancellationToken);
+        Task<IMessageBatch> FetchBatchAsync(CancellationToken cancellationToken, int? batchSize = null);
     }
 }

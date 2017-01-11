@@ -15,7 +15,8 @@ namespace KafkaClient
             TimeSpan? heartbeatTimeout = null,
             TimeSpan? rebalanceTimeout = null,
             string protocolType = null,
-            IRetry coordinationRetry = null)
+            IRetry coordinationRetry = null,
+            int batchSize = Defaults.BatchSize)
         {
             MaxFetchServerWait = maxServerWait;
             MinFetchBytes = minFetchBytes;
@@ -26,6 +27,7 @@ namespace KafkaClient
             GroupRebalanceTimeout = rebalanceTimeout ?? GroupHeartbeat;
             ProtocolType = protocolType ?? Defaults.ProtocolType;
             GroupCoordinationRetry = coordinationRetry ?? Defaults.CoordinationRetry(GroupRebalanceTimeout);
+            BatchSize = Math.Max(1, batchSize);
         }
 
         /// <inheritdoc/>
@@ -47,6 +49,8 @@ namespace KafkaClient
         public IRetry GroupCoordinationRetry { get; }
         /// <inheritdoc/>
         public string ProtocolType { get; }
+        /// <inheritdoc/>
+        public int BatchSize { get; }
 
         public static class Defaults
         {
@@ -74,6 +78,11 @@ namespace KafkaClient
             /// The default <see cref="GroupCoordinationRetry"/> backoff delay
             /// </summary>
             public const int GroupCoordinationRetryMilliseconds = 100;
+
+            /// <summary>
+            /// The default <see cref="ConsumerConfiguration.BatchSize"/>
+            /// </summary>
+            public const int BatchSize = 100;
 
             public static IRetry CoordinationRetry(TimeSpan? timeout = null)
             {
