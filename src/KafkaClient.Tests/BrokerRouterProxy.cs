@@ -30,37 +30,39 @@ namespace KafkaClient.Tests
         public BrokerRouterProxy()
         {
             //setup mock IConnection
+#pragma warning disable 1998
             Connection1 = new FakeConnection(new Uri("http://localhost:1")) {
-                ProduceResponseFunction =
-                    () => Task.FromResult(new ProduceResponse(new ProduceResponse.Topic(TestTopic, 0, ErrorResponseCode.None, _offset1++))),
-                MetadataResponseFunction = () => MetadataResponse(),
-                GroupCoordinatorResponseFunction = () => GroupCoordinatorResponse(),
-                OffsetResponseFunction = () => Task.FromResult(new OffsetResponse(
+                { ApiKeyRequestType.Produce, async () => new ProduceResponse(new ProduceResponse.Topic(TestTopic, 0, ErrorResponseCode.None, _offset1++)) },
+                { ApiKeyRequestType.Metadata, async () => await MetadataResponse() },
+                { ApiKeyRequestType.GroupCoordinator, async () => await GroupCoordinatorResponse() },
+                { ApiKeyRequestType.Offset, async () => new OffsetResponse(
                     new[] {
                         new OffsetResponse.Topic(TestTopic, 0, ErrorResponseCode.None, 0L),
                         new OffsetResponse.Topic(TestTopic, 0, ErrorResponseCode.None, 99L)
-                    })),
-                FetchResponseFunction = async () => {
-                    await Task.Delay(500);
-                    return null;
+                    }) },
+                { ApiKeyRequestType.Fetch, async () => {
+                        await Task.Delay(500);
+                        return null;
+                    }
                 }
             };
 
             Connection2 = new FakeConnection(new Uri("http://localhost:2")) {
-                ProduceResponseFunction =
-                    () => Task.FromResult(new ProduceResponse(new ProduceResponse.Topic(TestTopic, 1, ErrorResponseCode.None, _offset2++))),
-                MetadataResponseFunction = () => MetadataResponse(),
-                GroupCoordinatorResponseFunction = () => GroupCoordinatorResponse(),
-                OffsetResponseFunction = () => Task.FromResult(new OffsetResponse(
+                { ApiKeyRequestType.Produce, async () => new ProduceResponse(new ProduceResponse.Topic(TestTopic, 1, ErrorResponseCode.None, _offset2++)) },
+                { ApiKeyRequestType.Metadata, async () => await MetadataResponse() },
+                { ApiKeyRequestType.GroupCoordinator, async () => await GroupCoordinatorResponse() },
+                { ApiKeyRequestType.Offset, async () => new OffsetResponse(
                     new[] {
                         new OffsetResponse.Topic(TestTopic, 1, ErrorResponseCode.None, 0L),
                         new OffsetResponse.Topic(TestTopic, 1, ErrorResponseCode.None, 100L)
-                    })),
-                FetchResponseFunction = async () => {
-                    await Task.Delay(500);
-                    return null;
+                    }) },
+                { ApiKeyRequestType.Fetch, async () => {
+                        await Task.Delay(500);
+                        return null;
+                    }
                 }
             };
+#pragma warning restore 1998
 
             var kafkaConnectionFactory = Substitute.For<IConnectionFactory>();
             kafkaConnectionFactory

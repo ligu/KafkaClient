@@ -887,5 +887,12 @@ namespace KafkaClient.Tests.Integration
         }
 
         #endregion
+
+        // design unit TESTS to write:
+        // dealing correctly with losing ownership
+        // can read messages from assigned partition(s)
+        // multiple partition assignment test
+        // multiple member test
+        // assignment priority is given to first assignor if multiple available
     }
 }

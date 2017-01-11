@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Net;
 using System.Threading;
+using System.Threading.Tasks;
 using KafkaClient.Common;
 using KafkaClient.Connections;
 using KafkaClient.Protocol;
@@ -22,7 +23,7 @@ namespace KafkaClient.Tests
         public FakeConnection BrokerConn1 { get { return _fakeConn1; } }
         public IConnectionFactory ConnectionMockConnectionFactory { get { return _mockConnectionFactory; } }
 
-        public Func<MetadataResponse> MetadataResponse = () => DefaultMetadataResponse();
+        public Func<Task<IResponse>> MetadataResponse = DefaultMetadataResponse;
 
         public IPartitionSelector PartitionSelector = new PartitionSelector();
 
@@ -30,24 +31,34 @@ namespace KafkaClient.Tests
         {
             //setup mock IConnection
 
-            _fakeConn0 = new FakeConnection(new Uri("http://localhost:1"));
 #pragma warning disable 1998
-            _fakeConn0.ProduceResponseFunction = async () => new ProduceResponse(new ProduceResponse.Topic(TestTopic, 0, ErrorResponseCode.None, _offset0++));
-            _fakeConn0.MetadataResponseFunction = async () => MetadataResponse();
-            _fakeConn0.OffsetResponseFunction = async () => new OffsetResponse(new [] {
-                new OffsetResponse.Topic(TestTopic, 0, ErrorResponseCode.None, 0L),
-                new OffsetResponse.Topic(TestTopic, 0, ErrorResponseCode.None, 99L)
-            });
-            _fakeConn0.FetchResponseFunction = async () => { Thread.Sleep(500); return null; };
+            _fakeConn0 = new FakeConnection(new Uri("http://localhost:1")) {
+                { ApiKeyRequestType.Produce, async () => new ProduceResponse(new ProduceResponse.Topic(TestTopic, 0, ErrorResponseCode.None, _offset0++)) },
+                { ApiKeyRequestType.Metadata, async () => await MetadataResponse() },
+                { ApiKeyRequestType.Offset, async () => new OffsetResponse(new [] {
+                    new OffsetResponse.Topic(TestTopic, 0, ErrorResponseCode.None, 0L),
+                    new OffsetResponse.Topic(TestTopic, 0, ErrorResponseCode.None, 99L)
+                }) },
+                { ApiKeyRequestType.Fetch, async () => {
+                        await Task.Delay(500);
+                        return null;
+                    }
+                }
+            };
 
-            _fakeConn1 = new FakeConnection(new Uri("http://localhost:2"));
-            _fakeConn1.ProduceResponseFunction = async () => new ProduceResponse(new ProduceResponse.Topic(TestTopic, 1, ErrorResponseCode.None, _offset1++));
-            _fakeConn1.MetadataResponseFunction = async () => MetadataResponse();
-            _fakeConn1.OffsetResponseFunction = async () => new OffsetResponse(new [] {
-                new OffsetResponse.Topic(TestTopic, 1, ErrorResponseCode.None, 0L),
-                new OffsetResponse.Topic(TestTopic, 1, ErrorResponseCode.None, 100L)
-            });
-            _fakeConn1.FetchResponseFunction = async () => { Thread.Sleep(500); return null; };
+            _fakeConn1 = new FakeConnection(new Uri("http://localhost:2")) {
+                { ApiKeyRequestType.Produce, async () => new ProduceResponse(new ProduceResponse.Topic(TestTopic, 1, ErrorResponseCode.None, _offset1++)) },
+                { ApiKeyRequestType.Metadata, async () => await MetadataResponse() },
+                { ApiKeyRequestType.Offset, async () => new OffsetResponse(new [] {
+                    new OffsetResponse.Topic(TestTopic, 0, ErrorResponseCode.None, 0L),
+                    new OffsetResponse.Topic(TestTopic, 0, ErrorResponseCode.None, 100L)
+                }) },
+                { ApiKeyRequestType.Fetch, async () => {
+                        await Task.Delay(500);
+                        return null;
+                    }
+                }
+            };
 #pragma warning restore 1998
 
             _mockConnectionFactory = Substitute.For<IConnectionFactory>();
@@ -66,7 +77,8 @@ namespace KafkaClient.Tests
                 routerConfiguration: new RouterConfiguration(cacheExpiration: _cacheExpiration));
         }
 
-        public static MetadataResponse DefaultMetadataResponse()
+#pragma warning disable 1998
+        public static async Task<IResponse> DefaultMetadataResponse()
         {
             return new MetadataResponse(
                 new [] {
@@ -81,5 +93,6 @@ namespace KafkaClient.Tests
                                       })
                 });
         }
+#pragma warning restore 1998
     }
 }

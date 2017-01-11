@@ -259,5 +259,10 @@ namespace KafkaClient.Tests.Unit
 
             Assert.That(consumer.ReceivedCalls().Count(c => c.GetMethodInfo().Name == nameof(consumer.SendHeartbeatAsync)), Is.AtLeast(3));
         }
+
+        // design unit TESTS to write:
+        // (async) locking is done correctly in the member
+        // dealing correctly with losing ownership
+        // multiple partition assignment test
     }
 }

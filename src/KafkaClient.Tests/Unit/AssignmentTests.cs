@@ -134,11 +134,17 @@ namespace KafkaClient.Tests.Unit
         }
 
         // design unit TESTS to write:
-        // (async) locking is done correctly in the group member
-        // what if there are more than one assignments for a group member??
-        // linked list crawling for next flows nicely in code
-        // dealing correctly with losing ownership
-        // can read messages from assigned partition(s)
-        // can write a priority based assignor
+        // assignment priority is given to first assignor if multiple available
+        // non-leader calls to get assignment data
+        // leader does not call to get assignment data
+        // sticky assignment ensures:
+        // - existing assignments are assigned as before
+        // - new assignments are assigned
+        // - no member is unassigned (meaning it's possible that existing assignments are moved)
+        // reassignment disposes open batches
+        // reassignment enables new batches
+        // reassignment before batches used does nothing
+        // synching without changing assignment does not dispose
+        // synching without changing assignment results in no new batches
     }
 }
