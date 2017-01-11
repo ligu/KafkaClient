@@ -269,12 +269,7 @@ namespace KafkaClient
 
         public void Dispose()
         {
-            AsyncContext.Run(() => DisposeAsync(new CancellationToken(true)));
-        }
-
-        public async Task DisposeAsync(CancellationToken cancellationToken)
-        {
-            if (!await StopAsync(cancellationToken)) return;
+            if (!AsyncContext.Run(() => StopAsync(new CancellationToken(true)))) return;
 
             // cleanup
             using (_stopToken) {

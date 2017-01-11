@@ -837,7 +837,7 @@ namespace KafkaClient.Tests.Integration
                     var fetched = 0;
                     using (var consumer = new Consumer(router, _consumerConfig, _config.Encoders)) {
                         using (var member = await consumer.JoinConsumerGroupAsync(groupId, new ConsumerProtocolMetadata(topicName), cancellationToken)) {
-                            await member.ProcessMessagesAsync(async (batch, token) => {
+                            await member.FetchAsync(async (batch, token) => {
                                 router.Log.Info(() => LogEvent.Create($"Starting batch of {batch.Messages.Count}"));
                                 foreach (var message in batch.Messages) {
                                     batch.MarkSuccessful(message);

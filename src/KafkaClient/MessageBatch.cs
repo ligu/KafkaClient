@@ -33,5 +33,7 @@ namespace KafkaClient
         {
             return Task.FromResult((IMessageBatch)Empty);
         }
+
+        public Action OnDisposed { get; set; }
     }
 }

@@ -36,16 +36,16 @@ namespace KafkaClient
         public IRouter Router { get; }
 
         /// <inheritdoc />
-        public async Task<IMessageBatch> FetchBatchAsync(string topicName, int partitionId, long offset, int maxCount, CancellationToken cancellationToken)
+        public async Task<IMessageBatch> FetchBatchAsync(string topicName, int partitionId, long offset, int batchSize, CancellationToken cancellationToken)
         {
             if (offset < 0) throw new ArgumentOutOfRangeException(nameof(offset), offset, "must be >= 0");
 
-            var messages = await FetchBatchAsync(ImmutableList<Message>.Empty, topicName, partitionId, offset, maxCount, cancellationToken).ConfigureAwait(false);
-            return new MessageBatch(messages, new TopicPartition(topicName, partitionId), offset, maxCount, this);
+            var messages = await FetchBatchAsync(ImmutableList<Message>.Empty, topicName, partitionId, offset, batchSize, cancellationToken).ConfigureAwait(false);
+            return new MessageBatch(messages, new TopicPartition(topicName, partitionId), offset, batchSize, this);
         }
 
         /// <inheritdoc />
-        public async Task<IMessageBatch> FetchBatchAsync(string groupId, string memberId, int generationId, string topicName, int partitionId, int maxCount, CancellationToken cancellationToken)
+        public async Task<IMessageBatch> FetchBatchAsync(string groupId, string memberId, int generationId, string topicName, int partitionId, int batchSize, CancellationToken cancellationToken)
         {
             var request = new OffsetFetchRequest(groupId, new TopicPartition(topicName, partitionId));
             var response = await Router.SendAsync(request, groupId, cancellationToken).ConfigureAwait(false);
@@ -53,15 +53,15 @@ namespace KafkaClient
                 throw request.ExtractExceptions(response);
             }
 
-            return await FetchBatchAsync(groupId, memberId, generationId, topicName, partitionId, response.Topics[0].Offset + 1, maxCount, cancellationToken).ConfigureAwait(false);
+            return await FetchBatchAsync(groupId, memberId, generationId, topicName, partitionId, response.Topics[0].Offset + 1, batchSize, cancellationToken).ConfigureAwait(false);
         }
 
-        public async Task<IMessageBatch> FetchBatchAsync(string groupId, string memberId, int generationId, string topicName, int partitionId, long offset, int maxCount, CancellationToken cancellationToken)
+        public async Task<IMessageBatch> FetchBatchAsync(string groupId, string memberId, int generationId, string topicName, int partitionId, long offset, int batchSize, CancellationToken cancellationToken)
         {
             if (offset < 0) throw new ArgumentOutOfRangeException(nameof(offset), offset, "must be >= 0");
 
-            var messages = await FetchBatchAsync(ImmutableList<Message>.Empty, topicName, partitionId, offset, maxCount, cancellationToken).ConfigureAwait(false);
-            return new MessageBatch(messages, new TopicPartition(topicName, partitionId), offset, maxCount, this, groupId, memberId, generationId);
+            var messages = await FetchBatchAsync(ImmutableList<Message>.Empty, topicName, partitionId, offset, batchSize, cancellationToken).ConfigureAwait(false);
+            return new MessageBatch(messages, new TopicPartition(topicName, partitionId), offset, batchSize, this, groupId, memberId, generationId);
         }
 
         private async Task<ImmutableList<Message>> FetchBatchAsync(ImmutableList<Message> existingMessages, string topicName, int partitionId, long offset, int count, CancellationToken cancellationToken)
@@ -108,14 +108,14 @@ namespace KafkaClient
 
         private class MessageBatch : IMessageBatch
         {
-            public MessageBatch(ImmutableList<Message> messages, TopicPartition partition, long offset, int maxCount, Consumer consumer, string groupId = null, string memberId = null, int generationId = -1)
+            public MessageBatch(ImmutableList<Message> messages, TopicPartition partition, long offset, int batchSize, Consumer consumer, string groupId = null, string memberId = null, int generationId = -1)
             {
                 _offsetMarked = offset;
                 _offsetCommitted = offset;
                 _allMessages = messages;
-                _maxCount = maxCount;
-                Messages = messages.Count > maxCount
-                    ? messages.GetRange(0, maxCount)
+                _batchSize = batchSize;
+                Messages = messages.Count > batchSize
+                    ? messages.GetRange(0, batchSize)
                     : messages;
                 _partition = partition;
                 _consumer = consumer;
@@ -125,7 +125,7 @@ namespace KafkaClient
             }
 
             public IImmutableList<Message> Messages { get; }
-            private readonly int _maxCount;
+            private readonly int _batchSize;
             private readonly ImmutableList<Message> _allMessages;
             private readonly TopicPartition _partition;
             private readonly Consumer _consumer;
@@ -139,8 +139,8 @@ namespace KafkaClient
             public async Task<IMessageBatch> FetchNextAsync(CancellationToken cancellationToken)
             {
                 var offset = await CommitMarkedAsync(cancellationToken);
-                var messages = await _consumer.FetchBatchAsync(_allMessages, _partition.TopicName, _partition.PartitionId, offset, _maxCount, cancellationToken).ConfigureAwait(false);
-                return new MessageBatch(messages, _partition, offset, _maxCount, _consumer);
+                var messages = await _consumer.FetchBatchAsync(_allMessages, _partition.TopicName, _partition.PartitionId, offset, _batchSize, cancellationToken).ConfigureAwait(false);
+                return new MessageBatch(messages, _partition, offset, _batchSize, _consumer);
             }
 
             public void MarkSuccessful(Message message)
@@ -169,8 +169,11 @@ namespace KafkaClient
 
             public void Dispose()
             {
-                Interlocked.Increment(ref _disposeCount);
+                if (Interlocked.Increment(ref _disposeCount) != 1) return;
+                OnDisposed?.Invoke();
             }
+
+            public Action OnDisposed { get; set; }
         }
 
         public void Dispose()

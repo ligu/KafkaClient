@@ -12,38 +12,38 @@ namespace KafkaClient
 {
     public static class ConsumerExtensions
     {
-        public static Task<IMessageBatch> FetchBatchAsync(this IConsumer consumer, OffsetResponse.Topic offset, int maxCount, CancellationToken cancellationToken)
+        public static Task<IMessageBatch> FetchBatchAsync(this IConsumer consumer, OffsetResponse.Topic offset, int batchSize, CancellationToken cancellationToken)
         {
-            return consumer.FetchBatchAsync(offset.TopicName, offset.PartitionId, offset.Offset, maxCount, cancellationToken);
+            return consumer.FetchBatchAsync(offset.TopicName, offset.PartitionId, offset.Offset, batchSize, cancellationToken);
         }
 
-        public static Task<int> FetchAsync(this IConsumer consumer, OffsetResponse.Topic offset, int batchSize, Func<IMessageBatch, Task> onMessagesAsync, CancellationToken cancellationToken)
+        public static Task<int> FetchAsync(this IConsumer consumer, OffsetResponse.Topic offset, int batchSize, Func<IMessageBatch, CancellationToken, Task> onMessagesAsync, CancellationToken cancellationToken)
         {
             return consumer.FetchAsync(offset.TopicName, offset.PartitionId, offset.Offset, batchSize, onMessagesAsync, cancellationToken);
         }
 
-        public static Task<int> FetchAsync(this IConsumer consumer, OffsetResponse.Topic offset, int batchSize, Func<Message, Task> onMessageAsync, CancellationToken cancellationToken)
+        public static Task<int> FetchAsync(this IConsumer consumer, OffsetResponse.Topic offset, int batchSize, Func<Message, CancellationToken, Task> onMessageAsync, CancellationToken cancellationToken)
         {
             return consumer.FetchAsync(offset.TopicName, offset.PartitionId, offset.Offset, batchSize, onMessageAsync, cancellationToken);
         }
 
-        public static Task<int> FetchAsync(this IConsumer consumer, string topicName, int partitionId, long offset, int batchSize, Func<Message, Task> onMessageAsync, CancellationToken cancellationToken)
+        public static Task<int> FetchAsync(this IConsumer consumer, string topicName, int partitionId, long offset, int batchSize, Func<Message, CancellationToken, Task> onMessageAsync, CancellationToken cancellationToken)
         {
             return consumer.FetchAsync(
                 topicName, partitionId, offset, batchSize,
-                async batch => {
+                async (batch, token) => {
                     foreach (var message in batch.Messages) {
-                        await onMessageAsync(message);
+                        await onMessageAsync(message, token);
                     }
                 }, cancellationToken);
         }
 
-        public static async Task<int> FetchAsync(this IConsumer consumer, string topicName, int partitionId, long offset, int batchSize, Func<IMessageBatch, Task> onMessagesAsync, CancellationToken cancellationToken)
+        public static async Task<int> FetchAsync(this IConsumer consumer, string topicName, int partitionId, long offset, int batchSize, Func<IMessageBatch, CancellationToken, Task> onMessagesAsync, CancellationToken cancellationToken)
         {
             var total = 0;
             while (!cancellationToken.IsCancellationRequested) {
                 var fetched = await consumer.FetchBatchAsync(topicName, partitionId, offset + total, batchSize, cancellationToken);
-                await onMessagesAsync(fetched);
+                await onMessagesAsync(fetched, cancellationToken);
                 total += fetched.Messages.Count;
             }
             return total;
@@ -59,22 +59,22 @@ namespace KafkaClient
             return consumer.JoinConsumerGroupAsync(groupId, protocolType, new[] { metadata }, cancellationToken);
         }
 
-        public static async Task<IImmutableList<IMessageBatch>> FetchBatchesAsync(this IConsumerGroupMember member, int maxCount, CancellationToken cancellationToken)
+        public static async Task<IImmutableList<IMessageBatch>> FetchBatchesAsync(this IConsumerGroupMember member, int batchSize, CancellationToken cancellationToken)
         {
             var batches = new List<IMessageBatch>();
             IMessageBatch batch;
-            while (!(batch = await member.FetchBatchAsync(maxCount, cancellationToken)).IsEmpty()) {
+            while (!(batch = await member.FetchBatchAsync(batchSize, cancellationToken)).IsEmpty()) {
                 batches.Add(batch);
             }
             return batches.ToImmutableList();
         }
 
-        public static async Task ProcessMessagesAsync(this IConsumerGroupMember member, Func<IMessageBatch, CancellationToken, Task> processBatch, int count, ILog log, CancellationToken cancellationToken)
+        public static async Task FetchAsync(this IConsumerGroupMember member, Func<IMessageBatch, CancellationToken, Task> onMessagesAsync, int count, ILog log, CancellationToken cancellationToken)
         {
             var tasks = new List<Task>();
             while (!cancellationToken.IsCancellationRequested) {
                 var batches = await member.FetchBatchesAsync(count, cancellationToken);
-                tasks.AddRange(batches.Select(async batch => await batch.ProcessMessagesAsync(processBatch, log, cancellationToken)));
+                tasks.AddRange(batches.Select(async batch => await batch.FetchAsync(onMessagesAsync, log, cancellationToken)));
                 if (tasks.Count == 0) break;
                 await Task.WhenAny(tasks);
                 tasks = tasks.Where(t => !t.IsCompleted).ToList();
@@ -99,11 +99,17 @@ namespace KafkaClient
             return batch?.Messages?.Count == 0;
         }
 
-        public static async Task ProcessMessagesAsync(this IMessageBatch batch, Func<IMessageBatch, CancellationToken, Task> processBatch, ILog log, CancellationToken cancellationToken)
+        public static async Task FetchAsync(this IMessageBatch batch, Func<IMessageBatch, CancellationToken, Task> onMessagesAsync, ILog log, CancellationToken cancellationToken)
         {
             try {
                 do {
-                    await processBatch(batch, cancellationToken);
+                    using (var source = new CancellationTokenSource()) {
+                        batch.OnDisposed = source.Cancel;
+                        using (cancellationToken.Register(source.Cancel)) {
+                            await onMessagesAsync(batch, source.Token);
+                        }
+                        batch.OnDisposed = null;
+                    }
                     batch = await batch.FetchNextAsync(cancellationToken);
                 } while (!batch.IsEmpty() && !cancellationToken.IsCancellationRequested);
             } catch (ObjectDisposedException ex) {

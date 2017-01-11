@@ -1,11 +1,11 @@
-﻿using System.Threading;
+﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
-using KafkaClient.Common;
 using KafkaClient.Protocol;
 
 namespace KafkaClient
 {
-    public interface IConsumerGroupMember : IGroupMember, IAsyncDisposable
+    public interface IConsumerGroupMember : IGroupMember, IDisposable
     {
         int GenerationId { get; }
         bool IsLeader { get; }
@@ -20,13 +20,12 @@ namespace KafkaClient
 
         /// <summary>
         /// Fetch messages for this consumer group's current assignment.
-        /// Messages are collected together in a batch per assignment.
-        /// Each batch can be used to get available messages, commit offsets and get subsequent batches on the given topic/partition.
-        /// Once the topic/partition is reassigned, the batch will be disposed.
+        /// Messages are collected together in a batch per assignment. Each batch can be used to get available messages, 
+        /// commit offsets and get subsequent batches on the given topic/partition. Once the topic/partition is reassigned, the batch will be disposed.
+        /// 
+        /// Subsequent calls to this function will result in new batches for each assignment. Once all active assignments have been given,
+        /// the <see cref="MessageBatch.Empty"/> result will be used as an indication of nothing being currently available.
         /// </summary>
-        /// <param name="maxCount"></param>
-        /// <param name="cancellationToken"></param>
-        /// <returns><see cref="MessageBatch.Empty"> if no more topic/partitions are available currently.</returns>
-        Task<IMessageBatch> FetchBatchAsync(int maxCount, CancellationToken cancellationToken);
+        Task<IMessageBatch> FetchBatchAsync(int batchSize, CancellationToken cancellationToken);
     }
 }
