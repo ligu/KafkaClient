@@ -382,7 +382,7 @@
           "lib/net45/NuGet.Versioning.dll": {}
         }
       },
-      "NUnit/3.5.0": {
+      "NUnit/3.6.0": {
         "type": "package",
         "compile": {
           "lib/net45/nunit.framework.dll": {}
@@ -1553,18 +1553,20 @@
         "lib/netstandard1.0/NuGet.Versioning.xml"
       ]
     },
-    "NUnit/3.5.0": {
-      "sha512": "z/03NfC+ci3/OzlIlClH+nd0LZ99OU3wS74nAtLVnPo1oq6nvd+CGxTHZAc8n8xxDLeLMofZ8AjahxlROEhf/Q==",
+    "NUnit/3.6.0": {
+      "sha512": "mqJP3DI3mE9YSx0o7R5loyIm0NnLJLSl2lmXn84gSkOmLWzlbrxS0oW/cCZF25tB+6Anday/mbkRUXmdvEvSCg==",
       "type": "package",
-      "path": "NUnit/3.5.0",
+      "path": "NUnit/3.6.0",
       "files": [
         "CHANGES.txt",
         "LICENSE.txt",
         "NOTICES.txt",
-        "NUnit.3.5.0.nupkg.sha512",
+        "NUnit.3.6.0.nupkg.sha512",
         "NUnit.nuspec",
-        "lib/dotnet/nunit.framework.dll",
-        "lib/dotnet/nunit.framework.xml",
+        "lib/MonoAndroid/nunit.framework.dll",
+        "lib/MonoAndroid/nunit.framework.xml",
+        "lib/Xamarin.iOS10/nunit.framework.dll",
+        "lib/Xamarin.iOS10/nunit.framework.xml",
         "lib/net20/NUnit.System.Linq.dll",
         "lib/net20/nunit.framework.dll",
         "lib/net20/nunit.framework.xml",
@@ -1574,8 +1576,10 @@
         "lib/net40/nunit.framework.xml",
         "lib/net45/nunit.framework.dll",
         "lib/net45/nunit.framework.xml",
-        "lib/portable-net45+win8+wp8+wpa81+Xamarin.Mac+MonoAndroid10+MonoTouch10+Xamarin.iOS10/nunit.framework.dll",
-        "lib/portable-net45+win8+wp8+wpa81+Xamarin.Mac+MonoAndroid10+MonoTouch10+Xamarin.iOS10/nunit.framework.xml"
+        "lib/netstandard1.6/nunit.framework.dll",
+        "lib/netstandard1.6/nunit.framework.xml",
+        "lib/portable-net45+win8+wp8+wpa81/nunit.framework.dll",
+        "lib/portable-net45+win8+wp8+wpa81/nunit.framework.xml"
       ]
     },
     "NUnit.Portable.Agent/3.4.0-beta-3": {
@@ -4426,7 +4430,7 @@
     "": [
       "KafkaClient",
       "NSubstitute >= 2.0.0-rc",
-      "NUnit >= 3.5.0",
+      "NUnit >= 3.6.0",
       "System.Collections.Immutable >= 1.2.0",
       "System.IO.Compression >= 4.3.0",
       "System.Threading.Tasks.Parallel >= 4.0.0",

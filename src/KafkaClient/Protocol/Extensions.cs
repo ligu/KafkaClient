@@ -130,7 +130,7 @@ namespace KafkaClient.Protocol
                     if (requiresNewLine) {
                         buffer.AppendLine();
                     }
-                    requiresNewLine = buffer.AppendValueWithIndent(inner, $"{indent}  ", !requiresNewLine) || requiresNewLine;
+                    requiresNewLine = buffer.AppendValueWithIndent(inner, $"{indent}", !requiresNewLine) || requiresNewLine;
                 }
                 if (requiresNewLine) {
                     buffer.Append(indent);
@@ -143,7 +143,7 @@ namespace KafkaClient.Protocol
                 if (isInline) {
                     buffer.AppendLine();
                 }
-                buffer.AppendWithIndent(value, $"{indent}");
+                buffer.AppendWithIndent(value, $"{indent}  ");
                 return true;
             }
             buffer.Append(value).Append(" ");

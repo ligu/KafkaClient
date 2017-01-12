@@ -13,26 +13,46 @@ namespace KafkaClient.Protocol
     [SuppressMessage("ReSharper", "UnusedParameter.Local")]
     public static class KafkaEncoder
     {
-        public static T Decode<T>(IRequestContext context, byte[] payload, bool hasSize = false) where T : class, IResponse
+        public static T Decode<T>(IRequestContext context, ApiKeyRequestType requstType, byte[] payload, bool hasSize = false) where T : class, IResponse
         {
-            if (typeof(T) == typeof(ProduceResponse)) return (T)ProduceResponse(context, payload, hasSize);
-            if (typeof(T) == typeof(FetchResponse)) return (T)FetchResponse(context, payload, hasSize);
-            if (typeof(T) == typeof(OffsetResponse)) return (T)OffsetResponse(context, payload, hasSize);
-            if (typeof(T) == typeof(MetadataResponse)) return (T)MetadataResponse(context, payload, hasSize);
-            if (typeof(T) == typeof(OffsetCommitResponse)) return (T)OffsetCommitResponse(context, payload, hasSize);
-            if (typeof(T) == typeof(OffsetFetchResponse)) return (T)OffsetFetchResponse(context, payload, hasSize);
-            if (typeof(T) == typeof(GroupCoordinatorResponse)) return (T)GroupCoordinatorResponse(context, payload, hasSize);
-            if (typeof(T) == typeof(JoinGroupResponse)) return (T)JoinGroupResponse(context, payload, hasSize);
-            if (typeof(T) == typeof(HeartbeatResponse)) return (T)HeartbeatResponse(context, payload, hasSize);
-            if (typeof(T) == typeof(LeaveGroupResponse)) return (T)LeaveGroupResponse(context, payload, hasSize);
-            if (typeof(T) == typeof(SyncGroupResponse)) return (T)SyncGroupResponse(context, payload, hasSize);
-            if (typeof(T) == typeof(DescribeGroupsResponse)) return (T)DescribeGroupsResponse(context, payload, hasSize);
-            if (typeof(T) == typeof(ListGroupsResponse)) return (T)ListGroupsResponse(context, payload, hasSize);
-            if (typeof(T) == typeof(SaslHandshakeResponse)) return (T)SaslHandshakeResponse(context, payload, hasSize);
-            if (typeof(T) == typeof(ApiVersionsResponse)) return (T)ApiVersionsResponse(context, payload, hasSize);
-            if (typeof(T) == typeof(CreateTopicsResponse)) return (T)CreateTopicsResponse(context, payload, hasSize);
-            if (typeof(T) == typeof(DeleteTopicsResponse)) return (T)DeleteTopicsResponse(context, payload, hasSize);
-            return default(T);
+            switch (requstType) {
+                case ApiKeyRequestType.Produce:
+                    return (T)ProduceResponse(context, payload, hasSize);
+                case ApiKeyRequestType.Fetch:
+                    return (T)FetchResponse(context, payload, hasSize);
+                case ApiKeyRequestType.Offset:
+                    return (T)OffsetResponse(context, payload, hasSize);
+                case ApiKeyRequestType.Metadata:
+                    return (T)MetadataResponse(context, payload, hasSize);
+                case ApiKeyRequestType.OffsetCommit:
+                    return (T)OffsetCommitResponse(context, payload, hasSize);
+                case ApiKeyRequestType.OffsetFetch:
+                    return (T)OffsetFetchResponse(context, payload, hasSize);
+                case ApiKeyRequestType.GroupCoordinator:
+                    return (T)GroupCoordinatorResponse(context, payload, hasSize);
+                case ApiKeyRequestType.JoinGroup:
+                    return (T)JoinGroupResponse(context, payload, hasSize);
+                case ApiKeyRequestType.Heartbeat:
+                    return (T)HeartbeatResponse(context, payload, hasSize);
+                case ApiKeyRequestType.LeaveGroup:
+                    return (T)LeaveGroupResponse(context, payload, hasSize);
+                case ApiKeyRequestType.SyncGroup:
+                    return (T)SyncGroupResponse(context, payload, hasSize);
+                case ApiKeyRequestType.DescribeGroups:
+                    return (T)DescribeGroupsResponse(context, payload, hasSize);
+                case ApiKeyRequestType.ListGroups:
+                    return (T)ListGroupsResponse(context, payload, hasSize);
+                case ApiKeyRequestType.SaslHandshake:
+                    return (T)SaslHandshakeResponse(context, payload, hasSize);
+                case ApiKeyRequestType.ApiVersions:
+                    return (T)ApiVersionsResponse(context, payload, hasSize);
+                case ApiKeyRequestType.CreateTopics:
+                    return (T)CreateTopicsResponse(context, payload, hasSize);
+                case ApiKeyRequestType.DeleteTopics:
+                    return (T)DeleteTopicsResponse(context, payload, hasSize);
+                default:
+                    return default (T);
+            }
         }
 
         public static DataPayload Encode<T>(IRequestContext context, T request) where T : class, IRequest

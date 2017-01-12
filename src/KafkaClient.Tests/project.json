@@ -6,7 +6,7 @@
       "target": "project"
     },
     "NSubstitute": "2.0.0-rc",
-    "NUnit": "3.5.0",
+    "NUnit": "3.6.0",
     "System.Collections.Immutable": "1.2.0",
     "System.Threading.Tasks.Parallel": "4.0.0",
     "dotnet-test-nunit": "3.4.0-beta-3",

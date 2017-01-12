@@ -37,7 +37,7 @@ namespace KafkaClient.Tests
 
             var context = new RequestContext(16, version, "Test-Response", encoders, encoder?.ProtocolType);
             var data = KafkaDecoder.EncodeResponseBytes(context, response);
-            var decoded = KafkaEncoder.Decode<T>(context, data, true);
+            var decoded = KafkaEncoder.Decode<T>(context, GetType<T>(), data, true);
 
             if (!response.Equals(decoded)) {
                 var original = response.ToFormattedString();
@@ -47,5 +47,28 @@ namespace KafkaClient.Tests
                 Assert.Fail("Not equal, although strings suggest they are?");
             }
         }
+
+        public static ApiKeyRequestType GetType<T>() where T : class, IResponse
+        {
+            if (typeof(T) == typeof(ProduceResponse)) return ApiKeyRequestType.Produce;
+            if (typeof(T) == typeof(FetchResponse)) return ApiKeyRequestType.Fetch;
+            if (typeof(T) == typeof(OffsetResponse)) return ApiKeyRequestType.Offset;
+            if (typeof(T) == typeof(MetadataResponse)) return ApiKeyRequestType.Metadata;
+            if (typeof(T) == typeof(OffsetCommitResponse)) return ApiKeyRequestType.OffsetCommit;
+            if (typeof(T) == typeof(OffsetFetchResponse)) return ApiKeyRequestType.OffsetFetch;
+            if (typeof(T) == typeof(GroupCoordinatorResponse)) return ApiKeyRequestType.GroupCoordinator;
+            if (typeof(T) == typeof(JoinGroupResponse)) return ApiKeyRequestType.JoinGroup;
+            if (typeof(T) == typeof(HeartbeatResponse)) return ApiKeyRequestType.Heartbeat;
+            if (typeof(T) == typeof(LeaveGroupResponse)) return ApiKeyRequestType.LeaveGroup;
+            if (typeof(T) == typeof(SyncGroupResponse)) return ApiKeyRequestType.SyncGroup;
+            if (typeof(T) == typeof(DescribeGroupsResponse)) return ApiKeyRequestType.DescribeGroups;
+            if (typeof(T) == typeof(ListGroupsResponse)) return ApiKeyRequestType.ListGroups;
+            if (typeof(T) == typeof(SaslHandshakeResponse)) return ApiKeyRequestType.SaslHandshake;
+            if (typeof(T) == typeof(ApiVersionsResponse)) return ApiKeyRequestType.ApiVersions;
+            if (typeof(T) == typeof(CreateTopicsResponse)) return ApiKeyRequestType.CreateTopics;
+            if (typeof(T) == typeof(DeleteTopicsResponse)) return ApiKeyRequestType.DeleteTopics;
+            throw new InvalidOperationException();
+        }
+
     }
 }

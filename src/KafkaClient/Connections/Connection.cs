@@ -23,6 +23,7 @@ namespace KafkaClient.Connections
     public class Connection : IConnection
     {
         private readonly ConcurrentDictionary<int, AsyncRequestItem> _requestsByCorrelation = new ConcurrentDictionary<int, AsyncRequestItem>();
+        private readonly ConcurrentDictionary<int, Tuple<ApiKeyRequestType, short?>> _timedOutRequestsByCorrelation = new ConcurrentDictionary<int, Tuple<ApiKeyRequestType, short?>>();
         private readonly ILog _log;
         private readonly ITcpSocket _socket;
         private readonly IConnectionConfiguration _configuration;
@@ -81,13 +82,13 @@ namespace KafkaClient.Connections
 
             var payload = KafkaEncoder.Encode(context, request);
             _log.Info(() => LogEvent.Create($"Sending {request.ApiKey} with correlation id {context.CorrelationId} (v {version.GetValueOrDefault()}, {payload.Buffer.Length} bytes) to {Endpoint}"));
-            _log.Debug(() => LogEvent.Create($"-----> {request.ApiKey} with correlation id {context.CorrelationId} to {Endpoint}\n{request.ToFormattedString()}"));
+            _log.Debug(() => LogEvent.Create($"{request.ApiKey} -----> {Endpoint} with correlation id {context.CorrelationId}\n{request.ToFormattedString()}"));
             if (!request.ExpectResponse) {
                 await _socket.WriteAsync(payload, token).ConfigureAwait(false);
                 return default(T);
             }
 
-            using (var asyncRequest = new AsyncRequestItem(context.CorrelationId, request.ApiKey, _configuration.RequestTimeout)) {
+            using (var asyncRequest = new AsyncRequestItem(context, request.ApiKey, _configuration.RequestTimeout)) {
                 try {
                     AddAsyncRequestItemToResponseQueue(asyncRequest);
                     ExceptionDispatchInfo exceptionDispatchInfo = null;
@@ -103,11 +104,7 @@ namespace KafkaClient.Connections
                     TriggerMessageTimeout(asyncRequest);
                 }
 
-                var response = await asyncRequest.ReceiveTask.Task.ThrowIfCancellationRequested(token).ConfigureAwait(false);
-                _log.Info(() => LogEvent.Create($"Receiving {request.ApiKey} with correlation id {context.CorrelationId} (v {version.GetValueOrDefault()}, {response.Length} bytes) from {Endpoint}"));
-                var result = KafkaEncoder.Decode<T>(context, response);
-                _log.Debug(() => LogEvent.Create($"<------- {request.ApiKey} with correlation id {context.CorrelationId} from {Endpoint}\n{result.ToFormattedString()}"));
-                return result;
+                return (T)await asyncRequest.ReceiveTask.Task.ThrowIfCancellationRequested(token).ConfigureAwait(false);
             }
         }
 
@@ -229,12 +226,30 @@ namespace KafkaClient.Connections
         private void CorrelatePayloadToRequest(byte[] payload)
         {
             var correlationId = payload.Take(4).ToArray().ToInt32();
+
             AsyncRequestItem asyncRequest;
             if (_requestsByCorrelation.TryRemove(correlationId, out asyncRequest)) {
-                _log.Debug(() => LogEvent.Create($"Matched {asyncRequest.RequestType} response with correlation id {correlationId} from {Endpoint}"));
-                asyncRequest.ReceiveTask.SetResult(payload);
+                var requestType = asyncRequest.RequestType;
+                var context = asyncRequest.Context;
+                _log.Info(() => LogEvent.Create($"Matched {requestType} response with correlation id {correlationId} (v {context.ApiVersion.GetValueOrDefault()}, {payload.Length} bytes) from {Endpoint}"));
+                var result = KafkaEncoder.Decode<IResponse>(asyncRequest.Context, requestType, payload);
+                _log.Debug(() => LogEvent.Create($"{Endpoint} -----> {requestType} with correlation id {context.CorrelationId}\n{result.ToFormattedString()}"));
+                asyncRequest.ReceiveTask.SetResult(result);
             } else {
-                _log.Warn(() => LogEvent.Create($"Unexpected response from {Endpoint} with correlation id {correlationId} (not in request queue)."));
+                Tuple<ApiKeyRequestType, short?> requestInfo;
+                if (_timedOutRequestsByCorrelation.TryRemove(correlationId, out requestInfo)) {
+                    var requestType = requestInfo.Item1;
+                    var context = new RequestContext(correlationId, requestInfo.Item2, encoders: _configuration.Encoders);
+                    try {
+                        _log.Warn(() => LogEvent.Create($"Unexpected {requestType} response with correlation id {correlationId} ({payload.Length} bytes) from {Endpoint}"));
+                        var result = KafkaEncoder.Decode<IResponse>(context, requestType, payload);
+                        _log.Debug(() => LogEvent.Create($"{Endpoint} -----> {requestType} with correlation id {context.CorrelationId} (not in request queue)\n{result.ToFormattedString()}"));
+                    } catch {
+                        // ignore, since this is mostly for debugging
+                    }
+                } else {
+                    _log.Warn(() => LogEvent.Create($"Unexpected response from {Endpoint} with correlation id {correlationId}"));
+                }
             }
         }
 
@@ -252,24 +267,29 @@ namespace KafkaClient.Connections
         private void AddAsyncRequestItemToResponseQueue(AsyncRequestItem requestItem)
         {
             if (requestItem == null) return;
-            if (_requestsByCorrelation.TryAdd(requestItem.CorrelationId, requestItem) == false) {
+            if (_requestsByCorrelation.TryAdd(requestItem.Context.CorrelationId, requestItem) == false) {
                 throw new KafkaException("Failed to register request for async response.");
             }
         }
 
-        private void TriggerMessageTimeout(AsyncRequestItem asyncRequestItem)
+        private void TriggerMessageTimeout(AsyncRequestItem asyncRequest)
         {
-            if (asyncRequestItem == null) return;
+            if (asyncRequest == null) return;
 
             AsyncRequestItem request;
-            if (_requestsByCorrelation.TryRemove(asyncRequestItem.CorrelationId, out request)) {
-                _log.Info(() => LogEvent.Create($"Removed request {asyncRequestItem.RequestType} with correlation id {asyncRequestItem.CorrelationId} from request queue (timed out)."));
+            if (_requestsByCorrelation.TryRemove(asyncRequest.Context.CorrelationId, out request)) {
+                _log.Info(() => LogEvent.Create($"Removed request {asyncRequest.RequestType} with correlation id {asyncRequest.Context.CorrelationId} from request queue (timed out)."));
+                if (_timedOutRequestsByCorrelation.TryAdd(asyncRequest.Context.CorrelationId, new Tuple<ApiKeyRequestType, short?>(request.RequestType, request.Context.ApiVersion)) 
+                    && _timedOutRequestsByCorrelation.Count > 1000)
+                {
+                    _timedOutRequestsByCorrelation.Clear();
+                }
             }
 
             if (_disposeToken.IsCancellationRequested) {
-                asyncRequestItem.ReceiveTask.TrySetException(new ObjectDisposedException("The object is being disposed and the connection is closing."));
+                asyncRequest.ReceiveTask.TrySetException(new ObjectDisposedException("The object is being disposed and the connection is closing."));
             } else {
-                asyncRequestItem.ReceiveTask.TrySetException(new TimeoutException($"Timeout expired after {asyncRequestItem.Timeout.TotalMilliseconds} ms."));
+                asyncRequest.ReceiveTask.TrySetException(new TimeoutException($"Timeout expired after {asyncRequest.Timeout.TotalMilliseconds} ms."));
             }
         }
 
@@ -292,18 +312,18 @@ namespace KafkaClient.Connections
             private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
             private CancellationTokenRegistration _registration;
 
-            public AsyncRequestItem(int correlationId, ApiKeyRequestType requestType, TimeSpan timeout)
+            public AsyncRequestItem(IRequestContext context, ApiKeyRequestType requestType, TimeSpan timeout)
             {
-                CorrelationId = correlationId;
+                Context = context;
                 Timeout = timeout;
                 RequestType = requestType;
-                ReceiveTask = new TaskCompletionSource<byte[]>();
+                ReceiveTask = new TaskCompletionSource<IResponse>();
             }
 
-            public int CorrelationId { get; }
+            public IRequestContext Context { get; }
             public ApiKeyRequestType RequestType { get; }
             public TimeSpan Timeout { get; }
-            public TaskCompletionSource<byte[]> ReceiveTask { get; }
+            public TaskCompletionSource<IResponse> ReceiveTask { get; }
 
             public void MarkRequestAsSent(ExceptionDispatchInfo exceptionDispatchInfo, Action<AsyncRequestItem> timeoutFunction)
             {
@@ -318,9 +338,10 @@ namespace KafkaClient.Connections
 
             public void Dispose()
             {
-                _cancellationTokenSource.Cancel();
-                _cancellationTokenSource.Dispose();
-                _registration.Dispose();
+                using (_cancellationTokenSource) {
+                    using (_registration) {
+                    }
+                }
             }
         }
     }
