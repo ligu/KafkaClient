@@ -70,6 +70,45 @@ namespace KafkaClient
         Task<TopicBroker> GetTopicBrokerAsync(string topicName, int partitionId, CancellationToken cancellationToken);
 
         /// <summary>
+        /// Returns a Group metadata for the given consumer group.
+        /// </summary>
+        /// <remarks>
+        /// The group metadata returned is from what is currently in the cache. To ensure data is not too stale, 
+        /// use <see cref="GetGroupMetadataAsync(string, CancellationToken)"/>.
+        /// </remarks>
+        /// <exception cref="CachedMetadataException">Thrown if the group metadata does not exist in the cache.</exception>
+        DescribeGroupsResponse.Group GetGroupMetadata(string groupId);
+
+        /// <summary>
+        /// Returns Group metadata for each consumer group requested.
+        /// </summary>
+        /// <returns>List of Groups currently in the cache.</returns>
+        /// <remarks>
+        /// The group metadata returned is from what is currently in the cache. To ensure data is not too stale,  
+        /// use <see cref="GetGroupMetadataAsync(IEnumerable&lt;string&gt;, CancellationToken)"/>.
+        /// </remarks>
+        /// <exception cref="CachedMetadataException">Thrown if the group metadata does not exist in the cache.</exception>
+        IImmutableList<DescribeGroupsResponse.Group> GetGroupMetadata(IEnumerable<string> groupIds);
+
+        /// <summary>
+        /// Returns a Group metadata for the given consumer group.
+        /// </summary>
+        /// <remarks>
+        /// This method will check the cache first, and if the group is missing it will initiate a call to the kafka 
+        /// servers, updating the cache with the resulting metadata.
+        /// </remarks>
+        Task<DescribeGroupsResponse.Group> GetGroupMetadataAsync(string groupId, CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Returns Group metadata for each consumer group requested.
+        /// </summary>
+        /// <remarks>
+        /// This method will check the cache first, and for any missing group metadata it will initiate a call to the kafka 
+        /// servers, updating the cache with the resulting metadata.
+        /// </remarks>
+        Task<IImmutableList<DescribeGroupsResponse.Group>> GetGroupMetadataAsync(IEnumerable<string> groupIds, CancellationToken cancellationToken);
+
+        /// <summary>
         /// Returns Topic metadata for the given topic.
         /// </summary>
         /// <returns>List of Topics currently in the cache.</returns>
@@ -115,6 +154,17 @@ namespace KafkaClient
         Task<IImmutableList<MetadataResponse.Topic>> GetTopicMetadataAsync(IEnumerable<string> topicNames, CancellationToken cancellationToken);
 
         /// <summary>
+        /// Force a call to the kafka servers to refresh brokers for the given group.
+        /// </summary>
+        /// <param name="groupId">The group name to refresh metadata for.</param>
+        /// <param name="ignoreCacheExpiry">True to ignore the local cache expiry and force the call to the server.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <remarks>
+        /// This method will ignore the cache and initiate a call to the kafka servers for the given group, updating the cache with the resulting brokers.
+        /// </remarks>
+        Task RefreshGroupBrokerAsync(string groupId, bool ignoreCacheExpiry, CancellationToken cancellationToken);
+
+        /// <summary>
         /// Force a call to the kafka servers to refresh metadata for the given group.
         /// </summary>
         /// <param name="groupId">The group name to refresh metadata for.</param>
@@ -124,6 +174,17 @@ namespace KafkaClient
         /// This method will ignore the cache and initiate a call to the kafka servers for the given group, updating the cache with the resulting metadata.
         /// </remarks>
         Task RefreshGroupMetadataAsync(string groupId, bool ignoreCacheExpiry, CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Force a call to the kafka servers to refresh metadata for the given groups.
+        /// </summary>
+        /// <param name="groupIds">The groups to refresh metadata for.</param>
+        /// <param name="ignoreCacheExpiry">True to ignore the local cache expiry and force the call to the server.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <remarks>
+        /// This method will ignore the cache and initiate a call to the kafka servers for the given groups, updating the cache with the resulting metadata.
+        /// </remarks>
+        Task RefreshGroupMetadataAsync(IEnumerable<string> groupIds, bool ignoreCacheExpiry, CancellationToken cancellationToken);
 
         /// <summary>
         /// Force a call to the kafka servers to refresh metadata for the given topic.

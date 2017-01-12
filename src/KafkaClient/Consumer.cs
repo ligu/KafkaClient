@@ -192,13 +192,14 @@ namespace KafkaClient
         {
             if (!_encoders.ContainsKey(protocolType ?? "")) throw new ArgumentOutOfRangeException(nameof(metadata), $"ProtocolType {protocolType} is unknown");
 
+            var group = await DescribeGroupAsync(groupId, cancellationToken);
+
             var protocols = metadata?.Select(m => new JoinGroupRequest.GroupProtocol(m));
             var request = new JoinGroupRequest(groupId, Configuration.GroupHeartbeat, member?.MemberId ?? "", protocolType, protocols, Configuration.GroupRebalanceTimeout);
             var response = await Router.SendAsync(request, groupId, cancellationToken, retryPolicy: Configuration.GroupCoordinationRetry, context: new RequestContext(protocolType: protocolType)).ConfigureAwait(false);
             if (!response.ErrorCode.IsSuccess()) {
                 throw request.ExtractExceptions(response);
             }
-            var group = await DescribeGroupAsync(groupId, cancellationToken);
 
             if (member != null) {
                 member.OnJoinGroup(response, group);
@@ -255,14 +256,9 @@ namespace KafkaClient
             var encoder = _encoders[protocolType];
             var assigner = encoder.GetAssignor(metadata.AssignmentStrategy);
 
-            if (currentAssignments == ImmutableDictionary<string, IMemberAssignment>.Empty) {
-                // should only happen when the leader is changed (or new)
-                var request = new DescribeGroupsRequest(groupId);
-                var response = await Router.SendAsync(request, groupId, cancellationToken).ConfigureAwait(false);
-                var group = response.Groups.SingleOrDefault(g => g.GroupId == groupId);
-                if (group != null) {
-                    currentAssignments = group.Members.ToImmutableDictionary(m => m.MemberId, m => m.MemberAssignment);
-                }
+            var group = await Router.GetGroupMetadataAsync(groupId, cancellationToken);
+            if (group != null) {
+                currentAssignments = group.Members.ToImmutableDictionary(m => m.MemberId, m => m.MemberAssignment);
             }
             return await assigner.AssignMembersAsync(Router, memberMetadata, currentAssignments, cancellationToken).ConfigureAwait(false);
         }

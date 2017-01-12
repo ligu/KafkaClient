@@ -139,11 +139,11 @@ namespace KafkaClient.Tests.Unit
             var routerProxy = new BrokerRouterProxy();
             var router = routerProxy.Create();
             TimeSpan cacheExpiration = TimeSpan.FromMilliseconds(100);
-            await router.RefreshGroupMetadataAsync(TestTopic, true, CancellationToken.None);
+            await router.RefreshGroupBrokerAsync(TestTopic, true, CancellationToken.None);
             Assert.That(routerProxy.Connection1[ApiKeyRequestType.GroupCoordinator], Is.EqualTo(1));
             await Task.Delay(routerProxy.CacheExpiration);
             await Task.Delay(1);//After cache is expired
-            await router.RefreshGroupMetadataAsync(TestTopic, true, CancellationToken.None);
+            await router.RefreshGroupBrokerAsync(TestTopic, true, CancellationToken.None);
             Assert.That(routerProxy.Connection1[ApiKeyRequestType.GroupCoordinator], Is.EqualTo(2));
         }
 
@@ -154,8 +154,8 @@ namespace KafkaClient.Tests.Unit
             var router = routerProxy.Create();
 
             List<Task> x = new List<Task>();
-            x.Add(router.RefreshGroupMetadataAsync(TestTopic, true, CancellationToken.None));//do not debug
-            x.Add(router.RefreshGroupMetadataAsync(TestTopic, true, CancellationToken.None));//do not debug
+            x.Add(router.RefreshGroupBrokerAsync(TestTopic, true, CancellationToken.None));//do not debug
+            x.Add(router.RefreshGroupBrokerAsync(TestTopic, true, CancellationToken.None));//do not debug
             await Task.WhenAll(x.ToArray());
             Assert.That(routerProxy.Connection1[ApiKeyRequestType.GroupCoordinator], Is.EqualTo(2));
         }

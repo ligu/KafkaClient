@@ -268,5 +268,6 @@ namespace KafkaClient.Tests.Unit
         // dealing correctly with losing ownership
         // multiple partition assignment test
         // initial group describe dictates what call happens next (based on server state)
+        // add router tests for group metadata caching
     }
 }
