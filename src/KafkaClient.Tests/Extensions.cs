@@ -54,7 +54,7 @@ namespace KafkaClient.Tests
         public static async Task CommitTopicOffsetAsync(this IRouter router, string topicName, int partitionId, string groupId, long offset, CancellationToken cancellationToken)
         {
             var request = new OffsetCommitRequest(groupId, new [] { new OffsetCommitRequest.Topic(topicName, partitionId, offset) });
-            await router.SendAsync(request, topicName, partitionId, groupId, cancellationToken).ConfigureAwait(false);
+            await router.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
         }
 
         public static Task<IMessageBatch> FetchBatchAsync(this IConsumer consumer, OffsetResponse.Topic offset, int batchSize, CancellationToken cancellationToken)

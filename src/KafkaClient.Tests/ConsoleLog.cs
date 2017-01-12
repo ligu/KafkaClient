@@ -44,11 +44,7 @@ namespace KafkaClient.Tests
         public static void Write(LogLevel level, string text)
         {
             Console.WriteLine(text);
-            //if (level == LogLevel.Error) {
-            //    NUnit.Framework.TestContext.Error.WriteLine(text);
-            //} else {
-            //    NUnit.Framework.TestContext.Progress.WriteLine(text);
-            //}
+//            NUnit.Framework.TestContext.Progress.WriteLine(text);
         }
     }
 }

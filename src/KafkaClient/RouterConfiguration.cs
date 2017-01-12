@@ -37,7 +37,7 @@ namespace KafkaClient
             /// <summary>
             /// The default expiration length for <see cref="RouterConfiguration.CacheExpiration"/>
             /// </summary>
-            public const int CacheExpirationMilliseconds = 10;
+            public const int CacheExpirationMilliseconds = 1000;
 
             public static IRetry RefreshRetry(TimeSpan? timeout = null)
             {

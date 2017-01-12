@@ -232,9 +232,13 @@ namespace KafkaClient.Connections
                 var requestType = asyncRequest.RequestType;
                 var context = asyncRequest.Context;
                 _log.Info(() => LogEvent.Create($"Matched {requestType} response with correlation id {correlationId} (v {context.ApiVersion.GetValueOrDefault()}, {payload.Length} bytes) from {Endpoint}"));
-                var result = KafkaEncoder.Decode<IResponse>(asyncRequest.Context, requestType, payload);
-                _log.Debug(() => LogEvent.Create($"{Endpoint} -----> {requestType} with correlation id {context.CorrelationId}\n{result.ToFormattedString()}"));
-                asyncRequest.ReceiveTask.SetResult(result);
+                try {
+                    var result = KafkaEncoder.Decode<IResponse>(asyncRequest.Context, requestType, payload);
+                    _log.Debug(() => LogEvent.Create($"{Endpoint} -----> {requestType} with correlation id {context.CorrelationId}\n{result.ToFormattedString()}"));
+                    asyncRequest.ReceiveTask.SetResult(result);
+                } catch (Exception ex) {
+                    asyncRequest.ReceiveTask.TrySetException(ex);
+                }
             } else {
                 Tuple<ApiKeyRequestType, short?> requestInfo;
                 if (_timedOutRequestsByCorrelation.TryRemove(correlationId, out requestInfo)) {

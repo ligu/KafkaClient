@@ -219,7 +219,7 @@ namespace KafkaClient.Tests.Integration
                     try {
                         await consumer.FetchBatchAsync(topicName, _partitionId, offset, CancellationToken.None, 5);
                         Assert.Fail("should have thrown CachedMetadataException");
-                    } catch (CachedMetadataException ex) when (ex.Message.StartsWith("Unable to refresh metadata")) {
+                    } catch (CachedMetadataException ex) when (ex.Message.StartsWith($"The topic ({topicName}) has no partitionId {_partitionId} defined.")) {
                         // expected
                     }
                 }
@@ -336,7 +336,7 @@ namespace KafkaClient.Tests.Integration
                 try {
                     await router.GetTopicOffsetAsync(topicName, _partitionId, groupId, CancellationToken.None);
                     Assert.Fail("should have thrown CachedMetadataException");
-                } catch (CachedMetadataException ex) when (ex.Message.StartsWith("Unable to refresh metadata")) {
+                } catch (CachedMetadataException ex) when (ex.Message.StartsWith($"The topic ({topicName}) has no partitionId {_partitionId} defined.")) {
                     // expected
                 }
             }
@@ -429,7 +429,7 @@ namespace KafkaClient.Tests.Integration
                 try {
                     await router.CommitTopicOffsetAsync(topicName, partitionId, groupId, offest, CancellationToken.None);
                     Assert.Fail("should have thrown CachedMetadataException");
-                } catch (CachedMetadataException ex) when (ex.Message.StartsWith("Unable to refresh metadata")) {
+                } catch (CachedMetadataException ex) when (ex.Message.StartsWith($"The topic ({topicName}) has no partitionId {_partitionId} defined.")) {
                     // expected
                 }
             }
@@ -499,7 +499,7 @@ namespace KafkaClient.Tests.Integration
                 try {
                     await router.GetTopicOffsetAsync(topicName, _partitionId, CancellationToken.None);
                     Assert.Fail("should have thrown CachedMetadataException");
-                } catch (CachedMetadataException ex) when (ex.Message.StartsWith("Unable to refresh metadata")) {
+                } catch (CachedMetadataException ex) when (ex.Message.StartsWith($"The topic ({topicName}) has no partitionId {_partitionId} defined.")) {
                     // expected
                 }
             }
@@ -855,7 +855,7 @@ namespace KafkaClient.Tests.Integration
             }
         }
 
-        [Test]
+        //[Test]
         //[TestCase(2)]
         //[TestCase(5)]
         public async Task CanConsumeFromMultipleGroups()

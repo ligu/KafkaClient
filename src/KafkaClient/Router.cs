@@ -131,7 +131,7 @@ namespace KafkaClient
         public async Task<MetadataResponse.Topic> GetTopicMetadataAsync(string topicName, CancellationToken cancellationToken)
         {
             return TryGetCachedTopic(topicName) 
-                ?? await UpdateTopicMetadataFromServerAsync(topicName, true, cancellationToken).ConfigureAwait(false);
+                ?? await UpdateTopicMetadataFromServerAsync(topicName, false, cancellationToken).ConfigureAwait(false);
         }
 
         /// <inheritdoc />
@@ -188,10 +188,6 @@ namespace KafkaClient
                     Log.Info(() => LogEvent.Create($"Router refreshing metadata for topics {string.Join(",", searchResult.Missing)}"));
                     request = new MetadataRequest(searchResult.Missing);
                     response = await this.GetMetadataAsync(request, cancellationToken);
-                }
-
-                if (ignoreCache && (response?.Topics == null || response.Topics.Count == 0)) {
-                    throw new CachedMetadataException($"Unable to refresh metadata for topics {string.Join(",", request.Topics)}");
                 }
 
                 UpdateConnectionCache(response);
@@ -429,7 +425,7 @@ namespace KafkaClient
         public async Task<int> GetGroupBrokerIdAsync(string groupId, CancellationToken cancellationToken)
         {
             return TryGetCachedGroupBrokerId(groupId) 
-                ?? await UpdateGroupMetadataFromServerAsync(groupId, true, cancellationToken).ConfigureAwait(false);
+                ?? await UpdateGroupMetadataFromServerAsync(groupId, false, cancellationToken).ConfigureAwait(false);
         }
 
         /// <inheritdoc />

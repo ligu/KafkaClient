@@ -195,7 +195,8 @@ namespace KafkaClient.Tests.Unit
             var request = new JoinGroupRequest(TestConfig.GroupId(), TimeSpan.FromMilliseconds(heartbeatMilliseconds * 2), "", ConsumerEncoder.Protocol, new [] { protocol });
             var memberId = Guid.NewGuid().ToString("N");
             var response = new JoinGroupResponse(ErrorResponseCode.None, 1, protocol.Name, memberId, memberId, new []{ new JoinGroupResponse.Member(memberId, new ConsumerProtocolMetadata("mine")) });
-            using (new ConsumerMember(consumer, request, response, TestConfig.Log)) {
+            var group = new DescribeGroupsResponse.Group(ErrorResponseCode.None, request.GroupId, DescribeGroupsResponse.Group.States.NoActiveGroup, request.ProtocolType, protocol.Name, null);
+            using (new ConsumerMember(consumer, request, response, group, TestConfig.Log)) {
                 await Task.Delay(totalMilliseconds);
             }
 
@@ -226,7 +227,8 @@ namespace KafkaClient.Tests.Unit
             var memberId = Guid.NewGuid().ToString("N");
             var response = new JoinGroupResponse(ErrorResponseCode.None, 1, protocol.Name, memberId, memberId, new []{ new JoinGroupResponse.Member(memberId, new ConsumerProtocolMetadata("mine")) });
             lastHeartbeat = DateTimeOffset.UtcNow;
-            using (new ConsumerMember(consumer, request, response, TestConfig.Log)) {
+            var group = new DescribeGroupsResponse.Group(ErrorResponseCode.None, request.GroupId, DescribeGroupsResponse.Group.States.NoActiveGroup, request.ProtocolType, protocol.Name, null);
+            using (new ConsumerMember(consumer, request, response, group, TestConfig.Log)) {
                 await Task.Delay(totalMilliseconds);
             }
 
@@ -248,7 +250,8 @@ namespace KafkaClient.Tests.Unit
             var request = new JoinGroupRequest(TestConfig.GroupId(), TimeSpan.FromMilliseconds(heartbeatMilliseconds), "", ConsumerEncoder.Protocol, new [] { protocol });
             var memberId = Guid.NewGuid().ToString("N");
             var response = new JoinGroupResponse(ErrorResponseCode.None, 1, protocol.Name, memberId, memberId, new []{ new JoinGroupResponse.Member(memberId, new ConsumerProtocolMetadata("mine")) });
-            using (new ConsumerMember(consumer, request, response, TestConfig.Log)) {
+            var group = new DescribeGroupsResponse.Group(ErrorResponseCode.None, request.GroupId, DescribeGroupsResponse.Group.States.NoActiveGroup, request.ProtocolType, protocol.Name, null);
+            using (new ConsumerMember(consumer, request, response, group, TestConfig.Log)) {
                 await Task.Delay(heartbeatMilliseconds * 3);
 
 #pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
@@ -264,5 +267,6 @@ namespace KafkaClient.Tests.Unit
         // (async) locking is done correctly in the member
         // dealing correctly with losing ownership
         // multiple partition assignment test
+        // initial group describe dictates what call happens next (based on server state)
     }
 }

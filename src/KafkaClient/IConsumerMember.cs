@@ -15,11 +15,11 @@ namespace KafkaClient
         ILog Log { get; }
 
         /// <summary>
-        /// Called from the consumer, in the Joining state.
+        /// Called from the consumer when joining/rejoining. State from server *after* join is described by <param name="group"></param>.
         /// 
         /// See https://cwiki.apache.org/confluence/display/KAFKA/Kafka+Client-side+Assignment+Proposal
         /// </summary>
-        void OnJoinGroup(JoinGroupResponse response);
+        void OnJoinGroup(JoinGroupResponse response, DescribeGroupsResponse.Group group);
 
         /// <summary>
         /// Fetch messages for this consumer group's current assignment.

@@ -15,7 +15,7 @@ namespace KafkaClient
     {
         private readonly IConsumer _consumer;
 
-        public ConsumerMember(IConsumer consumer, JoinGroupRequest request, JoinGroupResponse response, ILog log = null)
+        public ConsumerMember(IConsumer consumer, JoinGroupRequest request, JoinGroupResponse response, DescribeGroupsResponse.Group group, ILog log = null)
         {
             _consumer = consumer;
             Log = log ?? consumer.Router?.Log ?? TraceLog.Log;
@@ -24,7 +24,7 @@ namespace KafkaClient
             MemberId = response.MemberId;
             ProtocolType = request.ProtocolType;
 
-            OnJoinGroup(response);
+            OnJoinGroup(response, group);
 
             // This thread will heartbeat on the appropriate frequency
             _heartbeatDelay = TimeSpan.FromMilliseconds(request.SessionTimeout.TotalMilliseconds / 2);
@@ -213,10 +213,12 @@ namespace KafkaClient
             await _consumer.JoinGroupAsync(GroupId, ProtocolType, memberMetadata, cancellationToken, this);
         }
 
-        public void OnJoinGroup(JoinGroupResponse response)
+        public void OnJoinGroup(JoinGroupResponse response, DescribeGroupsResponse.Group group)
         {
             if (response.MemberId != MemberId) throw new ArgumentOutOfRangeException(nameof(response), $"Member is not valid ({MemberId} != {response.MemberId})");
             if (_disposeCount > 0) throw new ObjectDisposedException($"Member {MemberId} is no longer valid");
+
+            Log.Info(() => LogEvent.Create($"OnJoinGroup, \n{response.ToFormattedString()} \n{group.ToFormattedString()}"));
 
             using (_lock.Lock()) {
                 IsLeader = response.LeaderId == MemberId;

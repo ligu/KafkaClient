@@ -163,7 +163,7 @@ namespace KafkaClient
 
                 if (_groupId != null && _memberId != null) {
                     var request = new OffsetCommitRequest(_groupId, new[] { new OffsetCommitRequest.Topic(_partition.TopicName, _partition.PartitionId, offset) }, _memberId, _generationId);
-                    await _consumer.Router.SendAsync(request, _partition.TopicName, _partition.PartitionId, _groupId, cancellationToken).ConfigureAwait(false);
+                    await _consumer.Router.SendAsync(request, _partition.TopicName, _partition.PartitionId, cancellationToken).ConfigureAwait(false);
                 }
                 _offsetCommitted = offset;
                 return offset;
@@ -198,12 +198,20 @@ namespace KafkaClient
             if (!response.ErrorCode.IsSuccess()) {
                 throw request.ExtractExceptions(response);
             }
+            var group = await DescribeGroupAsync(groupId, cancellationToken);
 
             if (member != null) {
-                member.OnJoinGroup(response);
+                member.OnJoinGroup(response, group);
                 return member;
             }
-            return new ConsumerMember(this, request, response);
+            return new ConsumerMember(this, request, response, group);
+        }
+
+        private async Task<DescribeGroupsResponse.Group> DescribeGroupAsync(string groupId, CancellationToken cancellationToken)
+        {
+            var request = new DescribeGroupsRequest(groupId);
+            var response = await Router.SendAsync(request, groupId, cancellationToken).ConfigureAwait(false);
+            return response.Groups.SingleOrDefault(g => g.GroupId == groupId);
         }
 
         public async Task LeaveGroupAsync(string groupId, string memberId, CancellationToken cancellationToken, bool awaitResponse = true)

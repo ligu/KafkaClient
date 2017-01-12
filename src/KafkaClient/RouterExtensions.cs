@@ -109,19 +109,8 @@ namespace KafkaClient
         public static async Task<OffsetFetchResponse.Topic> GetTopicOffsetAsync(this IRouter router, string topicName, int partitionId, string groupId, CancellationToken cancellationToken)
         {
             var request = new OffsetFetchRequest(groupId, new TopicPartition(topicName, partitionId));
-            var response = await router.SendAsync(request, topicName, partitionId, groupId, cancellationToken).ConfigureAwait(false);
+            var response = await router.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
             return response.Topics.SingleOrDefault(t => t.TopicName == topicName && t.PartitionId == partitionId);
-        }
-
-        public static async Task<T> SendAsync<T>(this IRouter router, IRequest<T> request, string topicName, int partitionId, string groupId, CancellationToken cancellationToken) where T : class, IResponse
-        {
-            try {
-                return await router.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
-            } catch (RequestException ex) when (ex.ErrorCode == ErrorResponseCode.NotCoordinatorForGroup) {
-                // ensure the group exists, then retry
-                await router.SendAsync(new GroupCoordinatorRequest(groupId), topicName, partitionId, cancellationToken).ConfigureAwait(false);
-                return await router.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
-            }
         }
 
         /// <exception cref="CachedMetadataException">Thrown if the cached metadata for the given topic is invalid or missing.</exception>
@@ -291,10 +280,10 @@ namespace KafkaClient
                         router.Log.Warn(() => LogEvent.Create(result.Message));
                     }
 
-                    return RetryAttempt<MetadataResponse>.Retry;
+                    return new RetryAttempt<MetadataResponse>(response, false);
                 },
                 (attempt, retry) => router.Log.Warn(() => LogEvent.Create($"Failed metadata request on attempt {attempt}: Will retry in {retry}")),
-                null, // return the failed response above, resulting in a null
+                null, // return the failed response above, resulting in the final response
                 (ex, attempt, retry) => {
                     throw ex.PrepareForRethrow();
                 },
