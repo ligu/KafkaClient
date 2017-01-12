@@ -1,5 +1,4 @@
-﻿using System;
-using System.Linq;
+﻿using System.Linq;
 using KafkaClient.Assignment;
 using KafkaClient.Protocol;
 using NUnit.Framework;

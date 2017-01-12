@@ -1,6 +1,5 @@
 using System.Collections.Immutable;
 using KafkaClient.Assignment;
-using KafkaClient.Connections;
 using KafkaClient.Telemetry;
 
 namespace KafkaClient.Protocol

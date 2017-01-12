@@ -5,6 +5,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using KafkaClient.Assignment;
 using KafkaClient.Common;
 using KafkaClient.Connections;
 
@@ -930,9 +931,10 @@ namespace KafkaClient.Protocol
                     var protocolType = reader.ReadString();
                     var protocol = reader.ReadString();
 
-                    var encoder = context.GetEncoder(protocolType);
+                    IMembershipEncoder encoder = null;
                     var members = new DescribeGroupsResponse.Member[reader.ReadInt32()];
                     for (var m = 0; m < members.Length; m++) {
+                        encoder = encoder ?? context.GetEncoder(protocolType);
                         var memberId = reader.ReadString();
                         var clientId = reader.ReadString();
                         var clientHost = reader.ReadString();
