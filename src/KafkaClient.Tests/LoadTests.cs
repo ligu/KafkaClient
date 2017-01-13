@@ -47,12 +47,10 @@ namespace KafkaClient.Tests.Integration
         [TestCase(1, 1, MessageCodec.CodecGzip, 70)]
         [TestCase(1000, 50, MessageCodec.CodecNone, 70)]
         [TestCase(1000, 50, MessageCodec.CodecGzip, 70)]
-        [TestCase(30000, 100, MessageCodec.CodecNone, 2550)]
-        [TestCase(30000, 100, MessageCodec.CodecGzip, 2550)]
-        [TestCase(50000, 100, MessageCodec.CodecNone, 850)]
-        [TestCase(50000, 100, MessageCodec.CodecGzip, 850)]
-        [TestCase(200000, 1000, MessageCodec.CodecNone, 8050)]
-        [TestCase(200000, 1000, MessageCodec.CodecGzip, 8050)]
+        [TestCase(10000, 100, MessageCodec.CodecNone, 850)]
+        [TestCase(10000, 100, MessageCodec.CodecGzip, 850)]
+        [TestCase(100000, 1000, MessageCodec.CodecNone, 8050)]
+        [TestCase(100000, 1000, MessageCodec.CodecGzip, 8050)]
         public async Task ProducerSpeedLoad(int totalMessages, int batchSize, MessageCodec codec, int timeoutInMs)
         {
             using (var router = new Router(TestConfig.IntegrationUri, log: TestConfig.Log)) {
