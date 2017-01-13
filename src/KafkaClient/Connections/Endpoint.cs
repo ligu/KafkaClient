@@ -17,7 +17,6 @@ namespace KafkaClient.Connections
         }
 
         public Uri ServerUri { get; }
-        [SuppressMessage("ReSharper", "InconsistentNaming")]
         public IPEndPoint IP { get; }
 
         #region Equality

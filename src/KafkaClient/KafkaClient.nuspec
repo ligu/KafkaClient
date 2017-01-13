@@ -22,18 +22,19 @@
         <dependency id="System.Collections.Immutable" version="1.2.0" />
         <dependency id="System.Diagnostics.TraceSource" version="4.0.0" />
         <dependency id="System.Net.NameResolution" version="4.0.0" />
+        <dependency id="System.Net.Sockets" version="4.3.0" />
         <dependency id="System.Threading.Thread" version="4.0.0" />
         <dependency id="System.IO.Compression" version="4.3.0" />
       </group>
-      <group targetFramework="netstandard1.6">
-          <dependency id="NETStandard.Library" version="1.6.0" />
+      <group targetFramework="netstandard1.3">
+          <dependency id="System.Reflection.Extensions" version="4.3.0" />
        </group>
     </dependencies>
   </metadata>
   <files>
     <file src="bin\Release\net462\KafkaClient.dll" target="lib\net462" />
     <file src="bin\Release\net462\KafkaClient.pdb" target="lib\net462" />
-    <file src="bin\Release\netstandard1.3\KafkaClient.dll" target="lib\netstandard1.6" />
-    <file src="bin\Release\netstandard1.3\KafkaClient.pdb" target="lib\netstandard1.6" />
+    <file src="bin\Release\netstandard1.3\KafkaClient.dll" target="lib\netstandard1.3" />
+    <file src="bin\Release\netstandard1.3\KafkaClient.pdb" target="lib\netstandard1.3" />
   </files>
 </package>

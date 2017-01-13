@@ -11,7 +11,6 @@ using KafkaClient.Connections;
 
 namespace KafkaClient.Protocol
 {
-    [SuppressMessage("ReSharper", "UnusedParameter.Local")]
     public static class KafkaEncoder
     {
         public static T Decode<T>(IRequestContext context, ApiKeyRequestType requstType, byte[] payload, bool hasSize = false) where T : class, IResponse

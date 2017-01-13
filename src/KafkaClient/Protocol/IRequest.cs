@@ -2,7 +2,6 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace KafkaClient.Protocol
 {
-    [SuppressMessage("ReSharper", "UnusedTypeParameter")]
     public interface IRequest<T> : IRequest
         where T : IResponse
     {
