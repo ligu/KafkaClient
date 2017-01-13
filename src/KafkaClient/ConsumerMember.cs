@@ -14,6 +14,8 @@ namespace KafkaClient
     public class ConsumerMember : IConsumerMember
     {
         private readonly IConsumer _consumer;
+        private IRouter Router => _consumer.Router;
+        private IConsumerConfiguration Configuration => _consumer.Configuration;
 
         public ConsumerMember(IConsumer consumer, JoinGroupRequest request, JoinGroupResponse response, ILog log = null)
         {
@@ -42,13 +44,13 @@ namespace KafkaClient
         private readonly AsyncLock _lock = new AsyncLock();
         private readonly AsyncManualResetEvent _isAssigned = new AsyncManualResetEvent(false);
         private ImmutableDictionary<string, IMemberMetadata> _memberMetadata = ImmutableDictionary<string, IMemberMetadata>.Empty;
-        private IImmutableDictionary<string, IMemberAssignment> _memberAssignments = ImmutableDictionary<string, IMemberAssignment>.Empty;
         private IImmutableDictionary<TopicPartition, IMessageBatch> _batches = ImmutableDictionary<TopicPartition, IMessageBatch>.Empty;
         private IMemberAssignment _assignment;
 
         public ILog Log { get; }
         public bool IsLeader { get; private set; }
         public int GenerationId { get; private set; }
+        private string _groupProtocol;
 
         public string GroupId { get; }
         public string MemberId { get; }
@@ -139,7 +141,7 @@ namespace KafkaClient
 
                             case MemberState.Stable:
                                 await Task.Delay(_heartbeatDelay, _disposeToken.Token).ConfigureAwait(false);
-                                response = await _consumer.SendHeartbeatAsync(GroupId, MemberId, GenerationId, _disposeToken.Token).ConfigureAwait(false);
+                                response = await SendHeartbeatAsync(_disposeToken.Token).ConfigureAwait(false);
                                 if (response == ErrorResponseCode.RebalanceInProgress) {
                                     state = MemberState.Rejoin;
                                 }
@@ -217,25 +219,36 @@ namespace KafkaClient
             using (_lock.Lock()) {
                 IsLeader = response.LeaderId == MemberId;
                 GenerationId = response.GenerationId;
+                _groupProtocol = response.GroupProtocol;
                 _memberMetadata = response.Members.ToImmutableDictionary(member => member.MemberId, member => member.Metadata);
             }
         }
 
-        private async Task<ErrorResponseCode> SyncGroupAsync(CancellationToken cancellationToken)
+        public async Task<ErrorResponseCode> SendHeartbeatAsync(CancellationToken cancellationToken)
+        {
+            var request = new HeartbeatRequest(GroupId, GenerationId, MemberId);
+            var response = await Router.SendAsync(request, GroupId, cancellationToken, retryPolicy: Configuration.GroupCoordinationRetry).ConfigureAwait(false);
+            return response.ErrorCode;
+        }
+
+        public async Task<ErrorResponseCode> SyncGroupAsync(CancellationToken cancellationToken)
         {
             using (await _lock.LockAsync(cancellationToken)) {
                 if (_disposeCount > 0) throw new ObjectDisposedException($"Member {MemberId} is no longer valid");
                 await Task.WhenAll(_batches.Values.Select(b => b.CommitMarkedAsync(cancellationToken)));
+                IEnumerable<SyncGroupRequest.GroupAssignment> groupAssignments = null;
                 if (IsLeader) {
-                    var memberAssignments = await _consumer.SyncGroupAsync(GroupId, MemberId, GenerationId, ProtocolType, _memberMetadata, _memberAssignments, cancellationToken);
-                    _assignment = memberAssignments[MemberId];
-                    _memberAssignments = memberAssignments;
-                } else {
-                    var response = await _consumer.SyncGroupAsync(GroupId, MemberId, GenerationId, ProtocolType, cancellationToken);
-                    if (!response.ErrorCode.IsSuccess()) return response.ErrorCode;
-                    _assignment = response.MemberAssignment;
-                    _memberAssignments = ImmutableDictionary<string, IMemberAssignment>.Empty;
+                    var encoder = _consumer.Encoders[ProtocolType];
+                    var assigner = encoder.GetAssignor(_groupProtocol);
+                    var assignments = await assigner.AssignMembersAsync(Router, GroupId, GenerationId, _memberMetadata, cancellationToken).ConfigureAwait(false);
+                    groupAssignments = assignments.Select(pair => new SyncGroupRequest.GroupAssignment(pair.Key, pair.Value));
                 }
+
+                var request = new SyncGroupRequest(GroupId, GenerationId, MemberId, groupAssignments);
+                var response = await Router.SyncGroupAsync(request, new RequestContext(protocolType: ProtocolType), Configuration.GroupCoordinationRetry, cancellationToken).ConfigureAwait(false);
+                if (!response.ErrorCode.IsSuccess()) return response.ErrorCode;
+
+                _assignment = response.MemberAssignment;
                 var validPartitions = _assignment.PartitionAssignments.ToImmutableHashSet();
                 var invalidPartitions = _batches.Where(pair => !validPartitions.Contains(pair.Key)).ToList();
                 foreach (var invalidPartition in invalidPartitions) {
@@ -258,19 +271,24 @@ namespace KafkaClient
             _disposeToken.Cancel();
             using (await _lock.LockAsync(cancellationToken)) {
                 await Task.WhenAll(_batches.Values.Select(b => b.CommitMarkedAsync(cancellationToken)));
-                if (cancellationToken == CancellationToken.None) {
-                    await Task.WhenAny(_heartbeatTask, Task.Delay(TimeSpan.FromSeconds(1), cancellationToken));
-                    await _consumer.LeaveGroupAsync(GroupId, MemberId, cancellationToken, false);
-                } else {
-                    await _heartbeatTask.WaitAsync(cancellationToken);
-                    await _consumer.LeaveGroupAsync(GroupId, MemberId, cancellationToken);
-                }
-                _assignment = null;
-                _memberAssignments = ImmutableDictionary<string, IMemberAssignment>.Empty;
                 foreach (var batch in _batches.Values) {
                     batch.Dispose();
                 }
                 _batches = ImmutableDictionary<TopicPartition, IMessageBatch>.Empty;
+                _assignment = null;
+
+                if (cancellationToken == CancellationToken.None) {
+                    await Task.WhenAny(_heartbeatTask, Task.Delay(TimeSpan.FromSeconds(1), cancellationToken));
+                    var request = new LeaveGroupRequest(GroupId, MemberId, false);
+                    await Router.SendAsync(request, GroupId, cancellationToken, retryPolicy: Configuration.GroupCoordinationRetry).ConfigureAwait(false);
+                } else {
+                    await _heartbeatTask.WaitAsync(cancellationToken);
+                    var request = new LeaveGroupRequest(GroupId, MemberId);
+                    var response = await Router.SendAsync(request, GroupId, cancellationToken, retryPolicy: Configuration.GroupCoordinationRetry).ConfigureAwait(false);
+                    if (!response.ErrorCode.IsSuccess()) {
+                        throw request.ExtractExceptions(response);
+                    }
+                }
             }
         }
 

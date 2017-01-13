@@ -4,7 +4,6 @@ using System.Collections.Immutable;
 using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Assignment;
-using KafkaClient.Protocol;
 
 namespace KafkaClient
 {
@@ -20,13 +19,11 @@ namespace KafkaClient
         /// </summary>
         IConsumerConfiguration Configuration { get; }
 
+        IImmutableDictionary<string, IMembershipEncoder> Encoders { get; }
+
         IRouter Router { get; }
 
         Task<IConsumerMember> JoinGroupAsync(string groupId, string protocolType, IEnumerable<IMemberMetadata> metadata, CancellationToken cancellationToken, IConsumerMember member = null);
-        Task<IImmutableDictionary<string, IMemberAssignment>> SyncGroupAsync(string groupId, string memberId, int generationId, string protocolType, IImmutableDictionary<string, IMemberMetadata> memberMetadata, IImmutableDictionary<string, IMemberAssignment> currentAssignments, CancellationToken cancellationToken);
-        Task<SyncGroupResponse> SyncGroupAsync(string groupId, string memberId, int generationId, string protocolType, CancellationToken cancellationToken);
-        Task<ErrorResponseCode> SendHeartbeatAsync(string groupId, string memberId, int generationId, CancellationToken cancellationToken);
         Task<IMessageBatch> FetchBatchAsync(string groupId, string memberId, int generationId, string topicName, int partitionId, CancellationToken cancellationToken, int? batchSize = null);
-        Task LeaveGroupAsync(string groupId, string memberId, CancellationToken cancellationToken, bool awaitResponse = true);
     }
 }

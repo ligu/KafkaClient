@@ -21,15 +21,14 @@ namespace KafkaClient.Assignment
         }
 
         protected override async Task<IImmutableDictionary<string, ConsumerMemberAssignment>> AssignAsync(
-            IRouter router, 
-            IImmutableDictionary<string, ConsumerProtocolMetadata> memberMetadata, 
-            IImmutableDictionary<string, IMemberAssignment> previousAssignments,
+            IRouter router, string groupId, int generationId, IImmutableDictionary<string, ConsumerProtocolMetadata> memberMetadata,
             CancellationToken cancellationToken)
         {
             var topicNames = memberMetadata.Values.SelectMany(m => m.Subscriptions).Distinct().ToList();
             var topicMetadata = await router.GetTopicMetadataAsync(topicNames, cancellationToken);
             var partitions = new HashSet<TopicPartition>(topicMetadata.SelectMany(t => t.Partitions.Select(p => new TopicPartition(t.TopicName, p.PartitionId))));
 
+            var previousAssignments = router.GetGroupMemberAssignment(groupId); // take the latest we've got, ignoring whether it's a current gen
             var assignments = memberMetadata.Keys.ToDictionary(_ => _, _ => new List<TopicPartition>());
             foreach (var currentAssignment in previousAssignments.Where(a => a.Value != null)) {
                 foreach (var partition in currentAssignment.Value.PartitionAssignments) {

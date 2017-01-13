@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading;
 using System.Threading.Tasks;
+using KafkaClient.Assignment;
 using KafkaClient.Common;
 using KafkaClient.Connections;
 using KafkaClient.Protocol;
@@ -68,6 +69,15 @@ namespace KafkaClient
         /// </remarks>
         /// <exception cref="CachedMetadataException">Thrown if the given topic or partitionId does not exist for the given topic even after a refresh.</exception>
         Task<TopicBroker> GetTopicBrokerAsync(string topicName, int partitionId, CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Returns known member assignments for the given consumer group. If a generationId is also specified, this will also have to match.
+        /// </summary>
+        /// <remarks>
+        /// The group assignments returned are from what is currently in the cache, since interrogating the server is impossible during rebalancing. 
+        /// </remarks>
+        /// <returns>An empty collection if no assignments are found.</returns>
+        IImmutableDictionary<string, IMemberAssignment> GetGroupMemberAssignment(string groupId, int? generationId = null);
 
         /// <summary>
         /// Returns a Group metadata for the given consumer group.
@@ -215,6 +225,11 @@ namespace KafkaClient
         /// This method will ignore the cache and initiate a call to the kafka servers for all topics, updating the cache with the resulting metadata.
         /// </remarks>
         Task RefreshTopicMetadataAsync(CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Sync Groups, to populate the cache with Group Member Assignments
+        /// </summary>
+        Task<SyncGroupResponse> SyncGroupAsync(SyncGroupRequest request, IRequestContext context, IRetry retryPolicy, CancellationToken cancellationToken);
 
         /// <summary>
         /// Log for the router

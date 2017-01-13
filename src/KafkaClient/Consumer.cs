@@ -26,10 +26,10 @@ namespace KafkaClient
             Router = router;
             _leaveRouterOpen = leaveRouterOpen;
             Configuration = configuration ?? new ConsumerConfiguration();
-            _encoders = encoders ?? ImmutableDictionary<string, IMembershipEncoder>.Empty;
+            Encoders = encoders ?? ImmutableDictionary<string, IMembershipEncoder>.Empty;
         }
 
-        private readonly IImmutableDictionary<string, IMembershipEncoder> _encoders;
+        public IImmutableDictionary<string, IMembershipEncoder> Encoders { get; }
 
         public IConsumerConfiguration Configuration { get; }
 
@@ -190,9 +190,7 @@ namespace KafkaClient
 
         public async Task<IConsumerMember> JoinGroupAsync(string groupId, string protocolType, IEnumerable<IMemberMetadata> metadata, CancellationToken cancellationToken, IConsumerMember member = null)
         {
-            if (!_encoders.ContainsKey(protocolType ?? "")) throw new ArgumentOutOfRangeException(nameof(metadata), $"ProtocolType {protocolType} is unknown");
-
-            var group = await DescribeGroupAsync(groupId, cancellationToken);
+            if (!Encoders.ContainsKey(protocolType ?? "")) throw new ArgumentOutOfRangeException(nameof(metadata), $"ProtocolType {protocolType} is unknown");
 
             var protocols = metadata?.Select(m => new JoinGroupRequest.GroupProtocol(m));
             var request = new JoinGroupRequest(groupId, Configuration.GroupHeartbeat, member?.MemberId ?? "", protocolType, protocols, Configuration.GroupRebalanceTimeout);
@@ -206,68 +204,6 @@ namespace KafkaClient
                 return member;
             }
             return new ConsumerMember(this, request, response);
-        }
-
-        private async Task<DescribeGroupsResponse.Group> DescribeGroupAsync(string groupId, CancellationToken cancellationToken)
-        {
-            var request = new DescribeGroupsRequest(groupId);
-            var response = await Router.SendAsync(request, groupId, cancellationToken).ConfigureAwait(false);
-            return response.Groups.SingleOrDefault(g => g.GroupId == groupId);
-        }
-
-        public async Task LeaveGroupAsync(string groupId, string memberId, CancellationToken cancellationToken, bool awaitResponse = true)
-        {
-            var request = new LeaveGroupRequest(groupId, memberId, awaitResponse);
-            var response = await Router.SendAsync(request, groupId, cancellationToken, retryPolicy: Configuration.GroupCoordinationRetry).ConfigureAwait(false);
-            if (awaitResponse && !response.ErrorCode.IsSuccess()) {
-                throw request.ExtractExceptions(response);
-            }
-        }
-
-        public async Task<ErrorResponseCode> SendHeartbeatAsync(string groupId, string memberId, int generationId, CancellationToken cancellationToken)
-        {
-            var request = new HeartbeatRequest(groupId, generationId, memberId);
-            var response = await Router.SendAsync(request, groupId, cancellationToken, retryPolicy: Configuration.GroupCoordinationRetry).ConfigureAwait(false);
-            return response.ErrorCode;
-        }
-
-        public async Task<IImmutableDictionary<string, IMemberAssignment>> SyncGroupAsync(string groupId, string memberId, int generationId, string protocolType, 
-            IImmutableDictionary<string, IMemberMetadata> memberMetadata,
-            IImmutableDictionary<string, IMemberAssignment> currentAssignments, 
-            CancellationToken cancellationToken)
-        {
-            var memberAssignments = await AssignMembersAsync(groupId, protocolType, memberMetadata, currentAssignments, cancellationToken);
-            var groupAssignments = memberAssignments.Select(assignment => new SyncGroupRequest.GroupAssignment(assignment.Key, assignment.Value));
-
-            var request = new SyncGroupRequest(groupId, generationId, memberId, groupAssignments);
-            var response = await Router.SendAsync(request, groupId, cancellationToken, retryPolicy: Configuration.GroupCoordinationRetry, context: new RequestContext(protocolType: protocolType)).ConfigureAwait(false);
-            if (!response.ErrorCode.IsSuccess()) {
-                throw request.ExtractExceptions(response);
-            }
-            return memberAssignments;
-        }
-
-        private async Task<IImmutableDictionary<string, IMemberAssignment>> AssignMembersAsync(string groupId, string protocolType, 
-            IImmutableDictionary<string, IMemberMetadata> memberMetadata, 
-            IImmutableDictionary<string, IMemberAssignment> currentAssignments,
-            CancellationToken cancellationToken)
-        {
-            var metadata = memberMetadata.First().Value;
-            var encoder = _encoders[protocolType];
-            var assigner = encoder.GetAssignor(metadata.AssignmentStrategy);
-
-            // var group = await Router.GetGroupMetadataAsync(groupId, cancellationToken);
-            // if (group != null) {
-            //     currentAssignments = group.Members.ToImmutableDictionary(m => m.MemberId, m => m.MemberAssignment);
-            // }
-            return await assigner.AssignMembersAsync(Router, memberMetadata, currentAssignments, cancellationToken).ConfigureAwait(false);
-        }
-
-        public async Task<SyncGroupResponse> SyncGroupAsync(string groupId, string memberId, int generationId, string protocolType, CancellationToken cancellationToken)
-        {
-            var request = new SyncGroupRequest(groupId, generationId, memberId);
-            var response = await Router.SendAsync(request, groupId, cancellationToken, retryPolicy: Configuration.GroupCoordinationRetry).ConfigureAwait(false);
-            return response;
         }
     }
 }

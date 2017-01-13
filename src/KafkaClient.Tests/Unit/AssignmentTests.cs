@@ -3,6 +3,7 @@ using System.Collections.Immutable;
 using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Assignment;
+using KafkaClient.Common;
 using KafkaClient.Connections;
 using KafkaClient.Protocol;
 using NSubstitute;
@@ -30,11 +31,12 @@ namespace KafkaClient.Tests.Unit
             var consumer = new Consumer(router, encoders: ConnectionConfiguration.Defaults.Encoders());
             using (consumer) {
                 try {
-                    using (var member = await consumer.JoinConsumerGroupAsync("group", ConsumerEncoder.Protocol, metadata, CancellationToken.None)) {
-                        await consumer.SyncGroupAsync(
-                                member.GroupId, member.MemberId, member.GenerationId, member.ProtocolType,
-                                ImmutableDictionary<string, IMemberMetadata>.Empty.Add(metadata.AssignmentStrategy, metadata),
-                                ImmutableDictionary<string, IMemberAssignment>.Empty,
+                    using (var m = await consumer.JoinConsumerGroupAsync("group", ConsumerEncoder.Protocol, metadata, CancellationToken.None)) {
+                        var member = (ConsumerMember) m;
+                        await member.SyncGroupAsync(
+                                //member.GroupId, member.MemberId, member.GenerationId, member.ProtocolType,
+                                //ImmutableDictionary<string, IMemberMetadata>.Empty.Add(metadata.AssignmentStrategy, metadata),
+                                //ImmutableDictionary<string, IMemberAssignment>.Empty,
                                 CancellationToken.None)
                             ;
                     }
@@ -54,10 +56,10 @@ namespace KafkaClient.Tests.Unit
             var conn = Substitute.For<IConnection>();
             router.GetGroupBrokerAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
                   .Returns(_ => Task.FromResult(new GroupBroker(_.Arg<string>(), 0, conn)));
+            router.SyncGroupAsync(Arg.Any<SyncGroupRequest>(), Arg.Any<IRequestContext>(), Arg.Any<IRetry>(), Arg.Any<CancellationToken>())
+                  .Returns(_ => Task.FromResult(new SyncGroupResponse(ErrorResponseCode.None, new ConsumerMemberAssignment())));
             conn.SendAsync(Arg.Any<JoinGroupRequest>(), Arg.Any<CancellationToken>(), Arg.Any<IRequestContext>())
                   .Returns(_ => Task.FromResult(new JoinGroupResponse(ErrorResponseCode.None, 1, metadata.AssignmentStrategy, _.Arg<JoinGroupRequest>().MemberId, _.Arg<JoinGroupRequest>().MemberId, new []{ new JoinGroupResponse.Member(_.Arg<JoinGroupRequest>().MemberId, metadata) })));
-            conn.SendAsync(Arg.Any<SyncGroupRequest>(), Arg.Any<CancellationToken>(), Arg.Any<IRequestContext>())
-                  .Returns(_ => Task.FromResult(new SyncGroupResponse(ErrorResponseCode.None, new ConsumerMemberAssignment())));
             conn.SendAsync(Arg.Any<DescribeGroupsRequest>(), Arg.Any<CancellationToken>(), Arg.Any<IRequestContext>())
                   .Returns(_ => Task.FromResult(new DescribeGroupsResponse(null)));
 
@@ -66,12 +68,9 @@ namespace KafkaClient.Tests.Unit
             var encoders = ConnectionConfiguration.Defaults.Encoders(new ConsumerEncoder(new SimpleAssignor(), assignor));
             var consumer = new Consumer(router, encoders: encoders);
             using (consumer) {
-                using (var member = await consumer.JoinConsumerGroupAsync("group", ConsumerEncoder.Protocol, metadata, CancellationToken.None)) {
-                    await consumer.SyncGroupAsync(
-                            member.GroupId, member.MemberId, member.GenerationId, member.ProtocolType,
-                            ImmutableDictionary<string, IMemberMetadata>.Empty.Add(metadata.AssignmentStrategy, metadata),
-                            ImmutableDictionary<string, IMemberAssignment>.Empty,
-                            CancellationToken.None);
+                using (var m = await consumer.JoinConsumerGroupAsync("group", ConsumerEncoder.Protocol, metadata, CancellationToken.None)) {
+                    var member = (ConsumerMember) m;
+                    await member.SyncGroupAsync(CancellationToken.None);
                 }
             }
         }
@@ -85,10 +84,10 @@ namespace KafkaClient.Tests.Unit
             var conn = Substitute.For<IConnection>();
             router.GetGroupBrokerAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
                   .Returns(_ => Task.FromResult(new GroupBroker(_.Arg<string>(), 0, conn)));
+            router.SyncGroupAsync(Arg.Any<SyncGroupRequest>(), Arg.Any<IRequestContext>(), Arg.Any<IRetry>(), Arg.Any<CancellationToken>())
+                  .Returns(_ => Task.FromResult(new SyncGroupResponse(ErrorResponseCode.None, new ConsumerMemberAssignment())));
             conn.SendAsync(Arg.Any<JoinGroupRequest>(), Arg.Any<CancellationToken>(), Arg.Any<IRequestContext>())
                   .Returns(_ => Task.FromResult(new JoinGroupResponse(ErrorResponseCode.None, 1, metadata.AssignmentStrategy, _.Arg<JoinGroupRequest>().MemberId, _.Arg<JoinGroupRequest>().MemberId, new []{ new JoinGroupResponse.Member(_.Arg<JoinGroupRequest>().MemberId, metadata) })));
-            conn.SendAsync(Arg.Any<SyncGroupRequest>(), Arg.Any<CancellationToken>(), Arg.Any<IRequestContext>())
-                  .Returns(_ => Task.FromResult(new SyncGroupResponse(ErrorResponseCode.None, new ConsumerMemberAssignment())));
             conn.SendAsync(Arg.Any<DescribeGroupsRequest>(), Arg.Any<CancellationToken>(), Arg.Any<IRequestContext>())
                   .Returns(_ => Task.FromResult(new DescribeGroupsResponse(null)));
 
@@ -97,12 +96,9 @@ namespace KafkaClient.Tests.Unit
             var encoders = ConnectionConfiguration.Defaults.Encoders(new ConsumerEncoder(new SimpleAssignor(), assignor));
             var consumer = new Consumer(router, encoders: encoders);
             using (consumer) {
-                using (var member = await consumer.JoinConsumerGroupAsync("group", ConsumerEncoder.Protocol, metadata, CancellationToken.None)) {
-                    await consumer.SyncGroupAsync(
-                            member.GroupId, member.MemberId, member.GenerationId, member.ProtocolType,
-                            ImmutableDictionary<string, IMemberMetadata>.Empty.Add(metadata.AssignmentStrategy, metadata),
-                            ImmutableDictionary<string, IMemberAssignment>.Empty,
-                            CancellationToken.None);
+                using (var m = await consumer.JoinConsumerGroupAsync("group", ConsumerEncoder.Protocol, metadata, CancellationToken.None)) {
+                    var member = (ConsumerMember) m;
+                    await member.SyncGroupAsync(CancellationToken.None);
                 }
             }
         }
@@ -116,21 +112,18 @@ namespace KafkaClient.Tests.Unit
             var conn = Substitute.For<IConnection>();
             router.GetGroupBrokerAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
                   .Returns(_ => Task.FromResult(new GroupBroker(_.Arg<string>(), 0, conn)));
+            router.SyncGroupAsync(Arg.Any<SyncGroupRequest>(), Arg.Any<IRequestContext>(), Arg.Any<IRetry>(), Arg.Any<CancellationToken>())
+                  .Returns(_ => Task.FromResult(new SyncGroupResponse(ErrorResponseCode.None, new ConsumerMemberAssignment())));
             conn.SendAsync(Arg.Any<JoinGroupRequest>(), Arg.Any<CancellationToken>(), Arg.Any<IRequestContext>())
                   .Returns(_ => Task.FromResult(new JoinGroupResponse(ErrorResponseCode.None, 1, metadata.AssignmentStrategy, _.Arg<JoinGroupRequest>().MemberId, _.Arg<JoinGroupRequest>().MemberId, new []{ new JoinGroupResponse.Member(_.Arg<JoinGroupRequest>().MemberId, metadata) })));
-            conn.SendAsync(Arg.Any<SyncGroupRequest>(), Arg.Any<CancellationToken>(), Arg.Any<IRequestContext>())
-                  .Returns(_ => Task.FromResult(new SyncGroupResponse(ErrorResponseCode.None, new ConsumerMemberAssignment())));
             conn.SendAsync(Arg.Any<DescribeGroupsRequest>(), Arg.Any<CancellationToken>(), Arg.Any<IRequestContext>())
                   .Returns(_ => Task.FromResult(new DescribeGroupsResponse(null)));
 
             var consumer = new Consumer(router, encoders: ConnectionConfiguration.Defaults.Encoders());
             using (consumer) {
-                using (var member = await consumer.JoinConsumerGroupAsync("group", ConsumerEncoder.Protocol, metadata, CancellationToken.None)) {
-                    await consumer.SyncGroupAsync(
-                            member.GroupId, member.MemberId, member.GenerationId, member.ProtocolType,
-                            ImmutableDictionary<string, IMemberMetadata>.Empty.Add(metadata.AssignmentStrategy, metadata),
-                            ImmutableDictionary<string, IMemberAssignment>.Empty,
-                            CancellationToken.None);
+                using (var m = await consumer.JoinConsumerGroupAsync("group", ConsumerEncoder.Protocol, metadata, CancellationToken.None)) {
+                    var member = (ConsumerMember) m;
+                    await member.SyncGroupAsync(CancellationToken.None);
                 }
             }
         }

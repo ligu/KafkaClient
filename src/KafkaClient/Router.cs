@@ -1,9 +1,11 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using KafkaClient.Assignment;
 using KafkaClient.Common;
 using KafkaClient.Connections;
 using KafkaClient.Protocol;
@@ -32,6 +34,7 @@ namespace KafkaClient
         private ImmutableDictionary<string, Tuple<MetadataResponse.Topic, DateTimeOffset>> _topicCache = ImmutableDictionary<string, Tuple<MetadataResponse.Topic, DateTimeOffset>>.Empty;
         private ImmutableDictionary<string, Tuple<int, DateTimeOffset>> _groupBrokerCache = ImmutableDictionary<string, Tuple<int, DateTimeOffset>>.Empty;
         private ImmutableDictionary<string, Tuple<DescribeGroupsResponse.Group, DateTimeOffset>> _groupCache = ImmutableDictionary<string, Tuple<DescribeGroupsResponse.Group, DateTimeOffset>>.Empty;
+        private readonly ConcurrentDictionary<string, Tuple<IImmutableList<SyncGroupRequest.GroupAssignment>, int>> _memberAssignmentCache = new ConcurrentDictionary<string, Tuple<IImmutableList<SyncGroupRequest.GroupAssignment>, int>>();
 
         private readonly AsyncLock _connectionLock = new AsyncLock();
         private readonly AsyncLock _groupLock = new AsyncLock();
@@ -454,16 +457,48 @@ namespace KafkaClient
         {
             if (metadata == null) return;
 
-            var topicCache = _groupCache;
+            var groupCache = _groupCache;
             try {
                 foreach (var group in metadata.Groups) {
-                    topicCache = topicCache.SetItem(group.GroupId, new Tuple<DescribeGroupsResponse.Group, DateTimeOffset>(group, DateTimeOffset.UtcNow));
+                    groupCache = groupCache.SetItem(group.GroupId, new Tuple<DescribeGroupsResponse.Group, DateTimeOffset>(group, DateTimeOffset.UtcNow));
                 }
             } finally {
-                _groupCache = topicCache;
+                _groupCache = groupCache;
             }
         }
- 
+
+
+        #endregion
+
+        #region Member Assignments
+
+        public Task<SyncGroupResponse> SyncGroupAsync(SyncGroupRequest request, IRequestContext context, IRetry retryPolicy, CancellationToken cancellationToken)
+        {
+            if (request.GroupAssignments.Count > 0) {
+                var value = new Tuple<IImmutableList<SyncGroupRequest.GroupAssignment>, int>(request.GroupAssignments, request.GroupGenerationId);
+                _memberAssignmentCache.AddOrUpdate(request.GroupId, value, (key, old) => value);
+            }
+
+            return this.SendAsync(request, request.GroupId, cancellationToken, context, retryPolicy); 
+        }
+
+        public IImmutableDictionary<string, IMemberAssignment> GetGroupMemberAssignment(string groupId, int? generationId = null)
+        {
+            var assignment = TryGetCachedMemberAssignment(groupId, generationId);
+            if (assignment == null && !generationId.HasValue) {
+                assignment = TryGetCachedGroup(groupId)?.Members?.ToImmutableDictionary(member => member.MemberId, member => member.MemberAssignment);
+            }
+            return assignment ?? ImmutableDictionary<string, IMemberAssignment>.Empty;
+        }
+
+        private IImmutableDictionary<string, IMemberAssignment> TryGetCachedMemberAssignment(string groupId, int? generationId = null)
+        {
+            Tuple<IImmutableList<SyncGroupRequest.GroupAssignment>, int> cachedValue;
+            if (_memberAssignmentCache.TryGetValue(groupId, out cachedValue) && (!generationId.HasValue || generationId.Value == cachedValue.Item2)) {
+                return cachedValue.Item1.ToImmutableDictionary(assignment => assignment.MemberId, assignment => assignment.MemberAssignment);
+            }
+            return null;
+        }
 
         #endregion
 
