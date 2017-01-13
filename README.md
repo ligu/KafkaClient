@@ -5,6 +5,10 @@ Native C# client for Apache Kafka with full async support.
 
 Kafka versions [0.8, 0.10.1]
 
+Status
+-----------
+[![Build status](https://ci.appveyor.com/api/projects/status/e7ej2g9q77if8mkf/branch/master?svg=true)](https://ci.appveyor.com/project/AndrewRobinson/kafkanetclient/branch/master)
+
 License
 -----------
 Copyright 2016, Nudge Software Inc under Apache License, V2.0. See LICENSE file.
@@ -14,6 +18,8 @@ History
 This library is a fork of [gigya]'s [KafkaNetClient], itself a fork of [jroland]'s [kafka-net] library. There are significant API changes.
 
 The original .Net project is a port of the [Apache Kafka protocol]. The wire protocol portion is based on the [kafka-python] library writen by [David Arthur] and the general class layout attempts to follow a similar pattern as his project. To that end, this project builds up from the low level Connection object for handling async requests to/from the kafka server, all the way up to a higher level Producer/Consumer classes.
+
+A big thank you to [Nudge Software] for backing this project. Also thanks to [AppVeyor] for providing CI.
 
 Code Examples
 -----------
@@ -62,10 +68,6 @@ Provides routing for topics to partitions, topics and partitions to brokers, and
 ##### Binary Protocol (`KafkaClient.Protocol.*`)
 The protocol has been divided up into concrete classes for each request/response pair. An Encoder class knows how to encode requests and decode responses into/from their appropriate Kafka protocol byte array. One benefit of this is that it allows for a nice generic send method on the Connection.
 
-Status
------------
-[![Build status](https://ci.appveyor.com/api/projects/status/e7ej2g9q77if8mkf/branch/master?svg=true)](https://ci.appveyor.com/project/AndrewRobinson/kafkanetclient/branch/master)
-
 ** WARNING **
 This library is still work in progress and has not yet been deployed to production. It is also undergoing significant development, and breaking changes will occour.
 This notice will be removed once it's been stabilized and used in production.
@@ -80,3 +82,5 @@ The biggest missing piece at this point is [stress testing](https://github.com/a
 [jroland]:https://github.com/jroland
 [KafkaNetClient]:https://github.com/gigya/KafkaNetClient
 [gigya]:https://github.com/gigya
+[Nudge Software]:http://nudge.ai
+[AppVeyor]:https://www.appveyor.com/

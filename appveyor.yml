@@ -10,8 +10,8 @@ build_script:
 after_build:
   - cmd: nuget pack src\KafkaClient\KafkaClient.nuspec -Properties "version=%APPVEYOR_BUILD_VERSION%" -outputdirectory artifacts
  
-# test_script:
-#   - cmd: dotnet test src\KafkaClient.Tests --where "cat != Load"
+test_script:
+  - cmd: dotnet test src\KafkaClient.Tests --where "cat != Load"
 
 artifacts:
 - path: artifacts\**\*.*
