@@ -198,13 +198,12 @@ namespace KafkaClient
             if (!response.ErrorCode.IsSuccess()) {
                 throw request.ExtractExceptions(response);
             }
-            var group = await DescribeGroupAsync(groupId, cancellationToken);
 
             if (member != null) {
-                member.OnJoinGroup(response, group);
+                member.OnJoinGroup(response);
                 return member;
             }
-            return new ConsumerMember(this, request, response, group);
+            return new ConsumerMember(this, request, response);
         }
 
         private async Task<DescribeGroupsResponse.Group> DescribeGroupAsync(string groupId, CancellationToken cancellationToken)
@@ -255,26 +254,23 @@ namespace KafkaClient
             var encoder = _encoders[protocolType];
             var assigner = encoder.GetAssignor(metadata.AssignmentStrategy);
 
-            if (currentAssignments == ImmutableDictionary<string, IMemberAssignment>.Empty) {
-                // should only happen when the leader is changed (or new)
-                var request = new DescribeGroupsRequest(groupId);
-                var response = await Router.SendAsync(request, groupId, cancellationToken).ConfigureAwait(false);
-                var group = response.Groups.SingleOrDefault(g => g.GroupId == groupId);
-                if (group != null) {
-                    currentAssignments = group.Members.ToImmutableDictionary(m => m.MemberId, m => m.MemberAssignment);
-                }
-            }
+            //if (currentAssignments == ImmutableDictionary<string, IMemberAssignment>.Empty) {
+            //    // should only happen when the leader is changed (or new)
+            //    var request = new DescribeGroupsRequest(groupId);
+            //    var response = await Router.SendAsync(request, groupId, cancellationToken).ConfigureAwait(false);
+            //    var group = response.Groups.SingleOrDefault(g => g.GroupId == groupId);
+            //    if (group != null) {
+            //        currentAssignments = group.Members.ToImmutableDictionary(m => m.MemberId, m => m.MemberAssignment);
+            //    }
+            //}
             return await assigner.AssignMembersAsync(Router, memberMetadata, currentAssignments, cancellationToken).ConfigureAwait(false);
         }
 
-        public async Task<IMemberAssignment> SyncGroupAsync(string groupId, string memberId, int generationId, string protocolType, CancellationToken cancellationToken)
+        public async Task<SyncGroupResponse> SyncGroupAsync(string groupId, string memberId, int generationId, string protocolType, CancellationToken cancellationToken)
         {
             var request = new SyncGroupRequest(groupId, generationId, memberId);
             var response = await Router.SendAsync(request, groupId, cancellationToken, retryPolicy: Configuration.GroupCoordinationRetry).ConfigureAwait(false);
-            if (!response.ErrorCode.IsSuccess()) {
-                throw request.ExtractExceptions(response);
-            }
-            return response.MemberAssignment;
+            return response;
         }
     }
 }

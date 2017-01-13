@@ -15,7 +15,7 @@ namespace KafkaClient
     {
         private readonly IConsumer _consumer;
 
-        public ConsumerMember(IConsumer consumer, JoinGroupRequest request, JoinGroupResponse response, DescribeGroupsResponse.Group group, ILog log = null)
+        public ConsumerMember(IConsumer consumer, JoinGroupRequest request, JoinGroupResponse response, ILog log = null)
         {
             _consumer = consumer;
             Log = log ?? consumer.Router?.Log ?? TraceLog.Log;
@@ -24,7 +24,7 @@ namespace KafkaClient
             MemberId = response.MemberId;
             ProtocolType = request.ProtocolType;
 
-            OnJoinGroup(response, group);
+            OnJoinGroup(response);
 
             // This thread will heartbeat on the appropriate frequency
             _heartbeatDelay = TimeSpan.FromMilliseconds(request.SessionTimeout.TotalMilliseconds / 2);
@@ -54,60 +54,62 @@ namespace KafkaClient
         public string MemberId { get; }
 
         /// <summary>
-        /// State machine for Coordinator
-        /// 
-        /// See https://cwiki.apache.org/confluence/display/KAFKA/Kafka+Client-side+Assignment+Proposal
+        /// State machine for Member state
+        /// See https://cwiki.apache.org/confluence/display/KAFKA/Kafka+Client-side+Assignment+Proposal for basis
         /// </summary>
         /// <remarks>
-        ///               +--------------------+
-        ///               |                    |
-        ///           +--->        Down        |
-        ///           |   |                    |
-        ///           |   +---------+----------+
-        ///  Timeout  |             |
-        ///  expires  |             | JoinGroup/Heartbeat
-        ///  with     |             | received
-        ///  no       |             v
-        ///  group    |   +---------+----------+
-        ///  activity |   |                    +---v JoinGroup/Heartbeat
-        ///           |   |     Initialize     |   | return
-        ///           |   |                    +---v coordinator not ready
-        ///           |   +---------+----------+
-        ///           |             |
-        ///           |             | After reading
-        ///           |             | group state
-        ///           |             v
-        ///           |   +---------+----------+
-        ///           +---+                    +---v Heartbeat/SyncGroup
-        ///               |       Stable       |   | from
-        ///           +--->                    +---v active generation
-        ///           |   +---------+----------+
-        ///           |             |
-        ///           |             | JoinGroup
-        ///           |             | received
-        ///           |             v
-        ///           |   +---------+----------+
-        ///           |   |                    |
-        ///           |   |       Joining      |
-        ///           |   |                    |
-        /// Leader    |   +---------+----------+
-        /// SyncGroup |             |
-        /// or        |             | JoinGroup received
-        /// session   |             | from all members
-        /// timeout   |             v
-        ///           |   +---------+----------+
-        ///           |   |                    |
-        ///           +---+      AwaitSync     |
-        ///               |                    |
-        ///               +--------------------+
+        ///                            +===========+
+        ///                            [           ]
+        ///     +----------------------+  Assign   ]
+        ///     |                      [           ]
+        ///     |                      +=====+=====+
+        ///     |                            ^
+        ///     | SyncGroupRequest           | JoinGroupResponse
+        ///     | (only leader assigns)      | ErrorResponseCode.None
+        ///     |                            |
+        ///     |                      +-----+-----+
+        ///     |                      |           |
+        ///     |                  +--->  Joining  |
+        ///     |                  |   |           |
+        ///     |                  |   +-----+-----+
+        ///     |                  |         |
+        ///     |        JoinGroup |         | JoinGroupResponse
+        ///     |        Request   |         | ErrorResponseCode.GroupCoordinatorNotAvailable
+        ///     |                  |         | ErrorResponseCode.GroupLoadInProgress
+        ///     |                  |         v                 
+        ///     |                  |   +-----+-----+
+        ///     |                  +---+           |
+        ///     |                      |  Rejoin   |
+        ///     |  +------------------->           |
+        ///     |  | SyncGroupResponse +-----+-----+
+        ///     v  | RebalanceInProgress     ^
+        ///  +--+--+-----+                   | HeartbeatResponse
+        ///  |           |                   | ErrorResponseCode.RebalanceInProgress
+        ///  |  Syncing  |                   |
+        ///  |           |             +-----+--------+
+        ///  +-----+-----+             |              |
+        ///        |               +---> Heartbeating |
+        ///        |               |   |              |
+        ///        |               |   +-----+--------+
+        ///        |               |         |
+        ///        |     Heartbeat |         | HeartbeatResponse
+        ///        |     Request   |         | ErrorResponseCode.None
+        ///        |               |         v
+        ///        |               |   +-----+-----+
+        ///        |               +---+           |
+        ///        |                   |  Stable   |
+        ///        +------------------->           |
+        ///        SyncGroupResponse   +-----------+ 
+        ///        ErrorResponseCode.None                   
         /// </remarks>
-        private enum CoordinatorState
+        private enum MemberState
         {
-            Down,
-            Initialize,
+            Assign,
+            Syncing,
             Stable,
-            Joining,
-            AwaitSync
+            Heartbeating,
+            Rejoin,
+            Joining
         }
 
         /// <summary>
@@ -119,42 +121,45 @@ namespace KafkaClient
                 // only allow one heartbeat to execute, dump out all other requests
                 if (Interlocked.Increment(ref _activeHeartbeatCount) != 1) return;
 
-                // if IsLeader == true, can we skip the initial hit for synching?
-                CoordinatorState? state = CoordinatorState.AwaitSync;
+                var state = MemberState.Assign;
                 var response = ErrorResponseCode.None;
                 var lastHeartbeat = DateTimeOffset.UtcNow;
                 while (!(_disposeToken.IsCancellationRequested || IsOverdue(lastHeartbeat) || IsUnrecoverable(response))) {
                     try {
-                        if (state == null) { // only update state if it was previously reset -- this allows for one state to move explicitly to another
-                            state = GetCoordinatorState(response);
-                        }
-                        Log.Info(() => LogEvent.Create($"Member {MemberId} has state {state}"));
+                        Log.Info(() => LogEvent.Create($"Local state {state} for member {MemberId}"));
                         switch (state) {
-                            case CoordinatorState.Down:
-                            case CoordinatorState.Initialize:
-                            case CoordinatorState.Stable:
-                                await Task.Delay(_heartbeatDelay, _disposeToken.Token).ConfigureAwait(false);
+                            case MemberState.Assign:
+                                response = await SyncGroupAsync(_disposeToken.Token).ConfigureAwait(false);
+                                if (response.IsSuccess()) {
+                                    state = MemberState.Stable;
+                                } else if (response == ErrorResponseCode.RebalanceInProgress) {
+                                    state = MemberState.Rejoin;
+                                }
                                 break;
 
-                            case CoordinatorState.Joining:
-                                await JoinGroupAsync(_disposeToken.Token).ConfigureAwait(false);
-                                state = CoordinatorState.AwaitSync;
-                                lastHeartbeat = DateTimeOffset.UtcNow;
-                                continue;
+                            case MemberState.Stable:
+                                await Task.Delay(_heartbeatDelay, _disposeToken.Token).ConfigureAwait(false);
+                                response = await _consumer.SendHeartbeatAsync(GroupId, MemberId, GenerationId, _disposeToken.Token).ConfigureAwait(false);
+                                if (response == ErrorResponseCode.RebalanceInProgress) {
+                                    state = MemberState.Rejoin;
+                                }
+                                break;
 
-                            case CoordinatorState.AwaitSync:
-                                await SyncGroupAsync(_disposeToken.Token).ConfigureAwait(false);
-                                state = CoordinatorState.Stable;
-                                lastHeartbeat = DateTimeOffset.UtcNow;
-                                continue;
+                            case MemberState.Rejoin:
+                                response = await JoinGroupAsync(_disposeToken.Token).ConfigureAwait(false);
+                                if (response.IsSuccess()) {
+                                    state = MemberState.Assign;
+                                } else if (response == ErrorResponseCode.GroupCoordinatorNotAvailable || response == ErrorResponseCode.GroupLoadInProgress) {
+                                    state = MemberState.Rejoin;
+                                }
+                                break;
 
                             default:
+                                Log.Warn(() => LogEvent.Create($"Unexpected local state {state} for member {MemberId}"));
+                                state = MemberState.Assign;
                                 await Task.Delay(1, _disposeToken.Token).ConfigureAwait(false);
-                                break;
+                                continue; // while
                         }
-
-                        state = null; // clear so it gets set from the heartbeat response
-                        response = await _consumer.SendHeartbeatAsync(GroupId, MemberId, GenerationId, _disposeToken.Token).ConfigureAwait(false);
                         if (response.IsSuccess()) {
                             lastHeartbeat = DateTimeOffset.UtcNow;
                         }
@@ -184,41 +189,30 @@ namespace KafkaClient
                 || response == ErrorResponseCode.UnknownMemberId;
         }
 
-        private CoordinatorState? GetCoordinatorState(ErrorResponseCode? response)
-        {
-            switch (response) {
-                case ErrorResponseCode.GroupLoadInProgress:          return CoordinatorState.Down;
-                case ErrorResponseCode.GroupCoordinatorNotAvailable: return CoordinatorState.Initialize;
-                case ErrorResponseCode.None:                         return CoordinatorState.Stable;
-                case ErrorResponseCode.RebalanceInProgress:          return CoordinatorState.Joining;
-                    // could be AwaitSync state -- nothing to distinguish them
-                case null:                                           return CoordinatorState.AwaitSync;
-
-                default:                                             return null;
-                    // no idea ...
-            }
-        }
-
-        private async Task JoinGroupAsync(CancellationToken cancellationToken)
+        private async Task<ErrorResponseCode> JoinGroupAsync(CancellationToken cancellationToken)
         {
             if (_disposeCount > 0) throw new ObjectDisposedException($"Member {MemberId} is no longer valid");
 
-            // on success, this will call OnRejoin before returning
             IEnumerable<IMemberMetadata> memberMetadata = null;
             using (_lock.Lock()) {
                 if (IsLeader) {
                     memberMetadata = _memberMetadata.Values;
                 }
             }
-            await _consumer.JoinGroupAsync(GroupId, ProtocolType, memberMetadata, cancellationToken, this);
+
+            // on success, this will call OnRejoin before returning
+            try {
+                await _consumer.JoinGroupAsync(GroupId, ProtocolType, memberMetadata, cancellationToken, this);
+                return ErrorResponseCode.None;
+            } catch (RequestException ex) when (ex.ApiKey == ApiKeyRequestType.JoinGroup) {
+                return ex.ErrorCode;
+            }
         }
 
-        public void OnJoinGroup(JoinGroupResponse response, DescribeGroupsResponse.Group group)
+        public void OnJoinGroup(JoinGroupResponse response)
         {
             if (response.MemberId != MemberId) throw new ArgumentOutOfRangeException(nameof(response), $"Member is not valid ({MemberId} != {response.MemberId})");
             if (_disposeCount > 0) throw new ObjectDisposedException($"Member {MemberId} is no longer valid");
-
-            Log.Info(() => LogEvent.Create($"OnJoinGroup, \n{response.ToFormattedString()} \n{group.ToFormattedString()}"));
 
             using (_lock.Lock()) {
                 IsLeader = response.LeaderId == MemberId;
@@ -227,7 +221,7 @@ namespace KafkaClient
             }
         }
 
-        private async Task SyncGroupAsync(CancellationToken cancellationToken)
+        private async Task<ErrorResponseCode> SyncGroupAsync(CancellationToken cancellationToken)
         {
             using (await _lock.LockAsync(cancellationToken)) {
                 if (_disposeCount > 0) throw new ObjectDisposedException($"Member {MemberId} is no longer valid");
@@ -237,7 +231,9 @@ namespace KafkaClient
                     _assignment = memberAssignments[MemberId];
                     _memberAssignments = memberAssignments;
                 } else {
-                    _assignment = await _consumer.SyncGroupAsync(GroupId, MemberId, GenerationId, ProtocolType, cancellationToken);
+                    var response = await _consumer.SyncGroupAsync(GroupId, MemberId, GenerationId, ProtocolType, cancellationToken);
+                    if (!response.ErrorCode.IsSuccess()) return response.ErrorCode;
+                    _assignment = response.MemberAssignment;
                     _memberAssignments = ImmutableDictionary<string, IMemberAssignment>.Empty;
                 }
                 var validPartitions = _assignment.PartitionAssignments.ToImmutableHashSet();
@@ -247,6 +243,7 @@ namespace KafkaClient
                 }
                 _batches = _batches.RemoveRange(invalidPartitions.Select(pair => pair.Key));
                 _isAssigned.Set();
+                return ErrorResponseCode.None;
             }
         }
 

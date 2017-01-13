@@ -19,7 +19,7 @@ namespace KafkaClient
         /// 
         /// See https://cwiki.apache.org/confluence/display/KAFKA/Kafka+Client-side+Assignment+Proposal
         /// </summary>
-        void OnJoinGroup(JoinGroupResponse response, DescribeGroupsResponse.Group group);
+        void OnJoinGroup(JoinGroupResponse response);
 
         /// <summary>
         /// Fetch messages for this consumer group's current assignment.
