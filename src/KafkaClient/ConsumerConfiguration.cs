@@ -1,6 +1,7 @@
 using System;
 using KafkaClient.Assignment;
 using KafkaClient.Common;
+using KafkaClient.Connections;
 
 namespace KafkaClient
 {
@@ -24,7 +25,7 @@ namespace KafkaClient
             FetchByteMultiplier = fetchByteMultiplier;
             MaxPartitionFetchBytes = maxPartitionFetchBytes;
             GroupHeartbeat = heartbeatTimeout ?? TimeSpan.FromSeconds(Defaults.HeartbeatSeconds);
-            GroupRebalanceTimeout = rebalanceTimeout ?? GroupHeartbeat;
+            GroupRebalanceTimeout = rebalanceTimeout ?? TimeSpan.FromSeconds(Defaults.RebalanceTimeoutSeconds);
             ProtocolType = protocolType ?? Defaults.ProtocolType;
             GroupCoordinationRetry = coordinationRetry ?? Defaults.CoordinationRetry(GroupRebalanceTimeout);
             BatchSize = Math.Max(1, batchSize);
@@ -60,9 +61,14 @@ namespace KafkaClient
             public const string ProtocolType = ConsumerEncoder.Protocol;
 
             /// <summary>
-            /// The default <see cref="GroupHeartbeat"/> and <see cref="GroupRebalanceTimeout"/> seconds
+            /// The default <see cref="GroupHeartbeat"/> seconds
             /// </summary>
             public const int HeartbeatSeconds = 60;
+
+            /// <summary>
+            /// The default <see cref="GroupRebalanceTimeout"/> seconds
+            /// </summary>
+            public const int RebalanceTimeoutSeconds = ConnectionConfiguration.Defaults.RequestTimeoutSeconds / 2;
 
             /// <summary>
             /// The default <see cref="GroupCoordinationRetry"/> timeout

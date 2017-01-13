@@ -162,7 +162,7 @@ namespace KafkaClient.Connections
             /// <summary>
             /// The default <see cref="ConnectionConfiguration.RequestTimeout"/> seconds
             /// </summary>
-            public const int RequestTimeoutSeconds = 30;
+            public const int RequestTimeoutSeconds = 60;
 
             /// <summary>
             /// The default <see cref="ConnectionConfiguration.ConnectionRetry"/> timeout
