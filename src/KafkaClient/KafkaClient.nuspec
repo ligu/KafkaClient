@@ -33,7 +33,7 @@
   <files>
     <file src="bin\Release\net462\KafkaClient.dll" target="lib\net462" />
     <file src="bin\Release\net462\KafkaClient.pdb" target="lib\net462" />
-    <file src="bin\Release\netstandard1.6\KafkaClient.dll" target="lib\netstandard1.6" />
-    <file src="bin\Release\netstandard1.6\KafkaClient.pdb" target="lib\netstandard1.6" />
+    <file src="bin\Release\netstandard1.3\KafkaClient.dll" target="lib\netstandard1.6" />
+    <file src="bin\Release\netstandard1.3\KafkaClient.pdb" target="lib\netstandard1.6" />
   </files>
 </package>
