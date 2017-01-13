@@ -801,14 +801,14 @@ namespace KafkaClient.Tests.Integration
             }
         }
 
-        private static async Task ProduceMessages(Router router, string topicName, string groupId, int totalMessages)
+        private static async Task ProduceMessages(Router router, string topicName, string groupId, int totalMessages, int partition = 0)
         {
             using (
                 var producer = new Producer(
                     router,
                     new ProducerConfiguration(batchSize: totalMessages / 10, batchMaxDelay: TimeSpan.FromMilliseconds(25)))) {
-                var offset = await router.GetTopicOffsetAsync(topicName, 0, CancellationToken.None);
-                var groupOffset = await router.GetTopicOffsetAsync(topicName, 0, groupId, CancellationToken.None);
+                var offset = await router.GetTopicOffsetAsync(topicName, partition, CancellationToken.None);
+                var groupOffset = await router.GetTopicOffsetAsync(topicName, partition, groupId, CancellationToken.None);
 
                 var missingMessages = Math.Max(0, totalMessages + groupOffset.Offset - offset.Offset + 1);
                 if (missingMessages > 0) {
@@ -816,7 +816,7 @@ namespace KafkaClient.Tests.Integration
                     for (var i = 0; i < missingMessages; i++) {
                         messages.Add(new Message(i.ToString()));
                     }
-                    await producer.SendMessagesAsync(messages, topicName, 0, CancellationToken.None);
+                    await producer.SendMessagesAsync(messages, topicName, partition, CancellationToken.None);
                 }
             }
         }
@@ -868,7 +868,9 @@ namespace KafkaClient.Tests.Integration
                 await router.TemporaryTopicAsync(async topicName => {
                     var groupId = TestConfig.GroupId();
 
-                    await ProduceMessages(router, topicName, groupId, totalMessages);
+                    for (var partition = 0; partition < members; partition++) {
+                        await ProduceMessages(router, topicName, groupId, totalMessages, partition);
+                    }
 
                     var fetched = 0;
                     using (var consumer = new Consumer(router, _consumerConfig, _config.Encoders)) {
@@ -897,7 +899,7 @@ namespace KafkaClient.Tests.Integration
                         await Task.WhenAll(tasks);
                     }
                     Assert.That(fetched, Is.EqualTo(totalMessages));
-                });
+                }, 5);
             }
         }
 

@@ -22,11 +22,11 @@ namespace KafkaClient.Tests
             }
         }
 
-        public static async Task TemporaryTopicAsync(this IRouter router, Func<string, Task> asyncAction, [CallerMemberName] string name = null)
+        public static async Task TemporaryTopicAsync(this IRouter router, Func<string, Task> asyncAction, int partitions = 1, [CallerMemberName] string name = null)
         {
             var topicName = TestConfig.TopicName(name);
             try {
-                await router.SendToAnyAsync(new CreateTopicsRequest(new [] { new CreateTopicsRequest.Topic(topicName, 1, 1) }, TimeSpan.FromSeconds(1)), CancellationToken.None);
+                await router.SendToAnyAsync(new CreateTopicsRequest(new [] { new CreateTopicsRequest.Topic(topicName, partitions, 1) }, TimeSpan.FromSeconds(1)), CancellationToken.None);
             } catch (RequestException ex) when (ex.ErrorCode == ErrorResponseCode.TopicAlreadyExists) {
                 // ignore already exists
             }

@@ -17,11 +17,23 @@
     <releaseNotes>https://github.com/awr/KafkaClient/releases</releaseNotes>
     <dependencies>
       <group>
-        <dependency id="System.Collections.Immutable" />
+        <dependency id="Nito.AsyncEx.Context" version="1.1.0" />
+        <dependency id="Nito.AsyncEx.Coordination" version="1.0.2" />
+        <dependency id="System.Collections.Immutable" version="1.2.0" />
+        <dependency id="System.Diagnostics.TraceSource" version="4.0.0" />
+        <dependency id="System.Net.NameResolution" version="4.0.0" />
+        <dependency id="System.Threading.Thread" version="4.0.0" />
+        <dependency id="System.IO.Compression" version="4.3.0" />
       </group>
+      <group targetFramework="netstandard1.6">
+          <dependency id="NETStandard.Library" version="1.6.0" />
+       </group>
     </dependencies>
   </metadata>
   <files>
-    <file src="bin\KafkaClient.dll" target="lib\net45" />
+    <file src="bin\Release\net462KafkaClient.dll" target="lib\net462" />
+    <file src="bin\Release\net462KafkaClient.pdb" target="lib\net462" />
+    <file src="bin\Release\netstandard1.6\KafkaClient.dll" target="lib\netstandard1.6" />
+    <file src="bin\Release\netstandard1.6\KafkaClient.pdb" target="lib\netstandard1.6" />
   </files>
 </package>
