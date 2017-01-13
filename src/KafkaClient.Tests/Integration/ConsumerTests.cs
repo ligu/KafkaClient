@@ -753,9 +753,9 @@ namespace KafkaClient.Tests.Integration
             }
         }
 
-        [Test]
-        [TestCase(1000, 100)]
-        [TestCase(1000, 500)]
+        //[Test]
+        //[TestCase(1000, 100)]
+        //[TestCase(1000, 500)]
         public async Task CanConsumeFromGroup(int totalMessages, int count)
         {
             using (var router = new Router(TestConfig.IntegrationUri, log: TestConfig.Log)) {
@@ -821,9 +821,9 @@ namespace KafkaClient.Tests.Integration
             }
         }
 
-        [Test]
-        [TestCase(1000, 100)]
-        [TestCase(1000, 500)]
+        //[Test]
+        //[TestCase(1000, 100)]
+        //[TestCase(1000, 500)]
         public async Task CanConsumeFromGroupWithHelper(int totalMessages, int count)
         {
             var cancellation = new CancellationTokenSource();
