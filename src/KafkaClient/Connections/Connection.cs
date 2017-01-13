@@ -23,7 +23,7 @@ namespace KafkaClient.Connections
     public class Connection : IConnection
     {
         private readonly ConcurrentDictionary<int, AsyncRequestItem> _requestsByCorrelation = new ConcurrentDictionary<int, AsyncRequestItem>();
-        private readonly ConcurrentDictionary<int, Tuple<ApiKeyRequestType, short?>> _timedOutRequestsByCorrelation = new ConcurrentDictionary<int, Tuple<ApiKeyRequestType, short?>>();
+        private readonly ConcurrentDictionary<int, Tuple<ApiKeyRequestType, IRequestContext>> _timedOutRequestsByCorrelation = new ConcurrentDictionary<int, Tuple<ApiKeyRequestType, IRequestContext>>();
         private readonly ILog _log;
         private readonly ITcpSocket _socket;
         private readonly IConnectionConfiguration _configuration;
@@ -240,10 +240,10 @@ namespace KafkaClient.Connections
                     asyncRequest.ReceiveTask.TrySetException(ex);
                 }
             } else {
-                Tuple<ApiKeyRequestType, short?> requestInfo;
+                Tuple<ApiKeyRequestType, IRequestContext> requestInfo;
                 if (_timedOutRequestsByCorrelation.TryRemove(correlationId, out requestInfo)) {
                     var requestType = requestInfo.Item1;
-                    var context = new RequestContext(correlationId, requestInfo.Item2, encoders: _configuration.Encoders);
+                    var context = requestInfo.Item2;
                     try {
                         _log.Warn(() => LogEvent.Create($"Unexpected {requestType} response with correlation id {correlationId} ({payload.Length} bytes) from {Endpoint}"));
                         var result = KafkaEncoder.Decode<IResponse>(context, requestType, payload);
@@ -280,14 +280,14 @@ namespace KafkaClient.Connections
         {
             if (asyncRequest == null) return;
 
+            var correlationId = asyncRequest.Context.CorrelationId;
             AsyncRequestItem request;
-            if (_requestsByCorrelation.TryRemove(asyncRequest.Context.CorrelationId, out request)) {
-                _log.Info(() => LogEvent.Create($"Removed request {asyncRequest.RequestType} with correlation id {asyncRequest.Context.CorrelationId} from request queue (timed out)."));
-                if (_timedOutRequestsByCorrelation.TryAdd(asyncRequest.Context.CorrelationId, new Tuple<ApiKeyRequestType, short?>(request.RequestType, request.Context.ApiVersion)) 
-                    && _timedOutRequestsByCorrelation.Count > 1000)
-                {
+            if (_requestsByCorrelation.TryRemove(correlationId, out request)) {
+                _log.Info(() => LogEvent.Create($"Removed request {request.RequestType} with correlation id {correlationId} from request queue (timed out)."));
+                if (_timedOutRequestsByCorrelation.Count > 100) {
                     _timedOutRequestsByCorrelation.Clear();
                 }
+                _timedOutRequestsByCorrelation.TryAdd(correlationId, new Tuple<ApiKeyRequestType, IRequestContext>(request.RequestType, request.Context));
             }
 
             if (_disposeToken.IsCancellationRequested) {
