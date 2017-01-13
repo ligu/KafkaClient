@@ -30,9 +30,11 @@ namespace KafkaClient
         private ImmutableDictionary<Endpoint, IConnection> _allConnections = ImmutableDictionary<Endpoint, IConnection>.Empty;
         private ImmutableDictionary<int, IConnection> _brokerConnections = ImmutableDictionary<int, IConnection>.Empty;
         private ImmutableDictionary<string, Tuple<MetadataResponse.Topic, DateTimeOffset>> _topicCache = ImmutableDictionary<string, Tuple<MetadataResponse.Topic, DateTimeOffset>>.Empty;
-        private ImmutableDictionary<string, Tuple<int, DateTimeOffset>> _groupCache = ImmutableDictionary<string, Tuple<int, DateTimeOffset>>.Empty;
+        private ImmutableDictionary<string, Tuple<int, DateTimeOffset>> _groupBrokerCache = ImmutableDictionary<string, Tuple<int, DateTimeOffset>>.Empty;
+        private ImmutableDictionary<string, Tuple<DescribeGroupsResponse.Group, DateTimeOffset>> _groupCache = ImmutableDictionary<string, Tuple<DescribeGroupsResponse.Group, DateTimeOffset>>.Empty;
 
-        private readonly AsyncLock _lock = new AsyncLock();
+        private readonly AsyncLock _connectionLock = new AsyncLock();
+        private readonly AsyncLock _groupLock = new AsyncLock();
 
         /// <exception cref="ConnectionException">None of the provided Kafka servers are resolvable.</exception>
         public Router(KafkaOptions options)
@@ -75,6 +77,8 @@ namespace KafkaClient
         /// <inheritdoc />
         public IEnumerable<IConnection> Connections => _allConnections.Values;
 
+        #region Topic Brokers
+
         /// <inheritdoc />
         public TopicBroker GetTopicBroker(string topicName, int partitionId)
         {
@@ -106,6 +110,23 @@ namespace KafkaClient
             return GetCachedTopicBroker(topicName, partitionId, await GetTopicMetadataAsync(topicName, cancellationToken));
         }
 
+        private TopicBroker GetCachedTopicBroker(string topicName, MetadataResponse.Partition partition)
+        {
+            IConnection conn;
+            if (_brokerConnections.TryGetValue(partition.LeaderId, out conn)) {
+                return new TopicBroker(topicName, partition.PartitionId, partition.LeaderId, conn);
+            }
+
+            throw new CachedMetadataException($"Lead broker cannot be found for partition/{partition.PartitionId}, leader {partition.LeaderId}") {
+                TopicName = topicName,
+                Partition = partition.PartitionId
+            };
+        }
+
+        #endregion
+
+        #region Topic Metadata
+
         /// <inheritdoc />
         public MetadataResponse.Topic GetTopicMetadata(string topicName)
         {
@@ -115,10 +136,10 @@ namespace KafkaClient
         /// <inheritdoc />
         public IImmutableList<MetadataResponse.Topic> GetTopicMetadata(IEnumerable<string> topicNames)
         {
-            var topicSearchResult = TryGetCachedTopics(topicNames);
-            if (topicSearchResult.Missing.Count > 0) throw new CachedMetadataException($"No metadata defined for topics: {string.Join(",", topicSearchResult.Missing)}");
+            var cachedResults = CachedResults<MetadataResponse.Topic>.ProduceResults(topicNames, topicName => TryGetCachedTopic(topicName));
+            if (cachedResults.Misses.Count > 0) throw new CachedMetadataException($"No metadata defined for topics: {string.Join(",", cachedResults.Misses)}");
 
-            return ImmutableList<MetadataResponse.Topic>.Empty.AddRange(topicSearchResult.Topics);
+            return ImmutableList<MetadataResponse.Topic>.Empty.AddRange(cachedResults.Hits);
         }
 
         /// <inheritdoc />
@@ -137,10 +158,10 @@ namespace KafkaClient
         /// <inheritdoc />
         public async Task<IImmutableList<MetadataResponse.Topic>> GetTopicMetadataAsync(IEnumerable<string> topicNames, CancellationToken cancellationToken)
         {
-            var searchResult = TryGetCachedTopics(topicNames);
-            return searchResult.Missing.Count == 0 
-                ? searchResult.Topics 
-                : searchResult.Topics.AddRange(await UpdateTopicMetadataFromServerAsync(searchResult.Missing, false, cancellationToken).ConfigureAwait(false));
+            var cachedResults = CachedResults<MetadataResponse.Topic>.ProduceResults(topicNames, topicName => TryGetCachedTopic(topicName));
+            return cachedResults.Misses.Count == 0 
+                ? cachedResults.Hits 
+                : cachedResults.Hits.AddRange(await UpdateTopicMetadataFromServerAsync(cachedResults.Misses, false, cancellationToken).ConfigureAwait(false));
         }
 
         /// <inheritdoc />
@@ -161,85 +182,6 @@ namespace KafkaClient
             return UpdateTopicMetadataFromServerAsync((IEnumerable<string>) null, true, cancellationToken);
         }
 
-        private async Task<MetadataResponse.Topic> UpdateTopicMetadataFromServerAsync(string topicName, bool ignoreCache, CancellationToken cancellationToken)
-        {
-            var topics = await UpdateTopicMetadataFromServerAsync(new [] { topicName }, ignoreCache, cancellationToken).ConfigureAwait(false);
-            return topics.SingleOrDefault();
-        }
-
-        private async Task<IImmutableList<MetadataResponse.Topic>> UpdateTopicMetadataFromServerAsync(IEnumerable<string> topicNames, bool ignoreCache, CancellationToken cancellationToken)
-        {
-            // TODO: more sophisticated locking should be particular to topicName(s) in that multiple 
-            // requests can be made in parallel for different topicName(s).
-            using (await _lock.LockAsync(cancellationToken).ConfigureAwait(false)) {
-                var searchResult = new CachedTopicsResult(missing: topicNames);
-                if (!ignoreCache) {
-                    searchResult = TryGetCachedTopics(searchResult.Missing, Configuration.CacheExpiration);
-                    if (searchResult.Missing.Count == 0) return searchResult.Topics;
-                }
-
-                MetadataRequest request;
-                MetadataResponse response;
-                if (ignoreCache && topicNames == null) {
-                    Log.Info(() => LogEvent.Create("Router refreshing metadata for all topics"));
-                    request = new MetadataRequest();
-                    response = await this.GetMetadataAsync(request, cancellationToken);
-                } else {
-                    Log.Info(() => LogEvent.Create($"Router refreshing metadata for topics {string.Join(",", searchResult.Missing)}"));
-                    request = new MetadataRequest(searchResult.Missing);
-                    response = await this.GetMetadataAsync(request, cancellationToken);
-                }
-
-                UpdateConnectionCache(response);
-                UpdateTopicCache(response);
-
-                // since the above may take some time to complete, it's necessary to hold on to the topics we found before
-                // just in case they expired between when we searched for them and now.
-                var result = searchResult.Topics.AddNotNullRange(response?.Topics);
-                return result;
-            }
-        }
-
-        private async Task<int> UpdateGroupMetadataFromServerAsync(string groupId, bool ignoreCache, CancellationToken cancellationToken)
-        {
-            using (await _lock.LockAsync(cancellationToken).ConfigureAwait(false)) {
-                if (!ignoreCache) {
-                    var brokerId = TryGetCachedGroupBrokerId(groupId, Configuration.CacheExpiration);
-                    if (brokerId.HasValue) return brokerId.Value;
-                }
-
-                Log.Info(() => LogEvent.Create($"Router refreshing metadata for group {groupId}"));
-                var request = new GroupCoordinatorRequest(groupId);
-                try {
-                    var response = await this.SendToAnyAsync(request, cancellationToken);
-
-                    UpdateConnectionCache(new [] { response });
-                    UpdateGroupCache(request, response);
-
-                    return response.BrokerId;
-                } catch (Exception ex) {
-                    throw new CachedMetadataException($"Unable to refresh metadata for group {groupId}", ex);
-                }
-            }
-        }
-
-        private CachedTopicsResult TryGetCachedTopics(IEnumerable<string> topicNames, TimeSpan? expiration = null)
-        {
-            var missing = new List<string>();
-            var topics = new List<MetadataResponse.Topic>();
-
-            foreach (var topicName in topicNames.Distinct()) {
-                var topic = TryGetCachedTopic(topicName, expiration);
-                if (topic != null) {
-                    topics.Add(topic);
-                } else {
-                    missing.Add(topicName);
-                }
-            }
-
-            return new CachedTopicsResult(topics, missing);
-        }
-
         private MetadataResponse.Topic GetCachedTopic(string topicName, TimeSpan? expiration = null)
         {
             var topic = TryGetCachedTopic(topicName, expiration);
@@ -257,22 +199,106 @@ namespace KafkaClient
             return null;
         }
 
-        private static bool HasExpired<T>(Tuple<T, DateTimeOffset> cachedValue, TimeSpan? expiration = null)
+        private async Task<MetadataResponse.Topic> UpdateTopicMetadataFromServerAsync(string topicName, bool ignoreCache, CancellationToken cancellationToken)
         {
-            return expiration.HasValue && expiration.Value < DateTimeOffset.UtcNow - cachedValue.Item2;
+            var topics = await UpdateTopicMetadataFromServerAsync(new [] { topicName }, ignoreCache, cancellationToken).ConfigureAwait(false);
+            return topics.SingleOrDefault();
         }
 
-        private TopicBroker GetCachedTopicBroker(string topicName, MetadataResponse.Partition partition)
+        private async Task<IImmutableList<MetadataResponse.Topic>> UpdateTopicMetadataFromServerAsync(IEnumerable<string> topicNames, bool ignoreCache, CancellationToken cancellationToken)
         {
-            IConnection conn;
-            if (_brokerConnections.TryGetValue(partition.LeaderId, out conn)) {
-                return new TopicBroker(topicName, partition.PartitionId, partition.LeaderId, conn);
-            }
+            using (await _connectionLock.LockAsync(cancellationToken).ConfigureAwait(false)) {
+                var cachedResults = new CachedResults<MetadataResponse.Topic>(misses: topicNames);
+                if (!ignoreCache) {
+                    cachedResults = CachedResults<MetadataResponse.Topic>.ProduceResults(cachedResults.Misses, topicName => TryGetCachedTopic(topicName, Configuration.CacheExpiration));
+                    if (cachedResults.Misses.Count == 0) return cachedResults.Hits;
+                }
 
-            throw new CachedMetadataException($"Lead broker cannot be found for partition/{partition.PartitionId}, leader {partition.LeaderId}") {
-                TopicName = topicName,
-                Partition = partition.PartitionId
-            };
+                MetadataRequest request;
+                MetadataResponse response;
+                if (ignoreCache && topicNames == null) {
+                    Log.Info(() => LogEvent.Create("Router refreshing metadata for all topics"));
+                    request = new MetadataRequest();
+                    response = await this.GetMetadataAsync(request, cancellationToken);
+                } else {
+                    Log.Info(() => LogEvent.Create($"Router refreshing metadata for topics {string.Join(",", cachedResults.Misses)}"));
+                    request = new MetadataRequest(cachedResults.Misses);
+                    response = await this.GetMetadataAsync(request, cancellationToken);
+                }
+
+                UpdateConnectionCache(response);
+                UpdateTopicCache(response);
+
+                // since the above may take some time to complete, it's necessary to hold on to the topics we found before
+                // just in case they expired between when we searched for them and now.
+                var result = cachedResults.Hits.AddNotNullRange(response?.Topics);
+                return result;
+            }
+        }
+
+        private CachedMetadataException GetPartitionElectionException(IList<TopicPartition> partitionElections)
+        {
+            var topic = partitionElections.FirstOrDefault();
+            if (topic == null) return null;
+
+            var message = $"Leader Election for topic {topic.TopicName} partition {topic.PartitionId}";
+            var innerException = GetPartitionElectionException(partitionElections.Skip(1).ToList());
+            var exception = innerException != null
+                                ? new CachedMetadataException(message, innerException)
+                                : new CachedMetadataException(message);
+            exception.TopicName = topic.TopicName;
+            exception.Partition = topic.PartitionId;
+            return exception;
+        }
+
+        private void UpdateTopicCache(MetadataResponse metadata)
+        {
+            if (metadata == null) return;
+
+            var partitionElections = metadata.Topics.SelectMany(
+                t => t.Partitions
+                      .Where(p => p.IsElectingLeader)
+                      .Select(p => new TopicPartition(t.TopicName, p.PartitionId)))
+                      .ToList();
+            if (partitionElections.Any()) throw GetPartitionElectionException(partitionElections);
+
+            var topicCache = _topicCache;
+            try {
+                foreach (var topic in metadata.Topics) {
+                    topicCache = topicCache.SetItem(topic.TopicName, new Tuple<MetadataResponse.Topic, DateTimeOffset>(topic, DateTimeOffset.UtcNow));
+                }
+            } finally {
+                _topicCache = topicCache;
+            }
+        }
+
+        #endregion
+
+        #region Group Brokers
+
+        /// <inheritdoc />
+        public GroupBroker GetGroupBroker(string groupId)
+        {
+            return GetCachedGroupBroker(groupId, GetCachedGroupBrokerId(groupId));
+        }
+
+        /// <inheritdoc />
+        public async Task<GroupBroker> GetGroupBrokerAsync(string groupId, CancellationToken cancellationToken)
+        {
+            return GetCachedGroupBroker(groupId, await GetGroupBrokerIdAsync(groupId, cancellationToken));
+        }
+
+        /// <inheritdoc />
+        public async Task<int> GetGroupBrokerIdAsync(string groupId, CancellationToken cancellationToken)
+        {
+            return TryGetCachedGroupBrokerId(groupId) 
+                ?? await UpdateGroupBrokersFromServerAsync(groupId, false, cancellationToken).ConfigureAwait(false);
+        }
+
+        /// <inheritdoc />
+        public Task RefreshGroupBrokerAsync(string groupId, bool ignoreCacheExpiry, CancellationToken cancellationToken)
+        {
+            return UpdateGroupBrokersFromServerAsync(groupId, ignoreCacheExpiry, cancellationToken);
         }
 
         private GroupBroker GetCachedGroupBroker(string groupId, int brokerId)
@@ -296,52 +322,182 @@ namespace KafkaClient
         private int? TryGetCachedGroupBrokerId(string groupId, TimeSpan? expiration = null)
         {
             Tuple<int, DateTimeOffset> cachedValue;
+            if (_groupBrokerCache.TryGetValue(groupId, out cachedValue) && !HasExpired(cachedValue, expiration)) {
+                return cachedValue.Item1;
+            }
+            return null;
+        }
+
+        private async Task<int> UpdateGroupBrokersFromServerAsync(string groupId, bool ignoreCache, CancellationToken cancellationToken)
+        {
+            using (await _connectionLock.LockAsync(cancellationToken).ConfigureAwait(false)) {
+                if (!ignoreCache) {
+                    var brokerId = TryGetCachedGroupBrokerId(groupId, Configuration.CacheExpiration);
+                    if (brokerId.HasValue) return brokerId.Value;
+                }
+
+                Log.Info(() => LogEvent.Create($"Router refreshing brokers for group {groupId}"));
+                var request = new GroupCoordinatorRequest(groupId);
+                try {
+                    var response = await this.SendToAnyAsync(request, cancellationToken);
+
+                    UpdateConnectionCache(new [] { response });
+                    UpdateGroupBrokerCache(request, response);
+
+                    return response.BrokerId;
+                } catch (Exception ex) {
+                    throw new CachedMetadataException($"Unable to refresh brokers for group {groupId}", ex);
+                }
+            }
+        }
+
+        private void UpdateGroupBrokerCache(GroupCoordinatorRequest request, GroupCoordinatorResponse response)
+        {
+            if (request == null || response == null) return;
+
+            _groupBrokerCache = _groupBrokerCache.SetItem(request.GroupId, new Tuple<int, DateTimeOffset>(response.BrokerId, DateTimeOffset.UtcNow));
+        }
+
+        #endregion
+
+        #region Group Metadata
+
+        /// <inheritdoc />
+        public DescribeGroupsResponse.Group GetGroupMetadata(string groupId)
+        {
+            return GetCachedGroup(groupId);
+        }
+
+        /// <inheritdoc />
+        public IImmutableList<DescribeGroupsResponse.Group> GetGroupMetadata(IEnumerable<string> groupIds)
+        {
+            var cachedResults = CachedResults<DescribeGroupsResponse.Group>.ProduceResults(groupIds, groupId => TryGetCachedGroup(groupId));
+            if (cachedResults.Misses.Count > 0) throw new CachedMetadataException($"No metadata defined for groups: {string.Join(",", cachedResults.Misses)}");
+
+            return ImmutableList<DescribeGroupsResponse.Group>.Empty.AddRange(cachedResults.Hits);
+        }
+
+        /// <inheritdoc />
+        public async Task<DescribeGroupsResponse.Group> GetGroupMetadataAsync(string groupId, CancellationToken cancellationToken)
+        {
+            return TryGetCachedGroup(groupId) 
+                ?? await UpdateGroupMetadataFromServerAsync(groupId, false, cancellationToken).ConfigureAwait(false);
+        }
+
+        /// <inheritdoc />
+        public async Task<IImmutableList<DescribeGroupsResponse.Group>> GetGroupMetadataAsync(IEnumerable<string> groupIds, CancellationToken cancellationToken)
+        {
+            var cachedResults = CachedResults<DescribeGroupsResponse.Group>.ProduceResults(groupIds, groupId => TryGetCachedGroup(groupId));
+            return cachedResults.Misses.Count == 0 
+                ? cachedResults.Hits 
+                : cachedResults.Hits.AddRange(await UpdateGroupMetadataFromServerAsync(cachedResults.Misses, false, cancellationToken).ConfigureAwait(false));
+        }
+
+        /// <inheritdoc />
+        public Task RefreshGroupMetadataAsync(string groupId, bool ignoreCacheExpiry, CancellationToken cancellationToken)
+        {
+            return UpdateGroupMetadataFromServerAsync(groupId, ignoreCacheExpiry, cancellationToken);
+        }
+
+        /// <inheritdoc />
+        public Task RefreshGroupMetadataAsync(IEnumerable<string> groupIds, bool ignoreCacheExpiry, CancellationToken cancellationToken)
+        {
+            return UpdateGroupMetadataFromServerAsync(groupIds, ignoreCacheExpiry, cancellationToken);
+        }
+
+        private DescribeGroupsResponse.Group GetCachedGroup(string groupId, TimeSpan? expiration = null)
+        {
+            var group = TryGetCachedGroup(groupId, expiration);
+            if (group != null) return group;
+
+            throw new CachedMetadataException($"No metadata defined for group/{groupId}");
+        }
+
+        private DescribeGroupsResponse.Group TryGetCachedGroup(string groupId, TimeSpan? expiration = null)
+        {
+            Tuple<DescribeGroupsResponse.Group, DateTimeOffset> cachedValue;
             if (_groupCache.TryGetValue(groupId, out cachedValue) && !HasExpired(cachedValue, expiration)) {
                 return cachedValue.Item1;
             }
             return null;
         }
 
-        private CachedMetadataException GetPartitionElectionException(IList<TopicPartition> partitionElections)
+        private async Task<DescribeGroupsResponse.Group> UpdateGroupMetadataFromServerAsync(string groupId, bool ignoreCache, CancellationToken cancellationToken)
         {
-            var topic = partitionElections.FirstOrDefault();
-            if (topic == null) return null;
+            var groups = await UpdateGroupMetadataFromServerAsync(new [] { groupId }, ignoreCache, cancellationToken).ConfigureAwait(false);
+            return groups.SingleOrDefault();
+        }
+        
+        private async Task<IImmutableList<DescribeGroupsResponse.Group>> UpdateGroupMetadataFromServerAsync(IEnumerable<string> groupIds, bool ignoreCache, CancellationToken cancellationToken)
+        {
+            using (await _groupLock.LockAsync(cancellationToken).ConfigureAwait(false)) {
+                var cachedResults = new CachedResults<DescribeGroupsResponse.Group>(misses: groupIds);
+                if (!ignoreCache) {
+                    cachedResults = CachedResults<DescribeGroupsResponse.Group>.ProduceResults(cachedResults.Misses, groupId => TryGetCachedGroup(groupId, Configuration.CacheExpiration));
+                    if (cachedResults.Misses.Count == 0) return cachedResults.Hits;
+                }
 
-            var message = $"Leader Election for topic {topic.TopicName} partition {topic.PartitionId}";
-            var innerException = GetPartitionElectionException(partitionElections.Skip(1).ToList());
-            var exception = innerException != null
-                                ? new CachedMetadataException(message, innerException)
-                                : new CachedMetadataException(message);
-            exception.TopicName = topic.TopicName;
-            exception.Partition = topic.PartitionId;
-            return exception;
+                Log.Info(() => LogEvent.Create($"Router refreshing metadata for groups {string.Join(",", cachedResults.Misses)}"));
+                var request = new DescribeGroupsRequest(cachedResults.Misses);
+                var response = await this.SendToAnyAsync(request, cancellationToken);
+
+                UpdateGroupCache(response);
+
+                // since the above may take some time to complete, it's necessary to hold on to the groups we found before
+                // just in case they expired between when we searched for them and now.
+                var result = cachedResults.Hits.AddNotNullRange(response?.Groups);
+                return result;
+            }
         }
 
-        private void UpdateGroupCache(GroupCoordinatorRequest request, GroupCoordinatorResponse response)
-        {
-            if (request == null || response == null) return;
-
-            _groupCache = _groupCache.SetItem(request.GroupId, new Tuple<int, DateTimeOffset>(response.BrokerId, DateTimeOffset.UtcNow));
-        }
-
-        private void UpdateTopicCache(MetadataResponse metadata)
+        private void UpdateGroupCache(DescribeGroupsResponse metadata)
         {
             if (metadata == null) return;
 
-            var partitionElections = metadata.Topics.SelectMany(
-                t => t.Partitions
-                      .Where(p => p.IsElectingLeader)
-                      .Select(p => new TopicPartition(t.TopicName, p.PartitionId)))
-                      .ToList();
-            if (partitionElections.Any()) throw GetPartitionElectionException(partitionElections);
-
-            var topicCache = _topicCache;
+            var topicCache = _groupCache;
             try {
-                foreach (var topic in metadata.Topics) {
-                    topicCache = topicCache.SetItem(topic.TopicName, new Tuple<MetadataResponse.Topic, DateTimeOffset>(topic, DateTimeOffset.UtcNow));
+                foreach (var group in metadata.Groups) {
+                    topicCache = topicCache.SetItem(group.GroupId, new Tuple<DescribeGroupsResponse.Group, DateTimeOffset>(group, DateTimeOffset.UtcNow));
                 }
             } finally {
-                _topicCache = topicCache;
+                _groupCache = topicCache;
+            }
+        }
+ 
+
+        #endregion
+
+        private static bool HasExpired<T>(Tuple<T, DateTimeOffset> cachedValue, TimeSpan? expiration = null)
+        {
+            return expiration.HasValue && expiration.Value < DateTimeOffset.UtcNow - cachedValue.Item2;
+        }
+
+        private class CachedResults<T>
+        {
+            public IImmutableList<T> Hits { get; }
+            public IImmutableList<string> Misses { get; }
+
+            public CachedResults(IEnumerable<T> hits = null, IEnumerable<string> misses = null)
+            {
+                Hits = ImmutableList<T>.Empty.AddNotNullRange(hits);
+                Misses = ImmutableList<string>.Empty.AddNotNullRange(misses);
+            }
+
+            public static CachedResults<T> ProduceResults(IEnumerable<string> keys, Func<string, T> producer)
+            {
+                var misses = new List<string>();
+                var hits = new List<T>();
+
+                foreach (var key in keys.Distinct()) {
+                    var value = producer(key);
+                    if (value != null) {
+                        hits.Add(value);
+                    } else {
+                        misses.Add(key);
+                    }
+                }
+
+                return new CachedResults<T>(hits, misses);
             }
         }
 
@@ -400,6 +556,7 @@ namespace KafkaClient
 
         private int _disposeCount;
 
+        /// <inheritdoc />
         public void Dispose()
         {
             if (Interlocked.Increment(ref _disposeCount) != 1) return;
@@ -408,42 +565,5 @@ namespace KafkaClient
 
         /// <inheritdoc />
         public ILog Log { get; }
-
-        /// <inheritdoc />
-        public GroupBroker GetGroupBroker(string groupId)
-        {
-            return GetCachedGroupBroker(groupId, GetCachedGroupBrokerId(groupId));
-        }
-
-        /// <inheritdoc />
-        public async Task<GroupBroker> GetGroupBrokerAsync(string groupId, CancellationToken cancellationToken)
-        {
-            return GetCachedGroupBroker(groupId, await GetGroupBrokerIdAsync(groupId, cancellationToken));
-        }
-
-        /// <inheritdoc />
-        public async Task<int> GetGroupBrokerIdAsync(string groupId, CancellationToken cancellationToken)
-        {
-            return TryGetCachedGroupBrokerId(groupId) 
-                ?? await UpdateGroupMetadataFromServerAsync(groupId, false, cancellationToken).ConfigureAwait(false);
-        }
-
-        /// <inheritdoc />
-        public Task RefreshGroupMetadataAsync(string groupId, bool ignoreCacheExpiry, CancellationToken cancellationToken)
-        {
-            return UpdateGroupMetadataFromServerAsync(groupId, ignoreCacheExpiry, cancellationToken);
-        }
-
-        private class CachedTopicsResult
-        {
-            public IImmutableList<MetadataResponse.Topic> Topics { get; }
-            public IImmutableList<string> Missing { get; }
-
-            public CachedTopicsResult(IEnumerable<MetadataResponse.Topic> topics = null, IEnumerable<string> missing = null)
-            {
-                Topics = ImmutableList<MetadataResponse.Topic>.Empty.AddNotNullRange(topics);
-                Missing = ImmutableList<string>.Empty.AddNotNullRange(missing);
-            }
-        }
     }
 }

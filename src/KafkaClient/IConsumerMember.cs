@@ -15,7 +15,7 @@ namespace KafkaClient
         ILog Log { get; }
 
         /// <summary>
-        /// Called from the consumer when joining/rejoining. State from server *after* join is described by <param name="group"></param>.
+        /// Called from the consumer when joining/rejoining..
         /// 
         /// See https://cwiki.apache.org/confluence/display/KAFKA/Kafka+Client-side+Assignment+Proposal
         /// </summary>

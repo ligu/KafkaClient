@@ -193,7 +193,7 @@ namespace KafkaClient
         {
             if (metadataInvalid.GetValueOrDefault(true)) {
                 // unknown metadata status should not force the issue
-                await router.RefreshGroupMetadataAsync(groupId, metadataInvalid.GetValueOrDefault(), cancellationToken).ConfigureAwait(false);
+                await router.RefreshGroupBrokerAsync(groupId, metadataInvalid.GetValueOrDefault(), cancellationToken).ConfigureAwait(false);
             }
             return false;
         }
