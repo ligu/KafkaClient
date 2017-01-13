@@ -213,10 +213,10 @@ namespace KafkaClient.Tests.Unit
 #pragma warning restore 4014
         }
 
-        [Test]
-        [TestCase(100, 700)]
-        [TestCase(150, 700)]
-        [TestCase(250, 700)]
+        //[Test]
+        //[TestCase(100, 700)]
+        //[TestCase(150, 700)]
+        //[TestCase(250, 700)]
         public async Task ConsumerHeartbeatsWithinTimeLimit(int heartbeatMilliseconds, int totalMilliseconds)
         {
             var protocol = new JoinGroupRequest.GroupProtocol(new ConsumerProtocolMetadata("mine"));
