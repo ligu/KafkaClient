@@ -1,4 +1,4 @@
-version: 0.1.{build}-beta
+version: 0.2.{build}
 os: Visual Studio 2015
 
 before_build:
@@ -8,7 +8,7 @@ build_script:
   - cmd: dotnet build -c Release src\KafkaClient --no-dependencies --no-incremental --version-suffix %APPVEYOR_BUILD_NUMBER%
 
 after_build:
-  - cmd: nuget pack src\KafkaClient\KafkaClient.nuspec -Properties "version=%APPVEYOR_BUILD_VERSION%" -outputdirectory artifacts
+  - cmd: dotnet pack -c Release src\KafkaClient --version-suffix beta -o artifacts
  
 test_script:
   - cmd: dotnet test src\KafkaClient.Tests --where "cat != Load"

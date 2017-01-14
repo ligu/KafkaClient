@@ -66,100 +66,6 @@
         "runtime": {
           "lib/portable-net45+win8+wp8+wpa81/System.Collections.Immutable.dll": {}
         }
-      },
-      "System.Diagnostics.TraceSource/4.0.0": {
-        "type": "package",
-        "frameworkAssemblies": [
-          "System",
-          "mscorlib"
-        ],
-        "compile": {
-          "ref/net46/System.Diagnostics.TraceSource.dll": {}
-        },
-        "runtime": {
-          "lib/net46/System.Diagnostics.TraceSource.dll": {}
-        },
-        "runtimeTargets": {
-          "runtimes/unix/lib/netstandard1.3/System.Diagnostics.TraceSource.dll": {
-            "assetType": "runtime",
-            "rid": "unix"
-          },
-          "runtimes/win/lib/net46/System.Diagnostics.TraceSource.dll": {
-            "assetType": "runtime",
-            "rid": "win"
-          }
-        }
-      },
-      "System.IO.Compression/4.3.0": {
-        "type": "package",
-        "frameworkAssemblies": [
-          "System",
-          "mscorlib"
-        ],
-        "compile": {
-          "ref/net46/System.IO.Compression.dll": {}
-        },
-        "runtime": {
-          "lib/net46/System.IO.Compression.dll": {}
-        },
-        "runtimeTargets": {
-          "runtimes/unix/lib/netstandard1.3/System.IO.Compression.dll": {
-            "assetType": "runtime",
-            "rid": "unix"
-          },
-          "runtimes/win/lib/net46/System.IO.Compression.dll": {
-            "assetType": "runtime",
-            "rid": "win"
-          }
-        }
-      },
-      "System.Net.NameResolution/4.0.0": {
-        "type": "package",
-        "frameworkAssemblies": [
-          "System",
-          "mscorlib"
-        ],
-        "compile": {
-          "ref/net46/System.Net.NameResolution.dll": {}
-        },
-        "runtime": {
-          "lib/net46/System.Net.NameResolution.dll": {}
-        },
-        "runtimeTargets": {
-          "runtimes/unix/lib/netstandard1.3/System.Net.NameResolution.dll": {
-            "assetType": "runtime",
-            "rid": "unix"
-          },
-          "runtimes/win/lib/net46/System.Net.NameResolution.dll": {
-            "assetType": "runtime",
-            "rid": "win"
-          }
-        }
-      },
-      "System.Net.Sockets/4.3.0": {
-        "type": "package",
-        "frameworkAssemblies": [
-          "System",
-          "mscorlib"
-        ],
-        "compile": {
-          "ref/net46/System.Net.Sockets.dll": {}
-        },
-        "runtime": {
-          "lib/net46/System.Net.Sockets.dll": {}
-        }
-      },
-      "System.Threading.Thread/4.0.0": {
-        "type": "package",
-        "frameworkAssemblies": [
-          "mscorlib"
-        ],
-        "compile": {
-          "ref/net46/System.Threading.Thread.dll": {}
-        },
-        "runtime": {
-          "lib/net46/System.Threading.Thread.dll": {}
-        }
       }
     },
     ".NETStandard,Version=v1.3": {
@@ -2582,16 +2488,16 @@
     "": [
       "Nito.AsyncEx.Context >= 1.1.0",
       "Nito.AsyncEx.Coordination >= 1.0.2",
-      "System.Collections.Immutable >= 1.2.0",
+      "System.Collections.Immutable >= 1.2.0"
+    ],
+    ".NETFramework,Version=v4.6.2": [],
+    ".NETStandard,Version=v1.3": [
       "System.Diagnostics.TraceSource >= 4.0.0",
       "System.IO.Compression >= 4.3.0",
       "System.Net.NameResolution >= 4.0.0",
       "System.Net.Sockets >= 4.3.0",
+      "System.Reflection.Extensions >= 4.3.0",
       "System.Threading.Thread >= 4.0.0"
-    ],
-    ".NETFramework,Version=v4.6.2": [],
-    ".NETStandard,Version=v1.3": [
-      "System.Reflection.Extensions >= 4.3.0"
     ]
   },
   "tools": {},
