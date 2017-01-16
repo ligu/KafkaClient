@@ -84,70 +84,58 @@ namespace KafkaClient.Protocol
 
         public static string ToFormattedString(this object o)
         {
-            return new StringBuilder().AppendWithIndent(o, "").ToString();
+            return new StringBuilder().AppendObject(o).ToString();
         }
 
-        private static StringBuilder AppendWithIndent(this StringBuilder buffer, object o, string indent)
+        private static StringBuilder AppendWithSeparator(this StringBuilder buffer, IEnumerable<Action<StringBuilder>> things, string separator = ",")
         {
-            foreach (var property in o.GetType().GetRuntimeProperties().Where(p => p.CanRead && p.GetIndexParameters().Length <= 1)) {
-                buffer.Append($"{indent}{property.Name}: ").AppendValueWithIndent(property.GetValue(o), indent);
-                buffer.AppendLine();
+            var needsSeparator = false;
+            foreach (var thing in things) {
+                if (needsSeparator) {
+                    buffer.Append(separator);
+                }
+                thing(buffer);
+                needsSeparator = true;
             }
             return buffer;
         }
 
-        /// <summary>
-        /// Enumerables should be surrounded by [] and end with a newline
-        /// Strings should be surrounded by ""
-        /// Nulls are explicit null
-        /// Classes are indented, with properties on a new line
-        /// Everything else is separated by a single space
-        /// </summary>
-        private static bool AppendValueWithIndent(this StringBuilder buffer, object value, string indent, bool isInline = true)
+        private static StringBuilder AppendObject(this StringBuilder buffer, object o)
+        {
+            var properties = o.GetType().GetRuntimeProperties().Where(p => p.CanRead && p.GetIndexParameters().Length <= 1);
+            var writers = properties.Select<PropertyInfo, Action<StringBuilder>>(property => b => b.Append(property.Name).Append(":").AppendValue(property.GetValue(o)));
+            return buffer.Append("{").AppendWithSeparator(writers).Append("}");
+        }
+
+        private static void AppendValue(this StringBuilder buffer, object value)
         {
             if (value == null) {
-                buffer.Append("null ");
-                return false;
+                buffer.Append("null");
+                return;
             }
-
-            var stringValue = value as string;
-            if (stringValue != null) {
-                buffer.Append($"\"{stringValue}\" ");
-                return false;
+            if (value is string) {
+                buffer.Append($"'{value}'");
+                return;
             }
 
             var bytes = value as byte[];
             if (bytes != null) {
-                buffer.Append("[ ... ]");
-                return false;
+                if (bytes.Length == 0) {
+                    buffer.Append("[]");
+                } else {
+                    buffer.Append("{length:").Append(bytes.Length).Append("}");
+                }
+                return;
             }
 
             var enumerable = value as IEnumerable;
             if (enumerable != null) {
-                buffer.Append("[ ");
-                var requiresNewLine = false;
-                foreach (var inner in enumerable) {
-                    if (requiresNewLine) {
-                        buffer.AppendLine();
-                    }
-                    requiresNewLine = buffer.AppendValueWithIndent(inner, $"{indent}", !requiresNewLine) || requiresNewLine;
-                }
-                if (requiresNewLine) {
-                    buffer.Append(indent);
-                }
-                buffer.Append("]");
-                return false;
+                buffer.Append("[").AppendWithSeparator(enumerable.Cast<object>().Select<object, Action<StringBuilder>>(o => b => b.AppendValue(o))).Append("]");
+            } else if (value.GetType().GetTypeInfo().IsClass) {
+                buffer.AppendObject(value);
+            } else {
+                buffer.Append(value);
             }
-
-            if (value.GetType().GetTypeInfo().IsClass) {
-                if (isInline) {
-                    buffer.AppendLine();
-                }
-                buffer.AppendWithIndent(value, $"{indent}  ");
-                return true;
-            }
-            buffer.Append(value).Append(" ");
-            return false;
         }
 
         public static IMembershipEncoder GetEncoder(this IRequestContext context, string protocolType = null)
