@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using KafkaClient.Assignment;
 using KafkaClient.Protocol;
 using NUnit.Framework;
@@ -21,8 +22,8 @@ namespace KafkaClient.Tests.Unit
         {
             var request = new SyncGroupRequest("group", 5, "member", new []{ new SyncGroupRequest.GroupAssignment("member", new ConsumerMemberAssignment(new []{ new TopicPartition("topic", 0), new TopicPartition("topic", 1) }))});
             var formatted = request.ToFormattedString();
-            Assert.That(formatted.Contains("TopicName: \"topic\""));
-            Assert.That(formatted.Contains("PartitionId: 1"));
+            Assert.That(formatted.Contains("TopicName:'topic'"));
+            Assert.That(formatted.Contains("PartitionId:1"));
         }
     }
 }

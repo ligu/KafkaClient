@@ -801,22 +801,25 @@ namespace KafkaClient.Tests.Integration
             }
         }
 
-        private static async Task ProduceMessages(Router router, string topicName, string groupId, int totalMessages, int partition = 0)
+        private static async Task ProduceMessages(Router router, string topicName, string groupId, int totalMessages, int partitionId = 0)
         {
-            using (
-                var producer = new Producer(
-                    router,
-                    new ProducerConfiguration(batchSize: totalMessages / 10, batchMaxDelay: TimeSpan.FromMilliseconds(25)))) {
-                var offset = await router.GetTopicOffsetAsync(topicName, partition, CancellationToken.None);
-                var groupOffset = await router.GetTopicOffsetAsync(topicName, partition, groupId, CancellationToken.None);
+            using (var producer = new Producer(router,
+                    new ProducerConfiguration(batchSize: totalMessages / 10, batchMaxDelay: TimeSpan.FromMilliseconds(25))))
+            {
+                //await router.SendAsync(new GroupCoordinatorRequest(groupId), topicName, partitionId, CancellationToken.None).ConfigureAwait(false);
+                var offset = await router.GetTopicOffsetAsync(topicName, partitionId, CancellationToken.None);
+                await router.GetGroupBrokerIdAsync(groupId, CancellationToken.None);
+                var groupOffset = await router.GetTopicOffsetAsync(topicName, partitionId, groupId, CancellationToken.None);
 
                 var missingMessages = Math.Max(0, totalMessages + groupOffset.Offset - offset.Offset + 1);
-                if (missingMessages > 0) {
+                if (missingMessages > 0)
+                {
                     var messages = new List<Message>();
-                    for (var i = 0; i < missingMessages; i++) {
+                    for (var i = 0; i < missingMessages; i++)
+                    {
                         messages.Add(new Message(i.ToString()));
                     }
-                    await producer.SendMessagesAsync(messages, topicName, partition, CancellationToken.None);
+                    await producer.SendMessagesAsync(messages, topicName, partitionId, CancellationToken.None);
                 }
             }
         }
