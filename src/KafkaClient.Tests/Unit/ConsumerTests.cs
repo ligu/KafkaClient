@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Assignment;
+using KafkaClient.Common;
 using KafkaClient.Connections;
 using KafkaClient.Protocol;
 using NSubstitute;
@@ -90,44 +91,6 @@ namespace KafkaClient.Tests.Unit
         //            }
         //        }
 
-        //        [Test]
-        //        public void ConsumerShouldCreateTaskForEachBroker()
-        //        {
-        //            var routerProxy = new BrokerRouterProxy();
-        //#pragma warning disable 1998
-        //            routerProxy.Connection1.FetchResponseFunction = async () => new FetchResponse(new FetchResponse.Topic[] {});
-        //#pragma warning restore 1998
-        //            var router = routerProxy.Create();
-        //            var options = CreateOptions(router);
-        //            options.PartitionWhitelist = new List<int>();
-        //            using (var consumer = new OldConsumer(options))
-        //            {
-        //                var test = consumer.Consume();
-        //                var wait = TaskTest.WaitFor(() => consumer.ConsumerTaskCount >= 2);
-
-        //                Assert.That(consumer.ConsumerTaskCount, Is.EqualTo(2));
-        //            }
-        //        }
-
-        //        [Test]
-        //        public void ConsumerShouldReturnOffset()
-        //        {
-        //            var routerProxy = new BrokerRouterProxy();
-        //#pragma warning disable 1998
-        //            routerProxy.Connection1.FetchResponseFunction = async () => new FetchResponse(new FetchResponse.Topic[] {});
-        //#pragma warning restore 1998
-        //            var router = routerProxy.Create();
-        //            var options = CreateOptions(router);
-        //            options.PartitionWhitelist = new List<int>();
-        //            using (var consumer = new OldConsumer(options))
-        //            {
-        //                var test = consumer.Consume();
-        //                var wait = TaskTest.WaitFor(() => consumer.ConsumerTaskCount >= 2);
-
-        //                Assert.That(consumer.ConsumerTaskCount, Is.EqualTo(2));
-        //            }
-        //        }
-
         [Test]
         public void EnsureConsumerDisposesRouter()
         {
@@ -182,17 +145,109 @@ namespace KafkaClient.Tests.Unit
             }
         }
 
-        //[Test]
-        //[TestCase(0, 100, 0)]
-        //[TestCase(4, 100, 500)]
-        //[TestCase(9, 100, 1000)]
+        [Test]
+        public async Task ConsumerSyncsGroupAfterJoining()
+        {
+            var protocol = new JoinGroupRequest.GroupProtocol(new ConsumerProtocolMetadata("mine"));
+            var router = Substitute.For<IRouter>();
+            var conn = Substitute.For<IConnection>();
+            router.GetGroupBrokerAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                  .Returns(_ => Task.FromResult(new GroupBroker(_.Arg<string>(), 0, conn)));            
+            router.SyncGroupAsync(Arg.Any<SyncGroupRequest>(), Arg.Any<IRequestContext>(), Arg.Any<IRetry>(), Arg.Any<CancellationToken>())
+                .Returns(_ => Task.FromResult(new SyncGroupResponse(ErrorResponseCode.None, new ConsumerMemberAssignment(new [] { new TopicPartition("name", 0) }))));
+
+            var consumer = new Consumer(router);
+            var request = new JoinGroupRequest(TestConfig.GroupId(), TimeSpan.FromSeconds(30), "", ConsumerEncoder.Protocol, new [] { protocol });
+            var memberId = Guid.NewGuid().ToString("N");
+            var response = new JoinGroupResponse(ErrorResponseCode.None, 1, protocol.Name, memberId, memberId, new []{ new JoinGroupResponse.Member(memberId, new ConsumerProtocolMetadata("mine")) });
+
+            using (new ConsumerMember(consumer, request, response, TestConfig.Log)) {
+                await Task.Delay(300);
+            }
+
+#pragma warning disable 4014
+            router.Received().SyncGroupAsync(
+                Arg.Is((SyncGroupRequest s) => s.GroupId == request.GroupId && s.MemberId == memberId),
+                Arg.Any<IRequestContext>(),
+                Arg.Any<IRetry>(), 
+                Arg.Any<CancellationToken>());
+            conn.DidNotReceive().SendAsync(
+                Arg.Is((HeartbeatRequest s) => s.GroupId == request.GroupId && s.MemberId == memberId), 
+                Arg.Any<CancellationToken>(),
+                Arg.Any<IRequestContext>());
+#pragma warning restore 4014
+        }
+
+        [Test]
+        public async Task ConsumerLeaderSyncsGroupWithAssignment()
+        {
+            var protocol = new JoinGroupRequest.GroupProtocol(new ConsumerProtocolMetadata("mine"));
+            var router = Substitute.For<IRouter>();
+            var conn = Substitute.For<IConnection>();
+            router.GetGroupBrokerAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                  .Returns(_ => Task.FromResult(new GroupBroker(_.Arg<string>(), 0, conn)));            
+            router.SyncGroupAsync(Arg.Any<SyncGroupRequest>(), Arg.Any<IRequestContext>(), Arg.Any<IRetry>(), Arg.Any<CancellationToken>())
+                .Returns(_ => Task.FromResult(new SyncGroupResponse(ErrorResponseCode.None, new ConsumerMemberAssignment(new [] { new TopicPartition("name", 0) }))));
+
+            var consumer = new Consumer(router);
+            var request = new JoinGroupRequest(TestConfig.GroupId(), TimeSpan.FromSeconds(30), "", ConsumerEncoder.Protocol, new [] { protocol });
+            var memberId = Guid.NewGuid().ToString("N");
+            var response = new JoinGroupResponse(ErrorResponseCode.None, 1, protocol.Name, memberId, memberId, new []{ new JoinGroupResponse.Member(memberId, new ConsumerProtocolMetadata("mine")) });
+
+            using (new ConsumerMember(consumer, request, response, TestConfig.Log)) {
+                await Task.Delay(300);
+            }
+
+#pragma warning disable 4014
+            router.Received().SyncGroupAsync(
+                Arg.Is((SyncGroupRequest s) => s.GroupId == request.GroupId && s.MemberId == memberId && s.GroupAssignments.Count > 0),
+                Arg.Any<IRequestContext>(),
+                Arg.Any<IRetry>(), 
+                Arg.Any<CancellationToken>());
+#pragma warning restore 4014
+        }
+
+        [Test]
+        public async Task ConsumerFollowerSyncsGroupWithoutAssignment()
+        {
+            var protocol = new JoinGroupRequest.GroupProtocol(new ConsumerProtocolMetadata("mine"));
+            var router = Substitute.For<IRouter>();
+            var conn = Substitute.For<IConnection>();
+            router.GetGroupBrokerAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                  .Returns(_ => Task.FromResult(new GroupBroker(_.Arg<string>(), 0, conn)));            
+            router.SyncGroupAsync(Arg.Any<SyncGroupRequest>(), Arg.Any<IRequestContext>(), Arg.Any<IRetry>(), Arg.Any<CancellationToken>())
+                .Returns(_ => Task.FromResult(new SyncGroupResponse(ErrorResponseCode.None, new ConsumerMemberAssignment(new [] { new TopicPartition("name", 0) }))));
+
+            var consumer = new Consumer(router);
+            var request = new JoinGroupRequest(TestConfig.GroupId(), TimeSpan.FromSeconds(30), "", ConsumerEncoder.Protocol, new [] { protocol });
+            var memberId = Guid.NewGuid().ToString("N");
+            var response = new JoinGroupResponse(ErrorResponseCode.None, 1, protocol.Name, "other" + memberId, memberId, new []{ new JoinGroupResponse.Member(memberId, new ConsumerProtocolMetadata("mine")) });
+
+            using (new ConsumerMember(consumer, request, response, TestConfig.Log)) {
+                await Task.Delay(300);
+            }
+
+#pragma warning disable 4014
+            router.Received().SyncGroupAsync(
+                Arg.Is((SyncGroupRequest s) => s.GroupId == request.GroupId && s.MemberId == memberId && s.GroupAssignments.Count == 0),
+                Arg.Any<IRequestContext>(),
+                Arg.Any<IRetry>(), 
+                Arg.Any<CancellationToken>());
+#pragma warning restore 4014
+        }
+
+        [TestCase(0, 100, 0)]
+        [TestCase(3, 100, 500)]
+        [TestCase(9, 100, 1000)]
         public async Task ConsumerHeartbeatsAtDesiredIntervals(int expectedHeartbeats, int heartbeatMilliseconds, int totalMilliseconds)
         {
             var protocol = new JoinGroupRequest.GroupProtocol(new ConsumerProtocolMetadata("mine"));
             var router = Substitute.For<IRouter>();
             var conn = Substitute.For<IConnection>();
             router.GetGroupBrokerAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-                  .Returns(_ => Task.FromResult(new GroupBroker(_.Arg<string>(), 0, conn)));
+                  .Returns(_ => Task.FromResult(new GroupBroker(_.Arg<string>(), 0, conn)));            
+            router.SyncGroupAsync(Arg.Any<SyncGroupRequest>(), Arg.Any<IRequestContext>(), Arg.Any<IRetry>(), Arg.Any<CancellationToken>())
+                .Returns(_ => Task.FromResult(new SyncGroupResponse(ErrorResponseCode.None, new ConsumerMemberAssignment(new [] { new TopicPartition("name", 0) }))));
             conn.SendAsync(Arg.Any<HeartbeatRequest>(), Arg.Any<CancellationToken>(), Arg.Any<IRequestContext>())
                 .Returns(_ => Task.FromResult(new HeartbeatResponse(ErrorResponseCode.None)));
 
@@ -213,10 +268,9 @@ namespace KafkaClient.Tests.Unit
 #pragma warning restore 4014
         }
 
-        //[Test]
-        //[TestCase(100, 700)]
-        //[TestCase(150, 700)]
-        //[TestCase(250, 700)]
+        [TestCase(100, 700)]
+        [TestCase(150, 700)]
+        [TestCase(250, 700)]
         public async Task ConsumerHeartbeatsWithinTimeLimit(int heartbeatMilliseconds, int totalMilliseconds)
         {
             var protocol = new JoinGroupRequest.GroupProtocol(new ConsumerProtocolMetadata("mine"));
@@ -248,17 +302,18 @@ namespace KafkaClient.Tests.Unit
             }
         }
 
-        //[Test]
-        //[TestCase(100)]
-        //[TestCase(150)]
-        //[TestCase(250)]
-        public async Task ConsumerHeartbeatsUntilTimeoutWhenRequestFails(int heartbeatMilliseconds)
+        [TestCase(100)]
+        [TestCase(150)]
+        [TestCase(250)]
+        public async Task ConsumerHeartbeatsUntilDisposed(int heartbeatMilliseconds)
         {
             var protocol = new JoinGroupRequest.GroupProtocol(new ConsumerProtocolMetadata("mine"));
             var router = Substitute.For<IRouter>();
             var conn = Substitute.For<IConnection>();
             router.GetGroupBrokerAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
                   .Returns(_ => Task.FromResult(new GroupBroker(_.Arg<string>(), 0, conn)));
+            router.SyncGroupAsync(Arg.Any<SyncGroupRequest>(), Arg.Any<IRequestContext>(), Arg.Any<IRetry>(), Arg.Any<CancellationToken>())
+                .Returns(_ => Task.FromResult(new SyncGroupResponse(ErrorResponseCode.None, new ConsumerMemberAssignment(new [] { new TopicPartition("name", 0) }))));
             conn.SendAsync(Arg.Any<HeartbeatRequest>(), Arg.Any<CancellationToken>(), Arg.Any<IRequestContext>())
                 .Returns(_ => Task.FromResult(new HeartbeatResponse(ErrorResponseCode.NetworkException)));
 
@@ -271,15 +326,18 @@ namespace KafkaClient.Tests.Unit
                 await Task.Delay(heartbeatMilliseconds * 3);
 
 #pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
-                // this is called because the lack of heartbeat within the timeframe triggered dispose
-                conn.Received().SendAsync(
-                    Arg.Is((LeaveGroupRequest s) => s.GroupId == request.GroupId && s.MemberId == memberId), 
+                conn.DidNotReceive().SendAsync(
+                    Arg.Is((LeaveGroupRequest s) => s.GroupId == request.GroupId && s.MemberId == memberId),
                     Arg.Any<CancellationToken>(),
                     Arg.Any<IRequestContext>());
-#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
             }
+            conn.Received().SendAsync(
+                Arg.Is((LeaveGroupRequest s) => s.GroupId == request.GroupId && s.MemberId == memberId),
+                Arg.Any<CancellationToken>(),
+                Arg.Any<IRequestContext>());
+#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
 
-            Assert.That(conn.ReceivedCalls().Count(c => c.GetMethodInfo().Name == nameof(Connection.SendAsync) && (c.GetArguments()[0] as HeartbeatRequest) != null), Is.AtLeast(3));
+            Assert.That(conn.ReceivedCalls().Count(c => c.GetMethodInfo().Name == nameof(Connection.SendAsync) && (c.GetArguments()[0] as HeartbeatRequest) != null), Is.AtLeast(2));
         }
 
         // design unit TESTS to write:

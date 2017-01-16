@@ -169,6 +169,7 @@ namespace KafkaClient
                     } catch (OperationCanceledException) { // cancellation token fired while attempting to get tasks: normal behavior
                     } catch (Exception ex) {
                         Log.Warn(() => LogEvent.Create(ex));
+                        await Task.Delay(1, _disposeToken.Token).ConfigureAwait(false); // to avoid killing the CPU
                     }
                 }
                 await DisposeAsync(CancellationToken.None);

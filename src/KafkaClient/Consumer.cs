@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Assignment;
 using KafkaClient.Common;
+using KafkaClient.Connections;
 using KafkaClient.Protocol;
 
 namespace KafkaClient
@@ -26,7 +27,7 @@ namespace KafkaClient
             Router = router;
             _leaveRouterOpen = leaveRouterOpen;
             Configuration = configuration ?? new ConsumerConfiguration();
-            Encoders = encoders ?? ImmutableDictionary<string, IMembershipEncoder>.Empty;
+            Encoders = encoders ?? ConnectionConfiguration.Defaults.Encoders();
         }
 
         public IImmutableDictionary<string, IMembershipEncoder> Encoders { get; }
