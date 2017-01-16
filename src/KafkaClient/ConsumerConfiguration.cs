@@ -63,7 +63,7 @@ namespace KafkaClient
             /// <summary>
             /// The default <see cref="GroupHeartbeat"/> seconds
             /// </summary>
-            public const int HeartbeatSeconds = 60;
+            public const int HeartbeatSeconds = RebalanceTimeoutSeconds;
 
             /// <summary>
             /// The default <see cref="GroupRebalanceTimeout"/> seconds
