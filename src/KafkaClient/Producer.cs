@@ -17,7 +17,7 @@ namespace KafkaClient
     public class Producer : IProducer
     {
         private readonly bool _leaveRouterOpen;
-        private int _stopCount = 0;
+        private int _stopCount;
         private readonly CancellationTokenSource _stopToken;
         private readonly AsyncProducerConsumerQueue<ProduceTopicTask> _produceMessageQueue;
         private readonly SemaphoreSlim _produceRequestSemaphore;

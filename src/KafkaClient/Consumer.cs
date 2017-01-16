@@ -102,7 +102,7 @@ namespace KafkaClient
                 } catch (BufferUnderRunException ex) {
                     if (!(Configuration.FetchByteMultiplier.GetValueOrDefault() > 1 && topic.MaxBytes > 0)) throw;
                     Router.Log.Warn(() => LogEvent.Create(ex, $"Retrying Fetch Request with multiplier {Configuration.FetchByteMultiplier}"));
-                    topic = new FetchRequest.Topic(topic.TopicName, topic.PartitionId, topic.Offset, topic.MaxBytes * Configuration.FetchByteMultiplier.Value);
+                    topic = new FetchRequest.Topic(topic.TopicName, topic.PartitionId, topic.Offset, topic.MaxBytes * Configuration.FetchByteMultiplier.GetValueOrDefault());
                 }
             }
             return response.Topics.SingleOrDefault()?.Messages?.ToImmutableList() ?? ImmutableList<Message>.Empty;
@@ -136,7 +136,7 @@ namespace KafkaClient
             private readonly int _generationId;
             private long _offsetMarked;
             private long _offsetCommitted;
-            private int _disposeCount = 0;
+            private int _disposeCount;
 
             public async Task<IMessageBatch> FetchNextAsync(CancellationToken cancellationToken)
             {

@@ -36,7 +36,7 @@ namespace KafkaClient
 
         private readonly CancellationTokenSource _disposeToken = new CancellationTokenSource();
         private int _disposeCount;
-        private int _activeHeartbeatCount = 0;
+        private int _activeHeartbeatCount;
         private readonly Task _heartbeatTask;
         private readonly TimeSpan _heartbeatDelay;
         private readonly TimeSpan _heartbeatTimeout;
@@ -107,11 +107,11 @@ namespace KafkaClient
         private enum MemberState
         {
             Assign,
-            Syncing,
+            //Syncing,
             Stable,
-            Heartbeating,
-            Rejoin,
-            Joining
+            //Heartbeating,
+            Rejoin
+            //Joining
         }
 
         /// <summary>
@@ -128,8 +128,9 @@ namespace KafkaClient
                 var lastHeartbeat = DateTimeOffset.UtcNow;
                 while (!(_disposeToken.IsCancellationRequested || IsOverdue(lastHeartbeat) || IsUnrecoverable(response))) {
                     try {
-                        Log.Info(() => LogEvent.Create($"Local state {state} for member {MemberId}"));
-                        switch (state) {
+                        var currentState = state;
+                        Log.Info(() => LogEvent.Create($"Local state {currentState} for member {MemberId}"));
+                        switch (currentState) {
                             case MemberState.Assign:
                                 response = await SyncGroupAsync(_disposeToken.Token).ConfigureAwait(false);
                                 if (response.IsSuccess()) {
@@ -157,7 +158,7 @@ namespace KafkaClient
                                 break;
 
                             default:
-                                Log.Warn(() => LogEvent.Create($"Unexpected local state {state} for member {MemberId}"));
+                                Log.Warn(() => LogEvent.Create($"Unexpected local state {currentState} for member {MemberId}"));
                                 state = MemberState.Assign;
                                 await Task.Delay(1, _disposeToken.Token).ConfigureAwait(false);
                                 continue; // while

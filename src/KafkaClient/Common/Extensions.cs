@@ -174,7 +174,7 @@ namespace KafkaClient.Common
                         return response.Value;
                     }
                 } catch (Exception ex) {
-                    await policy.HandleErrorAndDelayAsync(onException, onFinalException, attempt, timer, ex, cancellationToken).ConfigureAwait(false);;
+                    await policy.HandleErrorAndDelayAsync(onException, onFinalException, attempt, timer, ex, cancellationToken).ConfigureAwait(false);
                 }
             }
         }

@@ -1,5 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
-
 namespace KafkaClient.Protocol
 {
     public interface IRequest<T> : IRequest

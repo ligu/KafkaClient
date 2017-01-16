@@ -284,9 +284,9 @@ namespace KafkaClient.Protocol
             {
                 if (ReferenceEquals(null, other)) return false;
                 if (ReferenceEquals(this, other)) return true;
-                return String.Equals(MemberId, (string) other.MemberId) 
-                    && String.Equals(ClientId, (string) other.ClientId) 
-                    && String.Equals(ClientHost, (string) other.ClientHost) 
+                return string.Equals(MemberId, other.MemberId) 
+                    && string.Equals(ClientId, other.ClientId) 
+                    && string.Equals(ClientHost, other.ClientHost) 
                     && Equals(MemberMetadata, other.MemberMetadata) 
                     && Equals(MemberAssignment, other.MemberAssignment);
             }

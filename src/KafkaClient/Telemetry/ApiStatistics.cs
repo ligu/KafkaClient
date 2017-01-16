@@ -24,7 +24,7 @@ namespace KafkaClient.Telemetry
 
         public ConcurrentDictionary<ApiKeyRequestType, int> Requests { get; }
 
-        private long _duration = 0L;
+        private long _duration;
         public TimeSpan Duration => TimeSpan.FromTicks(_duration);
 
         public void Success(ApiKeyRequestType type, TimeSpan duration)
@@ -41,11 +41,11 @@ namespace KafkaClient.Telemetry
             Interlocked.Add(ref _duration, duration.Ticks);
         }
 
-        private int _messages = 0;
+        private int _messages;
         public int Messages => _messages;
-        private int _messageBytes = 0;
+        private int _messageBytes;
         public int MessageBytes => _messageBytes;
-        private int _messageTcpBytes = 0;
+        private int _messageTcpBytes;
         public int MessageTcpBytes => _messageTcpBytes;
 
         public void Produce(int messages, int wireBytes, int bytesCompressed)
