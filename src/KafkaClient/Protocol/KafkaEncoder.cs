@@ -1019,5 +1019,12 @@ namespace KafkaClient.Protocol
 
         #endregion
 
+        public static void UpdateCorrelation(DataPayload encodedPayload, int contextCorrelationId)
+        {
+            var correlationBytes = contextCorrelationId.ToBytes();
+            for (var index = 0; index < 4; index++) {
+                encodedPayload.Buffer[index + 8] = correlationBytes[index];
+            }
+        }
     }
 }

@@ -8,6 +8,11 @@ namespace KafkaClient.Protocol
     {
         public static string DefaultClientId = "Net";
 
+        public static RequestContext Copy(IRequestContext original, int correlationId, short? version = null, string clientId = null, IImmutableDictionary<string, IMembershipEncoder> encoders = null, string protocolType = null, ProduceRequestMessages onProduceRequestMessages = null)
+        {
+            return new RequestContext(correlationId, original?.ApiVersion ?? version, original?.ClientId ?? clientId, original?.Encoders ?? encoders, original?.ProtocolType ?? protocolType, original?.OnProduceRequestMessages ?? onProduceRequestMessages);
+        }
+
         public RequestContext(int? correlationId = null, short? version = null, string clientId = null, IImmutableDictionary<string, IMembershipEncoder> encoders = null, string protocolType = null, ProduceRequestMessages onProduceRequestMessages = null)
         {
             CorrelationId = correlationId.GetValueOrDefault(1);
