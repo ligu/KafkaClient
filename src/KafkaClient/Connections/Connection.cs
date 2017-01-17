@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
+using System.IO;
 using System.Linq;
+using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Common;
@@ -24,7 +26,7 @@ namespace KafkaClient.Connections
         private readonly ConcurrentDictionary<int, AsyncRequestItem> _requestsByCorrelation = new ConcurrentDictionary<int, AsyncRequestItem>();
         private readonly ConcurrentDictionary<int, Tuple<ApiKeyRequestType, IRequestContext>> _timedOutRequestsByCorrelation = new ConcurrentDictionary<int, Tuple<ApiKeyRequestType, IRequestContext>>();
         private readonly ILog _log;
-        private readonly ITcpSocket _socket;
+        private readonly Socket _socket;
         private readonly IConnectionConfiguration _configuration;
 
         private readonly CancellationTokenSource _disposeToken = new CancellationTokenSource();
@@ -40,15 +42,21 @@ namespace KafkaClient.Connections
         /// <summary>
         /// Initializes a new instance of the Connection class.
         /// </summary>
-        /// <param name="socket">The kafka socket initialized to the kafka server.</param>
+        /// <param name="endpoint">The IP endpoint to connect to.</param>
         /// <param name="configuration">The configuration, including connection and request timeouts.</param>
         /// <param name="log">Logging interface used to record any log messages created by the connection.</param>
-        public Connection(ITcpSocket socket, IConnectionConfiguration configuration = null, ILog log = null)
+        public Connection(Endpoint endpoint, IConnectionConfiguration configuration = null, ILog log = null)
         {
-            _socket = socket;
-            Endpoint = socket.Endpoint;
-            _log = log ?? TraceLog.Log;
+            Endpoint = endpoint;
             _configuration = configuration ?? new ConnectionConfiguration();
+
+            _socket = new Socket(Endpoint.IP.AddressFamily, SocketType.Stream, ProtocolType.Tcp) {
+                Blocking = false,
+                SendTimeout = (int)_configuration.RequestTimeout.TotalMilliseconds,
+                SendBufferSize = 8092,
+                ReceiveBufferSize = 8092
+            };
+            _log = log ?? TraceLog.Log;
             _versionSupport = _configuration.VersionSupport.IsDynamic ? null : _configuration.VersionSupport;
 
             // This thread will poll the receive stream for data, parse a message out
@@ -86,12 +94,30 @@ namespace KafkaClient.Connections
                     AddToCorrelationMatching(asyncRequest);
                 }
 
+                var timer = new Stopwatch();
                 try {
                     _log.Info(() => LogEvent.Create($"Sending {request.ApiKey} with correlation id {context.CorrelationId} (v {version.GetValueOrDefault()}, {KafkaEncoder.Encode(context, request).Buffer.Length} bytes) to {Endpoint}"));
                     _log.Debug(() => LogEvent.Create($"{request.ApiKey} -----> {Endpoint}\n- Context:{context.ToFormattedString()}\n- Request:{request.ToFormattedString()}"));
-                    await WriteAsync(asyncRequest.SendPayload, token).ConfigureAwait(false);
+                    _configuration.OnWriteEnqueued?.Invoke(Endpoint, asyncRequest.SendPayload);
+
+                    var buffer = asyncRequest.SendPayload.Buffer;
+                    timer.Start();
+                    for (var offset = 0; offset < buffer.Length && !token.IsCancellationRequested; ) {
+                        var bytesRemaining = buffer.Length - offset;
+                        _log.Debug(() => LogEvent.Create($"Writing ({bytesRemaining}? bytes) with correlation id {context.CorrelationId} to {Endpoint}"));
+                        // Chunk? _configuration.OnWriting?.Invoke(Endpoint, asyncRequest.SendPayload);
+                        var bytesWritten = await _socket.SendAsync(new ArraySegment<byte>(buffer, offset, bytesRemaining), SocketFlags.None).ConfigureAwait(false);
+                        // Chunk? _configuration.OnWritten?.Invoke(Endpoint, asyncRequest.SendPayload, timer.Elapsed);
+                        _log.Debug(() => LogEvent.Create($"Wrote {bytesWritten} bytes with correlation id {context.CorrelationId} to {Endpoint}"));
+                        offset += bytesWritten;
+                    }
+                    timer.Stop();
+                    _configuration.OnWritten?.Invoke(Endpoint, asyncRequest.SendPayload, timer.Elapsed);
+
                     if (!request.ExpectResponse) return default (T);
                 } catch (Exception ex) {
+                    timer.Stop();
+                    _configuration.OnWriteFailed?.Invoke(Endpoint, asyncRequest.SendPayload, timer.Elapsed, ex);
                     asyncRequest.ReceiveTask.TrySetException(ex);
                     RemoveFromCorrelationMatching(asyncRequest);
                     throw;
@@ -159,30 +185,32 @@ namespace KafkaClient.Connections
                 // only allow one reader to execute, dump out all other requests
                 if (Interlocked.Increment(ref _activeReaderCount) != 1) return;
 
+                var buffer = new byte[8192];
                 var bytesToSkip = 0;
-                var messageSize = 0;
+                var responseSize = 0;
                 // use backoff so we don't take over the CPU when there's a failure
                 await new BackoffRetry(null, TimeSpan.FromMilliseconds(5), maxDelay: TimeSpan.FromSeconds(5)).AttemptAsync(
                     async attempt => {
-                        _log.Debug(() => LogEvent.Create($"Awaiting data from {Endpoint}"));
-                        if (bytesToSkip > 0) {
-                            var skipSize = bytesToSkip;
-                            _log.Warn(() => LogEvent.Create($"Skipping {skipSize} bytes on {Endpoint} because of partial read"));
-                            await ReadAsync(skipSize, _disposeToken.Token).ConfigureAwait(false);
+                        if (!_socket.Connected) {
+                            _log.Info(() => LogEvent.Create($"Connecting to {Endpoint}"));
+                            await _socket.ConnectAsync(Endpoint.IP.Address, Endpoint.IP.Port).ConfigureAwait(false);
                             bytesToSkip = 0;
                         }
 
-                        if (messageSize == 0) {
-                            var messageSizeResult = await ReadAsync(4, _disposeToken.Token).ConfigureAwait(false);
-                            messageSize = messageSizeResult.ToInt32(); // hold onto it in case we fail while reading from the socket
+                        if (bytesToSkip > 0) {
+                            _log.Warn(() => LogEvent.Create($"Skipping {bytesToSkip} bytes on {Endpoint} because of partial read"));
+                            await ReadBytesAsync(buffer, bytesToSkip, bytesRead => bytesToSkip -= bytesRead).ConfigureAwait(false);
                         }
 
-                        var currentSize = messageSize;
-                        _log.Debug(() => LogEvent.Create($"Receiving {currentSize} bytes from tcp {Endpoint}"));
-                        var message = await ReadAsync(currentSize, _disposeToken.Token).ConfigureAwait(false);
-                        messageSize = 0; // reset so we read the size next time through
+                        if (responseSize == 0) {
+                            await ReadBytesAsync(buffer, KafkaEncoder.IntegerByteSize, bytesRead => responseSize = buffer.Take(KafkaEncoder.IntegerByteSize).ToInt32()).ConfigureAwait(false);
+                        }
 
-                        CorrelatePayloadToRequest(message);
+                        var response = new MemoryStream(responseSize);
+                        await ReadBytesAsync(buffer, responseSize, bytesRead => response.Write(buffer, 0, bytesRead)).ConfigureAwait(false);
+                        responseSize = 0; // reset so we read the size next time through
+
+                        CorrelatePayloadToRequest(response.ToArray());
                         if (attempt > 0) {
                             _log.Info(() => LogEvent.Create($"Polling receive thread has recovered on {Endpoint}"));
                         }
@@ -194,10 +222,10 @@ namespace KafkaClient.Connections
 
                         var partialException = exception as PartialReadException;
                         if (partialException != null) {
-                            if (messageSize > 0) {
+                            if (responseSize > 0) {
                                 _log.Warn(() => LogEvent.Create($"Polling failure on {Endpoint} receive {partialException.BytesRead} of {partialException.ReadSize}"));
                                 bytesToSkip = partialException.ReadSize - partialException.BytesRead;
-                                messageSize = 0;
+                                responseSize = 0;
                             }
                             exception = partialException.InnerException;
                         } else if (exception is ConnectionException) {
@@ -220,6 +248,24 @@ namespace KafkaClient.Connections
                 Interlocked.Decrement(ref _activeReaderCount);
                 _log.Info(() => LogEvent.Create($"Closed down connection to {Endpoint}"));
             }
+        }
+
+        private async Task ReadBytesAsync(byte[] buffer, int bytesToRead, Action<int> onBytesRead)
+        {
+            var timer = new Stopwatch();
+            timer.Start();
+            for (var totalBytesRead = 0; totalBytesRead < bytesToRead && !_disposeToken.IsCancellationRequested;) {
+                var bytesRemaining = bytesToRead - totalBytesRead;
+                _log.Debug(() => LogEvent.Create($"Reading ({bytesRemaining}? bytes) from {Endpoint}"));
+                _configuration.OnReadingChunk?.Invoke(Endpoint, bytesRemaining, totalBytesRead, timer.Elapsed);
+                var bytes = new ArraySegment<byte>(buffer, 0, Math.Min(buffer.Length, bytesRemaining));
+                var bytesRead = await _socket.ReceiveAsync(bytes, SocketFlags.None).ConfigureAwait(false);
+                totalBytesRead += bytesRead;
+                _configuration.OnReadChunk?.Invoke(Endpoint, bytesRemaining, bytesRemaining - bytesRead, bytesRead, timer.Elapsed);
+                _log.Debug(() => LogEvent.Create($"Read {bytesRead} bytes from {Endpoint}"));
+                onBytesRead(bytesRead);
+            }
+            timer.Stop();
         }
 
         private void CorrelatePayloadToRequest(byte[] payload)
@@ -301,19 +347,12 @@ namespace KafkaClient.Connections
 
             using (_disposeToken) {
                 using (_socket) {
+                    _socket.Shutdown(SocketShutdown.Both);
                 }
             }
         }
 
-        private Task<byte[]> ReadAsync(int readSize, CancellationToken cancellationToken)
         {
-            return _socket.ReadAsync(readSize, cancellationToken);
-        }
-
-        /// <inheritdoc />
-        private Task<DataPayload> WriteAsync(DataPayload payload, CancellationToken cancellationToken)
-        {
-            return _socket.WriteAsync(payload, cancellationToken);
         }
 
         private class AsyncRequestItem : IDisposable

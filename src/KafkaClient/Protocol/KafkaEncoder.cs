@@ -12,6 +12,10 @@ namespace KafkaClient.Protocol
 {
     public static class KafkaEncoder
     {
+        public const int IntegerByteSize = 4;
+        public const int CorrelationSize = IntegerByteSize;
+        public const int ResponseHeaderSize = IntegerByteSize + CorrelationSize;
+
         public static T Decode<T>(IRequestContext context, ApiKeyRequestType requstType, byte[] payload, bool hasSize = false) where T : class, IResponse
         {
             switch (requstType) {

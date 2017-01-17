@@ -2,18 +2,18 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using KafkaClient.Protocol;
 
 namespace KafkaClient.Common
 {
     public class KafkaWriter : IKafkaWriter
     {
-        private const int IntegerByteSize = 4;
         private readonly BigEndianBinaryWriter _stream;
 
         public KafkaWriter()
         {
             _stream = new BigEndianBinaryWriter(new MemoryStream());
-            Write(IntegerByteSize); //pre-allocate space for buffer length
+            Write(KafkaEncoder.IntegerByteSize); //pre-allocate space for buffer length
         }
 
         public IKafkaWriter Write(bool value)
@@ -81,7 +81,7 @@ namespace KafkaClient.Common
 
         public byte[] ToBytesNoLength()
         {
-            return ToBytes(IntegerByteSize);
+            return ToBytes(KafkaEncoder.IntegerByteSize);
         }
 
         private byte[] ToBytes(int offset)
@@ -96,13 +96,13 @@ namespace KafkaClient.Common
         private void WriteLength(int offset)
         {
             _stream.BaseStream.Position = offset;
-            var length = _stream.BaseStream.Length - (offset + IntegerByteSize); 
+            var length = _stream.BaseStream.Length - (offset + KafkaEncoder.IntegerByteSize); 
             Write((int)length);
         }
 
         private void WriteCrc(int offset)
         {
-            _stream.BaseStream.Position = offset + IntegerByteSize;
+            _stream.BaseStream.Position = offset + KafkaEncoder.IntegerByteSize;
 
             var crc = Crc32Provider.ComputeHash(_stream.BaseStream.ToEnumerable());
             _stream.BaseStream.Position = offset;
@@ -112,7 +112,7 @@ namespace KafkaClient.Common
         public IDisposable MarkForLength()
         {
             var markerPosition = (int)_stream.BaseStream.Position;
-            Write(IntegerByteSize); //pre-allocate space for marker
+            Write(KafkaEncoder.IntegerByteSize); //pre-allocate space for marker
 
             return new Disposable(
                 () => {
@@ -124,7 +124,7 @@ namespace KafkaClient.Common
         public IDisposable MarkForCrc()
         {
             var markerPosition = (int)_stream.BaseStream.Position;
-            Write(IntegerByteSize); //pre-allocate space for marker
+            Write(KafkaEncoder.IntegerByteSize); //pre-allocate space for marker
 
             return new Disposable(
                 () => {

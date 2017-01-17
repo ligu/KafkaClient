@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
@@ -36,6 +37,22 @@ namespace KafkaClient.Common
         public static byte[] ToBytes(this int value)
         {
             return BitConverter.GetBytes(value).ToBigEndian();
+        }
+
+        public static int ToInt32(this IEnumerable<byte> value)
+        {
+            var result = 0;
+            using (var enumerator = value.GetEnumerator()) {
+                for (var index = 1; index <= 4; index++) {
+                    enumerator.MoveNext();
+                    if (BitConverter.IsLittleEndian) {
+                        result = (result << 8) | enumerator.Current;
+                    } else {
+                        result = (enumerator.Current << (8 * index)) | result;
+                    }
+                }
+            }
+            return result;
         }
 
         public static int ToInt32(this byte[] value)

@@ -20,7 +20,7 @@ namespace KafkaClient.Tests.Integration
             var options = new KafkaOptions(TestConfig.IntegrationUri, new ConnectionConfiguration(versionSupport: VersionSupport.Kafka8.MakeDynamic()), log: TestConfig.Log);
             var endpoint = new ConnectionFactory().Resolve(options.ServerUris.First(), options.Log);
 
-            _conn = new Connection(new TcpSocket(endpoint, options.ConnectionConfiguration), options.ConnectionConfiguration, TestConfig.Log);
+            _conn = new Connection(endpoint, options.ConnectionConfiguration, TestConfig.Log);
         }
 
         [Test]

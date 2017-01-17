@@ -8,7 +8,7 @@ namespace KafkaClient.Connections
         /// <inheritdoc />
         public IConnection Create(Endpoint endpoint, IConnectionConfiguration configuration, ILog log = null)
         {
-            return new Connection(new TcpSocket(endpoint, configuration, log), configuration, log);
+            return new Connection(endpoint, configuration, log);
         }
 
         /// <inheritdoc />

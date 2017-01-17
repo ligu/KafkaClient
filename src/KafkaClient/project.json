@@ -32,7 +32,8 @@
   "dependencies": {
     "Nito.AsyncEx.Context": "1.1.0",
     "Nito.AsyncEx.Coordination": "1.0.2",
-    "System.Collections.Immutable": "1.2.0"
+    "System.Collections.Immutable": "1.2.0",
+    "System.Net.Sockets": "4.3.0"
   },
 
   "frameworks": {
@@ -41,7 +42,6 @@
     "netstandard1.3": {
       "dependencies": {
         "System.Diagnostics.TraceSource": "4.0.0",
-        "System.Net.Sockets": "4.3.0",
         "System.Net.NameResolution": "4.0.0",
         "System.Threading.Thread": "4.0.0",
         "System.IO.Compression": "4.3.0",

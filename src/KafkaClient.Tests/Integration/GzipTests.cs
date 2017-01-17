@@ -18,7 +18,7 @@ namespace KafkaClient.Tests.Integration
         {
             var endpoint = new ConnectionFactory().Resolve(_options.ServerUris.First(), _options.Log);
             var configuration = _options.ConnectionConfiguration;
-            return new Connection(new TcpSocket(endpoint, configuration), configuration, _options.Log);
+            return new Connection(endpoint, configuration, _options.Log);
         }
 
         [Test]
