@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Sockets;
@@ -98,26 +99,26 @@ namespace KafkaClient.Connections
                 try {
                     _log.Info(() => LogEvent.Create($"Sending {request.ApiKey} with correlation id {context.CorrelationId} (v {version.GetValueOrDefault()}, {KafkaEncoder.Encode(context, request).Buffer.Length} bytes) to {Endpoint}"));
                     _log.Debug(() => LogEvent.Create($"{request.ApiKey} -----> {Endpoint}\n- Context:{context.ToFormattedString()}\n- Request:{request.ToFormattedString()}"));
-                    _configuration.OnWriteEnqueued?.Invoke(Endpoint, asyncRequest.SendPayload);
 
                     var buffer = asyncRequest.SendPayload.Buffer;
+                    _configuration.OnWriting?.Invoke(Endpoint, request.ApiKey);
                     timer.Start();
                     for (var offset = 0; offset < buffer.Length && !token.IsCancellationRequested; ) {
                         var bytesRemaining = buffer.Length - offset;
                         _log.Debug(() => LogEvent.Create($"Writing ({bytesRemaining}? bytes) with correlation id {context.CorrelationId} to {Endpoint}"));
-                        // Chunk? _configuration.OnWriting?.Invoke(Endpoint, asyncRequest.SendPayload);
+                        _configuration.OnWritingChunk?.Invoke(Endpoint, bytesRemaining);
                         var bytesWritten = await _socket.SendAsync(new ArraySegment<byte>(buffer, offset, bytesRemaining), SocketFlags.None).ConfigureAwait(false);
-                        // Chunk? _configuration.OnWritten?.Invoke(Endpoint, asyncRequest.SendPayload, timer.Elapsed);
+                        _configuration.OnWroteChunk?.Invoke(Endpoint, bytesRemaining, bytesWritten, timer.Elapsed);
                         _log.Debug(() => LogEvent.Create($"Wrote {bytesWritten} bytes with correlation id {context.CorrelationId} to {Endpoint}"));
                         offset += bytesWritten;
                     }
                     timer.Stop();
-                    _configuration.OnWritten?.Invoke(Endpoint, asyncRequest.SendPayload, timer.Elapsed);
+                    _configuration.OnWritten?.Invoke(Endpoint, request.ApiKey, buffer.Length, timer.Elapsed);
 
                     if (!request.ExpectResponse) return default (T);
                 } catch (Exception ex) {
                     timer.Stop();
-                    _configuration.OnWriteFailed?.Invoke(Endpoint, asyncRequest.SendPayload, timer.Elapsed, ex);
+                    _configuration.OnWriteFailed?.Invoke(Endpoint, request.ApiKey, timer.Elapsed, ex);
                     asyncRequest.ReceiveTask.TrySetException(ex);
                     RemoveFromCorrelationMatching(asyncRequest);
                     throw;
@@ -253,19 +254,29 @@ namespace KafkaClient.Connections
         private async Task ReadBytesAsync(byte[] buffer, int bytesToRead, Action<int> onBytesRead)
         {
             var timer = new Stopwatch();
-            timer.Start();
-            for (var totalBytesRead = 0; totalBytesRead < bytesToRead && !_disposeToken.IsCancellationRequested;) {
-                var bytesRemaining = bytesToRead - totalBytesRead;
-                _log.Debug(() => LogEvent.Create($"Reading ({bytesRemaining}? bytes) from {Endpoint}"));
-                _configuration.OnReadingChunk?.Invoke(Endpoint, bytesRemaining, totalBytesRead, timer.Elapsed);
-                var bytes = new ArraySegment<byte>(buffer, 0, Math.Min(buffer.Length, bytesRemaining));
-                var bytesRead = await _socket.ReceiveAsync(bytes, SocketFlags.None).ConfigureAwait(false);
-                totalBytesRead += bytesRead;
-                _configuration.OnReadChunk?.Invoke(Endpoint, bytesRemaining, bytesRemaining - bytesRead, bytesRead, timer.Elapsed);
-                _log.Debug(() => LogEvent.Create($"Read {bytesRead} bytes from {Endpoint}"));
-                onBytesRead(bytesRead);
+            var totalBytesRead = 0;
+            try {
+                _configuration.OnReading?.Invoke(Endpoint, bytesToRead);
+                timer.Start();
+                while (totalBytesRead < bytesToRead && !_disposeToken.IsCancellationRequested) {
+                    var bytesRemaining = bytesToRead - totalBytesRead;
+                    _log.Debug(() => LogEvent.Create($"Reading ({bytesRemaining}? bytes) from {Endpoint}"));
+                    _configuration.OnReadingChunk?.Invoke(Endpoint, bytesRemaining);
+                    var bytes = new ArraySegment<byte>(buffer, 0, Math.Min(buffer.Length, bytesRemaining));
+                    var bytesRead = await _socket.ReceiveAsync(bytes, SocketFlags.None).ConfigureAwait(false);
+                    totalBytesRead += bytesRead;
+                    _configuration.OnReadChunk?.Invoke(Endpoint, bytesRemaining, bytesRead, timer.Elapsed);
+                    _log.Debug(() => LogEvent.Create($"Read {bytesRead} bytes from {Endpoint}"));
+                    onBytesRead(bytesRead);
+                }
+                timer.Stop();
+                _configuration.OnRead?.Invoke(Endpoint, totalBytesRead, timer.Elapsed);
+            } catch (Exception ex) {
+                timer.Stop();
+                _configuration.OnReadFailed?.Invoke(Endpoint, bytesToRead, timer.Elapsed, ex);
             }
-            timer.Stop();
+        }
+
         }
 
         private void CorrelatePayloadToRequest(byte[] payload)

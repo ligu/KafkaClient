@@ -34,14 +34,15 @@ namespace KafkaClient.Connections
                   tracker != null ? (ConnectError)tracker.Disconnected : null, 
                   tracker != null ? (Connecting)tracker.Connecting : null, 
                   tracker != null ? (Connecting)tracker.Connected : null, 
-                  tracker != null ? (Writing)tracker.WriteEnqueued : null, 
                   tracker != null ? (Writing)tracker.Writing : null, 
+                  tracker != null ? (StartingChunk)tracker.WritingChunk : null, 
+                  tracker != null ? (FinishedChunk)tracker.WroteChunk : null, 
                   tracker != null ? (WriteSuccess)tracker.Written : null, 
                   tracker != null ? (WriteError)tracker.WriteFailed : null, 
                   tracker != null ? (Reading)tracker.Reading : null, 
-                  tracker != null ? (ReadingChunk)tracker.ReadingChunk : null, 
-                  tracker != null ? (ReadChunk)tracker.ReadChunk : null, 
-                  tracker != null ? (Read)tracker.Read : null, 
+                  tracker != null ? (StartingChunk)tracker.ReadingChunk : null, 
+                  tracker != null ? (FinishedChunk)tracker.ReadChunk : null, 
+                  tracker != null ? (ReadSuccess)tracker.Read : null, 
                   tracker != null ? (ReadError)tracker.ReadFailed: null, 
                   tracker != null ? (ProduceRequestMessages)tracker.ProduceRequestMessages : null)
         {
@@ -57,8 +58,9 @@ namespace KafkaClient.Connections
         /// <param name="onDisconnected">Triggered when the tcp socket is disconnected.</param>
         /// <param name="onConnecting">Triggered when the tcp socket is connecting.</param>
         /// <param name="onConnected">Triggered after the tcp socket is successfully connected.</param>
-        /// <param name="onWriteEnqueued">Triggered after enqueing async write task for writing to the tcp stream.</param>
         /// <param name="onWriting">Triggered when writing to the tcp stream.</param>
+        /// <param name="onWritingChunk">Triggered when writing a chunk of bytes to the tcp stream.</param>
+        /// <param name="onWroteChunk">Triggered after successfully writing a chunk of bytes to the tcp stream.</param>
         /// <param name="onWritten">Triggered after having successfully written to the tcp stream.</param>
         /// <param name="onWriteFailed">Triggered after failing to write to the tcp stream.</param>
         /// <param name="onReading">Triggered when starting to read a message's bytes from the tcp stream.</param>
@@ -75,14 +77,15 @@ namespace KafkaClient.Connections
             ConnectError onDisconnected = null, 
             Connecting onConnecting = null, 
             Connecting onConnected = null, 
-            Writing onWriteEnqueued = null, 
             Writing onWriting = null, 
+            StartingChunk onWritingChunk = null, 
+            FinishedChunk onWroteChunk = null, 
             WriteSuccess onWritten = null, 
             WriteError onWriteFailed = null, 
             Reading onReading = null, 
-            ReadingChunk onReadingChunk = null, 
-            ReadChunk onReadChunk = null, 
-            Read onRead = null, 
+            StartingChunk onReadingChunk = null, 
+            FinishedChunk onReadChunk = null, 
+            ReadSuccess onRead = null, 
             ReadError onReadFailed = null,
             ProduceRequestMessages onProduceRequestMessages = null
             )
@@ -94,8 +97,9 @@ namespace KafkaClient.Connections
             OnDisconnected = onDisconnected;
             OnConnecting = onConnecting;
             OnConnected = onConnected;
-            OnWriteEnqueued = onWriteEnqueued;
             OnWriting = onWriting;
+            OnWritingChunk = onWritingChunk;
+            OnWroteChunk = onWroteChunk;
             OnWritten = onWritten;
             OnWriteFailed = onWriteFailed;
             OnReading = onReading;
@@ -128,10 +132,13 @@ namespace KafkaClient.Connections
         public Connecting OnConnected { get; }
 
         /// <inheritdoc />
-        public Writing OnWriteEnqueued { get; }
+        public Writing OnWriting { get; }
 
         /// <inheritdoc />
-        public Writing OnWriting { get; }
+        public StartingChunk OnWritingChunk { get; }
+
+        /// <inheritdoc />
+        public FinishedChunk OnWroteChunk { get; }
 
         /// <inheritdoc />
         public WriteSuccess OnWritten { get; }
@@ -143,13 +150,13 @@ namespace KafkaClient.Connections
         public Reading OnReading { get; }
 
         /// <inheritdoc />
-        public ReadingChunk OnReadingChunk { get; }
+        public StartingChunk OnReadingChunk { get; }
 
         /// <inheritdoc />
-        public ReadChunk OnReadChunk { get; }
+        public FinishedChunk OnReadChunk { get; }
 
         /// <inheritdoc />
-        public Read OnRead { get; }
+        public ReadSuccess OnRead { get; }
 
         /// <inheritdoc />
         public ReadError OnReadFailed { get; }

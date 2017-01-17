@@ -115,7 +115,7 @@ namespace KafkaClient.Tests.Unit
             var mockLog = new MemoryLog();
             var bytesRead = 0;
 
-            var config = new ConnectionConfiguration(onReadChunk: (e, size, remaining, read, elapsed) => Interlocked.Add(ref bytesRead, read));
+            var config = new ConnectionConfiguration(onReadChunk: (e, attempted, actual, elapsed) => Interlocked.Add(ref bytesRead, actual));
 
             var endpoint = Endpoint.Resolve(TestConfig.ServerUri(), TestConfig.Log);
             using (var server = new FakeTcpServer(TestConfig.Log, endpoint.IP.Port))

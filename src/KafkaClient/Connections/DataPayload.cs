@@ -16,7 +16,5 @@ namespace KafkaClient.Connections
         public int CorrelationId { get; }
         public ApiKeyRequestType ApiKey { get; }
         public int MessageCount { get; }
-
-        public bool TrackPayload => MessageCount > 0;
     }
 }

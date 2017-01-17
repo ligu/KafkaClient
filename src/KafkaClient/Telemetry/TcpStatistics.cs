@@ -34,6 +34,11 @@ namespace KafkaClient.Telemetry
             Interlocked.Add(ref _bytesStarted, bytes);
         }
 
+        public void Partial(int bytes)
+        {
+            Interlocked.Add(ref _bytesStarted, -bytes);
+        }
+
         private int _successes;
         public int Successes => _successes;
 

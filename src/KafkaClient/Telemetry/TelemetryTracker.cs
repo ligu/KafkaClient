@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Immutable;
 using KafkaClient.Connections;
+using KafkaClient.Protocol;
 
 namespace KafkaClient.Telemetry
 {
@@ -70,49 +71,54 @@ namespace KafkaClient.Telemetry
             GetTcpConnect().Success(elapsed);
         }
 
-        public void WriteEnqueued(Endpoint endpoint, DataPayload payload)
+        public void Writing(Endpoint endpoint, ApiKeyRequestType type)
         {
             GetTcpWrite().Attempt();
-            GetApiRequests().Attempt(payload.ApiKey);
+            GetApiRequests().Attempt(type);
         }
 
-        public void Writing(Endpoint endpoint, DataPayload payload)
+        public void WritingChunk(Endpoint endpoint, int bytesAvailable)
         {
-            GetTcpWrite().Start(payload.Buffer.Length);
+            GetTcpWrite().Start(bytesAvailable);
         }
 
-        public void Written(Endpoint endpoint, DataPayload payload, TimeSpan elapsed)
+        public void WroteChunk(Endpoint endpoint, int bytesAttempted, int bytesWritten, TimeSpan elapsed)
         {
-            GetTcpWrite().Success(elapsed, payload.Buffer.Length);
-            GetApiRequests().Success(payload.ApiKey, elapsed);
+            GetTcpWrite().Partial(bytesAttempted);
         }
 
-        public void WriteFailed(Endpoint endpoint, DataPayload payload, TimeSpan elapsed, Exception exception)
+        public void Written(Endpoint endpoint, ApiKeyRequestType type, int bytesWritten, TimeSpan elapsed)
         {
-            GetTcpWrite().Failure(elapsed);
-            GetApiRequests().Failure(payload.ApiKey, elapsed);
+            GetTcpWrite().Success(elapsed, bytesWritten);
+            GetApiRequests().Success(type, elapsed);
         }
 
-        public void Reading(Endpoint endpoint, int size)
+        public void WriteFailed(Endpoint endpoint, ApiKeyRequestType type, TimeSpan elapsed, Exception exception)
         {
-            GetTcpRead().Attempt(size);
+            GetApiRequests().Failure(type, elapsed);
         }
 
-        public void ReadingChunk(Endpoint endpoint, int size, int read, TimeSpan elapsed)
+        public void Reading(Endpoint endpoint, int bytesAvailable)
         {
-            GetTcpRead().Start(size - read);
+            GetTcpRead().Attempt(bytesAvailable);
         }
 
-        public void ReadChunk(Endpoint endpoint, int size, int remaining, int read, TimeSpan elapsed)
+        public void ReadingChunk(Endpoint endpoint, int bytesAvailable)
         {
+            GetTcpRead().Start(bytesAvailable);
         }
 
-        public void Read(Endpoint endpoint, byte[] buffer, TimeSpan elapsed)
+        public void ReadChunk(Endpoint endpoint, int bytesAttempted, int bytesRead, TimeSpan elapsed)
         {
-            GetTcpRead().Success(elapsed, buffer.Length);
+            GetTcpWrite().Partial(bytesAttempted);
         }
 
-        public void ReadFailed(Endpoint endpoint, int size, TimeSpan elapsed, Exception exception)
+        public void Read(Endpoint endpoint, int bytesRead, TimeSpan elapsed)
+        {
+            GetTcpRead().Success(elapsed, bytesRead);
+        }
+
+        public void ReadFailed(Endpoint endpoint, int bytesAvailable, TimeSpan elapsed, Exception exception)
         {
             GetTcpRead().Failure(elapsed);
         }

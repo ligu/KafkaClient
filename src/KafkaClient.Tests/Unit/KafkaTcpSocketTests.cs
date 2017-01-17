@@ -110,7 +110,7 @@ namespace KafkaClient.Tests.Unit
         public void KafkaTcpSocketShouldDisposeEvenWhileWriting()
         {
             int writeSize = 0;
-            var config = new ConnectionConfiguration(onWriting: (e, payload) => writeSize = payload.Buffer.Length);
+            var config = new ConnectionConfiguration(onWritingChunk: (e, available) => writeSize = available);
             var endpoint = Endpoint.Resolve(TestConfig.ServerUri(), TestConfig.Log);
             using (var test = new TcpSocket(endpoint, config, TestConfig.Log))
             {
@@ -210,7 +210,7 @@ namespace KafkaClient.Tests.Unit
         {
             var sendCompleted = 0;
             var bytesReceived = 0;
-            var config = new ConnectionConfiguration(onReadChunk: (e, size, remaining, read, elapsed) => Interlocked.Add(ref bytesReceived, read));
+            var config = new ConnectionConfiguration(onReadChunk: (e, attempted, actual, elapsed) => Interlocked.Add(ref bytesReceived, actual));
             var endpoint = Endpoint.Resolve(TestConfig.ServerUri(), TestConfig.Log);
             using (var server = new FakeTcpServer(TestConfig.Log, endpoint.IP.Port))
             using (var test = new TcpSocket(endpoint, config, TestConfig.Log))
