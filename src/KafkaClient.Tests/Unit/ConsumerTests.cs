@@ -237,7 +237,6 @@ namespace KafkaClient.Tests.Unit
         }
 
         [TestCase(0, 100, 0)]
-        [TestCase(3, 100, 450)]
         [TestCase(9, 100, 1000)]
         public async Task ConsumerHeartbeatsAtDesiredIntervals(int expectedHeartbeats, int heartbeatMilliseconds, int totalMilliseconds)
         {
