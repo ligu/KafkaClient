@@ -208,14 +208,14 @@ namespace KafkaClient.Tests.Unit
             var endpoint = Endpoint.Resolve(TestConfig.ServerUri(), TestConfig.Log);
             using (var conn = new Connection(endpoint, new ConnectionConfiguration(requestTimeout: TimeSpan.FromSeconds(1000)), log: TestConfig.Log))
             {
-                Console.WriteLine("SendAsync blocked by reconnection attempts...");
+                // SendAsync blocked by reconnection attempts
                 var taskResult = conn.SendAsync(new MetadataRequest(), CancellationToken.None);
 
-                Console.WriteLine("Task result should be WaitingForActivation...");
+                // Task result should be WaitingForActivation
                 Assert.That(taskResult.IsFaulted, Is.False);
                 Assert.That(taskResult.Status, Is.EqualTo(TaskStatus.WaitingForActivation));
 
-                Console.WriteLine("Starting server to establish connection...");
+                // Starting server to establish connection
                 using (var server = new FakeTcpServer(TestConfig.Log, endpoint.IP.Port))
                 {
                     server.OnClientConnected += () => Console.WriteLine("Client connected...");

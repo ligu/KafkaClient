@@ -39,25 +39,14 @@ namespace KafkaClient.Common
             return BitConverter.GetBytes(value).ToBigEndian();
         }
 
-        public static int ToInt32(this IEnumerable<byte> value)
-        {
-            var result = 0;
-            using (var enumerator = value.GetEnumerator()) {
-                for (var index = 1; index <= 4; index++) {
-                    enumerator.MoveNext();
-                    if (BitConverter.IsLittleEndian) {
-                        result = (result << 8) | enumerator.Current;
-                    } else {
-                        result = (enumerator.Current << (8 * index)) | result;
-                    }
-                }
-            }
-            return result;
-        }
-
         public static int ToInt32(this byte[] value)
         {
-            return BitConverter.ToInt32(BitConverter.IsLittleEndian ? value.Reverse().ToArray() : value, 0);
+            const int oneByte = 8;
+            const int twoBytes = 16;
+            const int threeBytes = 24;
+            return BitConverter.IsLittleEndian
+                ? (value[0] << threeBytes) | (value[1] << twoBytes) | (value[2] << oneByte) | value[3]
+                : (value[3] << threeBytes) | (value[2] << twoBytes) | (value[1] << oneByte) | value[0];
         }
 
         public static byte[] ToBigEndian(this byte[] bytes)
