@@ -75,13 +75,13 @@ namespace KafkaClient.Connections
         /// <typeparam name="T">A Kafka response object return by decode function.</typeparam>
         /// <param name="request">The IRequest to send to the kafka servers.</param>
         /// <param name="context">The context for the request.</param>
-        /// <param name="token">Cancellation token used to cancel the transfer.</param>
+        /// <param name="cancellationToken">Cancellation token used to cancel the transfer.</param>
         /// <returns></returns>
-        public async Task<T> SendAsync<T>(IRequest<T> request, CancellationToken token, IRequestContext context = null) where T : class, IResponse
+        public async Task<T> SendAsync<T>(IRequest<T> request, CancellationToken cancellationToken, IRequestContext context = null) where T : class, IResponse
         {
             var version = context?.ApiVersion;
             if (!version.HasValue) {
-                version = await GetVersionAsync(request.ApiKey, token).ConfigureAwait(false);
+                version = await GetVersionAsync(request.ApiKey, cancellationToken).ConfigureAwait(false);
             }
             context = RequestContext.Copy(context, NextCorrelationId(), version, encoders: _configuration.Encoders, onProduceRequestMessages: _configuration.OnProduceRequestMessages);
 
@@ -96,10 +96,10 @@ namespace KafkaClient.Connections
 
                 var timer = new Stopwatch();
                 try {
-                    await ConnectAsync(token).ConfigureAwait(false);
+                    await ConnectAsync(cancellationToken).ConfigureAwait(false);
                     _configuration.OnWriting?.Invoke(Endpoint, request.ApiKey);
                     timer.Start();
-                    var bytesWritten = await WriteBytesAsync(_socket, context.CorrelationId, asyncItem.SendPayload.Buffer, token);
+                    var bytesWritten = await WriteBytesAsync(_socket, context.CorrelationId, asyncItem.SendPayload.Buffer, cancellationToken);
                     timer.Stop();
                     _configuration.OnWritten?.Invoke(Endpoint, request.ApiKey, bytesWritten, timer.Elapsed);
 
@@ -111,7 +111,7 @@ namespace KafkaClient.Connections
                     throw;
                 }
 
-                receivedBytes = await asyncItem.ReceiveTask.Task.ThrowIfCancellationRequested(token).ConfigureAwait(false);
+                receivedBytes = await asyncItem.ReceiveTask.Task.ThrowIfCancellationRequested(cancellationToken).ConfigureAwait(false);
             }
 
             var response = KafkaEncoder.Decode<T>(context, request.ApiKey, receivedBytes);
@@ -335,11 +335,11 @@ namespace KafkaClient.Connections
                 while (totalBytesRead < bytesToRead && !cancellationToken.IsCancellationRequested) {
                     var bytesRemaining = bytesToRead - totalBytesRead;
                     _log.Debug(() => LogEvent.Create($"Reading ({bytesRemaining}? bytes) from {Endpoint}"));
-                    _configuration.OnReadingChunk?.Invoke(Endpoint, bytesRemaining);
+                    _configuration.OnReadingBytes?.Invoke(Endpoint, bytesRemaining);
                     var bytes = new ArraySegment<byte>(buffer, 0, Math.Min(buffer.Length, bytesRemaining));
-                    var bytesRead = await socket.ReceiveAsync(bytes, SocketFlags.None).ConfigureAwait(false);
+                    var bytesRead = await socket.ReceiveAsync(bytes, SocketFlags.None).ThrowIfCancellationRequested(cancellationToken).ConfigureAwait(false);
                     totalBytesRead += bytesRead;
-                    _configuration.OnReadChunk?.Invoke(Endpoint, bytesRemaining, bytesRead, timer.Elapsed);
+                    _configuration.OnReadBytes?.Invoke(Endpoint, bytesRemaining, bytesRead, timer.Elapsed);
                     _log.Debug(() => LogEvent.Create($"Read {bytesRead} bytes from {Endpoint}"));
 
                     if (bytesRead <= 0 && socket.Available == 0) {
@@ -361,18 +361,18 @@ namespace KafkaClient.Connections
             return totalBytesRead;
         }
 
-        internal async Task<int> WriteBytesAsync(Socket socket, int correlationId, byte[] buffer, CancellationToken token)
+        internal async Task<int> WriteBytesAsync(Socket socket, int correlationId, byte[] buffer, CancellationToken cancellationToken)
         {
             var totalBytesWritten = 0;
             var timer = new Stopwatch();
             timer.Start();
             while (totalBytesWritten < buffer.Length) {
-                token.ThrowIfCancellationRequested();
+                cancellationToken.ThrowIfCancellationRequested();
                 var bytesRemaining = buffer.Length - totalBytesWritten;
                 _log.Debug(() => LogEvent.Create($"Writing ({bytesRemaining}? bytes) with correlation id {correlationId} to {Endpoint}"));
-                _configuration.OnWritingChunk?.Invoke(Endpoint, bytesRemaining);
-                var bytesWritten = await socket.SendAsync(new ArraySegment<byte>(buffer, totalBytesWritten, bytesRemaining), SocketFlags.None).ConfigureAwait(false);
-                _configuration.OnWroteChunk?.Invoke(Endpoint, bytesRemaining, bytesWritten, timer.Elapsed);
+                _configuration.OnWritingBytes?.Invoke(Endpoint, bytesRemaining);
+                var bytesWritten = await socket.SendAsync(new ArraySegment<byte>(buffer, totalBytesWritten, bytesRemaining), SocketFlags.None).ThrowIfCancellationRequested(cancellationToken).ConfigureAwait(false);
+                _configuration.OnWroteBytes?.Invoke(Endpoint, bytesRemaining, bytesWritten, timer.Elapsed);
                 _log.Debug(() => LogEvent.Create($"Wrote {bytesWritten} bytes with correlation id {correlationId} to {Endpoint}"));
                 totalBytesWritten += bytesWritten;
             }
@@ -385,7 +385,8 @@ namespace KafkaClient.Connections
 
         private void CorrelatePayloadToRequest(byte[] payload)
         {
-            var correlationId = payload.Take(4).ToArray().ToInt32();
+            if (payload.Length < 4) return;
+            var correlationId = payload.ToInt32();
 
             AsyncItem asyncItem;
             if (_requestsByCorrelation.TryRemove(correlationId, out asyncItem)) {

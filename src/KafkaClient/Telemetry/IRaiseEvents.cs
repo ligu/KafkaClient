@@ -13,8 +13,8 @@ namespace KafkaClient.Telemetry
     public delegate void Reading(Endpoint endpoint, int bytesAvailable);
     public delegate void ReadSuccess(Endpoint endpoint, int bytesRead, TimeSpan elapsed);
     public delegate void ReadError(Endpoint endpoint, int bytesAvailable, TimeSpan elapsed, Exception exception);
-    public delegate void StartingChunk(Endpoint endpoint, int bytesAvailable);
-    public delegate void FinishedChunk(Endpoint endpoint, int bytesAttempted, int bytesActual, TimeSpan elapsed);
+    public delegate void StartingBytes(Endpoint endpoint, int bytesAvailable);
+    public delegate void FinishedBytes(Endpoint endpoint, int bytesAttempted, int bytesActual, TimeSpan elapsed);
 
     public interface IRaiseEvents
     {
@@ -41,12 +41,12 @@ namespace KafkaClient.Telemetry
         /// <summary>
         /// Triggered when writing a chunk of bytes to the tcp stream.
         /// </summary>
-        StartingChunk OnWritingChunk { get; } 
+        StartingBytes OnWritingBytes { get; } 
 
         /// <summary>
         /// Triggered after successfully writing a chunk of bytes to the tcp stream.
         /// </summary>
-        FinishedChunk OnWroteChunk { get; } 
+        FinishedBytes OnWroteBytes { get; } 
 
         /// <summary>
         /// Triggered after having successfully written to the tcp stream.
@@ -66,12 +66,12 @@ namespace KafkaClient.Telemetry
         /// <summary>
         /// Triggered when reading a chunk of bytes from the tcp stream.
         /// </summary>
-        StartingChunk OnReadingChunk { get; } 
+        StartingBytes OnReadingBytes { get; } 
 
         /// <summary>
         /// Triggered after successfully reading a chunk of bytes from the tcp stream.
         /// </summary>
-        FinishedChunk OnReadChunk { get; } 
+        FinishedBytes OnReadBytes { get; } 
 
         /// <summary>
         /// Triggered after having successfully read a message's bytes from the tcp stream.

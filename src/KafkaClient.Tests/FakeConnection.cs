@@ -43,7 +43,7 @@ namespace KafkaClient.Tests
         public Endpoint Endpoint { get; }
 
         /// <exception cref="Exception">A delegate callback throws an exception.</exception>
-        public async Task<T> SendAsync<T>(IRequest<T> request, CancellationToken token, IRequestContext context = null) where T : class, IResponse
+        public async Task<T> SendAsync<T>(IRequest<T> request, CancellationToken cancellationToken, IRequestContext context = null) where T : class, IResponse
         {
             var count = (int)_requestCounts.AddOrUpdate(request.ApiKey, 1L, (type, current) => current + 1);
             context = new RequestContext(count, context?.ApiVersion, context?.ClientId, context?.Encoders, context?.ProtocolType, context?.OnProduceRequestMessages);

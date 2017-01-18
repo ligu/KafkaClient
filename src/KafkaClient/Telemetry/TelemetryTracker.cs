@@ -77,12 +77,12 @@ namespace KafkaClient.Telemetry
             GetApiRequests().Attempt(type);
         }
 
-        public void WritingChunk(Endpoint endpoint, int bytesAvailable)
+        public void WritingBytes(Endpoint endpoint, int bytesAvailable)
         {
             GetTcpWrite().Start(bytesAvailable);
         }
 
-        public void WroteChunk(Endpoint endpoint, int bytesAttempted, int bytesWritten, TimeSpan elapsed)
+        public void WroteBytes(Endpoint endpoint, int bytesAttempted, int bytesWritten, TimeSpan elapsed)
         {
             GetTcpWrite().Partial(bytesAttempted);
         }
@@ -103,12 +103,12 @@ namespace KafkaClient.Telemetry
             GetTcpRead().Attempt(bytesAvailable);
         }
 
-        public void ReadingChunk(Endpoint endpoint, int bytesAvailable)
+        public void ReadingBytes(Endpoint endpoint, int bytesAvailable)
         {
             GetTcpRead().Start(bytesAvailable);
         }
 
-        public void ReadChunk(Endpoint endpoint, int bytesAttempted, int bytesRead, TimeSpan elapsed)
+        public void ReadBytes(Endpoint endpoint, int bytesAttempted, int bytesRead, TimeSpan elapsed)
         {
             GetTcpWrite().Partial(bytesAttempted);
         }

@@ -60,19 +60,7 @@ namespace KafkaClient.Protocol
 
         public static DataPayload Encode<T>(IRequestContext context, T request) where T : class, IRequest
         {
-            switch (request.ApiKey) {
-                case ApiKeyRequestType.Produce: {
-                    var produceRequest = (ProduceRequest)(IRequest)request;
-                    return new DataPayload(
-                        EncodeRequest(context, produceRequest), 
-                        context.CorrelationId, 
-                        request.ApiKey, 
-                        produceRequest.Payloads.Sum(x => x.Messages.Count));
-                }
-
-                default:
-                    return new DataPayload(EncodeRequestBytes(context, request), context.CorrelationId, request.ApiKey);
-            }
+            return new DataPayload(EncodeRequestBytes(context, request));
         }
 
         #region Encode

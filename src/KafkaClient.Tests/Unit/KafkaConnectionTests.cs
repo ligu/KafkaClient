@@ -101,13 +101,13 @@ namespace KafkaClient.Tests.Unit
         }
 
         [Test]
-        public void ShouldDisposeWithoutExceptionEvenWhileCallingSendAsync()
+        public async Task ShouldDisposeWithoutExceptionEvenWhileCallingSendAsync()
         {
             var endpoint = Endpoint.Resolve(TestConfig.ServerUri(), TestConfig.Log);
             using (var conn = new Connection(endpoint, log: TestConfig.Log))
             {
                 var task = conn.SendAsync(new MetadataRequest(), CancellationToken.None);
-                task.Wait(TimeSpan.FromMilliseconds(1000));
+                await Task.WhenAny(task, Task.Delay(1000)).ConfigureAwait(false);
                 Assert.That(task.IsCompleted, Is.False, "The send task should still be pending.");
             }
         }
@@ -160,7 +160,7 @@ namespace KafkaClient.Tests.Unit
         public async Task ShouldDisposeEvenWhileWriting()
         {
             int writeSize = 0;
-            var config = new ConnectionConfiguration(onWritingChunk: (e, available) => writeSize = available);
+            var config = new ConnectionConfiguration(onWritingBytes: (e, available) => writeSize = available);
             var endpoint = Endpoint.Resolve(TestConfig.ServerUri(), TestConfig.Log);
             using (var server = new FakeTcpServer(TestConfig.Log, endpoint.IP.Port))
             using (var test = new Connection(endpoint, config, TestConfig.Log))
@@ -238,7 +238,7 @@ namespace KafkaClient.Tests.Unit
             var mockLog = new MemoryLog { WriteToConsole = true };
             var bytesRead = 0;
 
-            var config = new ConnectionConfiguration(onReadChunk: (e, attempted, actual, elapsed) => Interlocked.Add(ref bytesRead, actual));
+            var config = new ConnectionConfiguration(onReadBytes: (e, attempted, actual, elapsed) => Interlocked.Add(ref bytesRead, actual));
 
             var endpoint = Endpoint.Resolve(TestConfig.ServerUri(), TestConfig.Log);
             using (var server = new FakeTcpServer(TestConfig.Log, endpoint.IP.Port))
@@ -307,7 +307,7 @@ namespace KafkaClient.Tests.Unit
         {
             var count = 0;
             var semaphore = new SemaphoreSlim(0);
-            var config = new ConnectionConfiguration(onReadingChunk: (e, available) =>
+            var config = new ConnectionConfiguration(onReadingBytes: (e, available) =>
             {
                 Interlocked.Increment(ref count);
                 semaphore.Release();
@@ -390,7 +390,7 @@ namespace KafkaClient.Tests.Unit
             var sendCompleted = 0;
             var bytesReceived = 0;
             var config = new ConnectionConfiguration(
-                onReadChunk: (e, attempted, actual, elapsed) => Interlocked.Add(ref bytesReceived, actual));
+                onReadBytes: (e, attempted, actual, elapsed) => Interlocked.Add(ref bytesReceived, actual));
             var endpoint = Endpoint.Resolve(TestConfig.ServerUri(), TestConfig.Log);
             using (var server = new FakeTcpServer(TestConfig.Log, endpoint.IP.Port))
             using (var conn = new ExplicitlyReadingConnection(endpoint, config, log: TestConfig.Log))
@@ -840,7 +840,7 @@ namespace KafkaClient.Tests.Unit
         public async Task WriteShouldCancelWhileSendingData()
         {
             var clientWriteAttempts = 0;
-            var config = new ConnectionConfiguration(onWritingChunk: (e, payload) => Interlocked.Increment(ref clientWriteAttempts));
+            var config = new ConnectionConfiguration(onWritingBytes: (e, payload) => Interlocked.Increment(ref clientWriteAttempts));
             var endpoint = Endpoint.Resolve(TestConfig.ServerUri(), TestConfig.Log);
             using (var server = new FakeTcpServer(TestConfig.Log, endpoint.IP.Port))
             using (var conn = new ExplicitlyReadingConnection(endpoint, config, log: TestConfig.Log))

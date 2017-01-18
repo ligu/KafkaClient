@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Immutable;
 using KafkaClient.Common;
+using NUnit.Framework;
 
 namespace KafkaClient.Tests
 {
@@ -43,8 +44,8 @@ namespace KafkaClient.Tests
 
         public static void Write(LogLevel level, string text)
         {
-            Console.WriteLine(text);
-//            NUnit.Framework.TestContext.Progress.WriteLine(text);
+            Console.WriteLine(text); // remove this once resharper actually supports the progress write below
+            TestContext.Progress.WriteLine(text);
         }
     }
 }
