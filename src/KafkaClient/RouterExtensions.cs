@@ -60,7 +60,7 @@ namespace KafkaClient
                 routedTopicRequests.ThrowExtractedException,
                 (ex, attempt, retry) => routedTopicRequests.MetadataRetry(attempt, ex, out metadataInvalid),
                 null, // do nothing on final exception -- will be rethrown
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -139,7 +139,7 @@ namespace KafkaClient
                     }
                     throw ex.PrepareForRethrow(); 
                 },
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
         }
 
         /// <exception cref="CachedMetadataException">Thrown if the cached metadata for the given topic is invalid or missing.</exception>
@@ -168,7 +168,7 @@ namespace KafkaClient
                     }
                     throw ex.PrepareForRethrow(); 
                 },
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
         }
 
         public static async Task<T> SendToAnyAsync<T>(this IRouter router, IRequest<T> request, CancellationToken cancellationToken, IRequestContext context = null) where T : class, IResponse
@@ -288,7 +288,7 @@ namespace KafkaClient
                     throw ex.PrepareForRethrow();
                 },
                 (ex, attempt) => router.Log.Warn(() => LogEvent.Create(ex, $"Failed metadata request on attempt {attempt}")),
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
         }
 
         private class MetadataResult

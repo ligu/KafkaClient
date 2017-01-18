@@ -155,7 +155,7 @@ namespace KafkaClient.Connections
                     (attempt, timer) => _log.Debug(() => LogEvent.Create($"Retrying {nameof(GetVersionAsync)} attempt {attempt}")),
                     attempt => _versionSupport = _configuration.VersionSupport,
                     exception => _log.Error(LogEvent.Create(exception)),
-                    cancellationToken);
+                    cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -200,7 +200,7 @@ namespace KafkaClient.Connections
 
                         if (bytesToSkip > 0) {
                             _log.Warn(() => LogEvent.Create($"Skipping {bytesToSkip} bytes on {Endpoint} because of partial read"));
-                            await ReadBytesAsync(buffer, bytesToSkip, bytesRead => bytesToSkip -= bytesRead).ConfigureAwait(false);
+                            await ReadBytesAsync(buffer, bytesToSkip, bytesRead => bytesToSkip -= bytesRead, _disposeToken.Token).ConfigureAwait(false);
                         }
 
                         if (responseSize == 0) {

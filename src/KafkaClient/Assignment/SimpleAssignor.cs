@@ -25,7 +25,7 @@ namespace KafkaClient.Assignment
             CancellationToken cancellationToken)
         {
             var topicNames = memberMetadata.Values.SelectMany(m => m.Subscriptions).Distinct().ToList();
-            var topicMetadata = await router.GetTopicMetadataAsync(topicNames, cancellationToken);
+            var topicMetadata = await router.GetTopicMetadataAsync(topicNames, cancellationToken).ConfigureAwait(false);
             var partitions = new HashSet<TopicPartition>(topicMetadata.SelectMany(t => t.Partitions.Select(p => new TopicPartition(t.TopicName, p.PartitionId))));
 
             var previousAssignments = router.GetGroupMemberAssignment(groupId); // take the latest we've got, ignoring whether it's a current gen

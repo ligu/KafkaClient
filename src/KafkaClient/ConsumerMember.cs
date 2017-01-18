@@ -172,7 +172,7 @@ namespace KafkaClient
                         await Task.Delay(1, _disposeToken.Token).ConfigureAwait(false); // to avoid killing the CPU
                     }
                 }
-                await DisposeAsync(CancellationToken.None);
+                await DisposeAsync(CancellationToken.None).ConfigureAwait(false);
             } catch (OperationCanceledException) { // cancellation token fired while attempting to get tasks: normal behavior
             } catch (Exception ex) {
                 Log.Warn(() => LogEvent.Create(ex));
@@ -206,7 +206,7 @@ namespace KafkaClient
 
             // on success, this will call OnRejoin before returning
             try {
-                await _consumer.JoinGroupAsync(GroupId, ProtocolType, memberMetadata, cancellationToken, this);
+                await _consumer.JoinGroupAsync(GroupId, ProtocolType, memberMetadata, cancellationToken, this).ConfigureAwait(false);
                 return ErrorResponseCode.None;
             } catch (RequestException ex) when (ex.ApiKey == ApiKeyRequestType.JoinGroup) {
                 return ex.ErrorCode;
@@ -235,9 +235,9 @@ namespace KafkaClient
 
         public async Task<ErrorResponseCode> SyncGroupAsync(CancellationToken cancellationToken)
         {
-            using (await _lock.LockAsync(cancellationToken)) {
+            using (await _lock.LockAsync(cancellationToken).ConfigureAwait(false)) {
                 if (_disposeCount > 0) throw new ObjectDisposedException($"Member {MemberId} is no longer valid");
-                await Task.WhenAll(_batches.Values.Select(b => b.CommitMarkedAsync(cancellationToken)));
+                await Task.WhenAll(_batches.Values.Select(b => b.CommitMarkedAsync(cancellationToken))).ConfigureAwait(false);
                 IEnumerable<SyncGroupRequest.GroupAssignment> groupAssignments = null;
                 if (IsLeader) {
                     var encoder = _consumer.Encoders[ProtocolType];
@@ -271,8 +271,8 @@ namespace KafkaClient
             if (Interlocked.Increment(ref _disposeCount) != 1) return;
 
             _disposeToken.Cancel();
-            using (await _lock.LockAsync(cancellationToken)) {
-                await Task.WhenAll(_batches.Values.Select(b => b.CommitMarkedAsync(cancellationToken)));
+            using (await _lock.LockAsync(cancellationToken).ConfigureAwait(false)) {
+                await Task.WhenAll(_batches.Values.Select(b => b.CommitMarkedAsync(cancellationToken))).ConfigureAwait(false);
                 foreach (var batch in _batches.Values) {
                     batch.Dispose();
                 }
@@ -280,7 +280,7 @@ namespace KafkaClient
                 _assignment = null;
 
                 if (cancellationToken == CancellationToken.None) {
-                    await Task.WhenAny(_heartbeatTask, Task.Delay(TimeSpan.FromSeconds(1), cancellationToken));
+                    await Task.WhenAny(_heartbeatTask, Task.Delay(TimeSpan.FromSeconds(1), cancellationToken)).ConfigureAwait(false);
                     var request = new LeaveGroupRequest(GroupId, MemberId, false);
                     await Router.SendAsync(request, GroupId, cancellationToken, retryPolicy: Configuration.GroupCoordinationRetry).ConfigureAwait(false);
                 } else {
@@ -303,14 +303,14 @@ namespace KafkaClient
 
         public async Task<IMessageBatch> FetchBatchAsync(CancellationToken cancellationToken, int? batchSize = null)
         {
-            await _isAssigned.WaitAsync(cancellationToken);
-            using (await _lock.LockAsync(cancellationToken)) {
+            await _isAssigned.WaitAsync(cancellationToken).ConfigureAwait(false);
+            using (await _lock.LockAsync(cancellationToken).ConfigureAwait(false)) {
                 if (_disposeCount > 0) throw new ObjectDisposedException($"Member {MemberId} is no longer valid");
                 if (_assignment == null) return MessageBatch.Empty;
 
                 foreach (var partition in _assignment.PartitionAssignments) {
                     if (!_batches.ContainsKey(partition)) {
-                        var batch = await _consumer.FetchBatchAsync(GroupId, MemberId, GenerationId, partition.TopicName, partition.PartitionId, cancellationToken, batchSize);
+                        var batch = await _consumer.FetchBatchAsync(GroupId, MemberId, GenerationId, partition.TopicName, partition.PartitionId, cancellationToken, batchSize).ConfigureAwait(false);
                         _batches = _batches.Add(partition, batch);
                         return batch;
                     }

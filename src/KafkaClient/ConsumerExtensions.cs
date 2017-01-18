@@ -16,7 +16,7 @@ namespace KafkaClient
         {
             return consumer.FetchAsync(async (batch, token) => {
                 foreach (var message in batch.Messages) {
-                    await onMessageAsync(message, token);
+                    await onMessageAsync(message, token).ConfigureAwait(false);
                 }
             }, topicName, partitionId, offset, cancellationToken, batchSize);
         }
@@ -25,8 +25,8 @@ namespace KafkaClient
         {
             var total = 0;
             while (!cancellationToken.IsCancellationRequested) {
-                var fetched = await consumer.FetchBatchAsync(topicName, partitionId, offset + total, cancellationToken, batchSize);
-                await onMessagesAsync(fetched, cancellationToken);
+                var fetched = await consumer.FetchBatchAsync(topicName, partitionId, offset + total, cancellationToken, batchSize).ConfigureAwait(false);
+                await onMessagesAsync(fetched, cancellationToken).ConfigureAwait(false);
                 total += fetched.Messages.Count;
             }
             return total;
@@ -46,7 +46,7 @@ namespace KafkaClient
         {
             var batches = new List<IMessageBatch>();
             IMessageBatch batch;
-            while (!(batch = await member.FetchBatchAsync(cancellationToken, batchSize)).IsEmpty()) {
+            while (!(batch = await member.FetchBatchAsync(cancellationToken, batchSize).ConfigureAwait(false)).IsEmpty()) {
                 batches.Add(batch);
             }
             return batches.ToImmutableList();
@@ -56,10 +56,10 @@ namespace KafkaClient
         {
             var tasks = new List<Task>();
             while (!cancellationToken.IsCancellationRequested) {
-                var batches = await member.FetchBatchesAsync(cancellationToken, batchSize);
-                tasks.AddRange(batches.Select(async batch => await batch.FetchAsync(onMessagesAsync, member.Log, cancellationToken)));
+                var batches = await member.FetchBatchesAsync(cancellationToken, batchSize).ConfigureAwait(false);
+                tasks.AddRange(batches.Select(async batch => await batch.FetchAsync(onMessagesAsync, member.Log, cancellationToken).ConfigureAwait(false)));
                 if (tasks.Count == 0) break;
-                await Task.WhenAny(tasks);
+                await Task.WhenAny(tasks).ConfigureAwait(false);
                 tasks = tasks.Where(t => !t.IsCompleted).ToList();
             }
         }
@@ -89,11 +89,11 @@ namespace KafkaClient
                     using (var source = new CancellationTokenSource()) {
                         batch.OnDisposed = source.Cancel;
                         using (cancellationToken.Register(source.Cancel)) {
-                            await onMessagesAsync(batch, source.Token);
+                            await onMessagesAsync(batch, source.Token).ConfigureAwait(false);
                         }
                         batch.OnDisposed = null;
                     }
-                    batch = await batch.FetchNextAsync(cancellationToken);
+                    batch = await batch.FetchNextAsync(cancellationToken).ConfigureAwait(false);
                 } while (!batch.IsEmpty() && !cancellationToken.IsCancellationRequested);
             } catch (ObjectDisposedException ex) {
                 log.Info(() => LogEvent.Create(ex));

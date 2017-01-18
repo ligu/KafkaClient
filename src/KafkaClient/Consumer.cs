@@ -74,7 +74,7 @@ namespace KafkaClient
                 ? offset
                 : extracted[extracted.Count - 1].Offset + 1;
             var fetched = extracted.Count < count
-                ? await FetchMessagesAsync(topicName, partitionId, fetchOffset, cancellationToken)
+                ? await FetchMessagesAsync(topicName, partitionId, fetchOffset, cancellationToken).ConfigureAwait(false)
                 : ImmutableList<Message>.Empty;
 
             if (extracted == ImmutableList<Message>.Empty) return fetched;
@@ -141,7 +141,7 @@ namespace KafkaClient
 
             public async Task<IMessageBatch> FetchNextAsync(CancellationToken cancellationToken)
             {
-                var offset = await CommitMarkedAsync(cancellationToken);
+                var offset = await CommitMarkedAsync(cancellationToken).ConfigureAwait(false);
                 var messages = await _consumer.FetchBatchAsync(_allMessages, _partition.TopicName, _partition.PartitionId, offset, _batchSize, cancellationToken).ConfigureAwait(false);
                 return new MessageBatch(messages, _partition, offset, _batchSize, _consumer);
             }

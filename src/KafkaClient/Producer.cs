@@ -87,7 +87,7 @@ namespace KafkaClient
             var produceTopicTasks = messages.Select(message => new ProduceTopicTask(topicName, partition, message, configuration ?? Configuration.SendDefaults, cancellationToken)).ToArray();
             Interlocked.Add(ref _sendingMessageCount, produceTopicTasks.Length);
             try {
-                await _produceMessageQueue.EnqueueRangeAsync(produceTopicTasks, cancellationToken);
+                await _produceMessageQueue.EnqueueRangeAsync(produceTopicTasks, cancellationToken).ConfigureAwait(false);
                 var topics = await Task.WhenAll(produceTopicTasks.Select(x => x.Tcs.Task)).ConfigureAwait(false);
                 return topics.ToImmutableList();
             } catch (InvalidOperationException ex) {
@@ -104,7 +104,7 @@ namespace KafkaClient
                 while (!_stopToken.IsCancellationRequested) {
                     _batch = ImmutableList<ProduceTopicTask>.Empty;
                     try {
-                        _batch = await GetNextBatchAsync();
+                        _batch = await GetNextBatchAsync().ConfigureAwait(false);
                         if (_batch.IsEmpty) {
                             if (_stopCount > 0) {
                                 Router.Log.Info(() => LogEvent.Create("Producer stopping and nothing available to send"));
@@ -147,7 +147,7 @@ namespace KafkaClient
                 using (var cancellation = new TimedCancellation(_stopToken.Token, Configuration.BatchMaxDelay)) {
                     while (batch.Count < Configuration.BatchSize && !cancellation.Token.IsCancellationRequested) {
                         // Try rather than simply Take (in case the collection has been closed and is not empty)
-                        var result = await _produceMessageQueue.DequeueAsync(cancellation.Token);
+                        var result = await _produceMessageQueue.DequeueAsync(cancellation.Token).ConfigureAwait(false);
 
                         if (result.CancellationToken.IsCancellationRequested) {
                             result.Tcs.SetCanceled();

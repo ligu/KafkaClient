@@ -27,7 +27,7 @@ namespace KafkaClient.Assignment
             if (memberMetadata == null) throw new ArgumentNullException(nameof(memberMetadata));
 
             var typedMetadata = memberMetadata.Select(pair => new KeyValuePair<string, TMetadata>(pair.Key, (TMetadata)pair.Value)).ToImmutableDictionary();
-            var typedAssignment = await AssignAsync(router, groupId, generationId, typedMetadata, cancellationToken);
+            var typedAssignment = await AssignAsync(router, groupId, generationId, typedMetadata, cancellationToken).ConfigureAwait(false);
             return typedAssignment.Select(pair => new KeyValuePair<string, IMemberAssignment>(pair.Key, pair.Value)).ToImmutableDictionary();
         }
     }

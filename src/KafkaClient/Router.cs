@@ -110,7 +110,7 @@ namespace KafkaClient
         /// <inheritdoc />
         public async Task<TopicBroker> GetTopicBrokerAsync(string topicName, int partitionId, CancellationToken cancellationToken)
         {
-            return GetCachedTopicBroker(topicName, partitionId, await GetTopicMetadataAsync(topicName, cancellationToken));
+            return GetCachedTopicBroker(topicName, partitionId, await GetTopicMetadataAsync(topicName, cancellationToken).ConfigureAwait(false));
         }
 
         private TopicBroker GetCachedTopicBroker(string topicName, MetadataResponse.Partition partition)
@@ -222,11 +222,11 @@ namespace KafkaClient
                 if (ignoreCache && topicNames == null) {
                     Log.Info(() => LogEvent.Create("Router refreshing metadata for all topics"));
                     request = new MetadataRequest();
-                    response = await this.GetMetadataAsync(request, cancellationToken);
+                    response = await this.GetMetadataAsync(request, cancellationToken).ConfigureAwait(false);
                 } else {
                     Log.Info(() => LogEvent.Create($"Router refreshing metadata for topics {string.Join(",", cachedResults.Misses)}"));
                     request = new MetadataRequest(cachedResults.Misses);
-                    response = await this.GetMetadataAsync(request, cancellationToken);
+                    response = await this.GetMetadataAsync(request, cancellationToken).ConfigureAwait(false);
                 }
 
                 UpdateConnectionCache(response);
@@ -288,7 +288,7 @@ namespace KafkaClient
         /// <inheritdoc />
         public async Task<GroupBroker> GetGroupBrokerAsync(string groupId, CancellationToken cancellationToken)
         {
-            return GetCachedGroupBroker(groupId, await GetGroupBrokerIdAsync(groupId, cancellationToken));
+            return GetCachedGroupBroker(groupId, await GetGroupBrokerIdAsync(groupId, cancellationToken).ConfigureAwait(false));
         }
 
         /// <inheritdoc />
@@ -342,7 +342,7 @@ namespace KafkaClient
                 Log.Info(() => LogEvent.Create($"Router refreshing brokers for group {groupId}"));
                 var request = new GroupCoordinatorRequest(groupId);
                 try {
-                    var response = await this.SendToAnyAsync(request, cancellationToken);
+                    var response = await this.SendToAnyAsync(request, cancellationToken).ConfigureAwait(false);
 
                     UpdateConnectionCache(new [] { response });
                     UpdateGroupBrokerCache(request, response);
@@ -442,7 +442,7 @@ namespace KafkaClient
 
                 Log.Info(() => LogEvent.Create($"Router refreshing metadata for groups {string.Join(",", cachedResults.Misses)}"));
                 var request = new DescribeGroupsRequest(cachedResults.Misses);
-                var response = await this.SendToAnyAsync(request, cancellationToken);
+                var response = await this.SendToAnyAsync(request, cancellationToken).ConfigureAwait(false);
 
                 UpdateGroupCache(response);
 
