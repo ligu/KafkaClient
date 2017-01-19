@@ -128,8 +128,22 @@ namespace KafkaClient.Tests.Unit
                 topics.Add(new FetchResponse.Topic(topicName + t, partitionId, _randomizer.Next(), errorCode, messages));
             }
             var response = new FetchResponse(topics, version >= 1 ? TimeSpan.FromMilliseconds(throttleTime) : (TimeSpan?)null);
+            var responseWithUpdatedAttribute = new FetchResponse(response.Topics.Select(t => new FetchResponse.Topic(t.TopicName, t.PartitionId, t.HighWaterMark, t.ErrorCode, 
+                t.Messages.Select(m => m.Attribute == 0 ? m : new Message(m.Value, 0, m.Offset, m.PartitionId, m.MessageVersion, m.Key, m.Timestamp)))), 
+                response.ThrottleTime);
 
-            response.AssertCanEncodeDecodeResponse(version);
+            var context = new RequestContext(16, version, "Test-Response");
+            var data = KafkaDecoder.EncodeResponseBytes(context, response);
+            var decoded = KafkaEncoder.Decode<FetchResponse>(context, ApiKeyRequestType.Fetch, data, true);
+
+            // special case the comparison in the case of gzip because of the server semantics
+            if (!responseWithUpdatedAttribute.Equals(decoded)) {
+                var original = responseWithUpdatedAttribute.ToFormattedString();
+                var final = decoded.ToFormattedString();
+                Console.WriteLine($"Original\n{original}\nFinal\n{final}");
+                Assert.That(final, Is.EqualTo(original));
+                Assert.Fail("Not equal, although strings suggest they are?");
+            }
         }
 
         [Test]

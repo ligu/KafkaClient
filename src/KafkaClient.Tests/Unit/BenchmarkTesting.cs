@@ -6,7 +6,6 @@ using System.Reflection;
 using System.Text;
 using KafkaClient.Common;
 using KafkaClient.Protocol;
-using NSubstitute.Core;
 using NUnit.Framework;
 
 namespace KafkaClient.Tests.Unit
@@ -15,6 +14,47 @@ namespace KafkaClient.Tests.Unit
     [TestFixture]
     internal class BenchmarkTesting
     {
+        [Test]
+        public void FetchSize()
+        {
+            int partitions = 1;
+            short version = 0;
+            byte messageVersion = 0;
+            
+            var results = new List<object>();
+            foreach (var codec in new[] { MessageCodec.CodecNone, MessageCodec.CodecGzip }) {
+                foreach (var messages in new[] { 100, 10000 }) {
+                    foreach (var messageSize in new[] { 1, 1000 }) {
+                        foreach (var level in new[] { CompressionLevel.Fastest, CompressionLevel.Optimal }) {
+                            Compression.ZipLevel = level;
+                            var response = new FetchResponse(
+                                Enumerable.Range(1, partitions)
+                                          .Select(partitionId => new FetchResponse.Topic(
+                                              "topic", 
+                                              partitionId, 
+                                              500,
+                                              ErrorResponseCode.None,
+                                              Enumerable.Range(1, messages)
+                                                        .Select(i => new Message(GenerateMessageBytes(messageSize), (byte) codec, version: messageVersion))
+                                          )));
+                            var bytes = KafkaDecoder.EncodeResponseBytes(new RequestContext(1, version), response);
+                            // var stuff = KafkaEncoder.Decode<FetchResponse>(new RequestContext(1, version), ApiKeyRequestType.Fetch, bytes, true);
+                            var result = new {
+                                Codec = codec.ToString(),
+                                Level = codec == MessageCodec.CodecNone ? "-" : level.ToString(),
+                                Messages = messages,
+                                MessageSize = messageSize,
+                                Bytes = bytes.Length
+                            };
+                            results.Add(result);
+                        }
+                    }
+                }
+            }
+
+            WriteResults(results);
+        }
+
         [Test]
         public void ProduceSize()
         {
@@ -34,7 +74,7 @@ namespace KafkaClient.Tests.Unit
                                                       "topic", 
                                                       partitionId, 
                                                       Enumerable.Range(1, messages)
-                                                                .Select(i => new Message(GenerateMessageBytes(messageSize), (byte) codec, version: messageVersion)), 
+                                                                .Select(i => new Message(GenerateMessageBytes(messageSize), 0, version: messageVersion)), 
                                                       codec)));
 
                             var result = new {

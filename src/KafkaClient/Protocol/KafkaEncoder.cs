@@ -112,13 +112,12 @@ namespace KafkaClient.Protocol
         /// </summary>
         /// <param name="writer">The writer</param>
         /// <param name="messages">The collection of messages to encode together.</param>
-        /// <param name="includeLength">Whether to include the length at the start</param>
-        public static IKafkaWriter Write(this IKafkaWriter writer, IEnumerable<Message> messages, bool includeLength = true)
+        public static IKafkaWriter Write(this IKafkaWriter writer, IEnumerable<Message> messages)
         {
-            using (includeLength ? writer.MarkForLength() : Disposable.None) {
-                foreach (var message in messages) {
-                    writer.Write(0L)
-                          .Write(message);
+            foreach (var message in messages) {
+                writer.Write(0L);
+                using (writer.MarkForLength()) {
+                    writer.Write(message);
                 }
             }
             return writer;
@@ -129,24 +128,21 @@ namespace KafkaClient.Protocol
         /// </summary>
         /// <param name="writer">The writer</param>
         /// <param name="message">Message data to encode.</param>
-        /// <param name="includeLength">Whether to include the length at the start</param>
         /// <returns>Encoded byte[] representation of the message object.</returns>
         /// <remarks>
         /// Format:
         /// Crc (Int32), MagicByte (Byte), Attribute (Byte), Key (Byte[]), Value (Byte[])
         /// </remarks>
-        public static IKafkaWriter Write(this IKafkaWriter writer, Message message, bool includeLength = true)
+        public static IKafkaWriter Write(this IKafkaWriter writer, Message message)
         {
-            using (includeLength ? writer.MarkForLength() : Disposable.None) {
-                using (writer.MarkForCrc()) {
-                    writer.Write(message.MessageVersion)
-                           .Write(message.Attribute);
-                    if (message.MessageVersion >= 1) {
-                        writer.Write(message.Timestamp.GetValueOrDefault(DateTimeOffset.UtcNow).ToUnixTimeMilliseconds());
-                    }
-                    writer.Write(message.Key)
-                          .Write(message.Value);
+            using (writer.MarkForCrc()) {
+                writer.Write(message.MessageVersion)
+                      .Write(message.Attribute);
+                if (message.MessageVersion >= 1) {
+                    writer.Write(message.Timestamp.GetValueOrDefault(DateTimeOffset.UtcNow).ToUnixTimeMilliseconds());
                 }
+                writer.Write(message.Key)
+                        .Write(message.Value);
             }
             return writer;
         }
@@ -198,12 +194,14 @@ namespace KafkaClient.Protocol
         {
             switch (codec) {
                 case MessageCodec.CodecNone:
-                    writer.Write(messages);
+                    using (writer.MarkForLength()) {
+                        writer.Write(messages);
+                    }
                     return 0;
 
                 case MessageCodec.CodecGzip:
                     using (var messageWriter = new KafkaWriter()) {
-                        messageWriter.Write(messages, false);
+                        messageWriter.Write(messages);
                         var messageSet = messageWriter.ToBytesNoLength();
 
                         using (writer.MarkForLength()) { // messageset

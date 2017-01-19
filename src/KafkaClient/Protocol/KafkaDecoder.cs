@@ -473,9 +473,11 @@ namespace KafkaClient.Protocol
                     if (partition.Messages.Count > 0) {
                         // assume all are the same codec
                         var codec = (MessageCodec) (partition.Messages[0].Attribute & Message.AttributeMask);
-                        writer.Write(partition.Messages, codec);
+                        writer.Write(partition.Messages.Select(m => new Message(m.Value, (byte)MessageCodec.CodecNone, m.Offset, m.PartitionId, m.MessageVersion, m.Key, m.Timestamp)), codec);
                     } else {
-                        writer.Write(partition.Messages);
+                        using (writer.MarkForLength()) {
+                            writer.Write(partition.Messages);
+                        }
                     }
                 }
             }

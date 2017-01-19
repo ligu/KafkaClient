@@ -15,7 +15,7 @@ namespace KafkaClient.Tests.Unit
             var testMessage = new Message(value: "kafka test message.", key: "test");
 
             using (var writer = new KafkaWriter()) {
-                writer.Write(testMessage, false);
+                writer.Write(testMessage);
                 var encoded = writer.ToBytesNoLength();
                 encoded[0] += 1;
                 using (var reader = new BigEndianBinaryReader(encoded)) {
@@ -34,7 +34,7 @@ namespace KafkaClient.Tests.Unit
             var testMessage = new Message(key: key, value: value);
 
             using (var writer = new KafkaWriter()) {
-                writer.Write(testMessage, false);
+                writer.Write(testMessage);
                 var encoded = writer.ToBytesNoLength();
                 using (var reader = new BigEndianBinaryReader(encoded)) {
                     var result = reader.ReadMessage(encoded.Length, 0).First();
@@ -64,7 +64,7 @@ namespace KafkaClient.Tests.Unit
                 };
 
             using (var writer = new KafkaWriter()) {
-                writer.Write(messages, false);
+                writer.Write(messages);
                 var result = writer.ToBytesNoLength();
                 Assert.That(expected, Is.EqualTo(result));
             }
@@ -88,11 +88,10 @@ namespace KafkaClient.Tests.Unit
         public void WhenMessageIsTruncatedThenBufferUnderRunExceptionIsThrown()
         {
             // arrange
-            var offset = (long)0;
             var message = new byte[] { };
             var messageSize = message.Length + 1;
             using (var writer = new KafkaWriter()) {
-                writer.Write(offset)
+                writer.Write(0L)
                        .Write(messageSize)
                        .Write(message);
                 var bytes = writer.ToBytes();
@@ -108,16 +107,22 @@ namespace KafkaClient.Tests.Unit
         {
             // arrange
             var expectedPayloadBytes = new byte[] { 1, 2, 3, 4 };
-            var payload = MessageHelper.CreateMessage(0, new byte[] { 0 }, expectedPayloadBytes);
+            using (var writer = new KafkaWriter()) {
+                writer.Write(0L);
+                using (writer.MarkForLength()) {
+                    writer.Write(new Message(expectedPayloadBytes, 0, version: 0, key: new byte[] { 0 }));
+                }
+                var payload = writer.ToBytes();
 
-            // act/assert
-            using (var reader = new BigEndianBinaryReader(payload)) {
-                var messages = reader.ReadMessages();
-                var actualPayload = messages.First().Value;
+                // act/assert
+                using (var reader = new BigEndianBinaryReader(payload)) {
+                    var messages = reader.ReadMessages();
+                    var actualPayload = messages.First().Value;
 
-                // assert
-                var expectedPayload = new byte[] { 1, 2, 3, 4 };
-                CollectionAssert.AreEqual(expectedPayload, actualPayload);
+                    // assert
+                    var expectedPayload = new byte[] { 1, 2, 3, 4 };
+                    CollectionAssert.AreEqual(expectedPayload, actualPayload);
+                }
             }
         }
     }

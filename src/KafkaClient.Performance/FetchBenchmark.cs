@@ -1,5 +1,6 @@
-﻿using System.Linq;
-using System.Text;
+﻿using System;
+using System.IO.Compression;
+using System.Linq;
 using BenchmarkDotNet.Attributes;
 using KafkaClient.Protocol;
 
@@ -7,11 +8,17 @@ namespace KafkaClient.Performance
 {
     public class FetchBenchmark
     {
-        [Params(100, 1000, 10000)]
+        [Params(100, 10000)]
         public int Messages { get; set; }
 
-        [Params(MessageCodec.CodecNone, MessageCodec.CodecGzip)]
+        [Params(1, 1000)]
+        public int MessageSize { get; set; }
+
+        [Params(MessageCodec.CodecGzip)]
         public MessageCodec Codec { get; set; }
+
+        [Params(CompressionLevel.Fastest, CompressionLevel.Optimal)]
+        public CompressionLevel Level { get; set; }
 
         public int Partitions { get; } = 1;
 
@@ -24,6 +31,7 @@ namespace KafkaClient.Performance
         [Setup]
         public void SetupData()
         {
+            Common.Compression.ZipLevel = Level;
             var response = new FetchResponse(
                 Enumerable.Range(1, Partitions)
                           .Select(partitionId => new FetchResponse.Topic(
@@ -32,15 +40,22 @@ namespace KafkaClient.Performance
                               500,
                               ErrorResponseCode.None,
                               Enumerable.Range(1, Messages)
-                                        .Select(i => new Message(Encoding.UTF8.GetBytes(i.ToString()), (byte) Codec, version: MessageVersion))
+                                        .Select(i => new Message(GenerateMessageBytes(), (byte) Codec, version: MessageVersion))
                           )));
             _bytes = KafkaDecoder.EncodeResponseBytes(new RequestContext(1, Version), response);
+        }
+
+        private byte[] GenerateMessageBytes()
+        {
+            var buffer = new byte[MessageSize];
+            new Random(42).NextBytes(buffer);
+            return buffer;
         }
 
         [Benchmark]
         public FetchResponse Encode()
         {
-            return KafkaEncoder.Decode<FetchResponse>(new RequestContext(1, Version), ApiKeyRequestType.Fetch, _bytes);
+            return KafkaEncoder.Decode<FetchResponse>(new RequestContext(1, Version), ApiKeyRequestType.Fetch, _bytes, true);
         }
     }
 }

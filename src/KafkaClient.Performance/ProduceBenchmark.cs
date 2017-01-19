@@ -31,7 +31,7 @@ namespace KafkaClient.Performance
         [Setup]
         public void SetupData()
         {
-            KafkaClient.Common.Compression.ZipLevel = Level;
+            Common.Compression.ZipLevel = Level;
             _request = new ProduceRequest(
                         Enumerable.Range(1, Partitions)
                                   .Select(partitionId => new ProduceRequest.Payload(
