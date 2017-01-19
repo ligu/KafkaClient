@@ -13,12 +13,15 @@ namespace KafkaClient.Common
 
         IKafkaWriter Write(byte value);
         IKafkaWriter Write(byte[] values, bool includeLength = true);
+        IKafkaWriter Write(ArraySegment<byte> values, bool includeLength = true);
 
         IKafkaWriter Write(string value);
         IKafkaWriter Write(IEnumerable<string> values, bool includeLength = false);
 
         byte[] ToBytes();
         byte[] ToBytesNoLength();
+        ArraySegment<byte> ToSegment();
+        ArraySegment<byte> ToSegmentNoLength();
 
         IDisposable MarkForLength();
         IDisposable MarkForCrc();

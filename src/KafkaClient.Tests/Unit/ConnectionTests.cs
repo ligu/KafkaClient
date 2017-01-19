@@ -175,7 +175,7 @@ namespace KafkaClient.Tests.Unit
                     buffer[i] = randomizer.NextByte();
                 }
 
-                var taskResult = test.WriteBytesAsync(socket, 5, buffer, CancellationToken.None);
+                var taskResult = test.WriteBytesAsync(socket, 5, new ArraySegment<byte>(buffer), CancellationToken.None);
 
                 await TaskTest.WaitFor(() => writeSize > 0);
 
@@ -738,7 +738,7 @@ namespace KafkaClient.Tests.Unit
                 server.OnBytesReceived = data => result = data.ToInt32();
 
                 var socket = await conn.ConnectAsync(CancellationToken.None);
-                await conn.WriteBytesAsync(socket, 5, testData.ToBytes(), CancellationToken.None);
+                await conn.WriteBytesAsync(socket, 5, new ArraySegment<byte>(testData.ToBytes()), CancellationToken.None);
                 await TaskTest.WaitFor(() => result > 0);
                 Assert.That(result, Is.EqualTo(testData));
             }
@@ -757,7 +757,7 @@ namespace KafkaClient.Tests.Unit
                 server.OnBytesReceived = results.AddRange;
 
                 var socket = await conn.ConnectAsync(CancellationToken.None);
-                await Task.WhenAll(conn.WriteBytesAsync(socket, 5, testData.ToBytes(), CancellationToken.None), conn.WriteBytesAsync(socket, 6, testData.ToBytes(), CancellationToken.None));
+                await Task.WhenAll(conn.WriteBytesAsync(socket, 5, new ArraySegment<byte>(testData.ToBytes()), CancellationToken.None), conn.WriteBytesAsync(socket, 6, new ArraySegment<byte>(testData.ToBytes()), CancellationToken.None));
                 await TaskTest.WaitFor(() => results.Count >= 8);
                 Assert.That(results.Count, Is.EqualTo(8));
             }
@@ -783,7 +783,7 @@ namespace KafkaClient.Tests.Unit
                 };
                 var socket = await conn.ConnectAsync(CancellationToken.None);
 
-                var clientWriteTasks = expected.Select(i => conn.WriteBytesAsync(socket, i, i.ToBytes(), CancellationToken.None));
+                var clientWriteTasks = expected.Select(i => conn.WriteBytesAsync(socket, i, new ArraySegment<byte>(i.ToBytes()), CancellationToken.None));
                 var clientReadTasks = expected.Select(
                     i =>
                     {
@@ -826,7 +826,7 @@ namespace KafkaClient.Tests.Unit
                     }
                 };
                 var socket = await conn.ConnectAsync(CancellationToken.None);
-                var clientWriteTasks = Enumerable.Range(1, requests).Select(i => conn.WriteBytesAsync(socket, i, i.ToBytes(), CancellationToken.None));
+                var clientWriteTasks = Enumerable.Range(1, requests).Select(i => conn.WriteBytesAsync(socket, i, new ArraySegment<byte>(i.ToBytes()), CancellationToken.None));
 
                 await Task.WhenAll(clientWriteTasks);
                 await TaskTest.WaitFor(() => readOnServer.Count == requests);
@@ -846,7 +846,7 @@ namespace KafkaClient.Tests.Unit
             using (var token = new CancellationTokenSource())
             {
                 var socket = await conn.ConnectAsync(token.Token);
-                var write = conn.WriteBytesAsync(socket, 5, 1.ToBytes(), token.Token);
+                var write = conn.WriteBytesAsync(socket, 5, new ArraySegment<byte>(1.ToBytes()), token.Token);
 
                 await TaskTest.WaitFor(() => server.ConnectionEventcount > 0);
                 await TaskTest.WaitFor(() => clientWriteAttempts > 0);
@@ -856,7 +856,7 @@ namespace KafkaClient.Tests.Unit
                 //create a buffer write that will take a long time
                 var data = Enumerable.Range(0, 100000000).Select(b => (byte)b).ToArray();
                 token.Cancel();
-                var taskResult = conn.WriteBytesAsync(socket, 6, data, token.Token);
+                var taskResult = conn.WriteBytesAsync(socket, 6, new ArraySegment<byte>(data), token.Token);
                 await Task.WhenAny(taskResult, Task.Delay(TimeSpan.FromSeconds(5))).ConfigureAwait(false);
 
                 Assert.That(taskResult.IsCanceled, Is.True, "Task should have cancelled.");

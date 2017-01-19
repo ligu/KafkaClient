@@ -60,7 +60,7 @@ namespace KafkaClient.Protocol
 
         #region Encode
 
-        public static byte[] Encode(IRequestContext context, IRequest request)
+        public static ArraySegment<byte> Encode(IRequestContext context, IRequest request)
         {
             switch (request.ApiKey) {
                 case ApiKeyRequestType.Produce:
@@ -99,8 +99,8 @@ namespace KafkaClient.Protocol
                     return EncodeRequest(context, (DeleteTopicsRequest) request);
 
                 default:
-                    using (var message = EncodeHeader(context, request)) {
-                        return message.ToBytes();
+                    using (var writer = EncodeHeader(context, request)) {
+                        return writer.ToSegment();
                     }
             }
         }
@@ -142,7 +142,7 @@ namespace KafkaClient.Protocol
                     writer.Write(message.Timestamp.GetValueOrDefault(DateTimeOffset.UtcNow).ToUnixTimeMilliseconds());
                 }
                 writer.Write(message.Key)
-                        .Write(message.Value);
+                      .Write(message.Value);
             }
             return writer;
         }
@@ -157,7 +157,7 @@ namespace KafkaClient.Protocol
         /// </summary>
         private const int ReplicaId = -1;
 
-        private static byte[] EncodeRequest(IRequestContext context, ProduceRequest request)
+        private static ArraySegment<byte> EncodeRequest(IRequestContext context, ProduceRequest request)
         {
             var totalCompressedBytes = 0;
             var groupedPayloads = (from p in request.Payloads
@@ -184,9 +184,9 @@ namespace KafkaClient.Protocol
                     Interlocked.Add(ref totalCompressedBytes, compressedBytes);
                 }
 
-                var bytes = writer.ToBytes();
-                context.OnProduceRequestMessages?.Invoke(request.Payloads.Sum(_ => _.Messages.Count), bytes.Length, totalCompressedBytes);
-                return bytes;
+                var segment = writer.ToSegment();
+                context.OnProduceRequestMessages?.Invoke(request.Payloads.Sum(_ => _.Messages.Count), segment.Count, totalCompressedBytes);
+                return segment;
             }
         }
 
@@ -202,7 +202,7 @@ namespace KafkaClient.Protocol
                 case MessageCodec.CodecGzip:
                     using (var messageWriter = new KafkaWriter()) {
                         messageWriter.Write(messages);
-                        var messageSet = messageWriter.ToBytesNoLength();
+                        var messageSet = messageWriter.ToSegmentNoLength();
 
                         using (writer.MarkForLength()) { // messageset
                             writer.Write(0L); // offset
@@ -215,7 +215,7 @@ namespace KafkaClient.Protocol
                                         var initialPosition = writer.Stream.Position;
                                         Compression.Zip(messageSet, writer.Stream);
                                         var compressedMessageLength = (int)(writer.Stream.Position - initialPosition);
-                                        return messageSet.Length - compressedMessageLength;
+                                        return messageSet.Count - compressedMessageLength;
                                     }
                                 }
                             }
@@ -227,7 +227,7 @@ namespace KafkaClient.Protocol
             }
         }
 
-        private static byte[] EncodeRequest(IRequestContext context, FetchRequest request)
+        private static ArraySegment<byte> EncodeRequest(IRequestContext context, FetchRequest request)
         {
             using (var writer = EncodeHeader(context, request)) {
                 var topicGroups = request.Topics.GroupBy(x => x.TopicName).ToList();
@@ -254,11 +254,11 @@ namespace KafkaClient.Protocol
                     }
                 }
 
-                return writer.ToBytes();
+                return writer.ToSegment();
             }
         }
 
-        private static byte[] EncodeRequest(IRequestContext context, OffsetRequest request)
+        private static ArraySegment<byte> EncodeRequest(IRequestContext context, OffsetRequest request)
         {
             using (var writer = EncodeHeader(context, request)) {
                 var topicGroups = request.Topics.GroupBy(x => x.TopicName).ToList();
@@ -282,20 +282,20 @@ namespace KafkaClient.Protocol
                     }
                 }
 
-                return writer.ToBytes();
+                return writer.ToSegment();
             }
         }
 
-        private static byte[] EncodeRequest(IRequestContext context, MetadataRequest request)
+        private static ArraySegment<byte> EncodeRequest(IRequestContext context, MetadataRequest request)
         {
-            using (var message = EncodeHeader(context, request)) {
-                message.Write(request.Topics, true);
+            using (var writer = EncodeHeader(context, request)) {
+                writer.Write(request.Topics, true);
 
-                return message.ToBytes();
+                return writer.ToSegment();
             }
         }
 
-        private static byte[] EncodeRequest(IRequestContext context, OffsetCommitRequest request)
+        private static ArraySegment<byte> EncodeRequest(IRequestContext context, OffsetCommitRequest request)
         {
             using (var writer = EncodeHeader(context, request)) {
                 writer.Write(request.GroupId);
@@ -330,11 +330,11 @@ namespace KafkaClient.Protocol
                         }
                     }
                 }
-                return writer.ToBytes();
+                return writer.ToSegment();
             }
         }
 
-        private static byte[] EncodeRequest(IRequestContext context, OffsetFetchRequest request)
+        private static ArraySegment<byte> EncodeRequest(IRequestContext context, OffsetFetchRequest request)
         {
             using (var writer = EncodeHeader(context, request)) {
                 var topicGroups = request.Topics.GroupBy(x => x.TopicName).ToList();
@@ -354,19 +354,19 @@ namespace KafkaClient.Protocol
                     }
                 }
 
-                return writer.ToBytes();
+                return writer.ToSegment();
             }
         }
 
-        private static byte[] EncodeRequest(IRequestContext context, GroupCoordinatorRequest request)
+        private static ArraySegment<byte> EncodeRequest(IRequestContext context, GroupCoordinatorRequest request)
         {
             using (var writer = EncodeHeader(context, request)) {
                 writer.Write(request.GroupId);
-                return writer.ToBytes();
+                return writer.ToSegment();
             }
         }
 
-        private static byte[] EncodeRequest(IRequestContext context, JoinGroupRequest request)
+        private static ArraySegment<byte> EncodeRequest(IRequestContext context, JoinGroupRequest request)
         {
             using (var writer = EncodeHeader(context, request)) {
                 writer.Write(request.GroupId)
@@ -385,32 +385,32 @@ namespace KafkaClient.Protocol
                           .Write(protocol.Metadata, encoder);
                 }
 
-                return writer.ToBytes();
+                return writer.ToSegment();
             }
         }
 
-        private static byte[] EncodeRequest(IRequestContext context, HeartbeatRequest request)
+        private static ArraySegment<byte> EncodeRequest(IRequestContext context, HeartbeatRequest request)
         {
             using (var writer = EncodeHeader(context, request)) {
                 return writer
                     .Write(request.GroupId)
                     .Write(request.GroupGenerationId)
                     .Write(request.MemberId)
-                    .ToBytes();
+                    .ToSegment();
             }
         }
 
-        private static byte[] EncodeRequest(IRequestContext context, LeaveGroupRequest request)
+        private static ArraySegment<byte> EncodeRequest(IRequestContext context, LeaveGroupRequest request)
         {
             using (var writer = EncodeHeader(context, request)) {
                 return writer
                     .Write(request.GroupId)
                     .Write(request.MemberId)
-                    .ToBytes();
+                    .ToSegment();
             }
         }
 
-        private static byte[] EncodeRequest(IRequestContext context, SyncGroupRequest request)
+        private static ArraySegment<byte> EncodeRequest(IRequestContext context, SyncGroupRequest request)
         {
             using (var writer = EncodeHeader(context, request)) {
                 writer.Write(request.GroupId)
@@ -424,11 +424,11 @@ namespace KafkaClient.Protocol
                           .Write(assignment.MemberAssignment, encoder);
                 }
 
-                return writer.ToBytes();
+                return writer.ToSegment();
             }
         }
 
-        private static byte[] EncodeRequest(IRequestContext context, DescribeGroupsRequest request)
+        private static ArraySegment<byte> EncodeRequest(IRequestContext context, DescribeGroupsRequest request)
         {
             using (var writer = EncodeHeader(context, request)) {
                 writer.Write(request.GroupIds.Count);
@@ -437,33 +437,33 @@ namespace KafkaClient.Protocol
                     writer.Write(groupId);
                 }
 
-                return writer.ToBytes();
+                return writer.ToSegment();
             }
         }
 
-        private static byte[] EncodeRequest(IRequestContext context, ListGroupsRequest request)
+        private static ArraySegment<byte> EncodeRequest(IRequestContext context, ListGroupsRequest request)
         {
             using (var writer = EncodeHeader(context, request)) {
-                return writer.ToBytes();
+                return writer.ToSegment();
             }
         }
 
-        private static byte[] EncodeRequest(IRequestContext context, SaslHandshakeRequest request)
+        private static ArraySegment<byte> EncodeRequest(IRequestContext context, SaslHandshakeRequest request)
         {
             using (var writer = EncodeHeader(context, request)) {
                 writer.Write(request.Mechanism);
-                return writer.ToBytes();
+                return writer.ToSegment();
             }
         }
 
-        private static byte[] EncodeRequest(IRequestContext context, ApiVersionsRequest request)
+        private static ArraySegment<byte> EncodeRequest(IRequestContext context, ApiVersionsRequest request)
         {
             using (var writer = EncodeHeader(context, request)) {
-                return writer.ToBytes();
+                return writer.ToSegment();
             }
         }
 
-        private static byte[] EncodeRequest(IRequestContext context, CreateTopicsRequest request)
+        private static ArraySegment<byte> EncodeRequest(IRequestContext context, CreateTopicsRequest request)
         {
             using (var writer = EncodeHeader(context, request)) {
                 writer.Write(request.Topics.Count);
@@ -483,16 +483,16 @@ namespace KafkaClient.Protocol
                     }
                 }
                 writer.Write((int)request.Timeout.TotalMilliseconds);
-                return writer.ToBytes();
+                return writer.ToSegment();
             }
         }
 
-        private static byte[] EncodeRequest(IRequestContext context, DeleteTopicsRequest request)
+        private static ArraySegment<byte> EncodeRequest(IRequestContext context, DeleteTopicsRequest request)
         {
             using (var writer = EncodeHeader(context, request)) {
                 writer.Write(request.Topics, true)
                       .Write((int) request.Timeout.TotalMilliseconds);
-                return writer.ToBytes();
+                return writer.ToSegment();
             }
         }
 
@@ -584,13 +584,13 @@ namespace KafkaClient.Protocol
             {
                 case MessageCodec.CodecNone: {
                     var value = reader.ReadBytes();
-                    return ImmutableList<Message>.Empty.Add(new Message(value, attribute, offset, partitionId, messageVersion, key, timestamp));
+                    return ImmutableList<Message>.Empty.Add(new Message(new ArraySegment<byte>(value), attribute, offset, partitionId, messageVersion, key, timestamp));
                 }
 
                 case MessageCodec.CodecGzip: {
                     var messageLength = reader.ReadInt32();
                     var messageStream = new LimitedReadableStream(reader.Stream, messageLength);
-                    using (var gzipReader = new BigEndianBinaryReader(messageStream.Unzip())) {
+                    using (var gzipReader = new BigEndianBinaryReader(messageStream.Unzip(), true)) {
                         return gzipReader.ReadMessages(partitionId, codec);
                     }
                 }

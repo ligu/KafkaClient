@@ -8,7 +8,12 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class Message : IEquatable<Message>
     {
-        public Message(byte[] value, byte attribute, long offset = 0, int partitionId = 0, byte version = 0, byte[] key = null, DateTimeOffset? timestamp = null)
+        public Message(byte[] value, byte attribute, long offset = 0L, int partitionId = 0, byte version = 0, byte[] key = null, DateTimeOffset? timestamp = null)
+            : this(new ArraySegment<byte>(value), attribute, offset, partitionId, version, key, timestamp)
+        {
+        }
+
+        public Message(ArraySegment<byte> value, byte attribute, long offset = 0L, int partitionId = 0, byte version = 0, byte[] key = null, DateTimeOffset? timestamp = null)
         {
             Offset = offset;
             PartitionId = partitionId;
@@ -28,7 +33,7 @@ namespace KafkaClient.Protocol
         public Message(string value, string key = null)
         {
             Key = key?.ToBytes();
-            Value = value.ToBytes();
+            Value = new ArraySegment<byte>(value.ToBytes());
         }
 
         /// <summary>
@@ -66,9 +71,9 @@ namespace KafkaClient.Protocol
         public byte[] Key { get; }
 
         /// <summary>
-        /// The message body contents.  Can contain compress message set.
+        /// The message body contents.  Can contain compressed message set.
         /// </summary>
-        public byte[] Value { get; }
+        public ArraySegment<byte> Value { get; }
 
         /// <summary>
         /// This is the timestamp of the message. The timestamp type is indicated in the attributes. Unit is milliseconds since beginning of the epoch (midnight Jan 1, 1970 (UTC)).
@@ -106,7 +111,7 @@ namespace KafkaClient.Protocol
                 hashCode = (hashCode*397) ^ MessageVersion.GetHashCode();
                 hashCode = (hashCode*397) ^ Attribute.GetHashCode();
                 hashCode = (hashCode*397) ^ (Key?.GetHashCode() ?? 0);
-                hashCode = (hashCode*397) ^ (Value?.GetHashCode() ?? 0);
+                hashCode = (hashCode*397) ^ Value.GetHashCode();
                 hashCode = (hashCode*397) ^ Timestamp.GetHashCode();
                 return hashCode;
             }

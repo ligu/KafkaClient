@@ -17,7 +17,7 @@ namespace KafkaClient.Tests
 
             var context = new RequestContext(17, version, "Test-Request", encoders, encoder?.ProtocolType);
             var data = KafkaEncoder.Encode(context, request);
-            var decoded = KafkaDecoder.Decode<T>(data, context);
+            var decoded = KafkaDecoder.Decode<T>(data.Array, context);
 
             if (!request.Equals(decoded)) {
                 var original = request.ToFormattedString();

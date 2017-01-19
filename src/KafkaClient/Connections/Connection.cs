@@ -90,7 +90,7 @@ namespace KafkaClient.Connections
                     AddToCorrelationMatching(asyncItem);
                 }
 
-                _log.Info(() => LogEvent.Create($"Sending {request.ApiKey} (id {context.CorrelationId}, v {version.GetValueOrDefault()}, {asyncItem.RequestBytes.Length} bytes) to {Endpoint}"));
+                _log.Info(() => LogEvent.Create($"Sending {request.ApiKey} (id {context.CorrelationId}, v {version.GetValueOrDefault()}, {asyncItem.Request.Count} bytes) to {Endpoint}"));
                 _log.Debug(() => LogEvent.Create($"{request.ApiKey} -----> {Endpoint}\n- Context:{context.ToFormattedString()}\n- Request:{request.ToFormattedString()}"));
 
                 var timer = new Stopwatch();
@@ -98,7 +98,7 @@ namespace KafkaClient.Connections
                     await ConnectAsync(cancellationToken).ConfigureAwait(false);
                     _configuration.OnWriting?.Invoke(Endpoint, request.ApiKey);
                     timer.Start();
-                    var bytesWritten = await WriteBytesAsync(_socket, context.CorrelationId, asyncItem.RequestBytes, cancellationToken);
+                    var bytesWritten = await WriteBytesAsync(_socket, context.CorrelationId, asyncItem.Request, cancellationToken);
                     timer.Stop();
                     _configuration.OnWritten?.Invoke(Endpoint, request.ApiKey, bytesWritten, timer.Elapsed);
 
@@ -360,17 +360,17 @@ namespace KafkaClient.Connections
             return totalBytesRead;
         }
 
-        internal async Task<int> WriteBytesAsync(Socket socket, int correlationId, byte[] buffer, CancellationToken cancellationToken)
+        internal async Task<int> WriteBytesAsync(Socket socket, int correlationId, ArraySegment<byte> buffer, CancellationToken cancellationToken)
         {
             var totalBytesWritten = 0;
             var timer = new Stopwatch();
             timer.Start();
-            while (totalBytesWritten < buffer.Length) {
+            while (totalBytesWritten < buffer.Count) {
                 cancellationToken.ThrowIfCancellationRequested();
-                var bytesRemaining = buffer.Length - totalBytesWritten;
+                var bytesRemaining = buffer.Count - totalBytesWritten;
                 _log.Debug(() => LogEvent.Create($"Writing {bytesRemaining}? bytes (id {correlationId}) to {Endpoint}"));
                 _configuration.OnWritingBytes?.Invoke(Endpoint, bytesRemaining);
-                var bytesWritten = await socket.SendAsync(new ArraySegment<byte>(buffer, totalBytesWritten, bytesRemaining), SocketFlags.None).ThrowIfCancellationRequested(cancellationToken).ConfigureAwait(false);
+                var bytesWritten = await socket.SendAsync(new ArraySegment<byte>(buffer.Array, buffer.Offset + totalBytesWritten, bytesRemaining), SocketFlags.None).ThrowIfCancellationRequested(cancellationToken).ConfigureAwait(false);
                 _configuration.OnWroteBytes?.Invoke(Endpoint, bytesRemaining, bytesWritten, timer.Elapsed);
                 _log.Debug(() => LogEvent.Create($"Wrote {bytesWritten} bytes (id {correlationId}) to {Endpoint}"));
                 totalBytesWritten += bytesWritten;
@@ -475,18 +475,18 @@ namespace KafkaClient.Connections
             private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
             private CancellationTokenRegistration _registration;
 
-            public AsyncItem(IRequestContext context, ApiKeyRequestType requestType, byte [] requestBytes, TimeSpan timeout)
+            public AsyncItem(IRequestContext context, ApiKeyRequestType requestType, ArraySegment<byte> request, TimeSpan timeout)
             {
                 Context = context;
                 Timeout = timeout;
-                RequestBytes = requestBytes;
+                Request = request;
                 RequestType = requestType;
                 ReceiveTask = new TaskCompletionSource<byte[]>();
             }
 
             public IRequestContext Context { get; }
             public ApiKeyRequestType RequestType { get; }
-            public byte[] RequestBytes { get; }
+            public ArraySegment<byte> Request { get; }
             public TimeSpan Timeout { get; }
             public TaskCompletionSource<byte[]> ReceiveTask { get; }
 

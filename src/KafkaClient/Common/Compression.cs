@@ -11,28 +11,23 @@ namespace KafkaClient.Common
     {
         public static CompressionLevel ZipLevel { get; set; } = CompressionLevel.Optimal;
 
-        public static void Zip(byte[] bytes, Stream outStream)
+        public static void Zip(ArraySegment<byte> bytes, Stream outStream)
         {
             using (var gzip = new GZipStream(outStream, ZipLevel, true)) {
-                gzip.Write(bytes, 0, bytes.Length);
+                gzip.Write(bytes.Array, bytes.Offset, bytes.Count);
                 gzip.Flush();
             }
         }
 
         public static Stream Unzip(this Stream source)
         {
-            var destination = new MemoryStream();
-            destination.Write(BitConverter.GetBytes(0), 0, SizeBytes); // placeholder for size
-            using (var gzip = new GZipStream(source, CompressionMode.Decompress, true)) {
-                gzip.CopyTo(destination);
-                gzip.Flush();
+            using (var writer = new KafkaWriter()) {
+                using (var gzip = new GZipStream(source, CompressionMode.Decompress, true)) {
+                    gzip.CopyTo(writer.Stream);
+                    gzip.Flush();
+                }
+                return writer.ToStream();
             }
-            destination.Position = 0;
-            destination.Write(((int)destination.Length - SizeBytes).ToBytes(), 0, SizeBytes); // fill the placeholder
-            destination.Position = 0;
-            return destination;
         }
-
-        private const int SizeBytes = 4;
     }
 }

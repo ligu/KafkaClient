@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
@@ -24,6 +23,13 @@ namespace KafkaClient.Common
             if (value == null) return string.Empty;
 
             return Encoding.UTF8.GetString(value);
+        }
+
+        public static string ToUtf8String(this ArraySegment<byte> value)
+        {
+            if (value.Count == 0) return string.Empty;
+
+            return Encoding.UTF8.GetString(value.Array, value.Offset, value.Count);
         }
 
         public static byte[] ToBytes(this string value)

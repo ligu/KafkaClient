@@ -77,7 +77,7 @@ namespace KafkaClient.Tests.Unit
                 //This message set has a truncated message bytes at the end of it
                 var result = reader.ReadMessages(0);
 
-                var message = Encoding.UTF8.GetString(result.First().Value);
+                var message = result.First().Value.ToUtf8String();
 
                 Assert.That(message, Is.EqualTo("test"));
                 Assert.That(result.Count, Is.EqualTo(529));

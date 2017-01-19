@@ -115,6 +115,21 @@ namespace KafkaClient.Common
             base.Write(value);
         }
 
+        public void Write(ArraySegment<byte> value, bool includePrefix)
+        {
+            if (value.Count == 0) {
+                if (includePrefix) {
+                    Write(-1);
+                }
+                return;
+            }
+
+            if (includePrefix) {
+                Write(value.Count);
+            }
+            base.Write(value.Array, value.Offset, value.Count);
+        }
+
         public override void Write(string value)
         {
             if (value == null) {

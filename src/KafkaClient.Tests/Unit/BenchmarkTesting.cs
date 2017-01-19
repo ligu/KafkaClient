@@ -82,7 +82,7 @@ namespace KafkaClient.Tests.Unit
                                 Level = codec == MessageCodec.CodecNone ? "-" : level.ToString(),
                                 Messages = messages,
                                 MessageSize = messageSize,
-                                Bytes = KafkaEncoder.Encode(new RequestContext(1, version), request).Length
+                                Bytes = KafkaEncoder.Encode(new RequestContext(1, version), request).Count
                             };
                             results.Add(result);
                         }
