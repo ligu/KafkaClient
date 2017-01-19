@@ -75,7 +75,7 @@ namespace KafkaClient.Tests.Unit
         {
             using (var reader = new BigEndianBinaryReader(MessageHelper.FetchResponseMaxBytesOverflow)) {
                 //This message set has a truncated message bytes at the end of it
-                var result = reader.ReadMessages();
+                var result = reader.ReadMessages(0);
 
                 var message = Encoding.UTF8.GetString(result.First().Value);
 
@@ -97,7 +97,7 @@ namespace KafkaClient.Tests.Unit
                 var bytes = writer.ToBytes();
                 using (var reader = new BigEndianBinaryReader(bytes)) {
                     // act/assert
-                    Assert.Throws<BufferUnderRunException>(() => reader.ReadMessages());
+                    Assert.Throws<BufferUnderRunException>(() => reader.ReadMessages(0));
                 }
             }
         }
@@ -116,7 +116,7 @@ namespace KafkaClient.Tests.Unit
 
                 // act/assert
                 using (var reader = new BigEndianBinaryReader(payload)) {
-                    var messages = reader.ReadMessages();
+                    var messages = reader.ReadMessages(0);
                     var actualPayload = messages.First().Value;
 
                     // assert

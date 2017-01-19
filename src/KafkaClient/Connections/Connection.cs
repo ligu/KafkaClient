@@ -90,7 +90,7 @@ namespace KafkaClient.Connections
                     AddToCorrelationMatching(asyncItem);
                 }
 
-                _log.Info(() => LogEvent.Create($"Sending {request.ApiKey} with correlation id {context.CorrelationId} (v {version.GetValueOrDefault()}, {asyncItem.RequestBytes.Length} bytes) to {Endpoint}"));
+                _log.Info(() => LogEvent.Create($"Sending {request.ApiKey} (id {context.CorrelationId}, v {version.GetValueOrDefault()}, {asyncItem.RequestBytes.Length} bytes) to {Endpoint}"));
                 _log.Debug(() => LogEvent.Create($"{request.ApiKey} -----> {Endpoint}\n- Context:{context.ToFormattedString()}\n- Request:{request.ToFormattedString()}"));
 
                 var timer = new Stopwatch();
@@ -368,11 +368,11 @@ namespace KafkaClient.Connections
             while (totalBytesWritten < buffer.Length) {
                 cancellationToken.ThrowIfCancellationRequested();
                 var bytesRemaining = buffer.Length - totalBytesWritten;
-                _log.Debug(() => LogEvent.Create($"Writing ({bytesRemaining}? bytes) with correlation id {correlationId} to {Endpoint}"));
+                _log.Debug(() => LogEvent.Create($"Writing {bytesRemaining}? bytes (id {correlationId}) to {Endpoint}"));
                 _configuration.OnWritingBytes?.Invoke(Endpoint, bytesRemaining);
                 var bytesWritten = await socket.SendAsync(new ArraySegment<byte>(buffer, totalBytesWritten, bytesRemaining), SocketFlags.None).ThrowIfCancellationRequested(cancellationToken).ConfigureAwait(false);
                 _configuration.OnWroteBytes?.Invoke(Endpoint, bytesRemaining, bytesWritten, timer.Elapsed);
-                _log.Debug(() => LogEvent.Create($"Wrote {bytesWritten} bytes with correlation id {correlationId} to {Endpoint}"));
+                _log.Debug(() => LogEvent.Create($"Wrote {bytesWritten} bytes (id {correlationId}) to {Endpoint}"));
                 totalBytesWritten += bytesWritten;
             }
             return totalBytesWritten;
@@ -391,7 +391,7 @@ namespace KafkaClient.Connections
             if (_requestsByCorrelation.TryRemove(correlationId, out asyncItem)) {
                 var requestType = asyncItem.RequestType;
                 var context = asyncItem.Context;
-                _log.Info(() => LogEvent.Create($"Matched {requestType} response with correlation id {correlationId} (v {context.ApiVersion.GetValueOrDefault()}, {payload.Length} bytes) from {Endpoint}"));
+                _log.Info(() => LogEvent.Create($"Matched {requestType} response (id {correlationId}, v {context.ApiVersion.GetValueOrDefault()}, {payload.Length} bytes) from {Endpoint}"));
                 asyncItem.ReceiveTask.SetResult(payload);
             } else {
                 Tuple<ApiKeyRequestType, IRequestContext> requestInfo;
@@ -399,14 +399,14 @@ namespace KafkaClient.Connections
                     var requestType = requestInfo.Item1;
                     var context = requestInfo.Item2;
                     try {
-                        _log.Warn(() => LogEvent.Create($"Unexpected {requestType} response with correlation id {correlationId} ({payload.Length} bytes) from {Endpoint}"));
+                        _log.Warn(() => LogEvent.Create($"Unexpected {requestType} response (id {correlationId}, {payload.Length} bytes) from {Endpoint}"));
                         var result = KafkaEncoder.Decode<IResponse>(context, requestType, payload);
                         _log.Debug(() => LogEvent.Create($"{Endpoint} -----> {requestType} (not in request queue)\n- Context:{context.ToFormattedString()}\n- Response:{result.ToFormattedString()}"));
                     } catch {
                         // ignore, since this is mostly for debugging
                     }
                 } else {
-                    _log.Warn(() => LogEvent.Create($"Unexpected response from {Endpoint} with correlation id {correlationId}"));
+                    _log.Warn(() => LogEvent.Create($"Unexpected response (id {correlationId}) from {Endpoint}"));
                 }
             }
         }
@@ -438,7 +438,7 @@ namespace KafkaClient.Connections
             var correlationId = asyncItem.Context.CorrelationId;
             AsyncItem request;
             if (_requestsByCorrelation.TryRemove(correlationId, out request)) {
-                _log.Info(() => LogEvent.Create($"Removed request {request.RequestType} with correlation id {correlationId} from request queue (timed out)."));
+                _log.Info(() => LogEvent.Create($"Removed request {request.RequestType} (id {correlationId}) from request queue (timed out)."));
                 if (_timedOutRequestsByCorrelation.Count > 100) {
                     _timedOutRequestsByCorrelation.Clear();
                 }

@@ -96,14 +96,15 @@ namespace KafkaClient
         {
             var topic = new FetchRequest.Topic(topicName, partitionId, offset, Configuration.MaxPartitionFetchBytes);
             FetchResponse response = null;
-            for (var attempt = 0; response == null && attempt < 8; attempt++) { // at a (minimum) multiplier of 2, this results in a total factor of 256
+            for (var attempt = 1; response == null && attempt <= 12; attempt++) { // at a (minimum) multiplier of 2, this results in a total factor of 256
                 var request = new FetchRequest(topic, Configuration.MaxFetchServerWait, Configuration.MinFetchBytes, Configuration.MaxFetchBytes);
                 try {
                     response = await Router.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
                 } catch (BufferUnderRunException ex) {
-                    if (!(Configuration.FetchByteMultiplier.GetValueOrDefault() > 1 && topic.MaxBytes > 0)) throw;
-                    Router.Log.Warn(() => LogEvent.Create(ex, $"Retrying Fetch Request with multiplier {Configuration.FetchByteMultiplier}"));
-                    topic = new FetchRequest.Topic(topic.TopicName, topic.PartitionId, topic.Offset, topic.MaxBytes * Configuration.FetchByteMultiplier.GetValueOrDefault());
+                    if (!Configuration.FetchByteMultiplier.HasValue || Configuration.FetchByteMultiplier.GetValueOrDefault() <= 1) throw;
+                    var maxBytes = topic.MaxBytes * Configuration.FetchByteMultiplier.Value;
+                    Router.Log.Warn(() => LogEvent.Create(ex, $"Retrying Fetch Request with multiplier {Math.Pow(Configuration.FetchByteMultiplier.Value, attempt)}, {topic.MaxBytes} -> {maxBytes}"));
+                    topic = new FetchRequest.Topic(topic.TopicName, topic.PartitionId, topic.Offset, maxBytes);
                 }
             }
             return response.Topics.SingleOrDefault()?.Messages?.ToImmutableList() ?? ImmutableList<Message>.Empty;

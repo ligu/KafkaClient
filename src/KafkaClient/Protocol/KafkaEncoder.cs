@@ -525,11 +525,12 @@ namespace KafkaClient.Protocol
         /// </summary>
         /// <param name="reader">The reader</param>
         /// <param name="partitionId">The partitionId messages are being read from.</param>
+        /// <param name="codec">The codec of the containing messageset, if any</param>
         /// <returns>Enumerable representing stream of messages decoded from byte[]</returns>
-        public static IImmutableList<Message> ReadMessages(this IKafkaReader reader, int partitionId = 0)
+        public static IImmutableList<Message> ReadMessages(this IKafkaReader reader, int partitionId, MessageCodec? codec = null)
         {
             var expectedLength = reader.ReadInt32();
-            if (!reader.Available(expectedLength)) throw new BufferUnderRunException($"Message set size of {expectedLength} is not fully available.");
+            if (!reader.Available(expectedLength)) throw new BufferUnderRunException($"Message set size of {expectedLength} is not fully available (codec? {codec}).");
 
             var messages = ImmutableList<Message>.Empty;
             var finalPosition = reader.Position + expectedLength;
@@ -541,12 +542,12 @@ namespace KafkaClient.Protocol
                 var messageSize = reader.ReadInt32();
 
                 // if the stream does not have enough left in the payload, we got only a partial message
-                if (reader.Available(messageSize) == false) throw new BufferUnderRunException($"Message header size of {MessageHeaderSize} is not fully available.");
+                if (reader.Available(messageSize) == false) throw new BufferUnderRunException($"Message header size of {MessageHeaderSize} is not fully available (codec? {codec}).");
 
                 try {
                     messages = messages.AddRange(reader.ReadMessage(messageSize, offset, partitionId));
                 } catch (EndOfStreamException ex) {
-                    throw new BufferUnderRunException($"Message size of {messageSize} is not available.", ex);
+                    throw new BufferUnderRunException($"Message size of {messageSize} is not available (codec? {codec}).", ex);
                 }
             }
             return messages;
@@ -590,7 +591,7 @@ namespace KafkaClient.Protocol
                     var messageLength = reader.ReadInt32();
                     var messageStream = new LimitedReadableStream(reader.Stream, messageLength);
                     using (var gzipReader = new BigEndianBinaryReader(messageStream.Unzip())) {
-                        return gzipReader.ReadMessages(partitionId);
+                        return gzipReader.ReadMessages(partitionId, codec);
                     }
                 }
 

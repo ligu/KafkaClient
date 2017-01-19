@@ -43,16 +43,17 @@ namespace KafkaClient.Tests.Integration
         }
 
         [Test]
-        [TestCase(1, 1, MessageCodec.CodecNone, 70)]
-        [TestCase(1, 1, MessageCodec.CodecGzip, 70)]
-        [TestCase(1000, 50, MessageCodec.CodecNone, 70)]
-        [TestCase(1000, 50, MessageCodec.CodecGzip, 70)]
-        [TestCase(10000, 100, MessageCodec.CodecNone, 850)]
-        [TestCase(10000, 100, MessageCodec.CodecGzip, 850)]
-        [TestCase(100000, 1000, MessageCodec.CodecNone, 8050)]
-        [TestCase(100000, 1000, MessageCodec.CodecGzip, 8050)]
-        public async Task ProducerSpeedLoad(int totalMessages, int batchSize, MessageCodec codec, int timeoutInMs)
+        [TestCase(1, 1, MessageCodec.CodecNone)]
+        [TestCase(1, 1, MessageCodec.CodecGzip)]
+        [TestCase(1000, 50, MessageCodec.CodecNone)]
+        [TestCase(1000, 50, MessageCodec.CodecGzip)]
+        [TestCase(10000, 100, MessageCodec.CodecNone)]
+        [TestCase(10000, 100, MessageCodec.CodecGzip)]
+        [TestCase(100000, 1000, MessageCodec.CodecNone)]
+        [TestCase(100000, 1000, MessageCodec.CodecGzip)]
+        public async Task ProducerSpeedLoad(int totalMessages, int batchSize, MessageCodec codec)
         {
+            int timeoutInMs = Math.Max(100, totalMessages / 20);
             using (var router = new Router(TestConfig.IntegrationUri, log: TestConfig.Log)) {
                 await router.TemporaryTopicAsync(async topicName => {
                     using (var producer = new Producer(router, new ProducerConfiguration(batchSize: totalMessages / 10, batchMaxDelay: TimeSpan.FromMilliseconds(25)))) {
@@ -82,47 +83,47 @@ namespace KafkaClient.Tests.Integration
         }
 
         [Test]
-        [TestCase(1, 1, MessageCodec.CodecNone, 70)]
-        [TestCase(1, 1, MessageCodec.CodecGzip, 70)]
-        [TestCase(1000, 50, MessageCodec.CodecNone, 70)]
-        [TestCase(1000, 50, MessageCodec.CodecGzip, 70)]
-        [TestCase(30000, 100, MessageCodec.CodecNone, 2550)]
-        [TestCase(30000, 100, MessageCodec.CodecGzip, 2550)]
-        [TestCase(50000, 100, MessageCodec.CodecNone, 850)]
-        [TestCase(50000, 100, MessageCodec.CodecGzip, 850)]
-        [TestCase(200000, 1000, MessageCodec.CodecNone, 8050)]
-        [TestCase(200000, 1000, MessageCodec.CodecGzip, 8050)]
-        public async Task ConsumerProducerSpeedUnderLoad(int totalMessages, int batchSize, MessageCodec codec, int timeoutInMs)
+        [TestCase(1, 1)]
+        [TestCase(1000, 50)]
+        [TestCase(50000, 100)]
+        [TestCase(100000, 1000)]
+        [TestCase(500000, 5000)]
+        [TestCase(1000000, 10000)]
+        public async Task ConsumerSpeedUnderLoad(int totalMessages, int batchSize)
         {
+            int timeoutInMs = Math.Max(100, totalMessages / 20);
             using (var router = new Router(TestConfig.IntegrationUri, log: TestConfig.Log)) {
                 await router.TemporaryTopicAsync(async topicName => {
                     using (var producer = new Producer(router, new ProducerConfiguration(batchSize: totalMessages / 10, batchMaxDelay: TimeSpan.FromMilliseconds(25)))) {
                         var offset = await producer.Router.GetTopicOffsetAsync(TestConfig.TopicName(), 0, CancellationToken.None);
 
-                        var stopwatch = new Stopwatch();
-                        stopwatch.Start();
-                        var sendList = new List<Task>(totalMessages);
-                        for (var i = 0; i < totalMessages; i+=batchSize) {
-                            var sendTask = producer.SendMessagesAsync(batchSize.Repeat(x => new Message(x.ToString())), offset.TopicName, offset.PartitionId, new SendMessageConfiguration(codec: codec), CancellationToken.None);
-                            sendList.Add(sendTask);
-                        }
                         var maxTimeToRun = TimeSpan.FromMilliseconds(timeoutInMs);
-                        var doneSend = Task.WhenAll(sendList.ToArray());
-                        await Task.WhenAny(doneSend, Task.Delay(maxTimeToRun));
-                        stopwatch.Stop();
-                        if (!doneSend.IsCompleted) {
-                            var completed = sendList.Count(t => t.IsCompleted);
-                            Assert.Inconclusive($"Only finished sending {completed} of {totalMessages} in {timeoutInMs} ms.");
+                        var stopwatch = new Stopwatch();
+                        var missingMessages = Math.Max(0, totalMessages - (int)offset.Offset);
+                        if (missingMessages > 0) {
+                            stopwatch.Start();
+                            var sendList = new List<Task>(missingMessages);
+                            for (var i = 0; i < missingMessages; i+=batchSize) {
+                                var sendTask = producer.SendMessagesAsync(batchSize.Repeat(x => new Message(x.ToString())), offset.TopicName, offset.PartitionId, new SendMessageConfiguration(codec: MessageCodec.CodecGzip), CancellationToken.None);
+                                sendList.Add(sendTask);
+                            }
+                            var doneSend = Task.WhenAll(sendList.ToArray());
+                            await Task.WhenAny(doneSend, Task.Delay(maxTimeToRun));
+                            stopwatch.Stop();
+                            if (!doneSend.IsCompleted) {
+                                var completed = sendList.Count(t => t.IsCompleted);
+                                Assert.Inconclusive($"Only finished sending {completed} of {missingMessages} in {timeoutInMs} ms.");
+                            }
+                            await doneSend;
+                            TestConfig.Log.Info(() => LogEvent.Create($">> done send, time Milliseconds:{stopwatch.ElapsedMilliseconds}"));
+                            stopwatch.Restart();
                         }
-                        await doneSend;
-                        TestConfig.Log.Info(() => LogEvent.Create($">> done send, time Milliseconds:{stopwatch.ElapsedMilliseconds}"));
-                        stopwatch.Restart();
 
-                        using (var consumer = new Consumer(router, new ConsumerConfiguration(maxServerWait: TimeSpan.Zero))) {
+                        using (var consumer = new Consumer(router, new ConsumerConfiguration(maxServerWait: TimeSpan.Zero, fetchByteMultiplier: 2))) {
                             var fetched = 0;
                             stopwatch.Restart();
                             while (fetched < totalMessages) {
-                                var doneFetch = consumer.FetchBatchAsync(offset.TopicName, offset.PartitionId, offset.Offset + fetched, CancellationToken.None, totalMessages);
+                                var doneFetch = consumer.FetchBatchAsync(offset.TopicName, offset.PartitionId, fetched, CancellationToken.None, totalMessages);
                                 var delay = Task.Delay((int) Math.Max(0, maxTimeToRun.TotalMilliseconds - stopwatch.ElapsedMilliseconds));
                                 await Task.WhenAny(doneFetch, delay);
                                 if (delay.IsCompleted && !doneFetch.IsCompleted) {
@@ -134,7 +135,7 @@ namespace KafkaClient.Tests.Integration
                             stopwatch.Stop();
                             TestConfig.Log.Info(() => LogEvent.Create($">> done Consume, time Milliseconds:{stopwatch.ElapsedMilliseconds}"));
 
-                            Assert.That(fetched, Is.EqualTo(totalMessages));
+                            Assert.That(fetched, Is.AtLeast(totalMessages));
                         }
                     }
                 });
