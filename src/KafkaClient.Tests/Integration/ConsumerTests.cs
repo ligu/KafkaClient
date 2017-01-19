@@ -858,7 +858,7 @@ namespace KafkaClient.Tests.Integration
             }
         }
 
-        [Test]
+        [Test, Explicit]
         public async Task CanConsumeFromMultipleGroups([Values(2)] int members)
         {
             var cancellation = new CancellationTokenSource();

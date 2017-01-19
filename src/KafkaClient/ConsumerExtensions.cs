@@ -64,6 +64,16 @@ namespace KafkaClient
             }
         }
 
+        public static async Task<long> CommitMarkedIgnoringDisposedAsync(this IMessageBatch batch, CancellationToken cancellationToken)
+        {
+            try {
+                return await batch.CommitMarkedAsync(cancellationToken);
+            } catch (ObjectDisposedException) {
+                // ignore
+                return 0;
+            }
+        }
+
         public static Task CommitAsync(this IMessageBatch batch, CancellationToken cancellationToken)
         {
             if (batch.Messages.Count == 0) return Task.FromResult(0);

@@ -42,7 +42,7 @@ namespace KafkaClient
         private readonly TimeSpan _heartbeatTimeout;
 
         private readonly AsyncLock _lock = new AsyncLock();
-        private readonly AsyncManualResetEvent _isAssigned = new AsyncManualResetEvent(false);
+        private readonly AsyncManualResetEvent _isSynced = new AsyncManualResetEvent(false);
         private ImmutableDictionary<string, IMemberMetadata> _memberMetadata = ImmutableDictionary<string, IMemberMetadata>.Empty;
         private IImmutableDictionary<TopicPartition, IMessageBatch> _batches = ImmutableDictionary<TopicPartition, IMessageBatch>.Empty;
         private IMemberAssignment _assignment;
@@ -199,6 +199,7 @@ namespace KafkaClient
 
             IEnumerable<JoinGroupRequest.GroupProtocol> protocols = null;
             using (await _lock.LockAsync(cancellationToken).ConfigureAwait(false)) {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (IsLeader) {
                     protocols = _memberMetadata?.Values.Select(m => new JoinGroupRequest.GroupProtocol(m));
                 }
@@ -234,21 +235,26 @@ namespace KafkaClient
 
         public async Task<ErrorResponseCode> SyncGroupAsync(CancellationToken cancellationToken)
         {
+            if (_disposeCount > 0) throw new ObjectDisposedException($"Member {MemberId} is no longer valid");
+
+            IEnumerable<SyncGroupRequest.GroupAssignment> groupAssignments = null;
             using (await _lock.LockAsync(cancellationToken).ConfigureAwait(false)) {
-                if (_disposeCount > 0) throw new ObjectDisposedException($"Member {MemberId} is no longer valid");
-                await Task.WhenAll(_batches.Values.Select(b => b.CommitMarkedAsync(cancellationToken))).ConfigureAwait(false);
-                IEnumerable<SyncGroupRequest.GroupAssignment> groupAssignments = null;
+                cancellationToken.ThrowIfCancellationRequested();
                 if (IsLeader) {
                     var encoder = _consumer.Encoders[ProtocolType];
                     var assigner = encoder.GetAssignor(_groupProtocol);
                     var assignments = await assigner.AssignMembersAsync(Router, GroupId, GenerationId, _memberMetadata, cancellationToken).ConfigureAwait(false);
                     groupAssignments = assignments.Select(pair => new SyncGroupRequest.GroupAssignment(pair.Key, pair.Value));
                 }
+            }
+            await Task.WhenAll(_batches.Values.Select(b => b.CommitMarkedIgnoringDisposedAsync(cancellationToken))).ConfigureAwait(false);
 
-                var request = new SyncGroupRequest(GroupId, GenerationId, MemberId, groupAssignments);
-                var response = await Router.SyncGroupAsync(request, new RequestContext(protocolType: ProtocolType), Configuration.GroupCoordinationRetry, cancellationToken).ConfigureAwait(false);
-                if (!response.ErrorCode.IsSuccess()) return response.ErrorCode;
+            var request = new SyncGroupRequest(GroupId, GenerationId, MemberId, groupAssignments);
+            var response = await Router.SyncGroupAsync(request, new RequestContext(protocolType: ProtocolType), Configuration.GroupCoordinationRetry, cancellationToken).ConfigureAwait(false);
+            if (!response.ErrorCode.IsSuccess()) return response.ErrorCode;
 
+            using (await _lock.LockAsync(cancellationToken).ConfigureAwait(false)) {
+                cancellationToken.ThrowIfCancellationRequested();
                 _assignment = response.MemberAssignment;
                 var validPartitions = _assignment.PartitionAssignments.ToImmutableHashSet();
                 var invalidPartitions = _batches.Where(pair => !validPartitions.Contains(pair.Key)).ToList();
@@ -256,7 +262,7 @@ namespace KafkaClient
                     invalidPartition.Value.Dispose();
                 }
                 _batches = _batches.RemoveRange(invalidPartitions.Select(pair => pair.Key));
-                _isAssigned.Set();
+                _isSynced.Set();
                 return ErrorResponseCode.None;
             }
         }
@@ -269,6 +275,7 @@ namespace KafkaClient
             // skip multiple calls to dispose
             if (Interlocked.Increment(ref _disposeCount) != 1) return;
 
+            _isSynced.Set(); // in case anyone is waiting
             _disposeToken.Cancel();
             using (await _lock.LockAsync(cancellationToken).ConfigureAwait(false)) {
                 await Task.WhenAll(_batches.Values.Select(b => b.CommitMarkedAsync(cancellationToken))).ConfigureAwait(false);
@@ -302,20 +309,25 @@ namespace KafkaClient
 
         public async Task<IMessageBatch> FetchBatchAsync(CancellationToken cancellationToken, int? batchSize = null)
         {
-            await _isAssigned.WaitAsync(cancellationToken).ConfigureAwait(false);
-            using (await _lock.LockAsync(cancellationToken).ConfigureAwait(false)) {
-                if (_disposeCount > 0) throw new ObjectDisposedException($"Member {MemberId} is no longer valid");
-                if (_assignment == null) return MessageBatch.Empty;
+            await _isSynced.WaitAsync(cancellationToken).ConfigureAwait(false);
+            if (_disposeCount > 0) throw new ObjectDisposedException($"Member {MemberId} is no longer valid");
 
-                foreach (var partition in _assignment.PartitionAssignments) {
-                    if (!_batches.ContainsKey(partition)) {
-                        var batch = await _consumer.FetchBatchAsync(GroupId, MemberId, GenerationId, partition.TopicName, partition.PartitionId, cancellationToken, batchSize).ConfigureAwait(false);
-                        _batches = _batches.Add(partition, batch);
-                        return batch;
-                    }
-                }
+            int generationId;
+            TopicPartition partition;
+            using (await _lock.LockAsync(cancellationToken).ConfigureAwait(false)) {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                generationId = GenerationId;
+                partition = _assignment?.PartitionAssignments.FirstOrDefault(p => !_batches.ContainsKey(p));
             }
-            return MessageBatch.Empty;
+
+            if (partition == null) return MessageBatch.Empty;
+            var batch = await _consumer.FetchBatchAsync(GroupId, MemberId, generationId, partition.TopicName, partition.PartitionId, cancellationToken, batchSize).ConfigureAwait(false);
+
+            using (await _lock.LockAsync(cancellationToken).ConfigureAwait(false)) {
+                _batches = _batches.Add(partition, batch);
+            }
+            return batch;
         }
     }
 }

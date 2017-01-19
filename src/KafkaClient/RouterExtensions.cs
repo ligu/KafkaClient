@@ -21,13 +21,13 @@ namespace KafkaClient
         /// <param name="offsetTime">These are best described by <see cref="OffsetRequest.Topic.Timestamp"/></param>
         /// <param name="cancellationToken"></param>
         /// <param name="retryPolicy"></param>
-        public static async Task<IImmutableList<OffsetResponse.Topic>> GetTopicOffsetsAsync(this IRouter router, string topicName, int maxOffsets, long offsetTime, CancellationToken cancellationToken, IRetry retryPolicy = null)
+        public static async Task<IImmutableList<OffsetResponse.Topic>> GetTopicOffsetsAsync(this IRouter router, string topicName, int maxOffsets, long offsetTime, CancellationToken cancellationToken)
         {
             bool? metadataInvalid = false;
             var offsets = new Dictionary<int, OffsetResponse.Topic>();
             RoutedTopicRequest<OffsetResponse>[] routedTopicRequests = null;
 
-            return await (retryPolicy ?? new Retry(TimeSpan.MaxValue, 3)).AttemptAsync(
+            return await router.Configuration.SendRetry.AttemptAsync(
                 async (attempt, timer) => {
                     metadataInvalid = await router.RefreshTopicMetadataIfInvalidAsync(topicName, metadataInvalid, cancellationToken).ConfigureAwait(false);
 
@@ -123,7 +123,7 @@ namespace KafkaClient
             bool? metadataInvalid = false;
             var brokeredRequest = new RoutedTopicRequest<T>(request, topicName, partitionId, router.Log);
 
-            return await (retryPolicy ?? new Retry(TimeSpan.MaxValue, 3)).AttemptAsync(
+            return await (retryPolicy ?? router.Configuration.SendRetry).AttemptAsync(
                 async (attempt, timer) => {
                     metadataInvalid = await router.RefreshTopicMetadataIfInvalidAsync(topicName, metadataInvalid, cancellationToken).ConfigureAwait(false);
                     await brokeredRequest.SendAsync(router, cancellationToken, context).ConfigureAwait(false);
@@ -152,7 +152,7 @@ namespace KafkaClient
             bool? metadataInvalid = false;
             var brokeredRequest = new RoutedGroupRequest<T>(request, groupId, router.Log);
 
-            return await (retryPolicy ?? new Retry(TimeSpan.MaxValue, 3)).AttemptAsync(
+            return await (retryPolicy ?? router.Configuration.SendRetry).AttemptAsync(
                 async (attempt, timer) => {
                     metadataInvalid = await router.RefreshGroupMetadataIfInvalidAsync(groupId, metadataInvalid, cancellationToken).ConfigureAwait(false);
                     await brokeredRequest.SendAsync(router, cancellationToken, context).ConfigureAwait(false);

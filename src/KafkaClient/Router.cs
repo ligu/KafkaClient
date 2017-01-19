@@ -211,6 +211,7 @@ namespace KafkaClient
         private async Task<IImmutableList<MetadataResponse.Topic>> UpdateTopicMetadataFromServerAsync(IEnumerable<string> topicNames, bool ignoreCache, CancellationToken cancellationToken)
         {
             using (await _connectionLock.LockAsync(cancellationToken).ConfigureAwait(false)) {
+                cancellationToken.ThrowIfCancellationRequested();
                 var cachedResults = new CachedResults<MetadataResponse.Topic>(misses: topicNames);
                 if (!ignoreCache) {
                     cachedResults = CachedResults<MetadataResponse.Topic>.ProduceResults(cachedResults.Misses, topicName => TryGetCachedTopic(topicName, Configuration.CacheExpiration));
@@ -334,6 +335,7 @@ namespace KafkaClient
         private async Task<int> UpdateGroupBrokersFromServerAsync(string groupId, bool ignoreCache, CancellationToken cancellationToken)
         {
             using (await _connectionLock.LockAsync(cancellationToken).ConfigureAwait(false)) {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (!ignoreCache) {
                     var brokerId = TryGetCachedGroupBrokerId(groupId, Configuration.CacheExpiration);
                     if (brokerId.HasValue) return brokerId.Value;
@@ -434,6 +436,7 @@ namespace KafkaClient
         private async Task<IImmutableList<DescribeGroupsResponse.Group>> UpdateGroupMetadataFromServerAsync(IEnumerable<string> groupIds, bool ignoreCache, CancellationToken cancellationToken)
         {
             using (await _groupLock.LockAsync(cancellationToken).ConfigureAwait(false)) {
+                cancellationToken.ThrowIfCancellationRequested();
                 var cachedResults = new CachedResults<DescribeGroupsResponse.Group>(misses: groupIds);
                 if (!ignoreCache) {
                     cachedResults = CachedResults<DescribeGroupsResponse.Group>.ProduceResults(cachedResults.Misses, groupId => TryGetCachedGroup(groupId, Configuration.CacheExpiration));
@@ -466,7 +469,6 @@ namespace KafkaClient
                 _groupCache = groupCache;
             }
         }
-
 
         #endregion
 

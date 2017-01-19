@@ -17,7 +17,7 @@ namespace KafkaClient.Tests.Unit
             using (var server = new FakeTcpServer(TestConfig.Log, serverUri.Port))
             {
                 byte[] received = null;
-                server.OnBytesReceived += data => received = data;
+                server.OnBytesReceived = data => received = data;
 
                 var t1 = new TcpClient();
                 await t1.ConnectAsync(serverUri.Host, serverUri.Port);
@@ -38,21 +38,21 @@ namespace KafkaClient.Tests.Unit
         }
 
         [Test]
-        public void ShouldDisposeEvenWhenTryingToSendWithoutExceptionThrown()
+        public async Task ShouldDisposeEvenWhenTryingToSendWithoutExceptionThrown()
         {
             using (var server = new FakeTcpServer(TestConfig.Log, TestConfig.ServerPort()))
             {
-                server.SendDataAsync("test");
-                Thread.Sleep(500);
+                var send = server.SendDataAsync("test");
+                await Task.Delay(100);
             }
         }
 
         [Test]
-        public void ShouldDisposeWithoutExecptionThrown()
+        public async Task ShouldDisposeWithoutExecptionThrown()
         {
             using (var server = new FakeTcpServer(TestConfig.Log, TestConfig.ServerPort()))
             {
-                Thread.Sleep(500);
+                await Task.Delay(100);
             }
         }
 
@@ -65,7 +65,7 @@ namespace KafkaClient.Tests.Unit
             using (var client = new TcpClient())
             {
                 var send = server.SendDataAsync(testData.ToBytes());
-                Thread.Sleep(1000);
+                await Task.Delay(100);
                 await client.ConnectAsync(serverUri.Host, serverUri.Port);
 
                 var buffer = new byte[4];

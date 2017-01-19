@@ -10,18 +10,6 @@ namespace KafkaClient.Tests
 {
     public static class Extensions
     {
-        /// <summary>
-        /// Mainly used for testing, allows waiting on a single task without throwing exceptions.
-        /// </summary>
-        public static void SafeWait(this Task task, TimeSpan timeout)
-        {
-            try {
-                task.Wait(timeout);
-            } catch {
-                // ignore an exception that happens in this source
-            }
-        }
-
         public static async Task TemporaryTopicAsync(this IRouter router, Func<string, Task> asyncAction, int partitions = 1, [CallerMemberName] string name = null)
         {
             var topicName = TestConfig.TopicName(name);

@@ -14,5 +14,11 @@ namespace KafkaClient
         /// The minimum time to cache metadata (unless explicitly forced to refresh).
         /// </summary>
         TimeSpan CacheExpiration { get; }
+
+        /// <summary>
+        /// Default retry configuration for sending requests.
+        /// </summary>
+        IRetry SendRetry { get; }
+
     }
 }

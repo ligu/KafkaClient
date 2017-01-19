@@ -258,7 +258,7 @@ namespace KafkaClient.Tests.Unit
                 await server.SendDataAsync(firstBytes);
                 await TaskTest.WaitFor(() => bytesRead == firstBytes.Length);
 
-                //Assert.That(mockLog.LogEvents.Count(e => e.Item1 == LogLevel.Warn && e.Item2.Message.StartsWith("Skipping")), Is.EqualTo(0));
+                Assert.That(mockLog.LogEvents.Count(e => e.Item1 == LogLevel.Warn && e.Item2.Message.StartsWith("Skipping")), Is.EqualTo(0));
 
                 server.DropConnection();
 
@@ -289,7 +289,7 @@ namespace KafkaClient.Tests.Unit
             using (var conn = new Connection(endpoint, config, log: mockLog))
             {
                 //send correlation message
-                server.SendDataAsync(CreateCorrelationMessage(correlationId)).Wait(TimeSpan.FromSeconds(5));
+                await server.SendDataAsync(CreateCorrelationMessage(correlationId));
 
                 //wait for connection
                 await TaskTest.WaitFor(() => server.ConnectionEventcount > 0);
@@ -345,7 +345,7 @@ namespace KafkaClient.Tests.Unit
 
                 token.Cancel();
 
-                taskResult.SafeWait(TimeSpan.FromMilliseconds(1000));
+                await Task.WhenAny(taskResult, Task.Delay(500));
 
                 Assert.That(taskResult.IsCanceled, Is.True);
             }
@@ -567,8 +567,8 @@ namespace KafkaClient.Tests.Unit
                 var clientReads = 0;
                 var clientBytesRead = 0;
 
-                server.OnClientConnected += () => Interlocked.Increment(ref serverConnects);
-                server.OnClientDisconnected += () => Interlocked.Increment(ref serverDisconnects);
+                server.OnClientConnected = () => Interlocked.Increment(ref serverConnects);
+                server.OnClientDisconnected = () => Interlocked.Increment(ref serverDisconnects);
                 var config = new ConnectionConfiguration(
                     onDisconnected: (e, exception) => Interlocked.Increment(ref clientDisconnects),
                     onReading:(e, available) => Interlocked.Increment(ref clientReads),
@@ -663,14 +663,13 @@ namespace KafkaClient.Tests.Unit
                 // Starting server to establish connection
                 using (var server = new FakeTcpServer(TestConfig.Log, endpoint.IP.Port))
                 {
-                    server.OnClientConnected += () => Console.WriteLine("Client connected...");
-                    server.OnBytesReceived += b =>
-                    {
+                    server.OnClientConnected = () => Console.WriteLine("Client connected...");
+                    server.OnBytesReceived = b => {
                         var request = KafkaDecoder.DecodeHeader(b);
                         AsyncContext.Run(async () => await server.SendDataAsync(MessageHelper.CreateMetadataResponse(request.CorrelationId, "Test")));
                     };
 
-                    await Task.WhenAny(taskResult, Task.Delay(TimeSpan.FromSeconds(10)));
+                    await Task.WhenAny(taskResult, Task.Delay(TimeSpan.FromSeconds(5)));
 
                     Assert.That(taskResult.IsFaulted, Is.False);
                     Assert.That(taskResult.IsCanceled, Is.False);
@@ -688,7 +687,7 @@ namespace KafkaClient.Tests.Unit
             using (var server = new FakeTcpServer(TestConfig.Log, endpoint.IP.Port))
             using (var conn = new Connection(endpoint, new ConnectionConfiguration(requestTimeout: TimeSpan.FromSeconds(1000), versionSupport: VersionSupport.Kafka10), log: TestConfig.Log))
             {
-                server.OnBytesReceived += data =>
+                server.OnBytesReceived = data =>
                 {
                     context = KafkaDecoder.DecodeHeader(data);
                     var send = server.SendDataAsync(KafkaDecoder.EncodeResponseBytes(context, new FetchResponse()));
@@ -736,7 +735,7 @@ namespace KafkaClient.Tests.Unit
                 const int testData = 99;
                 int result = 0;
 
-                server.OnBytesReceived += data => result = data.ToInt32();
+                server.OnBytesReceived = data => result = data.ToInt32();
 
                 var socket = await conn.ConnectAsync(CancellationToken.None);
                 await conn.WriteBytesAsync(socket, 5, testData.ToBytes(), CancellationToken.None);
@@ -755,7 +754,7 @@ namespace KafkaClient.Tests.Unit
                 const int testData = 99;
                 var results = new List<byte>();
 
-                server.OnBytesReceived += results.AddRange;
+                server.OnBytesReceived = results.AddRange;
 
                 var socket = await conn.ConnectAsync(CancellationToken.None);
                 await Task.WhenAll(conn.WriteBytesAsync(socket, 5, testData.ToBytes(), CancellationToken.None), conn.WriteBytesAsync(socket, 6, testData.ToBytes(), CancellationToken.None));
@@ -776,7 +775,7 @@ namespace KafkaClient.Tests.Unit
             using (var server = new FakeTcpServer(TestConfig.Log, endpoint.IP.Port))
             using (var conn = new ExplicitlyReadingConnection(endpoint, new ConnectionConfiguration(requestTimeout: TimeSpan.FromSeconds(1000), versionSupport: VersionSupport.Kafka10), log: TestConfig.Log))
             {
-                server.OnBytesReceived += data => {
+                server.OnBytesReceived = data => {
                     var d = data.Batch(4).Select(x => x.ToArray().ToInt32());
                     foreach (var item in d) {
                         readOnServer.Add(item);
@@ -819,7 +818,7 @@ namespace KafkaClient.Tests.Unit
             using (var server = new FakeTcpServer(TestConfig.Log, endpoint.IP.Port))
             using (var conn = new ExplicitlyReadingConnection(endpoint, new ConnectionConfiguration(requestTimeout: TimeSpan.FromSeconds(1000), versionSupport: VersionSupport.Kafka10), log: TestConfig.Log))
             {
-                server.OnBytesReceived += data =>
+                server.OnBytesReceived = data =>
                 {
                     var d = data.Batch(4).Select(x => x.ToArray().ToInt32());
                     foreach (var item in d) {

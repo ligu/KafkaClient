@@ -17,7 +17,7 @@ namespace KafkaClient.Tests
         }
 
         // turned down to reduce log noise -- turn up if necessary
-        public static ILog Log = new ConsoleLog(LogLevel.Warn);
+        public static ILog Log = new ConsoleLog(LogLevel.Error);
 
         public static Uri ServerUri([CallerMemberName] string name = null)
         {
@@ -31,5 +31,11 @@ namespace KafkaClient.Tests
 
         //public static Uri IntegrationUri { get; } = new Uri("http://kafka1:9092");
         public static Uri IntegrationUri { get; } = new Uri("http://kafkaclient.westus.cloudapp.azure.com:9092");
+
+        public static KafkaOptions Options { get; } = new KafkaOptions(
+            IntegrationUri,
+            new ConnectionConfiguration(new Retry(TimeSpan.FromSeconds(3), 3)),
+            new RouterConfiguration(new Retry(null, 2)),
+            log: Log);
     }
 }

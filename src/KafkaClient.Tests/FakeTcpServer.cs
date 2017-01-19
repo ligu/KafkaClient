@@ -6,21 +6,20 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Common;
+using Nito.AsyncEx;
 
 namespace KafkaClient.Tests
 {
     public class FakeTcpServer : IDisposable
     {
-        public event Action<byte[]> OnBytesReceived;
-
-        public event Action OnClientConnected;
-
-        public event Action OnClientDisconnected;
+        public Action<byte[]> OnBytesReceived { get; set; }
+        public Action OnClientConnected { get; set; }
+        public Action OnClientDisconnected { get; set; }
 
         private readonly ILog _log;
 
         private TcpClient _client;
-        private readonly SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(0);
+        private readonly AsyncSemaphore _semaphoreSlim = new AsyncSemaphore(0);
         private readonly TcpListener _listener;
         private readonly CancellationTokenSource _disposeToken = new CancellationTokenSource();
         private TaskCompletionSource<bool> _clientConnectedTrigger = new TaskCompletionSource<bool>();
@@ -37,16 +36,6 @@ namespace KafkaClient.Tests
             _listener = new TcpListener(IPAddress.Any, port);
             _listener.Start();
 
-            OnClientConnected += () => {
-                Interlocked.Increment(ref ConnectionEventcount);
-                _clientConnectedTrigger.TrySetResult(true);
-            };
-
-            OnClientDisconnected += () => {
-                Interlocked.Increment(ref DisconnectionEventCount);
-                _clientConnectedTrigger = new TaskCompletionSource<bool>();
-            };
-
             _clientConnectionHandlerTask = Task.Run(StartHandlingClientRequestAsync, _disposeToken.Token);
         }
 
@@ -54,7 +43,7 @@ namespace KafkaClient.Tests
         {
             try {
                 await _semaphoreSlim.WaitAsync();
-                _log.Debug(() => LogEvent.Create($"FAKE Server: writing {data.Length} bytes."));
+                _log.Info(() => LogEvent.Create($"FAKE Server: writing {data.Length} bytes."));
                 await _client.GetStream().WriteAsync(data, 0, data.Length).ConfigureAwait(false);
             } catch (Exception ex) {
                 _log.Error(LogEvent.Create(ex));
@@ -81,11 +70,13 @@ namespace KafkaClient.Tests
 
         private async Task StartHandlingClientRequestAsync()
         {
-            while (_disposeToken.IsCancellationRequested == false) {
+            while (!_disposeToken.IsCancellationRequested) {
                 _log.Info(() => LogEvent.Create("FAKE Server: Accepting clients."));
                 _client = await _listener.AcceptTcpClientAsync();
 
                 _log.Info(() => LogEvent.Create("FAKE Server: Connected client"));
+                _clientConnectedTrigger.TrySetResult(true);
+                Interlocked.Increment(ref ConnectionEventcount);
                 OnClientConnected?.Invoke();
                 _semaphoreSlim.Release();
 
@@ -95,7 +86,7 @@ namespace KafkaClient.Tests
                         var stream = _client.GetStream();
 
                         while (!_disposeToken.IsCancellationRequested) {
-                            var bytesReceived = await stream.ReadAsync(buffer, 0, buffer.Length, _disposeToken.Token);
+                            var bytesReceived = await stream.ReadAsync(buffer, 0, buffer.Length, _disposeToken.Token).ThrowIfCancellationRequested(_disposeToken.Token);
                             if (bytesReceived > 0) {
                                 OnBytesReceived?.Invoke(buffer.Take(bytesReceived).ToArray());
                             }
@@ -105,8 +96,10 @@ namespace KafkaClient.Tests
                     _log.Error(LogEvent.Create(ex, "FAKE Server: Client exception..."));
                 }
 
-                _log.Error(LogEvent.Create("FAKE Server: Client Disconnected."));
-                await _semaphoreSlim.WaitAsync(); //remove the one client
+                _log.Warn(() => LogEvent.Create("FAKE Server: Client Disconnected."));
+                await _semaphoreSlim.WaitAsync(_disposeToken.Token); //remove the one client
+                _clientConnectedTrigger = new TaskCompletionSource<bool>();
+                Interlocked.Increment(ref DisconnectionEventCount);
                 OnClientDisconnected?.Invoke();
             }
         }
@@ -116,7 +109,7 @@ namespace KafkaClient.Tests
             _disposeToken?.Cancel();
 
             using (_disposeToken) {
-                _clientConnectionHandlerTask?.Wait(TimeSpan.FromSeconds(5));
+                _clientConnectionHandlerTask?.Wait(TimeSpan.FromSeconds(1));
 
                 _listener.Stop();
             }
