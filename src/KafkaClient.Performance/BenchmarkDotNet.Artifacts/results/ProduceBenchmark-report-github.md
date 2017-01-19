@@ -1,0 +1,21 @@
+``` ini
+
+BenchmarkDotNet=v0.10.1, OS=Windows
+Processor=?, ProcessorCount=8
+Frequency=2435767 Hz, Resolution=410.5483 ns, Timer=TSC
+dotnet cli version=1.0.0-preview2-1-003177
+  [Host]     : .NET Core 4.6.24628.01, 64bit RyuJITDEBUG
+  DefaultJob : .NET Core 4.6.24628.01, 64bit RyuJIT
+
+
+```
+           Method | Messages | Partitions | Version | MessageVersion |          Mean |     StdDev |    Gen 0 | Allocated |
+----------------- |--------- |----------- |-------- |--------------- |-------------- |----------- |--------- |---------- |
+ **Compression_None** |      **100** |          **1** |       **0** |              **0** |    **84.4806 us** |  **0.8395 us** |   **7.4707** |  **63.72 kB** |
+ Compression_Gzip |      100 |          1 |       0 |              0 |   154.0846 us |  1.1977 us |   7.1289 |  79.04 kB |
+ **Compression_None** |      **100** |          **3** |       **0** |              **0** |   **246.9982 us** |  **0.4505 us** |  **21.8750** | **197.39 kB** |
+ Compression_Gzip |      100 |          3 |       0 |              0 |   476.0468 us |  2.6141 us |  19.9219 |  237.9 kB |
+ **Compression_None** |     **1000** |          **1** |       **0** |              **0** |   **811.3481 us** | **14.3960 us** |  **56.2500** | **606.63 kB** |
+ Compression_Gzip |     1000 |          1 |       0 |              0 | 1,134.1707 us | 10.2500 us |  72.1354 | 666.86 kB |
+ **Compression_None** |     **1000** |          **3** |       **0** |              **0** | **2,531.8049 us** | **28.9481 us** | **190.6250** |   **1.88 MB** |
+ Compression_Gzip |     1000 |          3 |       0 |              0 | 3,396.2586 us |  5.4169 us | 175.0000 |   2.03 MB |
