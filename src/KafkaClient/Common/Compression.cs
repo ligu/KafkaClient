@@ -9,14 +9,11 @@ namespace KafkaClient.Common
     /// </summary>
     public static class Compression
     {
-        public static byte[] Zip(byte[] bytes)
+        public static void Zip(byte[] bytes, Stream outStream)
         {
-            using (var destination = new MemoryStream()) {
-                using (var gzip = new GZipStream(destination, CompressionLevel.Fastest, false)) {
-                    gzip.Write(bytes, 0, bytes.Length);
-                    gzip.Flush();
-                }
-                return destination.ToArray();
+            using (var gzip = new GZipStream(outStream, CompressionLevel.Fastest, true)) {
+                gzip.Write(bytes, 0, bytes.Length);
+                gzip.Flush();
             }
         }
 

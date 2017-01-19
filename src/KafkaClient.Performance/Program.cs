@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Immutable;
-using System.Security.Cryptography;
-using BenchmarkDotNet.Running;
-using KafkaClient.Common;
+﻿using BenchmarkDotNet.Running;
 
 namespace KafkaClient.Performance
 {
@@ -10,7 +6,11 @@ namespace KafkaClient.Performance
     {
         public static void Main(string[] args)
         {
-            var summary = BenchmarkRunner.Run<ProduceBenchmark>();
+            var switcher = new BenchmarkSwitcher(new[] {
+                typeof(ProduceBenchmark),
+                typeof(FetchBenchmark)
+            });
+            switcher.Run(args);
         }
     }
 }

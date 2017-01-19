@@ -113,6 +113,7 @@ namespace KafkaClient.Tests.Unit
             [Values("test", "a really long name, with spaces and punctuation!")] string topicName, 
             [Values(1, 10)] int topicsPerRequest, 
             [Values(1, 5)] int totalPartitions, 
+            [Values(MessageCodec.CodecNone, MessageCodec.CodecGzip)] MessageCodec codec, 
             [Values(
                 ErrorResponseCode.None,
                 ErrorResponseCode.OffsetOutOfRange
@@ -123,7 +124,7 @@ namespace KafkaClient.Tests.Unit
             var topics = new List<FetchResponse.Topic>();
             for (var t = 0; t < topicsPerRequest; t++) {
                 var partitionId = t % totalPartitions;
-                var messages = GenerateMessages(messagesPerSet, (byte) (version >= 2 ? 1 : 0), partitionId);
+                var messages = GenerateMessages(messagesPerSet, (byte) (version >= 2 ? 1 : 0), partitionId, codec);
                 topics.Add(new FetchResponse.Topic(topicName + t, partitionId, _randomizer.Next(), errorCode, messages));
             }
             var response = new FetchResponse(topics, version >= 1 ? TimeSpan.FromMilliseconds(throttleTime) : (TimeSpan?)null);
@@ -822,7 +823,7 @@ namespace KafkaClient.Tests.Unit
             response.AssertCanEncodeDecodeResponse(0);
         }
 
-        private IEnumerable<Message> GenerateMessages(int count, byte version, int partition = 0)
+        private IEnumerable<Message> GenerateMessages(int count, byte version, int partition = 0, MessageCodec codec = MessageCodec.CodecNone)
         {
             var messages = new List<Message>();
             for (var m = 0; m < count; m++) {
@@ -833,7 +834,7 @@ namespace KafkaClient.Tests.Unit
                 }
                 _randomizer.NextBytes(value);
 
-                messages.Add(new Message(value, 0, partitionId: partition, version: version, key: key, timestamp: version > 0 ? DateTimeOffset.UtcNow : (DateTimeOffset?)null));
+                messages.Add(new Message(value, (byte)codec, partitionId: partition, version: version, key: key, timestamp: version > 0 ? DateTimeOffset.UtcNow : (DateTimeOffset?)null));
             }
             return messages;
         }

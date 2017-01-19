@@ -1,15 +1,15 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using KafkaClient.Common;
-using KafkaClient.Protocol;
 
-namespace KafkaClient.Tests
+namespace KafkaClient.Protocol
 {
-    [SuppressMessage("ReSharper", "UnusedParameter.Local")]
-    public static class KafkaDecoder
+    /// <summary>
+    /// Only used by testing and benchmarking code
+    /// </summary>
+    internal static class KafkaDecoder
     {
         public static IRequestContext DecodeHeader(byte[] data)
         {
@@ -468,8 +468,15 @@ namespace KafkaClient.Tests
                 foreach (var partition in partitions) {
                     writer.Write(partition.PartitionId)
                         .Write(partition.ErrorCode)
-                        .Write(partition.HighWaterMark)
-                        .Write(partition.Messages);
+                        .Write(partition.HighWaterMark);
+
+                    if (partition.Messages.Count > 0) {
+                        // assume all are the same codec
+                        var codec = (MessageCodec) (partition.Messages[0].Attribute & Message.AttributeMask);
+                        writer.Write(partition.Messages, codec);
+                    } else {
+                        writer.Write(partition.Messages);
+                    }
                 }
             }
             return true;

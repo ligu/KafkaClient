@@ -105,27 +105,6 @@ namespace KafkaClient.Protocol
             }
         }
 
-        internal class CompressedMessageResult
-        {
-            public int CompressedAmount { get; set; }
-            public Message CompressedMessage { get; set; }
-        }
-
-        private static CompressedMessageResult CreateGzipCompressedMessage(IEnumerable<Message> messages)
-        {
-            using (var writer = new KafkaWriter()) {
-                writer.Write(messages, false);
-                var messageSet = writer.ToBytesNoLength();
-
-                var compressedMessage = new Message(Compression.Zip(messageSet), (byte)MessageCodec.CodecGzip);
-
-                return new CompressedMessageResult {
-                    CompressedAmount = messageSet.Length - compressedMessage.Value.Length,
-                    CompressedMessage = compressedMessage
-                };
-            }
-        }
-
         private const int MessageHeaderSize = 12;
 
         /// <summary>
@@ -137,10 +116,9 @@ namespace KafkaClient.Protocol
         public static IKafkaWriter Write(this IKafkaWriter writer, IEnumerable<Message> messages, bool includeLength = true)
         {
             using (includeLength ? writer.MarkForLength() : Disposable.None) {
-                var offset = 0L;
                 foreach (var message in messages) {
-                    writer.Write(offset) // TODO: should this be incremented? offset++?
-                            .Write(message);
+                    writer.Write(0L)
+                          .Write(message);
                 }
             }
             return writer;
@@ -167,7 +145,7 @@ namespace KafkaClient.Protocol
                         writer.Write(message.Timestamp.GetValueOrDefault(DateTimeOffset.UtcNow).ToUnixTimeMilliseconds());
                     }
                     writer.Write(message.Key)
-                           .Write(message.Value);
+                          .Write(message.Value);
                 }
             }
             return writer;
@@ -206,26 +184,46 @@ namespace KafkaClient.Protocol
                           .Write(payloads.Count)
                           .Write(groupedPayload.Key.PartitionId);
 
-                    switch (groupedPayload.Key.Codec)
-                    {
-                        case MessageCodec.CodecNone:
-                            writer.Write(payloads.SelectMany(x => x.Messages));
-                            break;
-
-                        case MessageCodec.CodecGzip:
-                            var compressedBytes = CreateGzipCompressedMessage(payloads.SelectMany(x => x.Messages));
-                            Interlocked.Add(ref totalCompressedBytes, compressedBytes.CompressedAmount);
-                            writer.Write(new[] { compressedBytes.CompressedMessage });
-                            break;
-
-                        default:
-                            throw new NotSupportedException($"Codec type of {groupedPayload.Key.Codec} is not supported.");
-                    }
+                    var compressedBytes = Write(writer, payloads.SelectMany(x => x.Messages), groupedPayload.Key.Codec);
+                    Interlocked.Add(ref totalCompressedBytes, compressedBytes);
                 }
 
                 var bytes = writer.ToBytes();
                 context.OnProduceRequestMessages?.Invoke(request.Payloads.Sum(_ => _.Messages.Count), bytes.Length, totalCompressedBytes);
                 return bytes;
+            }
+        }
+
+        public static int Write(this IKafkaWriter writer, IEnumerable<Message> messages, MessageCodec codec)
+        {
+            switch (codec) {
+                case MessageCodec.CodecNone:
+                    writer.Write(messages);
+                    return 0;
+
+                case MessageCodec.CodecGzip:
+                    using (var messageWriter = new KafkaWriter()) {
+                        messageWriter.Write(messages, false);
+                        var messageSet = messageWriter.ToBytesNoLength();
+
+                        using (writer.MarkForLength()) {
+                            writer.Write(0L); // offset
+                            using (writer.MarkForLength()) {
+                                using (writer.MarkForCrc()) {
+                                    writer.Write((byte)0) // message version
+                                          .Write((byte)MessageCodec.CodecGzip) // attribute
+                                          .Write((byte[])null); // key
+                                    var initialPosition = writer.Stream.Position;
+                                    Compression.Zip(messageSet, writer.Stream);
+                                    var compressedMessageLength = (int)(writer.Stream.Position - initialPosition);
+                                    return messageSet.Length - compressedMessageLength;
+                                }
+                            }
+                        }
+                    }
+
+                default:
+                    throw new NotSupportedException($"Codec type of {codec} is not supported.");
             }
         }
 
@@ -590,7 +588,7 @@ namespace KafkaClient.Protocol
 
                 case MessageCodec.CodecGzip: {
                     var messageLength = reader.ReadInt32();
-                    var messageStream = new LimitedReadableStream(reader.BaseStream, messageLength);
+                    var messageStream = new LimitedReadableStream(reader.Stream, messageLength);
                     using (var gzipReader = new BigEndianBinaryReader(messageStream.Unzip())) {
                         return gzipReader.ReadMessages(partitionId);
                     }

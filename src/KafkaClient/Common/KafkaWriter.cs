@@ -137,5 +137,7 @@ namespace KafkaClient.Common
         {
             using (_stream) { }
         }
+
+        public Stream Stream => _stream.BaseStream;
     }
 }

@@ -10,3 +10,4 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 [assembly: InternalsVisibleTo("KafkaClient.Tests")]
+[assembly: InternalsVisibleTo("KafkaClient.Performance")]

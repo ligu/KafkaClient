@@ -8,7 +8,7 @@ namespace KafkaClient.Common
         long Length { get; }
         long Position { get; set; }
         bool HasData { get; }
-        Stream BaseStream { get; }
+        Stream Stream { get; }
         bool Available(int dataSize);
 
         bool ReadBoolean();

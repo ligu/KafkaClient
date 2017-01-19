@@ -44,6 +44,7 @@ namespace KafkaClient.Common
         public long Length => BaseStream.Length;
         public long Position { get { return BaseStream.Position; } set { BaseStream.Position = value; } }
         public bool HasData => BaseStream.Position < BaseStream.Length;
+        public Stream Stream => BaseStream;
 
         public bool Available(int dataSize)
         {

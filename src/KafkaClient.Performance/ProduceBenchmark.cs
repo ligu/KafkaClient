@@ -8,7 +8,7 @@ namespace KafkaClient.Performance
 {
     public class ProduceBenchmark
     {
-        [Params(100, 1000)]
+        [Params(100, 1000, 10000)]
         public int Messages { get; set; }
 
         [Params(MessageCodec.CodecNone, MessageCodec.CodecGzip)]

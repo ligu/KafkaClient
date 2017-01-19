@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 
 namespace KafkaClient.Common
 {
@@ -21,5 +22,7 @@ namespace KafkaClient.Common
 
         IDisposable MarkForLength();
         IDisposable MarkForCrc();
+
+        Stream Stream { get; }
     }
 }
