@@ -763,7 +763,7 @@ namespace KafkaClient.Tests.Unit
             }
         }
 
-        [Test]
+        //[Test]
         public async Task AsynchronousWriteAndReadShouldBeConsistent()
         {
             const int requests = 10;
