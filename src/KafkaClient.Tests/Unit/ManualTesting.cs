@@ -1,0 +1,96 @@
+﻿using System;
+using System.Collections.Generic;
+using System.IO.Compression;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+using KafkaClient.Common;
+using KafkaClient.Protocol;
+using NSubstitute.Core;
+using NUnit.Framework;
+
+namespace KafkaClient.Tests.Unit
+{
+    [Explicit("Used for benchmarking")]
+    [TestFixture]
+    internal class BenchmarkTesting
+    {
+        [Test]
+        public void ProduceSize()
+        {
+            int partitions = 1;
+            short version = 0;
+            byte messageVersion = 0;
+
+            var results = new List<object>();
+            foreach (var codec in new[] { MessageCodec.CodecNone, MessageCodec.CodecGzip }) {
+                foreach (var messages in new[] { 100, 10000 }) {
+                    foreach (var messageSize in new[] { 1, 1000 }) {
+                        foreach (var level in new[] { CompressionLevel.Fastest, CompressionLevel.Optimal }) {
+                            Compression.ZipLevel = level;
+                            var request = new ProduceRequest(
+                                        Enumerable.Range(1, partitions)
+                                                  .Select(partitionId => new ProduceRequest.Payload(
+                                                      "topic", 
+                                                      partitionId, 
+                                                      Enumerable.Range(1, messages)
+                                                                .Select(i => new Message(GenerateMessageBytes(messageSize), (byte) codec, version: messageVersion)), 
+                                                      codec)));
+
+                            var result = new {
+                                Codec = codec.ToString(),
+                                Level = codec == MessageCodec.CodecNone ? "-" : level.ToString(),
+                                Messages = messages,
+                                MessageSize = messageSize,
+                                Bytes = KafkaEncoder.Encode(new RequestContext(1, version), request).Length
+                            };
+                            results.Add(result);
+                        }
+                    }
+                }
+            }
+
+            WriteResults(results);
+        }
+
+        private byte[] GenerateMessageBytes(int messageSize)
+        {
+            var buffer = new byte[messageSize];
+            new Random(42).NextBytes(buffer);
+            return buffer;
+        }
+
+        private void WriteResults(List<object> results)
+        {
+            var output = new List<Tuple<string, List<string>, int>>();
+            if (results == null || results.Count == 0) return;
+            var type = results[0].GetType();
+            foreach (var p in type.GetTypeInfo().GetRuntimeProperties()) {
+                var values = results.Select(result => p.GetValue(result).ToString()).ToList();
+                output.Add(new Tuple<string, List<string>, int>(p.Name, values, Math.Max(p.Name.Length, values.Select(v => v.Length).Max())));
+            }
+
+            Console.WriteLine(FormatRow(output.Select(r => new Tuple<string, int>(r.Item1, r.Item3))));
+            Console.WriteLine(FormatRow(output.Select(r => new Tuple<string, int>("", r.Item3)), '-'));
+            for (var i = 0; i < results.Count; i++) {
+                Console.WriteLine(FormatRow(output.Select(r => new Tuple<string, int>(r.Item2[i], r.Item3))));
+            }
+        }
+
+        private string FormatRow(IEnumerable<Tuple<string, int>> values, char padding = ' ')
+        {
+            var buffer = new StringBuilder();
+            foreach (var value in values) {
+                if (buffer.Length == 0) {
+                    buffer.Append(padding)
+                          .Append(value.Item1.PadRight(value.Item2, padding));
+                } else {
+                    buffer.Append(padding)
+                          .Append(value.Item1.PadLeft(value.Item2, padding));
+                }
+                buffer.Append(" |");
+            }
+            return buffer.ToString();
+        }
+    }
+}

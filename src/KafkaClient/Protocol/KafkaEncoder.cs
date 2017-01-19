@@ -206,17 +206,19 @@ namespace KafkaClient.Protocol
                         messageWriter.Write(messages, false);
                         var messageSet = messageWriter.ToBytesNoLength();
 
-                        using (writer.MarkForLength()) {
+                        using (writer.MarkForLength()) { // messageset
                             writer.Write(0L); // offset
-                            using (writer.MarkForLength()) {
+                            using (writer.MarkForLength()) { // message
                                 using (writer.MarkForCrc()) {
                                     writer.Write((byte)0) // message version
                                           .Write((byte)MessageCodec.CodecGzip) // attribute
                                           .Write((byte[])null); // key
-                                    var initialPosition = writer.Stream.Position;
-                                    Compression.Zip(messageSet, writer.Stream);
-                                    var compressedMessageLength = (int)(writer.Stream.Position - initialPosition);
-                                    return messageSet.Length - compressedMessageLength;
+                                    using (writer.MarkForLength()) { // value
+                                        var initialPosition = writer.Stream.Position;
+                                        Compression.Zip(messageSet, writer.Stream);
+                                        var compressedMessageLength = (int)(writer.Stream.Position - initialPosition);
+                                        return messageSet.Length - compressedMessageLength;
+                                    }
                                 }
                             }
                         }
