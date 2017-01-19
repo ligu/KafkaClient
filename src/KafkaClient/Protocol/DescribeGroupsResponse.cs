@@ -2,8 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using KafkaClient.Assignment;
 using KafkaClient.Common;
-using KafkaClient.Protocol.Types;
 
 namespace KafkaClient.Protocol
 {
@@ -87,6 +87,77 @@ namespace KafkaClient.Protocol
             public ErrorResponseCode ErrorCode { get; }
             public string GroupId { get; }
 
+            /// <summary>
+            /// State machine for Coordinator
+            /// 
+            /// See https://cwiki.apache.org/confluence/display/KAFKA/Kafka+Client-side+Assignment+Proposal
+            /// </summary>
+            /// <remarks>
+            ///               +----------------------------------+
+            ///               |             [Down]               |
+            ///           +---> There are no active members and  |
+            ///           |   | group state has been cleaned up. |
+            ///           |   +----------------+-----------------+
+            ///  Timeout  |                    |
+            ///  expires  |                    | JoinGroup/Heartbeat
+            ///  with     |                    | received
+            ///  no       |                    v
+            ///  group    |   +----------------+-----------------+
+            ///  activity |   |           [Initialize]           | 
+            ///           |   | The coordinator reads group data |
+            ///           |   | in order to transition groups    +---v JoinGroup/Heartbeat  
+            ///           |   | from failed coordinators. Any    |   | return               
+            ///           |   | heartbeat or join group requests |   | coordinator not ready
+            ///           |   | are returned with an error       +---v                      
+            ///           |   | indicating that the coordinator  |    
+            ///           |   | is not ready yet.                |
+            ///           |   +----------------+-----------------+
+            ///           |                    |
+            ///           |                    | After reading
+            ///           |                    | group state
+            ///           |                    v
+            ///           |   +----------------+-----------------+
+            ///           |   |             [Stable]             |
+            ///           |   | The coordinator either has an    |
+            ///           +---+ active generation or has no      +---v 
+            ///               | members and is awaiting the first|   | Heartbeat/SyncGroup
+            ///               | JoinGroup. Heartbeats are        |   | from
+            ///               | accepted from members in this    |   | active generation
+            ///           +---> state and are used to keep group +---v
+            ///           |   | members active or to indicate    |
+            ///           |   | that they need to join the group |
+            ///           |   +----------------+-----------------+
+            ///           |                    |
+            ///           |                    | JoinGroup
+            ///           |                    | received
+            ///           |                    v
+            ///           |   +----------------+-----------------+
+            ///           |   |            [Joining]             |
+            ///           |   | The coordinator has received a   |
+            ///           |   | JoinGroup request from at least  |
+            ///           |   | one member and is awaiting       |
+            ///           |   | JoinGroup requests from the rest |
+            ///           |   | of the group. Heartbeats or      |
+            ///           |   | SyncGroup requests in this state |
+            ///           |   | return an error indicating that  |
+            ///           |   | a rebalance is in progress.      |
+            /// Leader    |   +----------------+-----------------+
+            /// SyncGroup |                    |
+            /// or        |                    | JoinGroup received
+            /// session   |                    | from all members
+            /// timeout   |                    v
+            ///           |   +----------------+-----------------+
+            ///           |   |            [AwaitSync]           |
+            ///           |   | The join group phase is complete |
+            ///           |   | (all expected group members have |
+            ///           |   | sent JoinGroup requests) and the |
+            ///           +---+ coordinator is awaiting group    |
+            ///               | state from the leader. Unexpected|
+            ///               | coordinator requests return an   |
+            ///               | error indicating that a rebalance|
+            ///               | is in progress.                  |
+            ///               +----------------------------------+
+            /// </remarks>
             public static class States
             {
                 public const string Dead = "Dead";
@@ -213,9 +284,9 @@ namespace KafkaClient.Protocol
             {
                 if (ReferenceEquals(null, other)) return false;
                 if (ReferenceEquals(this, other)) return true;
-                return String.Equals(MemberId, (string) other.MemberId) 
-                    && String.Equals(ClientId, (string) other.ClientId) 
-                    && String.Equals(ClientHost, (string) other.ClientHost) 
+                return string.Equals(MemberId, other.MemberId) 
+                    && string.Equals(ClientId, other.ClientId) 
+                    && string.Equals(ClientHost, other.ClientHost) 
                     && Equals(MemberMetadata, other.MemberMetadata) 
                     && Equals(MemberAssignment, other.MemberAssignment);
             }

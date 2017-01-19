@@ -5,9 +5,9 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using KafkaClient.Assignment;
 using KafkaClient.Common;
 using KafkaClient.Connections;
-using KafkaClient.Protocol.Types;
 
 namespace KafkaClient.Protocol
 {
@@ -16,8 +16,10 @@ namespace KafkaClient.Protocol
         public static Exception ExtractExceptions<TResponse>(this IRequest<TResponse> request, TResponse response, Endpoint endpoint = null) where TResponse : IResponse
         {
             var exceptions = new List<Exception>();
-            foreach (var errorCode in response.Errors.Where(e => e != ErrorResponseCode.None)) {
-                exceptions.Add(ExtractException(request, errorCode, endpoint));
+            if (response != null) {
+                foreach (var errorCode in response.Errors.Where(e => e != ErrorResponseCode.None)) {
+                    exceptions.Add(ExtractException(request, errorCode, endpoint));
+                }
             }
             if (exceptions.Count == 0) return new RequestException(request.ApiKey, ErrorResponseCode.None) { Endpoint = endpoint };
             if (exceptions.Count == 1) return exceptions[0];
@@ -41,21 +43,9 @@ namespace KafkaClient.Protocol
             return null;
         } 
 
-        internal static readonly DateTime UnixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-
-        public static long? ToUnixEpochMilliseconds(this DateTime? pointInTime)
+        public static long? ToUnixTimeMilliseconds(this DateTimeOffset? pointInTime)
         {
-            return pointInTime?.ToUnixEpochMilliseconds();
-        }
-
-        public static long ToUnixEpochMilliseconds(this DateTime pointInTime)
-        {
-            return pointInTime > UnixEpoch ? (long)(pointInTime - UnixEpoch).TotalMilliseconds : 0L;
-        }
-
-        public static DateTime FromUnixEpochMilliseconds(this long milliseconds)
-        {
-            return UnixEpoch.AddMilliseconds(milliseconds);
+            return pointInTime?.ToUnixTimeMilliseconds();
         }
 
         public static bool IsSuccess(this ErrorResponseCode code)
@@ -94,88 +84,76 @@ namespace KafkaClient.Protocol
 
         public static string ToFormattedString(this object o)
         {
-            return new StringBuilder().AppendWithIndent(o, "").ToString();
+            return new StringBuilder().AppendObject(o).ToString();
         }
 
-        private static StringBuilder AppendWithIndent(this StringBuilder buffer, object o, string indent)
+        private static StringBuilder AppendWithSeparator(this StringBuilder buffer, IEnumerable<Action<StringBuilder>> things, string separator = ",")
         {
-            foreach (var property in o.GetType().GetRuntimeProperties().Where(p => p.CanRead && p.GetIndexParameters().Length <= 1)) {
-                buffer.Append($"{indent}{property.Name}: ").AppendValueWithIndent(property.GetValue(o), indent);
-                buffer.AppendLine();
+            var needsSeparator = false;
+            foreach (var thing in things) {
+                if (needsSeparator) {
+                    buffer.Append(separator);
+                }
+                thing(buffer);
+                needsSeparator = true;
             }
             return buffer;
         }
 
-        /// <summary>
-        /// Enumerables should be surrounded by [] and end with a newline
-        /// Strings should be surrounded by ""
-        /// Nulls are explicit null
-        /// Classes are indented, with properties on a new line
-        /// Everything else is separated by a single space
-        /// </summary>
-        private static bool AppendValueWithIndent(this StringBuilder buffer, object value, string indent, bool isInline = true)
+        private static StringBuilder AppendObject(this StringBuilder buffer, object o)
+        {
+            var properties = o.GetType().GetRuntimeProperties().Where(p => p.CanRead && p.GetIndexParameters().Length <= 1);
+            var writers = properties.Select<PropertyInfo, Action<StringBuilder>>(property => b => b.Append(property.Name).Append(":").AppendValue(property.GetValue(o)));
+            return buffer.Append("{").AppendWithSeparator(writers).Append("}");
+        }
+
+        private static void AppendValue(this StringBuilder buffer, object value)
         {
             if (value == null) {
-                buffer.Append("null ");
-                return false;
+                buffer.Append("null");
+                return;
             }
-
-            var stringValue = value as string;
-            if (stringValue != null) {
-                buffer.Append($"\"{stringValue}\" ");
-                return false;
+            if (value is string) {
+                buffer.Append($"'{value}'");
+                return;
             }
 
             var bytes = value as byte[];
             if (bytes != null) {
-                buffer.Append("[ ... ]");
-                return false;
+                if (bytes.Length == 0) {
+                    buffer.Append("[]");
+                } else {
+                    buffer.Append("{length:").Append(bytes.Length).Append("}");
+                }
+                return;
             }
 
             var enumerable = value as IEnumerable;
             if (enumerable != null) {
-                buffer.Append("[ ");
-                var requiresNewLine = false;
-                foreach (var inner in enumerable) {
-                    if (requiresNewLine) {
-                        buffer.AppendLine();
-                    }
-                    requiresNewLine = buffer.AppendValueWithIndent(inner, $"{indent}  ", !requiresNewLine) || requiresNewLine;
-                }
-                if (requiresNewLine) {
-                    buffer.Append(indent);
-                }
-                buffer.Append("]");
-                return false;
+                buffer.Append("[").AppendWithSeparator(enumerable.Cast<object>().Select<object, Action<StringBuilder>>(o => b => b.AppendValue(o))).Append("]");
+            } else if (value.GetType().GetTypeInfo().IsClass) {
+                buffer.AppendObject(value);
+            } else {
+                buffer.Append(value);
             }
-
-            if (value.GetType().GetTypeInfo().IsClass) {
-                if (isInline) {
-                    buffer.AppendLine();
-                }
-                buffer.AppendWithIndent(value, $"{indent}");
-                return true;
-            }
-            buffer.Append(value).Append(" ");
-            return false;
         }
 
-        public static IProtocolTypeEncoder GetEncoder(this IRequestContext context, string protocolType = null)
+        public static IMembershipEncoder GetEncoder(this IRequestContext context, string protocolType = null)
         {
             var type = protocolType ?? context.ProtocolType;
-            IProtocolTypeEncoder encoder;
-            if (type != null && context.Encoders.TryGetValue(type, out encoder) && encoder != null) return encoder;
+            IMembershipEncoder encoder;
+            if (type != null && context.Encoders != null && context.Encoders.TryGetValue(type, out encoder) && encoder != null) return encoder;
 
-            return new ProtocolTypeEncoder();
+            throw new ArgumentOutOfRangeException(nameof(protocolType), $"Unknown protocol type {protocolType}");
         }
 
-        public static IKafkaWriter Write(this IKafkaWriter writer, IMemberMetadata metadata, IProtocolTypeEncoder encoder)
+        public static IKafkaWriter Write(this IKafkaWriter writer, IMemberMetadata metadata, IMembershipEncoder encoder)
         {
             encoder.EncodeMetadata(writer, metadata);
             return writer;
         }
 
-        public static IKafkaWriter Write(this IKafkaWriter writer, IMemberAssignment assignment, IProtocolTypeEncoder encoder)
+        public static IKafkaWriter Write(this IKafkaWriter writer, IMemberAssignment assignment, IMembershipEncoder encoder)
         {
             encoder.EncodeAssignment(writer, assignment);
             return writer;

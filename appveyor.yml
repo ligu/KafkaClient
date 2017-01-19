@@ -1,14 +1,21 @@
-version: 1.0.{build}
+version: 0.2.{build}
+skip_branch_with_pr: true
 os: Visual Studio 2015
 
 before_build:
   - cmd: dotnet restore
 
 build_script:
-  - cmd: dotnet build -c Release src\KafkaClient --no-dependencies --no-incremental
+  - cmd: dotnet build -c Release src\KafkaClient --no-dependencies --no-incremental --version-suffix %APPVEYOR_BUILD_NUMBER%
+
+after_build:
+  - cmd: dotnet pack -c Release src\KafkaClient --version-suffix beta -o artifacts
  
 test_script:
-  - cmd: dotnet test src\KafkaClient.Tests --where "cat == Unit || cat == Integration"
+  - cmd: dotnet test src\KafkaClient.Tests --where "cat != Load"
+
+artifacts:
+- path: artifacts\**\*.*
 
 notifications:
 - provider: Email

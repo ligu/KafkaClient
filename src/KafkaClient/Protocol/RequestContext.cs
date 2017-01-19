@@ -1,6 +1,5 @@
 using System.Collections.Immutable;
-using KafkaClient.Connections;
-using KafkaClient.Protocol.Types;
+using KafkaClient.Assignment;
 using KafkaClient.Telemetry;
 
 namespace KafkaClient.Protocol
@@ -9,12 +8,17 @@ namespace KafkaClient.Protocol
     {
         public static string DefaultClientId = "Net";
 
-        public RequestContext(int? correlationId = null, short? version = null, string clientId = null, IImmutableDictionary<string, IProtocolTypeEncoder> encoders = null, string protocolType = null, ProduceRequestMessages onProduceRequestMessages = null)
+        public static RequestContext Copy(IRequestContext original, int correlationId, short? version = null, string clientId = null, IImmutableDictionary<string, IMembershipEncoder> encoders = null, string protocolType = null, ProduceRequestMessages onProduceRequestMessages = null)
+        {
+            return new RequestContext(correlationId, original?.ApiVersion ?? version, original?.ClientId ?? clientId, original?.Encoders ?? encoders, original?.ProtocolType ?? protocolType, original?.OnProduceRequestMessages ?? onProduceRequestMessages);
+        }
+
+        public RequestContext(int? correlationId = null, short? version = null, string clientId = null, IImmutableDictionary<string, IMembershipEncoder> encoders = null, string protocolType = null, ProduceRequestMessages onProduceRequestMessages = null)
         {
             CorrelationId = correlationId.GetValueOrDefault(1);
             ApiVersion = version;
             ClientId = clientId ?? DefaultClientId;
-            Encoders = encoders ?? ImmutableDictionary<string, IProtocolTypeEncoder>.Empty;
+            Encoders = encoders;
             ProtocolType = protocolType;
             OnProduceRequestMessages = onProduceRequestMessages;
         }
@@ -38,7 +42,7 @@ namespace KafkaClient.Protocol
         public short? ApiVersion { get; }
 
         /// <inheritdoc />
-        public IImmutableDictionary<string, IProtocolTypeEncoder> Encoders { get; }
+        public IImmutableDictionary<string, IMembershipEncoder> Encoders { get; }
 
         /// <inheritdoc />
         public string ProtocolType { get; }

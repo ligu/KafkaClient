@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading;
 using System.Threading.Tasks;
@@ -6,7 +7,7 @@ using KafkaClient.Protocol;
 
 namespace KafkaClient
 {
-    public interface IProducer : IKafkaClient
+    public interface IProducer : IDisposable
     {
         /// <summary>
         /// Send messages to the given topic.

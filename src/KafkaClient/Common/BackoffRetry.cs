@@ -20,7 +20,7 @@ namespace KafkaClient.Common
         {
             if (timeTaken > Timeout) return null;
 
-            double delayMilliseconds = 0;
+            double delayMilliseconds;
             if (_isLinear) {
                 // multiplied backoff
                 delayMilliseconds = _delay.TotalMilliseconds*(attempt + 1);

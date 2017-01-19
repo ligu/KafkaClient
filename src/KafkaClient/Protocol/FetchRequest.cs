@@ -127,7 +127,7 @@ namespace KafkaClient.Protocol
                 : base(topicName, partitionId)
             {
                 Offset = offset;
-                MaxBytes = maxBytes.GetValueOrDefault(FetchRequest.DefaultMinBlockingByteBufferSize * 8);
+                MaxBytes = maxBytes.GetValueOrDefault(DefaultMinBlockingByteBufferSize * 8);
             }
 
             /// <summary>

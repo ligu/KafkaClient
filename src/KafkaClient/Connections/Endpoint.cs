@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.Sockets;
 using KafkaClient.Common;
@@ -17,7 +16,6 @@ namespace KafkaClient.Connections
         }
 
         public Uri ServerUri { get; }
-        [SuppressMessage("ReSharper", "InconsistentNaming")]
         public IPEndPoint IP { get; }
 
         #region Equality

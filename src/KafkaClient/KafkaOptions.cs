@@ -10,7 +10,7 @@ namespace KafkaClient
     {
         public KafkaOptions(IEnumerable<Uri> kafkaServerUris = null, 
             IConnectionConfiguration connectionConfiguration = null, 
-            ICacheConfiguration cacheConfiguration = null,
+            IRouterConfiguration routerConfiguration = null,
             IConnectionFactory connectionFactory = null,
             IPartitionSelector partitionSelector = null,
             IProducerConfiguration producerConfiguration = null, 
@@ -18,7 +18,7 @@ namespace KafkaClient
             ILog log = null)
         {
             ServerUris = ImmutableList<Uri>.Empty.AddNotNullRange(kafkaServerUris);
-            CacheConfiguration = cacheConfiguration ?? new CacheConfiguration();
+            RouterConfiguration = routerConfiguration ?? new RouterConfiguration();
             ConnectionConfiguration = connectionConfiguration ?? new ConnectionConfiguration();
             ConnectionFactory = connectionFactory ?? new ConnectionFactory();
             PartitionSelector = partitionSelector ?? new PartitionSelector();
@@ -29,13 +29,13 @@ namespace KafkaClient
 
         public KafkaOptions(Uri kafkaServerUri = null, 
             IConnectionConfiguration connectionConfiguration = null, 
-            ICacheConfiguration cacheConfiguration = null,
+            IRouterConfiguration routerConfiguration = null,
             IConnectionFactory connectionFactory = null,
             IPartitionSelector partitionSelector = null,
             IProducerConfiguration producerConfiguration = null, 
             IConsumerConfiguration consumerConfiguration = null, 
             ILog log = null)
-            : this (ImmutableList<Uri>.Empty.AddNotNull(kafkaServerUri), connectionConfiguration, cacheConfiguration, connectionFactory, partitionSelector, producerConfiguration, consumerConfiguration, log)
+            : this (ImmutableList<Uri>.Empty.AddNotNull(kafkaServerUri), connectionConfiguration, routerConfiguration, connectionFactory, partitionSelector, producerConfiguration, consumerConfiguration, log)
         {
         }
 
@@ -52,7 +52,7 @@ namespace KafkaClient
         /// <summary>
         /// Cache expiry and retry settings.
         /// </summary>
-        public ICacheConfiguration CacheConfiguration { get; }
+        public IRouterConfiguration RouterConfiguration { get; }
 
         /// <summary>
         /// Provides a factory for creating new kafka connections.

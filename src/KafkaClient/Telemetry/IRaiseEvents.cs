@@ -1,19 +1,20 @@
 ﻿using System;
 using KafkaClient.Connections;
+using KafkaClient.Protocol;
 
 namespace KafkaClient.Telemetry
 {
     public delegate void ProduceRequestMessages(int messages, int requestBytes, int compressionDiffBytes);
     public delegate void ConnectError(Endpoint endpoint, Exception exception);
     public delegate void Connecting(Endpoint endpoint, int attempt, TimeSpan elapsed);
-    public delegate void Writing(Endpoint endpoint, DataPayload payload);
-    public delegate void WriteSuccess(Endpoint endpoint, DataPayload payload, TimeSpan elapsed);
-    public delegate void WriteError(Endpoint endpoint, DataPayload payload, TimeSpan elapsed, Exception exception);
-    public delegate void Reading(Endpoint endpoint, int size);
-    public delegate void ReadingChunk(Endpoint endpoint, int size, int read, TimeSpan elapsed);
-    public delegate void ReadChunk(Endpoint endpoint, int size, int remaining, int read, TimeSpan elapsed);
-    public delegate void Read(Endpoint endpoint, byte[] buffer, TimeSpan elapsed);
-    public delegate void ReadError(Endpoint endpoint, int size, TimeSpan elapsed, Exception exception);
+    public delegate void Writing(Endpoint endpoint, ApiKeyRequestType type);
+    public delegate void WriteSuccess(Endpoint endpoint, ApiKeyRequestType type, int bytesWritten, TimeSpan elapsed);
+    public delegate void WriteError(Endpoint endpoint, ApiKeyRequestType type, TimeSpan elapsed, Exception exception);
+    public delegate void Reading(Endpoint endpoint, int bytesAvailable);
+    public delegate void ReadSuccess(Endpoint endpoint, int bytesRead, TimeSpan elapsed);
+    public delegate void ReadError(Endpoint endpoint, int bytesAvailable, TimeSpan elapsed, Exception exception);
+    public delegate void StartingBytes(Endpoint endpoint, int bytesAvailable);
+    public delegate void FinishedBytes(Endpoint endpoint, int bytesAttempted, int bytesActual, TimeSpan elapsed);
 
     public interface IRaiseEvents
     {
@@ -33,14 +34,19 @@ namespace KafkaClient.Telemetry
         Connecting OnConnected { get; } 
 
         /// <summary>
-        /// Triggered after enqueing async write task for writing to the tcp stream.
-        /// </summary>
-        Writing OnWriteEnqueued { get; } 
-
-        /// <summary>
         /// Triggered when writing to the tcp stream.
         /// </summary>
         Writing OnWriting { get; } 
+
+        /// <summary>
+        /// Triggered when writing a chunk of bytes to the tcp stream.
+        /// </summary>
+        StartingBytes OnWritingBytes { get; } 
+
+        /// <summary>
+        /// Triggered after successfully writing a chunk of bytes to the tcp stream.
+        /// </summary>
+        FinishedBytes OnWroteBytes { get; } 
 
         /// <summary>
         /// Triggered after having successfully written to the tcp stream.
@@ -60,17 +66,17 @@ namespace KafkaClient.Telemetry
         /// <summary>
         /// Triggered when reading a chunk of bytes from the tcp stream.
         /// </summary>
-        ReadingChunk OnReadingChunk { get; } 
+        StartingBytes OnReadingBytes { get; } 
 
         /// <summary>
         /// Triggered after successfully reading a chunk of bytes from the tcp stream.
         /// </summary>
-        ReadChunk OnReadChunk { get; } 
+        FinishedBytes OnReadBytes { get; } 
 
         /// <summary>
         /// Triggered after having successfully read a message's bytes from the tcp stream.
         /// </summary>
-        Read OnRead { get; } 
+        ReadSuccess OnRead { get; } 
 
         /// <summary>
         /// Triggered after failing to read from the tcp stream.

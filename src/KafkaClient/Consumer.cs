@@ -1,75 +1,206 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using KafkaClient.Assignment;
 using KafkaClient.Common;
+using KafkaClient.Connections;
 using KafkaClient.Protocol;
 
 namespace KafkaClient
 {
-    /// <summary>
-    /// Simple consumer with access to a single topic
-    /// </summary>
-    public class Consumer : IConsumer, IDisposable
+    public class Consumer : IConsumer
     {
-        private readonly IBrokerRouter _brokerRouter;
         private readonly bool _leaveRouterOpen;
         private readonly CancellationTokenSource _stopToken;
 
         public Consumer(KafkaOptions options)
-            : this(new BrokerRouter(options), options.ConsumerConfiguration, false)
+            : this(new Router(options), options.ConsumerConfiguration, options.ConnectionConfiguration.Encoders, false)
         {
         }
 
-        public Consumer(IBrokerRouter brokerRouter, IConsumerConfiguration configuration = null, bool leaveRouterOpen = true)
+        public Consumer(IRouter router, IConsumerConfiguration configuration = null, IImmutableDictionary<string, IMembershipEncoder> encoders = null, bool leaveRouterOpen = true)
         {
             _stopToken = new CancellationTokenSource();
-            _brokerRouter = brokerRouter;
+            Router = router;
             _leaveRouterOpen = leaveRouterOpen;
             Configuration = configuration ?? new ConsumerConfiguration();
-            _localMessages = ImmutableList<Message>.Empty;
+            Encoders = encoders ?? ConnectionConfiguration.Defaults.Encoders();
         }
+
+        public IImmutableDictionary<string, IMembershipEncoder> Encoders { get; }
 
         public IConsumerConfiguration Configuration { get; }
 
-        private ImmutableList<Message> _localMessages;
+        public IRouter Router { get; }
 
         /// <inheritdoc />
-        public async Task<IImmutableList<Message>> FetchMessagesAsync(string topicName, int partitionId, long offset, int maxCount, CancellationToken cancellationToken)
+        public async Task<IMessageBatch> FetchBatchAsync(string topicName, int partitionId, long offset, CancellationToken cancellationToken, int? batchSize = null)
         {
             if (offset < 0) throw new ArgumentOutOfRangeException(nameof(offset), offset, "must be >= 0");
 
-            // Previously fetched messages may contain everything we need
-            var localIndex = _localMessages.FindIndex(m => m.Offset == offset);
-            if (0 <= localIndex && localIndex + maxCount <= _localMessages.Count) return _localMessages.GetRange(localIndex, maxCount);
+            var count = batchSize.GetValueOrDefault(Configuration.BatchSize);
+            var messages = await FetchBatchAsync(ImmutableList<Message>.Empty, topicName, partitionId, offset, count, cancellationToken).ConfigureAwait(false);
+            return new MessageBatch(messages, new TopicPartition(topicName, partitionId), offset, count, this);
+        }
 
-            var localCount = (0 <= localIndex && localIndex < _localMessages.Count) ? _localMessages.Count - localIndex : 0;
-            var request = new FetchRequest(new FetchRequest.Topic(topicName, partitionId, offset + localCount, Configuration.MaxPartitionFetchBytes), 
-                Configuration.MaxFetchServerWait, Configuration.MinFetchBytes, Configuration.MaxFetchBytes);
-            var response = await _brokerRouter.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
-            var topic = response.Topics.SingleOrDefault();
-
-            if (topic?.Messages?.Count == 0) return ImmutableList<Message>.Empty;
-
-            if (localCount > 0) {
-                // Previously fetched messages contain some of what we need, so append
-                _localMessages = (ImmutableList<Message>)_localMessages.AddNotNullRange(topic?.Messages);
-            } else {
-                localIndex = 0;
-                _localMessages = topic?.Messages?.ToImmutableList() ?? ImmutableList<Message>.Empty;
+        /// <inheritdoc />
+        public async Task<IMessageBatch> FetchBatchAsync(string groupId, string memberId, int generationId, string topicName, int partitionId, CancellationToken cancellationToken, int? batchSize = null)
+        {
+            var request = new OffsetFetchRequest(groupId, new TopicPartition(topicName, partitionId));
+            var response = await Router.SendAsync(request, groupId, cancellationToken).ConfigureAwait(false);
+            if (!response.Errors.All(e => e.IsSuccess())) {
+                throw request.ExtractExceptions(response);
             }
-            return _localMessages.GetRange(localIndex, Math.Min(maxCount, _localMessages.Count));
+
+            return await FetchBatchAsync(groupId, memberId, generationId, topicName, partitionId, response.Topics[0].Offset + 1, cancellationToken, batchSize).ConfigureAwait(false);
+        }
+
+        public async Task<IMessageBatch> FetchBatchAsync(string groupId, string memberId, int generationId, string topicName, int partitionId, long offset, CancellationToken cancellationToken, int? batchSize = null)
+        {
+            if (offset < 0) throw new ArgumentOutOfRangeException(nameof(offset), offset, "must be >= 0");
+
+            var count = batchSize.GetValueOrDefault(Configuration.BatchSize);
+            var messages = await FetchBatchAsync(ImmutableList<Message>.Empty, topicName, partitionId, offset, count, cancellationToken).ConfigureAwait(false);
+            return new MessageBatch(messages, new TopicPartition(topicName, partitionId), offset, count, this, groupId, memberId, generationId);
+        }
+
+        private async Task<ImmutableList<Message>> FetchBatchAsync(ImmutableList<Message> existingMessages, string topicName, int partitionId, long offset, int count, CancellationToken cancellationToken)
+        {
+            var extracted = ExtractMessages(existingMessages, offset);
+            var fetchOffset = extracted == ImmutableList<Message>.Empty
+                ? offset
+                : extracted[extracted.Count - 1].Offset + 1;
+            var fetched = extracted.Count < count
+                ? await FetchMessagesAsync(topicName, partitionId, fetchOffset, cancellationToken).ConfigureAwait(false)
+                : ImmutableList<Message>.Empty;
+
+            if (extracted == ImmutableList<Message>.Empty) return fetched;
+            if (fetched == ImmutableList<Message>.Empty) return extracted;
+            return extracted.AddRange(fetched);
+        }
+
+        private static ImmutableList<Message> ExtractMessages(ImmutableList<Message> existingMessages, long offset)
+        {
+            var localIndex = existingMessages.FindIndex(m => m.Offset == offset);
+            if (localIndex == 0) return existingMessages;
+            if (0 < localIndex) {
+                return existingMessages.GetRange(localIndex, existingMessages.Count - (localIndex + 1));
+            }
+            return ImmutableList<Message>.Empty;
+        }
+
+        private async Task<ImmutableList<Message>> FetchMessagesAsync(string topicName, int partitionId, long offset, CancellationToken cancellationToken)
+        {
+            var topic = new FetchRequest.Topic(topicName, partitionId, offset, Configuration.MaxPartitionFetchBytes);
+            FetchResponse response = null;
+            for (var attempt = 0; response == null && attempt < 8; attempt++) { // at a (minimum) multiplier of 2, this results in a total factor of 256
+                var request = new FetchRequest(topic, Configuration.MaxFetchServerWait, Configuration.MinFetchBytes, Configuration.MaxFetchBytes);
+                try {
+                    response = await Router.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
+                } catch (BufferUnderRunException ex) {
+                    if (!(Configuration.FetchByteMultiplier.GetValueOrDefault() > 1 && topic.MaxBytes > 0)) throw;
+                    Router.Log.Warn(() => LogEvent.Create(ex, $"Retrying Fetch Request with multiplier {Configuration.FetchByteMultiplier}"));
+                    topic = new FetchRequest.Topic(topic.TopicName, topic.PartitionId, topic.Offset, topic.MaxBytes * Configuration.FetchByteMultiplier.GetValueOrDefault());
+                }
+            }
+            return response.Topics.SingleOrDefault()?.Messages?.ToImmutableList() ?? ImmutableList<Message>.Empty;
+        }
+
+        private class MessageBatch : IMessageBatch
+        {
+            public MessageBatch(ImmutableList<Message> messages, TopicPartition partition, long offset, int batchSize, Consumer consumer, string groupId = null, string memberId = null, int generationId = -1)
+            {
+                _offsetMarked = offset;
+                _offsetCommitted = offset;
+                _allMessages = messages;
+                _batchSize = batchSize;
+                Messages = messages.Count > batchSize
+                    ? messages.GetRange(0, batchSize)
+                    : messages;
+                _partition = partition;
+                _consumer = consumer;
+                _groupId = groupId;
+                _memberId = memberId;
+                _generationId = generationId;
+            }
+
+            public IImmutableList<Message> Messages { get; }
+            private readonly int _batchSize;
+            private readonly ImmutableList<Message> _allMessages;
+            private readonly TopicPartition _partition;
+            private readonly Consumer _consumer;
+            private readonly string _groupId;
+            private readonly string _memberId;
+            private readonly int _generationId;
+            private long _offsetMarked;
+            private long _offsetCommitted;
+            private int _disposeCount;
+
+            public async Task<IMessageBatch> FetchNextAsync(CancellationToken cancellationToken)
+            {
+                var offset = await CommitMarkedAsync(cancellationToken).ConfigureAwait(false);
+                var messages = await _consumer.FetchBatchAsync(_allMessages, _partition.TopicName, _partition.PartitionId, offset, _batchSize, cancellationToken).ConfigureAwait(false);
+                return new MessageBatch(messages, _partition, offset, _batchSize, _consumer);
+            }
+
+            public void MarkSuccessful(Message message)
+            {
+                if (_disposeCount > 0) throw new ObjectDisposedException($"The topic/{_partition.TopicName}/partition/{_partition.PartitionId} batch is disposed.");
+                var offset = message.Offset + 1;
+                if (_offsetMarked > offset) throw new ArgumentOutOfRangeException(nameof(message), $"Marked offset is {_offsetMarked}, cannot mark previous offset of {offset}.");
+                _offsetMarked = message.Offset + 1;
+            }
+
+            public async Task<long> CommitMarkedAsync(CancellationToken cancellationToken)
+            {
+                if (_disposeCount > 0) throw new ObjectDisposedException($"The topic/{_partition.TopicName}/partition/{_partition.PartitionId} batch is disposed.");
+
+                var offset = _offsetMarked;
+                var committed = _offsetCommitted;
+                if (offset <= committed) return committed;
+
+                if (_groupId != null && _memberId != null) {
+                    var request = new OffsetCommitRequest(_groupId, new[] { new OffsetCommitRequest.Topic(_partition.TopicName, _partition.PartitionId, offset) }, _memberId, _generationId);
+                    await _consumer.Router.SendAsync(request, _partition.TopicName, _partition.PartitionId, cancellationToken).ConfigureAwait(false);
+                }
+                _offsetCommitted = offset;
+                return offset;
+            }
+
+            public void Dispose()
+            {
+                if (Interlocked.Increment(ref _disposeCount) != 1) return;
+                OnDisposed?.Invoke();
+            }
+
+            public Action OnDisposed { get; set; }
         }
 
         public void Dispose()
         {
             using (_stopToken) {
                 if (_leaveRouterOpen) return;
-                using (_brokerRouter)
+                using (Router)
                 {
                 }
             }
+        }
+
+        public async Task<IConsumerMember> JoinGroupAsync(string groupId, string protocolType, IEnumerable<IMemberMetadata> metadata, CancellationToken cancellationToken)
+        {
+            if (!Encoders.ContainsKey(protocolType ?? "")) throw new ArgumentOutOfRangeException(nameof(metadata), $"ProtocolType {protocolType} is unknown");
+
+            var protocols = metadata?.Select(m => new JoinGroupRequest.GroupProtocol(m));
+            var request = new JoinGroupRequest(groupId, Configuration.GroupHeartbeat, "", protocolType, protocols, Configuration.GroupRebalanceTimeout);
+            var response = await Router.SendAsync(request, groupId, cancellationToken, retryPolicy: Configuration.GroupCoordinationRetry, context: new RequestContext(protocolType: protocolType)).ConfigureAwait(false);
+            if (!response.ErrorCode.IsSuccess()) {
+                throw request.ExtractExceptions(response);
+            }
+
+            return new ConsumerMember(this, request, response);
         }
     }
 }

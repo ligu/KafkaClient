@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Immutable;
 using KafkaClient.Common;
+using NUnit.Framework;
 
 namespace KafkaClient.Tests
 {
@@ -23,8 +24,7 @@ namespace KafkaClient.Tests
             if (level < _minLevel) return;
 
             var logEvent = producer();
-            var text = ToText(level, logEvent);
-            Console.WriteLine(text);
+            Write(level, ToText(level, logEvent));
         }
 
         public static string ToText(LogLevel level, LogEvent logEvent)
@@ -40,6 +40,12 @@ namespace KafkaClient.Tests
             }
             text += $" in {logEvent.SourceFile}:line {logEvent.SourceLine.GetValueOrDefault()}";
             return text;
+        }
+
+        public static void Write(LogLevel level, string text)
+        {
+            Console.WriteLine(text); // remove this once resharper actually supports the progress write below
+            TestContext.Progress.WriteLine(text);
         }
     }
 }

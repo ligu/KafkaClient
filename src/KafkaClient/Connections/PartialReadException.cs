@@ -3,7 +3,7 @@
 namespace KafkaClient.Connections
 {
     /// <summary>
-    /// Only thrown by the <see cref="TcpSocket"/> when a read task fails after partially reading from the stream
+    /// Only thrown by the <see cref="Connection"/> when a read task fails after partially reading from the stream
     /// </summary>
     public class PartialReadException : Exception
     {

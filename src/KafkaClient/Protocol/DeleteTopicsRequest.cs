@@ -12,7 +12,12 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class DeleteTopicsRequest : Request, IRequest<DeleteTopicsResponse>, IEquatable<DeleteTopicsRequest>
     {
-        public DeleteTopicsRequest(IEnumerable<string> topics = null, TimeSpan? timeout = null)
+        public DeleteTopicsRequest(params string[] topics)
+            : this(topics, null)
+        {
+        }
+
+        public DeleteTopicsRequest(IEnumerable<string> topics, TimeSpan? timeout = null)
             : base(ApiKeyRequestType.DeleteTopics)
         {
             Topics = ImmutableList<string>.Empty.AddNotNullRange(topics);

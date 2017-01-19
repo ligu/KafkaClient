@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
@@ -40,7 +41,12 @@ namespace KafkaClient.Common
 
         public static int ToInt32(this byte[] value)
         {
-            return BitConverter.ToInt32(BitConverter.IsLittleEndian ? value.Reverse().ToArray() : value, 0);
+            const int oneByte = 8;
+            const int twoBytes = 16;
+            const int threeBytes = 24;
+            return BitConverter.IsLittleEndian
+                ? (value[0] << threeBytes) | (value[1] << twoBytes) | (value[2] << oneByte) | value[3]
+                : (value[3] << threeBytes) | (value[2] << twoBytes) | (value[1] << oneByte) | value[0];
         }
 
         public static byte[] ToBigEndian(this byte[] bytes)

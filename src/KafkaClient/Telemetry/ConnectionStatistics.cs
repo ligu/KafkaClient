@@ -5,12 +5,12 @@ namespace KafkaClient.Telemetry
 {
     public class ConnectionStatistics : Statistics
     {
-        public ConnectionStatistics(DateTime startedAt, TimeSpan duration)
+        public ConnectionStatistics(DateTimeOffset startedAt, TimeSpan duration)
             : base(startedAt, duration)
         {
         }
 
-        private int _attempted = 0;
+        private int _attempted;
         public int Attempted => _attempted;
 
         public void Attempt()
@@ -18,10 +18,10 @@ namespace KafkaClient.Telemetry
             Interlocked.Increment(ref _attempted);
         }
 
-        private int _successes = 0;
+        private int _successes;
         public int Successes => _successes;
 
-        private long _duration = 0L;
+        private long _duration;
         public TimeSpan Duration => TimeSpan.FromTicks(_duration);
 
         public void Success(TimeSpan duration)
@@ -30,7 +30,7 @@ namespace KafkaClient.Telemetry
             Interlocked.Add(ref _duration, duration.Ticks);
         }
 
-        private int _failures = 0;
+        private int _failures;
         public int Failures => _failures;
 
         public void Failure()

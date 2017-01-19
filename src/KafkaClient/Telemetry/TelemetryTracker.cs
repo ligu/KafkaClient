@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Immutable;
 using KafkaClient.Connections;
+using KafkaClient.Protocol;
 
 namespace KafkaClient.Telemetry
 {
@@ -18,22 +19,22 @@ namespace KafkaClient.Telemetry
         public ImmutableList<TcpStatistics> TcpReads => _tcpReads;
         private ImmutableList<TcpStatistics> _tcpReads = ImmutableList<TcpStatistics>.Empty;
         private readonly object _tcpReadLock = new object();
-        private TcpStatistics GetTcpRead() => GetStatistics(_tcpReadLock, () => new TcpStatistics(DateTime.UtcNow, _aggregationPeriod), ref _tcpReads);
+        private TcpStatistics GetTcpRead() => GetStatistics(_tcpReadLock, () => new TcpStatistics(DateTimeOffset.UtcNow, _aggregationPeriod), ref _tcpReads);
  
         public ImmutableList<TcpStatistics> TcpWrites => _tcpWrites;
         private ImmutableList<TcpStatistics> _tcpWrites = ImmutableList<TcpStatistics>.Empty;
         private readonly object _tcpWriteLock = new object();
-        private TcpStatistics GetTcpWrite() => GetStatistics(_tcpWriteLock, () => new TcpStatistics(DateTime.UtcNow, _aggregationPeriod), ref _tcpWrites);
+        private TcpStatistics GetTcpWrite() => GetStatistics(_tcpWriteLock, () => new TcpStatistics(DateTimeOffset.UtcNow, _aggregationPeriod), ref _tcpWrites);
 
         public ImmutableList<ConnectionStatistics> TcpConnections => _tcpConnections;
         private ImmutableList<ConnectionStatistics> _tcpConnections = ImmutableList<ConnectionStatistics>.Empty;
         private readonly object _tcpConnectionLock = new object();
-        private ConnectionStatistics GetTcpConnect() => GetStatistics(_tcpConnectionLock, () => new ConnectionStatistics(DateTime.UtcNow, _aggregationPeriod), ref _tcpConnections);
+        private ConnectionStatistics GetTcpConnect() => GetStatistics(_tcpConnectionLock, () => new ConnectionStatistics(DateTimeOffset.UtcNow, _aggregationPeriod), ref _tcpConnections);
 
         public ImmutableList<ApiStatistics> ApiRequests => _apiRequests;
         private ImmutableList<ApiStatistics> _apiRequests = ImmutableList<ApiStatistics>.Empty;
         private readonly object _apiRequestLock = new object();
-        private ApiStatistics GetApiRequests() => GetStatistics(_apiRequestLock, () => new ApiStatistics(DateTime.UtcNow, _aggregationPeriod), ref _apiRequests);
+        private ApiStatistics GetApiRequests() => GetStatistics(_apiRequestLock, () => new ApiStatistics(DateTimeOffset.UtcNow, _aggregationPeriod), ref _apiRequests);
 
         private T GetStatistics<T>(object tLock, Func<T> producer, ref ImmutableList<T> telemetry) where T : Statistics
         {
@@ -44,7 +45,7 @@ namespace KafkaClient.Telemetry
                     return first;
                 }
                 var latest = telemetry[telemetry.Count - 1];
-                if (DateTime.UtcNow < latest.EndedAt) return latest;
+                if (DateTimeOffset.UtcNow < latest.EndedAt) return latest;
 
                 var next = producer();
                 telemetry = telemetry.Add(next);
@@ -70,49 +71,54 @@ namespace KafkaClient.Telemetry
             GetTcpConnect().Success(elapsed);
         }
 
-        public void WriteEnqueued(Endpoint endpoint, DataPayload payload)
+        public void Writing(Endpoint endpoint, ApiKeyRequestType type)
         {
             GetTcpWrite().Attempt();
-            GetApiRequests().Attempt(payload.ApiKey);
+            GetApiRequests().Attempt(type);
         }
 
-        public void Writing(Endpoint endpoint, DataPayload payload)
+        public void WritingBytes(Endpoint endpoint, int bytesAvailable)
         {
-            GetTcpWrite().Start(payload.Buffer.Length);
+            GetTcpWrite().Start(bytesAvailable);
         }
 
-        public void Written(Endpoint endpoint, DataPayload payload, TimeSpan elapsed)
+        public void WroteBytes(Endpoint endpoint, int bytesAttempted, int bytesWritten, TimeSpan elapsed)
         {
-            GetTcpWrite().Success(elapsed, payload.Buffer.Length);
-            GetApiRequests().Success(payload.ApiKey, elapsed);
+            GetTcpWrite().Partial(bytesAttempted);
         }
 
-        public void WriteFailed(Endpoint endpoint, DataPayload payload, TimeSpan elapsed, Exception exception)
+        public void Written(Endpoint endpoint, ApiKeyRequestType type, int bytesWritten, TimeSpan elapsed)
         {
-            GetTcpWrite().Failure(elapsed);
-            GetApiRequests().Failure(payload.ApiKey, elapsed);
+            GetTcpWrite().Success(elapsed, bytesWritten);
+            GetApiRequests().Success(type, elapsed);
         }
 
-        public void Reading(Endpoint endpoint, int size)
+        public void WriteFailed(Endpoint endpoint, ApiKeyRequestType type, TimeSpan elapsed, Exception exception)
         {
-            GetTcpRead().Attempt(size);
+            GetApiRequests().Failure(type, elapsed);
         }
 
-        public void ReadingChunk(Endpoint endpoint, int size, int read, TimeSpan elapsed)
+        public void Reading(Endpoint endpoint, int bytesAvailable)
         {
-            GetTcpRead().Start(size - read);
+            GetTcpRead().Attempt(bytesAvailable);
         }
 
-        public void ReadChunk(Endpoint endpoint, int size, int remaining, int read, TimeSpan elapsed)
+        public void ReadingBytes(Endpoint endpoint, int bytesAvailable)
         {
+            GetTcpRead().Start(bytesAvailable);
         }
 
-        public void Read(Endpoint endpoint, byte[] buffer, TimeSpan elapsed)
+        public void ReadBytes(Endpoint endpoint, int bytesAttempted, int bytesRead, TimeSpan elapsed)
         {
-            GetTcpRead().Success(elapsed, buffer.Length);
+            GetTcpWrite().Partial(bytesAttempted);
         }
 
-        public void ReadFailed(Endpoint endpoint, int size, TimeSpan elapsed, Exception exception)
+        public void Read(Endpoint endpoint, int bytesRead, TimeSpan elapsed)
+        {
+            GetTcpRead().Success(elapsed, bytesRead);
+        }
+
+        public void ReadFailed(Endpoint endpoint, int bytesAvailable, TimeSpan elapsed, Exception exception)
         {
             GetTcpRead().Failure(elapsed);
         }

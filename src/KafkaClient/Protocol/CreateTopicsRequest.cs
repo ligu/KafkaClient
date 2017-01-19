@@ -21,6 +21,11 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class CreateTopicsRequest : Request, IRequest<CreateTopicsResponse>, IEquatable<CreateTopicsRequest>
     {
+        public CreateTopicsRequest(params Topic[] topics)
+            : this(topics, null)
+        {
+        }
+
         public CreateTopicsRequest(IEnumerable<Topic> topics = null, TimeSpan? timeout = null)
             : base(ApiKeyRequestType.CreateTopics)
         {

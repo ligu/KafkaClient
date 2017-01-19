@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using KafkaClient.Assignment;
 using KafkaClient.Common;
-using KafkaClient.Protocol.Types;
 
 namespace KafkaClient.Protocol
 {
@@ -15,7 +15,7 @@ namespace KafkaClient.Protocol
     ///   member_id => STRING          -- The assigned consumer id or an empty string for a new consumer.
     ///   protocol_type => STRING      -- Unique name for class of protocols implemented by group (ie "consumer")
     ///   GroupProtocol => ProtocolName ProtocolMetadata
-    ///     protocol_name => STRING    -- ie AssignmentStrategy for "consumer" type
+    ///     protocol_name => STRING    -- ie AssignmentStrategy for "consumer" type. protocol_name != protocol_type. It's a subtype of sorts.
     ///     protocol_metadata => BYTES -- <see cref="ConsumerProtocolMetadata"/>
     /// 
     /// see http://kafka.apache.org/protocol.html#protocol_messages for details
@@ -43,12 +43,13 @@ namespace KafkaClient.Protocol
     public class JoinGroupRequest : Request, IRequest<JoinGroupResponse>, IGroupMember, IEquatable<JoinGroupRequest>
     {
         public JoinGroupRequest(string groupId, TimeSpan sessionTimeout, string memberId, string protocolType, IEnumerable<GroupProtocol> groupProtocols, TimeSpan? rebalanceTimeout = null) 
-            : base(ApiKeyRequestType.JoinGroup, protocolType: protocolType)
+            : base(ApiKeyRequestType.JoinGroup)
         {
             GroupId = groupId;
             SessionTimeout = sessionTimeout;
             RebalanceTimeout = rebalanceTimeout ?? SessionTimeout;
             MemberId = memberId;
+            ProtocolType = protocolType;
             GroupProtocols = ImmutableList<GroupProtocol>.Empty.AddNotNullRange(groupProtocols);
         }
 
@@ -61,6 +62,9 @@ namespace KafkaClient.Protocol
 
         /// <inheritdoc />
         public string MemberId { get; }
+
+        /// <inheritdoc />
+        public string ProtocolType { get; }
 
         #region Equality
 
@@ -113,13 +117,12 @@ namespace KafkaClient.Protocol
 
         public class GroupProtocol : IEquatable<GroupProtocol>
         {
-            public GroupProtocol(string name, IMemberMetadata metadata)
+            public GroupProtocol(IMemberMetadata metadata)
             {
-                Name = name;
                 Metadata = metadata;
             }
 
-            public string Name { get; }
+            public string Name => Metadata.AssignmentStrategy;
             public IMemberMetadata Metadata { get; }
 
             /// <inheritdoc />

@@ -8,7 +8,7 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class Message : IEquatable<Message>
     {
-        public Message(byte[] value, byte attribute, long offset = 0, int partitionId = 0, byte version = 0, byte[] key = null, DateTime? timestamp = null)
+        public Message(byte[] value, byte attribute, long offset = 0, int partitionId = 0, byte version = 0, byte[] key = null, DateTimeOffset? timestamp = null)
         {
             Offset = offset;
             PartitionId = partitionId;
@@ -73,7 +73,7 @@ namespace KafkaClient.Protocol
         /// <summary>
         /// This is the timestamp of the message. The timestamp type is indicated in the attributes. Unit is milliseconds since beginning of the epoch (midnight Jan 1, 1970 (UTC)).
         /// </summary>
-        public DateTime? Timestamp { get; }
+        public DateTimeOffset? Timestamp { get; }
 
         #region Equality
 
@@ -94,7 +94,7 @@ namespace KafkaClient.Protocol
                 && Attribute == other.Attribute 
                 && Key.HasEqualElementsInOrder(other.Key)
                 && Value.HasEqualElementsInOrder(other.Value) 
-                && Timestamp.ToUnixEpochMilliseconds() == other.Timestamp.ToUnixEpochMilliseconds();
+                && Timestamp.ToUnixTimeMilliseconds() == other.Timestamp.ToUnixTimeMilliseconds();
         }
 
         /// <inheritdoc />
