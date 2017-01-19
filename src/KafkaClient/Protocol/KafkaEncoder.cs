@@ -58,14 +58,9 @@ namespace KafkaClient.Protocol
             }
         }
 
-        public static DataPayload Encode<T>(IRequestContext context, T request) where T : class, IRequest
-        {
-            return new DataPayload(EncodeRequestBytes(context, request));
-        }
-
         #region Encode
 
-        internal static byte[] EncodeRequestBytes(IRequestContext context, IRequest request)
+        public static byte[] Encode(IRequestContext context, IRequest request)
         {
             switch (request.ApiKey) {
                 case ApiKeyRequestType.Produce:

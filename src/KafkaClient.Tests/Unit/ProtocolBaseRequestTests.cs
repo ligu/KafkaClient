@@ -10,7 +10,7 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public void EnsureHeaderShouldPackCorrectByteLengths()
         {
-            var result = KafkaEncoder.EncodeRequestBytes(new RequestContext(123456789, clientId: "test"), new ApiVersionsRequest());
+            var result = KafkaEncoder.Encode(new RequestContext(123456789, clientId: "test"), new ApiVersionsRequest());
 
             var withoutLength = new byte[result.Length - 4];
             Buffer.BlockCopy(result, 4, withoutLength, 0, result.Length - 4);

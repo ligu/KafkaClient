@@ -3,7 +3,6 @@ using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
@@ -91,7 +90,7 @@ namespace KafkaClient.Connections
                     AddToCorrelationMatching(asyncItem);
                 }
 
-                _log.Info(() => LogEvent.Create($"Sending {request.ApiKey} with correlation id {context.CorrelationId} (v {version.GetValueOrDefault()}, {asyncItem.SendPayload.Buffer.Length} bytes) to {Endpoint}"));
+                _log.Info(() => LogEvent.Create($"Sending {request.ApiKey} with correlation id {context.CorrelationId} (v {version.GetValueOrDefault()}, {asyncItem.RequestBytes.Length} bytes) to {Endpoint}"));
                 _log.Debug(() => LogEvent.Create($"{request.ApiKey} -----> {Endpoint}\n- Context:{context.ToFormattedString()}\n- Request:{request.ToFormattedString()}"));
 
                 var timer = new Stopwatch();
@@ -99,7 +98,7 @@ namespace KafkaClient.Connections
                     await ConnectAsync(cancellationToken).ConfigureAwait(false);
                     _configuration.OnWriting?.Invoke(Endpoint, request.ApiKey);
                     timer.Start();
-                    var bytesWritten = await WriteBytesAsync(_socket, context.CorrelationId, asyncItem.SendPayload.Buffer, cancellationToken);
+                    var bytesWritten = await WriteBytesAsync(_socket, context.CorrelationId, asyncItem.RequestBytes, cancellationToken);
                     timer.Stop();
                     _configuration.OnWritten?.Invoke(Endpoint, request.ApiKey, bytesWritten, timer.Elapsed);
 
@@ -476,18 +475,18 @@ namespace KafkaClient.Connections
             private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
             private CancellationTokenRegistration _registration;
 
-            public AsyncItem(IRequestContext context, ApiKeyRequestType requestType, DataPayload sendPayload, TimeSpan timeout)
+            public AsyncItem(IRequestContext context, ApiKeyRequestType requestType, byte [] requestBytes, TimeSpan timeout)
             {
                 Context = context;
                 Timeout = timeout;
-                SendPayload = sendPayload;
+                RequestBytes = requestBytes;
                 RequestType = requestType;
                 ReceiveTask = new TaskCompletionSource<byte[]>();
             }
 
             public IRequestContext Context { get; }
             public ApiKeyRequestType RequestType { get; }
-            public DataPayload SendPayload { get; }
+            public byte[] RequestBytes { get; }
             public TimeSpan Timeout { get; }
             public TaskCompletionSource<byte[]> ReceiveTask { get; }
 

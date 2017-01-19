@@ -197,20 +197,19 @@ namespace KafkaClient
         {
             if (_disposeCount > 0) throw new ObjectDisposedException($"Member {MemberId} is no longer valid");
 
-            IEnumerable<IMemberMetadata> memberMetadata = null;
-            using (_lock.Lock()) {
+            IEnumerable<JoinGroupRequest.GroupProtocol> protocols = null;
+            using (await _lock.LockAsync(cancellationToken).ConfigureAwait(false)) {
                 if (IsLeader) {
-                    memberMetadata = _memberMetadata.Values;
+                    protocols = _memberMetadata?.Values.Select(m => new JoinGroupRequest.GroupProtocol(m));
                 }
             }
 
-            // on success, this will call OnRejoin before returning
-            try {
-                await _consumer.JoinGroupAsync(GroupId, ProtocolType, memberMetadata, cancellationToken, this).ConfigureAwait(false);
-                return ErrorResponseCode.None;
-            } catch (RequestException ex) when (ex.ApiKey == ApiKeyRequestType.JoinGroup) {
-                return ex.ErrorCode;
+            var request = new JoinGroupRequest(GroupId, Configuration.GroupHeartbeat, MemberId, ProtocolType, protocols, Configuration.GroupRebalanceTimeout);
+            var response = await Router.SendAsync(request, GroupId, cancellationToken, retryPolicy: Configuration.GroupCoordinationRetry, context: new RequestContext(protocolType: ProtocolType)).ConfigureAwait(false);
+            if (response.ErrorCode.IsSuccess()) {
+                OnJoinGroup(response);
             }
+            return response.ErrorCode;
         }
 
         public void OnJoinGroup(JoinGroupResponse response)
