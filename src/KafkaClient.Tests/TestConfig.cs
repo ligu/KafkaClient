@@ -1,6 +1,7 @@
 using System;
 using System.Runtime.CompilerServices;
 using KafkaClient.Common;
+using KafkaClient.Connections;
 
 namespace KafkaClient.Tests
 {
