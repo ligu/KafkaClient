@@ -17,7 +17,7 @@ namespace KafkaClient.Tests.Unit
 {
     [Category("Unit")]
     [TestFixture]
-    public class KafkaConnectionTests
+    public class ConnectionTests
     {
         #region Construct...
 
@@ -763,7 +763,7 @@ namespace KafkaClient.Tests.Unit
             }
         }
 
-        //[Test]
+        [Test]
         public async Task AsynchronousWriteAndReadShouldBeConsistent()
         {
             const int requests = 10;
