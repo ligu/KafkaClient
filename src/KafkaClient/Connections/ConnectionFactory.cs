@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using KafkaClient.Common;
 
 namespace KafkaClient.Connections
@@ -12,9 +13,9 @@ namespace KafkaClient.Connections
         }
 
         /// <inheritdoc />
-        public Endpoint Resolve(Uri kafkaAddress, ILog log)
+        public Task<Endpoint> ResolveAsync(Uri uri, ILog log)
         {
-            return Endpoint.Resolve(kafkaAddress, log);
+            return Endpoint.ResolveAsync(uri, log);
         }
     }
 }

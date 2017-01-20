@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Connections;
 using KafkaClient.Protocol;
+using Nito.AsyncEx;
 using NUnit.Framework;
 
 namespace KafkaClient.Tests.Integration
@@ -18,9 +19,9 @@ namespace KafkaClient.Tests.Integration
         public void Setup()
         {
             var options = new KafkaOptions(TestConfig.IntegrationUri, new ConnectionConfiguration(versionSupport: VersionSupport.Kafka8.MakeDynamic()), log: TestConfig.Log);
-            var endpoint = new ConnectionFactory().Resolve(options.ServerUris.First(), options.Log);
+            var endpoint = AsyncContext.Run(() => options.ConnectionFactory.ResolveAsync(options.ServerUris.First(), options.Log));
 
-            _conn = new Connection(endpoint, options.ConnectionConfiguration, TestConfig.Log);
+            _conn =  new Connection(endpoint, options.ConnectionConfiguration, TestConfig.Log);
         }
 
         [Test]
@@ -51,7 +52,7 @@ namespace KafkaClient.Tests.Integration
         {
             var requestsSoFar = 0;
             var requestTasks = new ConcurrentBag<Task<MetadataResponse>>();
-            using (var router = new Router(TestConfig.IntegrationUri)) {
+            using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     var singleResult = await _conn.SendAsync(new MetadataRequest(TestConfig.TopicName()), CancellationToken.None);
                     Assert.That(singleResult.Topics.Count, Is.GreaterThan(0));

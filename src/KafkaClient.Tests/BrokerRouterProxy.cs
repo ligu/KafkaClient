@@ -66,21 +66,21 @@ namespace KafkaClient.Tests
 
             var kafkaConnectionFactory = Substitute.For<IConnectionFactory>();
             kafkaConnectionFactory
-                .Create(Arg.Is<Endpoint>(e => e.IP.Port == 1), Arg.Any<IConnectionConfiguration>(),Arg.Any<ILog>())
+                .Create(Arg.Is<Endpoint>(e => e.Value.Port == 1), Arg.Any<IConnectionConfiguration>(),Arg.Any<ILog>())
                 .Returns(Connection1);
             kafkaConnectionFactory
-                .Create(Arg.Is<Endpoint>(e => e.IP.Port == 2), Arg.Any<IConnectionConfiguration>(),Arg.Any<ILog>())
+                .Create(Arg.Is<Endpoint>(e => e.Value.Port == 2), Arg.Any<IConnectionConfiguration>(),Arg.Any<ILog>())
                 .Returns(Connection2);
             kafkaConnectionFactory
-                .Resolve(Arg.Any<Uri>(), Arg.Any<ILog>())
-                .Returns(_ => new Endpoint(_.Arg<Uri>(), new IPEndPoint(IPAddress.Parse("127.0.0.1"), _.Arg<Uri>().Port)));
+                .ResolveAsync(Arg.Any<Uri>(), Arg.Any<ILog>())
+                .Returns(_ => Task.FromResult(new Endpoint(new IPEndPoint(IPAddress.Parse("127.0.0.1"), _.Arg<Uri>().Port), _.Arg<Uri>().DnsSafeHost)));
             KafkaConnectionFactory = kafkaConnectionFactory;
         }
 
         public IRouter Create()
         {
             return new Router(
-                new [] { new Uri("http://localhost:1"), new Uri("http://localhost:2") },
+                new [] { new Endpoint(new IPEndPoint(IPAddress.Loopback, 1)), new Endpoint(new IPEndPoint(IPAddress.Loopback, 2)) },
                 KafkaConnectionFactory,
                 partitionSelector: PartitionSelector,
                 routerConfiguration: new RouterConfiguration(cacheExpiration: CacheExpiration));

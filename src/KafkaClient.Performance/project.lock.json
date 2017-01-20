@@ -2444,8 +2444,8 @@
         "type": "project",
         "framework": ".NETStandard,Version=v1.3",
         "dependencies": {
-          "Nito.AsyncEx.Context": "1.1.0",
           "Nito.AsyncEx.Coordination": "1.0.2",
+          "System.Collections.Concurrent": "4.3.0",
           "System.Collections.Immutable": "1.2.0",
           "System.Diagnostics.TraceSource": "4.0.0",
           "System.IO.Compression": "4.3.0",
@@ -7521,7 +7521,9 @@
     "": [
       "BenchmarkDotNet >= 0.10.1",
       "KafkaClient",
-      "Microsoft.NETCore.App >= 1.1.0"
+      "Microsoft.NETCore.App >= 1.1.0",
+      "Nito.AsyncEx.Context >= 1.1.0",
+      "Nito.AsyncEx.Coordination >= 1.0.2"
     ],
     ".NETCoreApp,Version=v1.1": []
   },

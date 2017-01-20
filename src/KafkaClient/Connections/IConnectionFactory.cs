@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using KafkaClient.Common;
 
 namespace KafkaClient.Connections
@@ -17,9 +18,9 @@ namespace KafkaClient.Connections
         /// <summary>
         /// Resolves a generic Uri into a uniquely identifiable Endpoint.
         /// </summary>
-        /// <param name="kafkaAddress">The address to the kafka server to resolve.</param>
+        /// <param name="uri">The address to the kafka server to resolve.</param>
         /// <param name="log">Logging interface used to record any log messages created by the Resolving process.</param>
         /// <returns>Endpoint with resolved IP and Address.</returns>
-        Endpoint Resolve(Uri kafkaAddress, ILog log);
+        Task<Endpoint> ResolveAsync(Uri uri, ILog log);
     }
 }

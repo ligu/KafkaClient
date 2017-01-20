@@ -3,18 +3,6 @@
   "version": 2,
   "targets": {
     ".NETFramework,Version=v4.6.2": {
-      "Nito.AsyncEx.Context/1.1.0": {
-        "type": "package",
-        "dependencies": {
-          "Nito.AsyncEx.Tasks": "1.1.0"
-        },
-        "compile": {
-          "lib/net46/Nito.AsyncEx.Context.dll": {}
-        },
-        "runtime": {
-          "lib/net46/Nito.AsyncEx.Context.dll": {}
-        }
-      },
       "Nito.AsyncEx.Coordination/1.0.2": {
         "type": "package",
         "dependencies": {
@@ -28,7 +16,7 @@
           "lib/net46/Nito.AsyncEx.Coordination.dll": {}
         }
       },
-      "Nito.AsyncEx.Tasks/1.1.0": {
+      "Nito.AsyncEx.Tasks/1.0.1": {
         "type": "package",
         "dependencies": {
           "Nito.Disposables": "1.0.0"
@@ -111,21 +99,6 @@
           "ref/netstandard1.3/_._": {}
         }
       },
-      "Nito.AsyncEx.Context/1.1.0": {
-        "type": "package",
-        "dependencies": {
-          "Nito.AsyncEx.Tasks": "1.1.0",
-          "System.Collections.Concurrent": "4.0.12",
-          "System.Diagnostics.Debug": "4.0.11",
-          "System.Threading": "4.0.11"
-        },
-        "compile": {
-          "lib/netstandard1.3/Nito.AsyncEx.Context.dll": {}
-        },
-        "runtime": {
-          "lib/netstandard1.3/Nito.AsyncEx.Context.dll": {}
-        }
-      },
       "Nito.AsyncEx.Coordination/1.0.2": {
         "type": "package",
         "dependencies": {
@@ -142,7 +115,7 @@
           "lib/netstandard1.3/Nito.AsyncEx.Coordination.dll": {}
         }
       },
-      "Nito.AsyncEx.Tasks/1.1.0": {
+      "Nito.AsyncEx.Tasks/1.0.1": {
         "type": "package",
         "dependencies": {
           "Nito.Disposables": "1.0.0",
@@ -234,19 +207,19 @@
           "ref/netstandard1.3/System.Collections.dll": {}
         }
       },
-      "System.Collections.Concurrent/4.0.12": {
+      "System.Collections.Concurrent/4.3.0": {
         "type": "package",
         "dependencies": {
-          "System.Collections": "4.0.11",
-          "System.Diagnostics.Debug": "4.0.11",
-          "System.Diagnostics.Tracing": "4.1.0",
-          "System.Globalization": "4.0.11",
-          "System.Reflection": "4.1.0",
-          "System.Resources.ResourceManager": "4.0.1",
-          "System.Runtime": "4.1.0",
-          "System.Runtime.Extensions": "4.1.0",
-          "System.Threading": "4.0.11",
-          "System.Threading.Tasks": "4.0.11"
+          "System.Collections": "4.3.0",
+          "System.Diagnostics.Debug": "4.3.0",
+          "System.Diagnostics.Tracing": "4.3.0",
+          "System.Globalization": "4.3.0",
+          "System.Reflection": "4.3.0",
+          "System.Resources.ResourceManager": "4.3.0",
+          "System.Runtime": "4.3.0",
+          "System.Runtime.Extensions": "4.3.0",
+          "System.Threading": "4.3.0",
+          "System.Threading.Tasks": "4.3.0"
         },
         "compile": {
           "ref/netstandard1.3/System.Collections.Concurrent.dll": {}
@@ -717,19 +690,6 @@
         "ref/xamarinwatchos10/_._"
       ]
     },
-    "Nito.AsyncEx.Context/1.1.0": {
-      "sha512": "YPEb4a5lHPmESSOopAqxqpMqUO/OeOAr141TZCIHjc47I/41AOPTfymBbF/YDKaZYlElzVvGHBCR1Z8J4sBMOA==",
-      "type": "package",
-      "path": "Nito.AsyncEx.Context/1.1.0",
-      "files": [
-        "Nito.AsyncEx.Context.1.1.0.nupkg.sha512",
-        "Nito.AsyncEx.Context.nuspec",
-        "lib/net46/Nito.AsyncEx.Context.dll",
-        "lib/net46/Nito.AsyncEx.Context.xml",
-        "lib/netstandard1.3/Nito.AsyncEx.Context.dll",
-        "lib/netstandard1.3/Nito.AsyncEx.Context.xml"
-      ]
-    },
     "Nito.AsyncEx.Coordination/1.0.2": {
       "sha512": "jEZHo/pFKD6kzjuxpAGcWWFT7J3UGft2NH6zZ7cBjO3k5s9SDoQhLJxSRDafx44gbao7PK8IQXxIOLBKIPPQTg==",
       "type": "package",
@@ -743,12 +703,12 @@
         "lib/netstandard1.3/Nito.AsyncEx.Coordination.xml"
       ]
     },
-    "Nito.AsyncEx.Tasks/1.1.0": {
-      "sha512": "0HzeuwnELt9JMMm4KS7NLW0jcacj8gMuSKNPPkXfP+EXk17/K+WyAq2Bv79VrzD2kAyOLavd9MF8JbggloJZWw==",
+    "Nito.AsyncEx.Tasks/1.0.1": {
+      "sha512": "FtQi5Qj22kxHNQv8XPYXp2xc4PPTfyr5jGATgDqRml9BF8OEYwuntSRrbGbxlbWpp0ossrXyUq2gIV1CTQQB2w==",
       "type": "package",
-      "path": "Nito.AsyncEx.Tasks/1.1.0",
+      "path": "Nito.AsyncEx.Tasks/1.0.1",
       "files": [
-        "Nito.AsyncEx.Tasks.1.1.0.nupkg.sha512",
+        "Nito.AsyncEx.Tasks.1.0.1.nupkg.sha512",
         "Nito.AsyncEx.Tasks.nuspec",
         "lib/net46/Nito.AsyncEx.Tasks.dll",
         "lib/net46/Nito.AsyncEx.Tasks.xml",
@@ -885,12 +845,12 @@
         "ref/xamarinwatchos10/_._"
       ]
     },
-    "System.Collections.Concurrent/4.0.12": {
-      "sha512": "2gBcbb3drMLgxlI0fBfxMA31ec6AEyYCHygGse4vxceJan8mRIWeKJ24BFzN7+bi/NFTgdIgufzb94LWO5EERQ==",
+    "System.Collections.Concurrent/4.3.0": {
+      "sha512": "ztl69Xp0Y/UXCL+3v3tEU+lIy+bvjKNUmopn1wep/a291pVPK7dxBd6T7WnlQqRog+d1a/hSsgRsmFnIBKTPLQ==",
       "type": "package",
-      "path": "System.Collections.Concurrent/4.0.12",
+      "path": "System.Collections.Concurrent/4.3.0",
       "files": [
-        "System.Collections.Concurrent.4.0.12.nupkg.sha512",
+        "System.Collections.Concurrent.4.3.0.nupkg.sha512",
         "System.Collections.Concurrent.nuspec",
         "ThirdPartyNotices.txt",
         "dotnet_library_license.txt",
@@ -2499,13 +2459,13 @@
   },
   "projectFileDependencyGroups": {
     "": [
-      "Nito.AsyncEx.Context >= 1.1.0",
       "Nito.AsyncEx.Coordination >= 1.0.2",
       "System.Collections.Immutable >= 1.2.0",
       "System.Net.Sockets >= 4.3.0"
     ],
     ".NETFramework,Version=v4.6.2": [],
     ".NETStandard,Version=v1.3": [
+      "System.Collections.Concurrent >= 4.3.0",
       "System.Diagnostics.TraceSource >= 4.0.0",
       "System.IO.Compression >= 4.3.0",
       "System.Net.NameResolution >= 4.0.0",

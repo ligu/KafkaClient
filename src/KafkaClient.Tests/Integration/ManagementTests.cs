@@ -19,7 +19,7 @@ namespace KafkaClient.Tests.Integration
             //Note that if there is no offset associated with a topic-partition under that consumer group the broker does not set an error code
             //(since it is not really an error), but returns empty metadata and sets the offset field to -1.
             const int partitionId = 0;
-            using (var router = new Router(_options)) {
+            using (var router = await _options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     var request = new OffsetFetchRequest(Guid.NewGuid().ToString(), new TopicPartition(topicName, partitionId));
                     await router.GetTopicMetadataAsync(topicName, CancellationToken.None);
@@ -39,7 +39,7 @@ namespace KafkaClient.Tests.Integration
         public async Task OffsetCommitShouldStoreAndReturnSuccess()
         {
             const int partitionId = 0;
-            using (var router = new Router(_options)) {
+            using (var router = await _options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     await router.GetTopicMetadataAsync(topicName, CancellationToken.None);
                     var conn = router.GetTopicBroker(topicName, partitionId);
@@ -67,7 +67,7 @@ namespace KafkaClient.Tests.Integration
             const int partitionId = 0;
             const long offset = 99;
 
-            using (var router = new Router(_options)) {
+            using (var router = await _options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     await router.GetTopicMetadataAsync(topicName, CancellationToken.None);
                     var conn = router.GetTopicBroker(topicName, partitionId);
@@ -104,7 +104,7 @@ namespace KafkaClient.Tests.Integration
             const long offset = 101;
             const string metadata = "metadata";
 
-            using (var router = new Router(_options)) {
+            using (var router = await _options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     var conn = await router.GetTopicBrokerAsync(topicName, partitionId, CancellationToken.None);
 
@@ -137,7 +137,7 @@ namespace KafkaClient.Tests.Integration
         [Test]
         public async Task ConsumerMetadataRequestShouldReturnWithoutError()
         {
-            using (var router = new Router(_options)) {
+            using (var router = await _options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     var conn = await router.GetTopicBrokerAsync(topicName, 0, CancellationToken.None);
 
@@ -155,7 +155,7 @@ namespace KafkaClient.Tests.Integration
         [Test]
         public async Task CanCreateAndDeleteTopics()
         {
-            using (var router = new Router(_options)) {
+            using (var router = await _options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     var response = await router.GetTopicMetadataAsync(topicName, CancellationToken.None);
                     Assert.That(response.ErrorCode, Is.EqualTo(ErrorResponseCode.None));

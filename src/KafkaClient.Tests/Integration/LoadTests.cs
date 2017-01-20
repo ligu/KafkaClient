@@ -20,7 +20,7 @@ namespace KafkaClient.Tests.Integration
         [TestCase(1000, 1000)]
         public async Task SendAsyncShouldHandleHighVolumeOfMessages(int amount, int maxAsync)
         {
-            using (var router = new Router(new KafkaOptions(TestConfig.IntegrationUri))) {
+            using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     using (var producer = new Producer(router, new ProducerConfiguration(maxAsync, amount / 2)))
                     {
@@ -51,10 +51,10 @@ namespace KafkaClient.Tests.Integration
         [TestCase(10000, 100, MessageCodec.CodecGzip)]
         [TestCase(100000, 1000, MessageCodec.CodecNone)]
         [TestCase(100000, 1000, MessageCodec.CodecGzip)]
-        public async Task ProducerSpeedLoad(int totalMessages, int batchSize, MessageCodec codec)
+        public async Task ProducerSpeed(int totalMessages, int batchSize, MessageCodec codec)
         {
             int timeoutInMs = Math.Max(100, totalMessages / 20);
-            using (var router = new Router(TestConfig.IntegrationUri, log: TestConfig.Log)) {
+            using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     using (var producer = new Producer(router, new ProducerConfiguration(batchSize: totalMessages / 10, batchMaxDelay: TimeSpan.FromMilliseconds(25)))) {
                         var offset = await producer.Router.GetTopicOffsetAsync(TestConfig.TopicName(), 0, CancellationToken.None);
@@ -89,10 +89,10 @@ namespace KafkaClient.Tests.Integration
         [TestCase(100000, 1000)]
         [TestCase(500000, 5000)]
         [TestCase(1000000, 10000)]
-        public async Task ConsumerSpeedUnderLoad(int totalMessages, int batchSize)
+        public async Task ConsumerSpeed(int totalMessages, int batchSize)
         {
             int timeoutInMs = Math.Max(100, totalMessages / 20);
-            using (var router = new Router(TestConfig.IntegrationUri, log: TestConfig.Log)) {
+            using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     using (var producer = new Producer(router, new ProducerConfiguration(batchSize: totalMessages / 10, batchMaxDelay: TimeSpan.FromMilliseconds(25)))) {
                         var offset = await producer.Router.GetTopicOffsetAsync(TestConfig.TopicName(), 0, CancellationToken.None);

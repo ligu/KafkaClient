@@ -13,17 +13,11 @@ namespace KafkaClient
 {
     public class Consumer : IConsumer
     {
+        private int _disposeCount;
         private readonly bool _leaveRouterOpen;
-        private readonly CancellationTokenSource _stopToken;
-
-        public Consumer(KafkaOptions options)
-            : this(new Router(options), options.ConsumerConfiguration, options.ConnectionConfiguration.Encoders, false)
-        {
-        }
 
         public Consumer(IRouter router, IConsumerConfiguration configuration = null, IImmutableDictionary<string, IMembershipEncoder> encoders = null, bool leaveRouterOpen = true)
         {
-            _stopToken = new CancellationTokenSource();
             Router = router;
             _leaveRouterOpen = leaveRouterOpen;
             Configuration = configuration ?? new ConsumerConfiguration();
@@ -39,6 +33,7 @@ namespace KafkaClient
         /// <inheritdoc />
         public async Task<IMessageBatch> FetchBatchAsync(string topicName, int partitionId, long offset, CancellationToken cancellationToken, int? batchSize = null)
         {
+            if (_disposeCount > 0) throw new ObjectDisposedException(nameof(Consumer));
             if (offset < 0) throw new ArgumentOutOfRangeException(nameof(offset), offset, "must be >= 0");
 
             var count = batchSize.GetValueOrDefault(Configuration.BatchSize);
@@ -49,6 +44,8 @@ namespace KafkaClient
         /// <inheritdoc />
         public async Task<IMessageBatch> FetchBatchAsync(string groupId, string memberId, int generationId, string topicName, int partitionId, CancellationToken cancellationToken, int? batchSize = null)
         {
+            if (_disposeCount > 0) throw new ObjectDisposedException(nameof(Consumer));
+
             var request = new OffsetFetchRequest(groupId, new TopicPartition(topicName, partitionId));
             var response = await Router.SendAsync(request, groupId, cancellationToken).ConfigureAwait(false);
             if (!response.Errors.All(e => e.IsSuccess())) {
@@ -60,6 +57,7 @@ namespace KafkaClient
 
         public async Task<IMessageBatch> FetchBatchAsync(string groupId, string memberId, int generationId, string topicName, int partitionId, long offset, CancellationToken cancellationToken, int? batchSize = null)
         {
+            if (_disposeCount > 0) throw new ObjectDisposedException(nameof(Consumer));
             if (offset < 0) throw new ArgumentOutOfRangeException(nameof(offset), offset, "must be >= 0");
 
             var count = batchSize.GetValueOrDefault(Configuration.BatchSize);
@@ -182,16 +180,17 @@ namespace KafkaClient
 
         public void Dispose()
         {
-            using (_stopToken) {
-                if (_leaveRouterOpen) return;
-                using (Router)
-                {
-                }
+            // skip multiple calls to dispose
+            if (Interlocked.Increment(ref _disposeCount) != 1) return;
+
+            if (_leaveRouterOpen) return;
+            using (Router) {
             }
         }
 
         public async Task<IConsumerMember> JoinGroupAsync(string groupId, string protocolType, IEnumerable<IMemberMetadata> metadata, CancellationToken cancellationToken)
         {
+            if (_disposeCount > 0) throw new ObjectDisposedException(nameof(Consumer));
             if (!Encoders.ContainsKey(protocolType ?? "")) throw new ArgumentOutOfRangeException(nameof(metadata), $"ProtocolType {protocolType} is unknown");
 
             var protocols = metadata?.Select(m => new JoinGroupRequest.GroupProtocol(m));

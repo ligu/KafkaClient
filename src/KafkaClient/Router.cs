@@ -9,7 +9,6 @@ using KafkaClient.Assignment;
 using KafkaClient.Common;
 using KafkaClient.Connections;
 using KafkaClient.Protocol;
-using Nito.AsyncEx;
 
 namespace KafkaClient
 {
@@ -36,35 +35,56 @@ namespace KafkaClient
         private ImmutableDictionary<string, Tuple<DescribeGroupsResponse.Group, DateTimeOffset>> _groupCache = ImmutableDictionary<string, Tuple<DescribeGroupsResponse.Group, DateTimeOffset>>.Empty;
         private readonly ConcurrentDictionary<string, Tuple<IImmutableList<SyncGroupRequest.GroupAssignment>, int>> _memberAssignmentCache = new ConcurrentDictionary<string, Tuple<IImmutableList<SyncGroupRequest.GroupAssignment>, int>>();
 
-        private readonly AsyncLock _connectionLock = new AsyncLock();
-        private readonly AsyncLock _groupLock = new AsyncLock();
+        private readonly SemaphoreSlim _connectionSemaphore = new SemaphoreSlim(1);
+        private readonly SemaphoreSlim _groupSemaphore = new SemaphoreSlim(1);
 
-        /// <exception cref="ConnectionException">None of the provided Kafka servers are resolvable.</exception>
-        public Router(KafkaOptions options)
-            : this(options.ServerUris, options.ConnectionFactory, options.ConnectionConfiguration, options.PartitionSelector, options.RouterConfiguration, options.Log)
+        public static Task<Router> CreateAsync(
+            Uri serverUri, IConnectionFactory connectionFactory = null,
+            IConnectionConfiguration connectionConfiguration = null, IPartitionSelector partitionSelector = null,
+            IRouterConfiguration routerConfiguration = null, ILog log = null)
+        {
+            return CreateAsync(new [] { serverUri }, connectionFactory, connectionConfiguration, partitionSelector, routerConfiguration, log);
+        }
+
+        public static async Task<Router> CreateAsync(
+            IEnumerable<Uri> serverUris, IConnectionFactory connectionFactory = null,
+            IConnectionConfiguration connectionConfiguration = null, IPartitionSelector partitionSelector = null,
+            IRouterConfiguration routerConfiguration = null, ILog log = null)
+        {
+            var endpoints = new List<Endpoint>();
+            log = log ?? TraceLog.Log;
+            connectionFactory = connectionFactory ?? new ConnectionFactory();
+            foreach (var uri in serverUris) {
+                try {
+                    endpoints.Add(await connectionFactory.ResolveAsync(uri, log));
+                } catch (ConnectionException ex) {
+                    log.Warn(() => LogEvent.Create(ex, $"Ignoring uri that could not be resolved: {uri}"));
+                }
+            }
+            return new Router(endpoints, connectionFactory, connectionConfiguration, partitionSelector, routerConfiguration, log);
+        }
+
+        public Router(
+            Endpoint endpoint, IConnectionFactory connectionFactory = null,
+            IConnectionConfiguration connectionConfiguration = null, IPartitionSelector partitionSelector = null,
+            IRouterConfiguration routerConfiguration = null, ILog log = null)
+            : this (new []{ endpoint }, connectionFactory, connectionConfiguration, partitionSelector, routerConfiguration, log)
         {
         }
 
         /// <exception cref="ConnectionException">None of the provided Kafka servers are resolvable.</exception>
-        public Router(Uri serverUri, IConnectionFactory connectionFactory = null, IConnectionConfiguration connectionConfiguration = null, IPartitionSelector partitionSelector = null, IRouterConfiguration routerConfiguration = null, ILog log = null)
-            : this (new []{ serverUri }, connectionFactory, connectionConfiguration, partitionSelector, routerConfiguration, log)
-        {
-        }
-
-        /// <exception cref="ConnectionException">None of the provided Kafka servers are resolvable.</exception>
-        public Router(IEnumerable<Uri> serverUris, IConnectionFactory connectionFactory = null, IConnectionConfiguration connectionConfiguration = null, IPartitionSelector partitionSelector = null, IRouterConfiguration routerConfiguration = null, ILog log = null)
+        public Router(IEnumerable<Endpoint> endpoints, IConnectionFactory connectionFactory = null, IConnectionConfiguration connectionConfiguration = null, IPartitionSelector partitionSelector = null, IRouterConfiguration routerConfiguration = null, ILog log = null)
         {
             Log = log ?? TraceLog.Log;
             ConnectionConfiguration = connectionConfiguration ?? new ConnectionConfiguration();
             _connectionFactory = connectionFactory ?? new ConnectionFactory();
 
-            foreach (var uri in serverUris) {
+            foreach (var endpoint in endpoints) {
                 try {
-                    var endpoint = _connectionFactory.Resolve(uri, Log);
                     var connection = _connectionFactory.Create(endpoint, ConnectionConfiguration, Log);
                     _allConnections = _allConnections.SetItem(endpoint, connection);
                 } catch (ConnectionException ex) {
-                    Log.Warn(() => LogEvent.Create(ex, $"Ignoring uri that could not be resolved: {uri}"));
+                    Log.Warn(() => LogEvent.Create(ex, $"Ignoring uri that could not be connected to: {endpoint}"));
                 }
             }
 
@@ -210,34 +230,36 @@ namespace KafkaClient
 
         private async Task<IImmutableList<MetadataResponse.Topic>> UpdateTopicMetadataFromServerAsync(IEnumerable<string> topicNames, bool ignoreCache, CancellationToken cancellationToken)
         {
-            using (await _connectionLock.LockAsync(cancellationToken).ConfigureAwait(false)) {
-                cancellationToken.ThrowIfCancellationRequested();
-                var cachedResults = new CachedResults<MetadataResponse.Topic>(misses: topicNames);
-                if (!ignoreCache) {
-                    cachedResults = CachedResults<MetadataResponse.Topic>.ProduceResults(cachedResults.Misses, topicName => TryGetCachedTopic(topicName, Configuration.CacheExpiration));
-                    if (cachedResults.Misses.Count == 0) return cachedResults.Hits;
-                }
+            return await _connectionSemaphore.LockAsync(
+                async () => {
+                    var cachedResults = new CachedResults<MetadataResponse.Topic>(misses: topicNames);
+                    if (!ignoreCache) {
+                        cachedResults = CachedResults<MetadataResponse.Topic>.ProduceResults(cachedResults.Misses, topicName => TryGetCachedTopic(topicName, Configuration.CacheExpiration));
+                        if (cachedResults.Misses.Count == 0) return cachedResults.Hits;
+                    }
 
-                MetadataRequest request;
-                MetadataResponse response;
-                if (ignoreCache && topicNames == null) {
-                    Log.Info(() => LogEvent.Create("Router refreshing metadata for all topics"));
-                    request = new MetadataRequest();
-                    response = await this.GetMetadataAsync(request, cancellationToken).ConfigureAwait(false);
-                } else {
-                    Log.Info(() => LogEvent.Create($"Router refreshing metadata for topics {string.Join(",", cachedResults.Misses)}"));
-                    request = new MetadataRequest(cachedResults.Misses);
-                    response = await this.GetMetadataAsync(request, cancellationToken).ConfigureAwait(false);
-                }
+                    MetadataRequest request;
+                    MetadataResponse response;
+                    if (ignoreCache && topicNames == null) {
+                        Log.Info(() => LogEvent.Create("Router refreshing metadata for all topics"));
+                        request = new MetadataRequest();
+                        response = await this.GetMetadataAsync(request, cancellationToken).ConfigureAwait(false);
+                    } else {
+                        Log.Info(() => LogEvent.Create($"Router refreshing metadata for topics {string.Join(",", cachedResults.Misses)}"));
+                        request = new MetadataRequest(cachedResults.Misses);
+                        response = await this.GetMetadataAsync(request, cancellationToken).ConfigureAwait(false);
+                    }
 
-                UpdateConnectionCache(response);
-                UpdateTopicCache(response);
+                    if (response != null) {
+                        await UpdateConnectionCacheAsync(response.Brokers);
+                    }
+                    UpdateTopicCache(response);
 
-                // since the above may take some time to complete, it's necessary to hold on to the topics we found before
-                // just in case they expired between when we searched for them and now.
-                var result = cachedResults.Hits.AddNotNullRange(response?.Topics);
-                return result;
-            }
+                    // since the above may take some time to complete, it's necessary to hold on to the topics we found before
+                    // just in case they expired between when we searched for them and now.
+                    var result = cachedResults.Hits.AddNotNullRange(response?.Topics);
+                    return result;
+                }, cancellationToken).ConfigureAwait(false);
         }
 
         private CachedMetadataException GetPartitionElectionException(IList<TopicPartition> partitionElections)
@@ -334,26 +356,28 @@ namespace KafkaClient
 
         private async Task<int> UpdateGroupBrokersFromServerAsync(string groupId, bool ignoreCache, CancellationToken cancellationToken)
         {
-            using (await _connectionLock.LockAsync(cancellationToken).ConfigureAwait(false)) {
-                cancellationToken.ThrowIfCancellationRequested();
-                if (!ignoreCache) {
-                    var brokerId = TryGetCachedGroupBrokerId(groupId, Configuration.CacheExpiration);
-                    if (brokerId.HasValue) return brokerId.Value;
-                }
+            return await _connectionSemaphore.LockAsync(
+                async () => {
+                    if (!ignoreCache) {
+                        var brokerId = TryGetCachedGroupBrokerId(groupId, Configuration.CacheExpiration);
+                        if (brokerId.HasValue) return brokerId.Value;
+                    }
 
-                Log.Info(() => LogEvent.Create($"Router refreshing brokers for group {groupId}"));
-                var request = new GroupCoordinatorRequest(groupId);
-                try {
-                    var response = await this.SendToAnyAsync(request, cancellationToken).ConfigureAwait(false);
+                    Log.Info(() => LogEvent.Create($"Router refreshing brokers for group {groupId}"));
+                    var request = new GroupCoordinatorRequest(groupId);
+                    try {
+                        var response = await this.SendToAnyAsync(request, cancellationToken).ConfigureAwait(false);
 
-                    UpdateConnectionCache(new [] { response });
-                    UpdateGroupBrokerCache(request, response);
+                        if (response != null) {
+                            await UpdateConnectionCacheAsync(new [] { response });
+                        }
+                        UpdateGroupBrokerCache(request, response);
 
-                    return response.BrokerId;
-                } catch (Exception ex) {
-                    throw new CachedMetadataException($"Unable to refresh brokers for group {groupId}", ex);
-                }
-            }
+                        return response.BrokerId;
+                    } catch (Exception ex) {
+                        throw new CachedMetadataException($"Unable to refresh brokers for group {groupId}", ex);
+                    }
+                }, cancellationToken).ConfigureAwait(false);
         }
 
         private void UpdateGroupBrokerCache(GroupCoordinatorRequest request, GroupCoordinatorResponse response)
@@ -435,25 +459,25 @@ namespace KafkaClient
         
         private async Task<IImmutableList<DescribeGroupsResponse.Group>> UpdateGroupMetadataFromServerAsync(IEnumerable<string> groupIds, bool ignoreCache, CancellationToken cancellationToken)
         {
-            using (await _groupLock.LockAsync(cancellationToken).ConfigureAwait(false)) {
-                cancellationToken.ThrowIfCancellationRequested();
-                var cachedResults = new CachedResults<DescribeGroupsResponse.Group>(misses: groupIds);
-                if (!ignoreCache) {
-                    cachedResults = CachedResults<DescribeGroupsResponse.Group>.ProduceResults(cachedResults.Misses, groupId => TryGetCachedGroup(groupId, Configuration.CacheExpiration));
-                    if (cachedResults.Misses.Count == 0) return cachedResults.Hits;
-                }
+            return await _groupSemaphore.LockAsync(
+                async () => {
+                    var cachedResults = new CachedResults<DescribeGroupsResponse.Group>(misses: groupIds);
+                    if (!ignoreCache) {
+                        cachedResults = CachedResults<DescribeGroupsResponse.Group>.ProduceResults(cachedResults.Misses, groupId => TryGetCachedGroup(groupId, Configuration.CacheExpiration));
+                        if (cachedResults.Misses.Count == 0) return cachedResults.Hits;
+                    }
 
-                Log.Info(() => LogEvent.Create($"Router refreshing metadata for groups {string.Join(",", cachedResults.Misses)}"));
-                var request = new DescribeGroupsRequest(cachedResults.Misses);
-                var response = await this.SendToAnyAsync(request, cancellationToken).ConfigureAwait(false);
+                    Log.Info(() => LogEvent.Create($"Router refreshing metadata for groups {string.Join(",", cachedResults.Misses)}"));
+                    var request = new DescribeGroupsRequest(cachedResults.Misses);
+                    var response = await this.SendToAnyAsync(request, cancellationToken).ConfigureAwait(false);
 
-                UpdateGroupCache(response);
+                    UpdateGroupCache(response);
 
-                // since the above may take some time to complete, it's necessary to hold on to the groups we found before
-                // just in case they expired between when we searched for them and now.
-                var result = cachedResults.Hits.AddNotNullRange(response?.Groups);
-                return result;
-            }
+                    // since the above may take some time to complete, it's necessary to hold on to the groups we found before
+                    // just in case they expired between when we searched for them and now.
+                    var result = cachedResults.Hits.AddNotNullRange(response?.Groups);
+                    return result;
+                }, cancellationToken).ConfigureAwait(false);
         }
 
         private void UpdateGroupCache(DescribeGroupsResponse metadata)
@@ -538,21 +562,14 @@ namespace KafkaClient
             }
         }
 
-        private void UpdateConnectionCache(MetadataResponse metadata)
-        {
-            if (metadata == null) return;
-
-            UpdateConnectionCache(metadata.Brokers);
-        }
-
-        private void UpdateConnectionCache(IEnumerable<Protocol.Broker> brokers)
+        private async Task UpdateConnectionCacheAsync(IEnumerable<Protocol.Broker> brokers)
         {
             var allConnections = _allConnections;
             var brokerConnections = _brokerConnections;
             var connectionsToDispose = ImmutableList<IConnection>.Empty;
             try {
                 foreach (var broker in brokers) {
-                    var endpoint = _connectionFactory.Resolve(new Uri($"http://{broker.Host}:{broker.Port}"), Log);
+                    var endpoint = await _connectionFactory.ResolveAsync(new Uri($"http://{broker.Host}:{broker.Port}"), Log);
 
                     IConnection connection;
                     if (brokerConnections.TryGetValue(broker.BrokerId, out connection)) {
@@ -597,7 +614,10 @@ namespace KafkaClient
         public void Dispose()
         {
             if (Interlocked.Increment(ref _disposeCount) != 1) return;
+
             DisposeConnections(_allConnections.Values);
+            _connectionSemaphore.Dispose();
+            _groupSemaphore.Dispose();
         }
 
         /// <inheritdoc />

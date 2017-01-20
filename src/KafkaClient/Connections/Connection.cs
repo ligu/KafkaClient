@@ -8,7 +8,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Common;
 using KafkaClient.Protocol;
-using Nito.AsyncEx;
 
 namespace KafkaClient.Connections
 {
@@ -36,8 +35,8 @@ namespace KafkaClient.Connections
         protected int ActiveReaderCount;
         private static int _correlationIdSeed;
 
-        private readonly AsyncReaderWriterLock _socketLock = new AsyncReaderWriterLock();
-        private readonly AsyncReaderWriterLock _versionSupportLock = new AsyncReaderWriterLock();
+        private readonly SemaphoreSlim _socketSemaphore = new SemaphoreSlim(1);
+        private readonly SemaphoreSlim _versionSupportSemaphore = new SemaphoreSlim(1);
         private IVersionSupport _versionSupport;
 
         /// <summary>
@@ -53,11 +52,10 @@ namespace KafkaClient.Connections
 
             _log = log ?? TraceLog.Log;
             _versionSupport = _configuration.VersionSupport.IsDynamic ? null : _configuration.VersionSupport;
-            _socket = CreateSocket();
 
             // This thread will poll the receive stream for data, parse a message out
             // and trigger an event with the message payload
-            _receiveTask = Task.Factory.StartNew(DedicatedReceiveTask, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+            _receiveTask = Task.Factory.StartNew(DedicatedReceiveAsync, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
         }
 
         /// <summary>
@@ -85,7 +83,7 @@ namespace KafkaClient.Connections
             context = RequestContext.Copy(context, NextCorrelationId(), version, encoders: _configuration.Encoders, onProduceRequestMessages: _configuration.OnProduceRequestMessages);
 
             byte[] receivedBytes;
-            using (var asyncItem = new AsyncItem(context, request.ApiKey, KafkaEncoder.Encode(context, request), _configuration.RequestTimeout)) {
+            using (var asyncItem = new AsyncItem(context, request.ApiKey, request, _configuration.RequestTimeout)) {
                 if (request.ExpectResponse) {
                     AddToCorrelationMatching(asyncItem);
                 }
@@ -93,24 +91,26 @@ namespace KafkaClient.Connections
                 _log.Info(() => LogEvent.Create($"Sending {request.ApiKey} (id {context.CorrelationId}, v {version.GetValueOrDefault()}, {asyncItem.Request.Count} bytes) to {Endpoint}"));
                 _log.Debug(() => LogEvent.Create($"{request.ApiKey} -----> {Endpoint}\n- Context:{context.ToFormattedString()}\n- Request:{request.ToFormattedString()}"));
 
-                var timer = new Stopwatch();
-                try {
-                    await ConnectAsync(cancellationToken).ConfigureAwait(false);
-                    _configuration.OnWriting?.Invoke(Endpoint, request.ApiKey);
-                    timer.Start();
-                    var bytesWritten = await WriteBytesAsync(_socket, context.CorrelationId, asyncItem.Request, cancellationToken);
-                    timer.Stop();
-                    _configuration.OnWritten?.Invoke(Endpoint, request.ApiKey, bytesWritten, timer.Elapsed);
+                using (var cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _disposeToken.Token)) {
+                    var timer = new Stopwatch();
+                    try {
+                            await ConnectAsync(cancellation.Token).ConfigureAwait(false);
+                            _configuration.OnWriting?.Invoke(Endpoint, request.ApiKey);
+                            timer.Start();
+                            var bytesWritten = await WriteBytesAsync(_socket, context.CorrelationId, asyncItem.Request, cancellation.Token);
+                            timer.Stop();
+                            _configuration.OnWritten?.Invoke(Endpoint, request.ApiKey, bytesWritten, timer.Elapsed);
 
-                    if (!request.ExpectResponse) return default (T);
-                } catch (Exception ex) {
-                    timer.Stop();
-                    _configuration.OnWriteFailed?.Invoke(Endpoint, request.ApiKey, timer.Elapsed, ex);
-                    RemoveFromCorrelationMatching(asyncItem, ex);
-                    throw;
+                        if (!request.ExpectResponse) return default (T);
+                    } catch (Exception ex) {
+                        timer.Stop();
+                        _configuration.OnWriteFailed?.Invoke(Endpoint, request.ApiKey, timer.Elapsed, ex);
+                        RemoveFromCorrelationMatching(asyncItem, ex);
+                        throw;
+                    }
+
+                    receivedBytes = await asyncItem.ReceiveTask.Task.ThrowIfCancellationRequested(cancellation.Token).ConfigureAwait(false);
                 }
-
-                receivedBytes = await asyncItem.ReceiveTask.Task.ThrowIfCancellationRequested(cancellationToken).ConfigureAwait(false);
             }
 
             var response = KafkaEncoder.Decode<T>(context, request.ApiKey, receivedBytes);
@@ -122,11 +122,11 @@ namespace KafkaClient.Connections
         {
             if (!_configuration.VersionSupport.IsDynamic) return _configuration.VersionSupport.GetVersion(requestType).GetValueOrDefault();
 
-            using (await _versionSupportLock.ReaderLockAsync(cancellationToken).ConfigureAwait(false)) {
-                if (_versionSupport != null) return _versionSupport.GetVersion(requestType).GetValueOrDefault();
-            }
-            using (await _versionSupportLock.WriterLockAsync(cancellationToken).ConfigureAwait(false)) {
-                return await _configuration.ConnectionRetry.AttemptAsync(
+            var versionSupport = _versionSupport;
+            if (versionSupport != null) return versionSupport.GetVersion(requestType).GetValueOrDefault();
+
+            return await _versionSupportSemaphore.LockAsync(
+                () => _configuration.ConnectionRetry.AttemptAsync(
                     async (attempt, timer) => {
                         var response = await SendAsync(new ApiVersionsRequest(), cancellationToken, new RequestContext(version: 0)).ConfigureAwait(false);
                         if (response.ErrorCode.IsRetryable()) return RetryAttempt<short>.Retry;
@@ -141,8 +141,9 @@ namespace KafkaClient.Connections
                     (attempt, timer) => _log.Debug(() => LogEvent.Create($"Retrying {nameof(GetVersionAsync)} attempt {attempt}")),
                     attempt => _versionSupport = _configuration.VersionSupport,
                     exception => _log.Error(LogEvent.Create(exception)),
-                    cancellationToken).ConfigureAwait(false);
-            }
+                    cancellationToken), 
+                cancellationToken
+            ).ConfigureAwait(false);
         }
 
         #region Equals
@@ -166,7 +167,7 @@ namespace KafkaClient.Connections
 
         #endregion Equals
 
-        private async Task DedicatedReceiveTask()
+        private async Task DedicatedReceiveAsync()
         {
             // only allow one reader to execute, dump out all other requests
             if (Interlocked.Increment(ref ActiveReaderCount) != 1) return;
@@ -236,8 +237,19 @@ namespace KafkaClient.Connections
             } catch (Exception ex) {
                 _log.Debug(() => LogEvent.Create(ex));
             } finally {
+                DisposeFinal();
                 Interlocked.Decrement(ref ActiveReaderCount);
                 _log.Info(() => LogEvent.Create($"Closed down connection to {Endpoint}"));
+            }
+        }
+
+        protected void DisposeFinal()
+        {
+            using (_disposeToken) {
+                DisposeSocket(_socket);
+                _socketSemaphore.Dispose();
+                _versionSupportSemaphore.Dispose();
+                _timedOutRequestsByCorrelation.Clear();
             }
         }
 
@@ -245,9 +257,10 @@ namespace KafkaClient.Connections
 
         private Socket CreateSocket()
         {
-            if (Endpoint.IP == null) throw new ConnectionException(Endpoint);
+            if (Endpoint.Value == null) throw new ConnectionException(Endpoint);
+            if (_disposeCount > 0) throw new ObjectDisposedException($"Connection to {Endpoint}");
 
-            return new Socket(Endpoint.IP.AddressFamily, SocketType.Stream, ProtocolType.Tcp) {
+            return new Socket(Endpoint.Value.AddressFamily, SocketType.Stream, ProtocolType.Tcp) {
                 Blocking = false,
                 SendTimeout = (int)_configuration.RequestTimeout.TotalMilliseconds,
                 SendBufferSize = 8092, // Add to configuration?
@@ -259,6 +272,7 @@ namespace KafkaClient.Connections
         {
             try {
                 if (socket == null) return;
+                _log.Info(() => LogEvent.Create($"Disposing connection to {Endpoint}"));
                 using (socket) {
                     if (socket.Connected) {
                         socket.Shutdown(SocketShutdown.Both);
@@ -273,70 +287,72 @@ namespace KafkaClient.Connections
         {
             if (_disposeCount > 0) throw new ObjectDisposedException(nameof(Connection));
 
-            using (await _socketLock.ReaderLockAsync(cancellationToken).ConfigureAwait(false)) {
-                if (_socket.Connected || cancellationToken.IsCancellationRequested) return _socket;
-            }
-            using (await _socketLock.WriterLockAsync(cancellationToken).ConfigureAwait(false)) {
-                if (_socket.Connected || cancellationToken.IsCancellationRequested) return _socket;
-                var socket = _socket;
-                _socket = await _configuration.ConnectionRetry.AttemptAsync(
-                    async (attempt, timer) => {
-                        _log.Info(() => LogEvent.Create($"Connecting to {Endpoint}"));
-                        _configuration.OnConnecting?.Invoke(Endpoint, attempt, timer.Elapsed);
+            var existing = _socket;
+            if (existing?.Connected ?? cancellationToken.IsCancellationRequested) return existing;
 
-                        var connectTask = socket.ConnectAsync(Endpoint.IP.Address, Endpoint.IP.Port);
-                        if (await connectTask.IsCancelled(_disposeToken.Token).ConfigureAwait(false)) {
-                            throw new ObjectDisposedException($"Object is disposing (TcpSocket for endpoint {Endpoint})");
-                        }
+            return await _socketSemaphore.LockAsync(
+                async () => {
+                    if (_socket?.Connected ?? cancellationToken.IsCancellationRequested) return _socket;
+                    var socket = _socket ?? CreateSocket();
+                    _socket = await _configuration.ConnectionRetry.AttemptAsync(
+                        async (attempt, timer) => {
+                            _log.Info(() => LogEvent.Create($"Connecting to {Endpoint}"));
+                            _configuration.OnConnecting?.Invoke(Endpoint, attempt, timer.Elapsed);
 
-                        await connectTask.ConfigureAwait(false);
-                        if (!socket.Connected) return RetryAttempt<Socket>.Retry;
+                            var connectTask = socket.ConnectAsync(Endpoint.Value.Address, Endpoint.Value.Port);
+                            if (await connectTask.IsCancelled(_disposeToken.Token).ConfigureAwait(false)) {
+                                throw new ObjectDisposedException($"Object is disposing (TcpSocket for endpoint {Endpoint})");
+                            }
 
-                        _log.Info(() => LogEvent.Create($"Connection established to {Endpoint}"));
-                        _configuration.OnConnected?.Invoke(Endpoint, attempt, timer.Elapsed);
-                        return new RetryAttempt<Socket>(socket);
-                    },
-                    (attempt, retry) => _log.Warn(() => LogEvent.Create($"Failed connection to {Endpoint}: Will retry in {retry}")),
-                    attempt => {
-                        _log.Warn(() => LogEvent.Create($"Failed connection to {Endpoint} on attempt {attempt}"));
-                        throw new ConnectionException(Endpoint);
-                    },
-                    (ex, attempt, retry) =>
-                    {
-                        if (ex is ObjectDisposedException) {
-                            if (_disposeToken.IsCancellationRequested) throw ex.PrepareForRethrow();
+                            await connectTask.ConfigureAwait(false);
+                            if (!socket.Connected) return RetryAttempt<Socket>.Retry;
 
-                            DisposeSocket(socket);
-                            _log.Info(() => LogEvent.Create(ex, $"Creating new socket to {Endpoint}"));
-                            socket = CreateSocket();
-                        }
-                        _log.Warn(() => LogEvent.Create(ex, $"Failed connection to {Endpoint}: Will retry in {retry}"));
-                    },
-                    (ex, attempt) =>
-                    {
-                        _log.Warn(() => LogEvent.Create(ex, $"Failed connection to {Endpoint} on attempt {attempt}"));
-                        if (ex is SocketException) {
-                            throw new ConnectionException(Endpoint, ex);
-                        }
-                    },
-                    cancellationToken).ConfigureAwait(false);
-                return _socket;
-            }
+                            _log.Info(() => LogEvent.Create($"Connection established to {Endpoint}"));
+                            _configuration.OnConnected?.Invoke(Endpoint, attempt, timer.Elapsed);
+                            return new RetryAttempt<Socket>(socket);
+                        },
+                        (attempt, retry) => _log.Warn(() => LogEvent.Create($"Failed connection to {Endpoint}: Will retry in {retry}")),
+                        attempt => {
+                            _log.Warn(() => LogEvent.Create($"Failed connection to {Endpoint} on attempt {attempt}"));
+                            throw new ConnectionException(Endpoint);
+                        },
+                        (ex, attempt, retry) =>
+                        {
+                            if (ex is ObjectDisposedException) {
+                                if (_disposeToken.IsCancellationRequested) throw ex.PrepareForRethrow();
+
+                                DisposeSocket(socket);
+                                _log.Info(() => LogEvent.Create(ex, $"Creating new socket to {Endpoint}"));
+                                socket = CreateSocket();
+                            }
+                            _log.Warn(() => LogEvent.Create(ex, $"Failed connection to {Endpoint}: Will retry in {retry}"));
+                        },
+                        (ex, attempt) =>
+                        {
+                            _log.Warn(() => LogEvent.Create(ex, $"Failed connection to {Endpoint} on attempt {attempt}"));
+                            if (ex is SocketException) {
+                                throw new ConnectionException(Endpoint, ex);
+                            }
+                        },
+                        cancellationToken).ConfigureAwait(false);
+                    return _socket;
+                }, cancellationToken).ConfigureAwait(false);
         }
 
         internal async Task<int> ReadBytesAsync(Socket socket, byte[] buffer, int bytesToRead, Action<int> onBytesRead, CancellationToken cancellationToken)
         {
             var timer = new Stopwatch();
             var totalBytesRead = 0;
+            var cancellation = CancellationTokenSource.CreateLinkedTokenSource(_disposeToken.Token, cancellationToken);
             try {
                 _configuration.OnReading?.Invoke(Endpoint, bytesToRead);
                 timer.Start();
-                while (totalBytesRead < bytesToRead && !cancellationToken.IsCancellationRequested) {
+                while (totalBytesRead < bytesToRead && !cancellation.Token.IsCancellationRequested) {
                     var bytesRemaining = bytesToRead - totalBytesRead;
                     _log.Debug(() => LogEvent.Create($"Reading ({bytesRemaining}? bytes) from {Endpoint}"));
                     _configuration.OnReadingBytes?.Invoke(Endpoint, bytesRemaining);
                     var bytes = new ArraySegment<byte>(buffer, 0, Math.Min(buffer.Length, bytesRemaining));
-                    var bytesRead = await socket.ReceiveAsync(bytes, SocketFlags.None).ThrowIfCancellationRequested(cancellationToken).ConfigureAwait(false);
+                    var bytesRead = await socket.ReceiveAsync(bytes, SocketFlags.None).ThrowIfCancellationRequested(cancellation.Token).ConfigureAwait(false);
                     totalBytesRead += bytesRead;
                     _configuration.OnReadBytes?.Invoke(Endpoint, bytesRemaining, bytesRead, timer.Elapsed);
                     _log.Debug(() => LogEvent.Create($"Read {bytesRead} bytes from {Endpoint}"));
@@ -355,7 +371,10 @@ namespace KafkaClient.Connections
             } catch (Exception ex) {
                 timer.Stop();
                 _configuration.OnReadFailed?.Invoke(Endpoint, bytesToRead, timer.Elapsed, ex);
+                if (_disposeToken.IsCancellationRequested) throw new ObjectDisposedException(nameof(Connection));
                 throw;
+            } finally {
+                cancellation.Dispose();
             }
             return totalBytesRead;
         }
@@ -364,16 +383,23 @@ namespace KafkaClient.Connections
         {
             var totalBytesWritten = 0;
             var timer = new Stopwatch();
-            timer.Start();
-            while (totalBytesWritten < buffer.Count) {
-                cancellationToken.ThrowIfCancellationRequested();
-                var bytesRemaining = buffer.Count - totalBytesWritten;
-                _log.Debug(() => LogEvent.Create($"Writing {bytesRemaining}? bytes (id {correlationId}) to {Endpoint}"));
-                _configuration.OnWritingBytes?.Invoke(Endpoint, bytesRemaining);
-                var bytesWritten = await socket.SendAsync(new ArraySegment<byte>(buffer.Array, buffer.Offset + totalBytesWritten, bytesRemaining), SocketFlags.None).ThrowIfCancellationRequested(cancellationToken).ConfigureAwait(false);
-                _configuration.OnWroteBytes?.Invoke(Endpoint, bytesRemaining, bytesWritten, timer.Elapsed);
-                _log.Debug(() => LogEvent.Create($"Wrote {bytesWritten} bytes (id {correlationId}) to {Endpoint}"));
-                totalBytesWritten += bytesWritten;
+            var cancellation = CancellationTokenSource.CreateLinkedTokenSource(_disposeToken.Token, cancellationToken);
+            try {
+                timer.Start();
+                while (totalBytesWritten < buffer.Count) {
+                    var bytesRemaining = buffer.Count - totalBytesWritten;
+                    _log.Debug(() => LogEvent.Create($"Writing {bytesRemaining}? bytes (id {correlationId}) to {Endpoint}"));
+                    _configuration.OnWritingBytes?.Invoke(Endpoint, bytesRemaining);
+                    var bytesWritten = await socket.SendAsync(new ArraySegment<byte>(buffer.Array, buffer.Offset + totalBytesWritten, bytesRemaining), SocketFlags.None).ThrowIfCancellationRequested(cancellation.Token).ConfigureAwait(false);
+                    _configuration.OnWroteBytes?.Invoke(Endpoint, bytesRemaining, bytesWritten, timer.Elapsed);
+                    _log.Debug(() => LogEvent.Create($"Wrote {bytesWritten} bytes (id {correlationId}) to {Endpoint}"));
+                    totalBytesWritten += bytesWritten;
+                }
+            } catch (Exception) {
+                if (_disposeToken.IsCancellationRequested) throw new ObjectDisposedException(nameof(Connection));
+                throw;
+            } finally {
+                cancellation.Dispose();
             }
             return totalBytesWritten;
         }
@@ -456,18 +482,12 @@ namespace KafkaClient.Connections
 
         #endregion
 
-        public void Dispose()
+        public virtual void Dispose()
         {
-            //skip multiple calls to dispose
+            // skip multiple calls to dispose
             if (Interlocked.Increment(ref _disposeCount) != 1) return;
 
-            _disposeToken.Cancel();
-            Task.WaitAny(_receiveTask, Task.Delay(TimeSpan.FromSeconds(1)));
-
-            using (_disposeToken) {
-                DisposeSocket(_socket);
-                _timedOutRequestsByCorrelation.Clear();
-            }
+            _disposeToken.Cancel(); // other final cleanup taken care of in DedicatedReceiveAsync
         }
 
         private class AsyncItem : IDisposable
@@ -475,11 +495,11 @@ namespace KafkaClient.Connections
             private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
             private CancellationTokenRegistration _registration;
 
-            public AsyncItem(IRequestContext context, ApiKeyRequestType requestType, ArraySegment<byte> request, TimeSpan timeout)
+            public AsyncItem(IRequestContext context, ApiKeyRequestType requestType, IRequest request, TimeSpan timeout)
             {
                 Context = context;
                 Timeout = timeout;
-                Request = request;
+                Request = KafkaEncoder.Encode(context, request);
                 RequestType = requestType;
                 ReceiveTask = new TaskCompletionSource<byte[]>();
             }

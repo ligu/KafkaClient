@@ -15,7 +15,7 @@ namespace KafkaClient
 
         public int BrokerId { get; }
 
-        public override string ToString() => $"{Connection.Endpoint.ServerUri} ({BrokerId})";
+        public override string ToString() => $"{Connection.Endpoint} ({BrokerId})";
 
         public override bool Equals(object obj)
         {

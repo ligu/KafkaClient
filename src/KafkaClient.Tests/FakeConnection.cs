@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Connections;
 using KafkaClient.Protocol;
+using Nito.AsyncEx;
 
 namespace KafkaClient.Tests
 {
@@ -13,7 +14,7 @@ namespace KafkaClient.Tests
     {
         public FakeConnection(Uri address)
         {
-            Endpoint = new ConnectionFactory().Resolve(address, TestConfig.Log);
+            Endpoint = AsyncContext.Run(() => Endpoint.ResolveAsync(address, TestConfig.Log));
         }
 
         public long this[ApiKeyRequestType requestType]

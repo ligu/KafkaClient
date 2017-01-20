@@ -15,7 +15,5 @@ namespace KafkaClient.Common
         {
             _disposeAction();
         }
-
-        public static IDisposable None { get; } = new Disposable(() => { });
     }
 }

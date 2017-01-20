@@ -12,6 +12,17 @@ namespace KafkaClient
 {
     public static class RouterExtensions
     {
+        public static Task<Router> CreateRouterAsync(this KafkaOptions options)
+        {
+            return Router.CreateAsync(
+                options.ServerUris,
+                options.ConnectionFactory,
+                options.ConnectionConfiguration,
+                options.PartitionSelector,
+                options.RouterConfiguration,
+                options.Log);
+        }
+
         /// <summary>
         /// Get offsets for all partitions of a given topic.
         /// </summary>
@@ -20,7 +31,6 @@ namespace KafkaClient
         /// <param name="maxOffsets">How many to get, at most.</param>
         /// <param name="offsetTime">These are best described by <see cref="OffsetRequest.Topic.Timestamp"/></param>
         /// <param name="cancellationToken"></param>
-        /// <param name="retryPolicy"></param>
         public static async Task<IImmutableList<OffsetResponse.Topic>> GetTopicOffsetsAsync(this IRouter router, string topicName, int maxOffsets, long offsetTime, CancellationToken cancellationToken)
         {
             bool? metadataInvalid = false;

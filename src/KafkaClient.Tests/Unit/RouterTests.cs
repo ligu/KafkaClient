@@ -27,17 +27,17 @@ namespace KafkaClient.Tests.Unit
             _connection = Substitute.For<IConnection>();
             _connectionFactory = Substitute.For<IConnectionFactory>();
             _connectionFactory
-                .Create(Arg.Is<Endpoint>(e => e.IP.Port == 1), Arg.Any<IConnectionConfiguration>(), Arg.Any<ILog>())
+                .Create(Arg.Is<Endpoint>(e => e.Value.Port == 1), Arg.Any<IConnectionConfiguration>(), Arg.Any<ILog>())
                 .Returns(_ => _connection);
             _connectionFactory
-                .Resolve(Arg.Any<Uri>(), Arg.Any<ILog>())
-                .Returns(_ => new Endpoint(_.Arg<Uri>(), new IPEndPoint(IPAddress.Parse("127.0.0.1"), _.Arg<Uri>().Port)));
+                .ResolveAsync(Arg.Any<Uri>(), Arg.Any<ILog>())
+                .Returns(_ => Task.FromResult(new Endpoint(new IPEndPoint(IPAddress.Loopback, _.Arg<Uri>().Port), _.Arg<Uri>().DnsSafeHost)));
         }
 
         [Test]
         public void BrokerRouterCanConstruct()
         {
-            var result = new Router(new Uri("http://localhost:1"), _connectionFactory);
+            var result = new Router(new Endpoint(new IPEndPoint(IPAddress.Loopback, 1)), _connectionFactory);
 
             Assert.That(result, Is.Not.Null);
         }
@@ -45,19 +45,19 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public void BrokerRouterConstructorThrowsException()
         {
-            Assert.Throws<ConnectionException>(() => new Router(new Uri("http://noaddress:1")));
+            Assert.ThrowsAsync<ConnectionException>(() => Router.CreateAsync(new Uri("http://noaddress:1")));
         }
 
         [Test]
-        public void BrokerRouterConstructorShouldIgnoreUnresolvableUriWhenAtLeastOneIsGood()
+        public async Task BrokerRouterConstructorShouldIgnoreUnresolvableUriWhenAtLeastOneIsGood()
         {
-            var result = new Router(new [] { new Uri("http://noaddress:1"), new Uri("http://localhost:1") });
+            var result = await Router.CreateAsync(new [] { new Uri("http://noaddress:1"), new Uri("http://localhost:1") });
         }
 
         [Test]
         public async Task BrokerRouterUsesFactoryToAddNewBrokers()
         {
-            var router = new Router(new Uri("http://localhost:1"), _connectionFactory);
+            var router = new Router(new Endpoint(new IPEndPoint(IPAddress.Loopback, 1)), _connectionFactory);
 
             _connection
                 .SendAsync(Arg.Any<IRequest<MetadataResponse>>(), Arg.Any<CancellationToken>(), Arg.Any<IRequestContext>())
@@ -65,13 +65,13 @@ namespace KafkaClient.Tests.Unit
             await router.GetTopicMetadataAsync(TestTopic, CancellationToken.None);
             var topics = router.GetTopicMetadata(TestTopic);
             _connectionFactory.Received()
-                              .Create(Arg.Is<Endpoint>(e => e.IP.Port == 2), Arg.Any<IConnectionConfiguration>(), Arg.Any<ILog>());
+                              .Create(Arg.Is<Endpoint>(e => e.Value.Port == 2), Arg.Any<IConnectionConfiguration>(), Arg.Any<ILog>());
         }
 
         [Test]
         public async Task BrokerRouterUsesFactoryToAddNewBrokersFromGroups()
         {
-            var router = new Router(new Uri("http://localhost:1"), _connectionFactory);
+            var router = new Router(new Endpoint(new IPEndPoint(IPAddress.Loopback, 1)), _connectionFactory);
 
             _connection
                 .SendAsync(Arg.Any<GroupCoordinatorRequest>(), Arg.Any<CancellationToken>(), Arg.Any<IRequestContext>())
@@ -79,7 +79,7 @@ namespace KafkaClient.Tests.Unit
             await router.GetGroupBrokerAsync(TestTopic, CancellationToken.None);
             var broker = router.GetGroupBroker(TestTopic);
             _connectionFactory.Received()
-                              .Create(Arg.Is<Endpoint>(e => e.IP.Port == 2), Arg.Any<IConnectionConfiguration>(), Arg.Any<ILog>());
+                              .Create(Arg.Is<Endpoint>(e => e.Value.Port == 2), Arg.Any<IConnectionConfiguration>(), Arg.Any<ILog>());
         }
 
         #region Group Tests

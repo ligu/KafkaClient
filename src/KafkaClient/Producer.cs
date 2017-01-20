@@ -17,11 +17,13 @@ namespace KafkaClient
     public class Producer : IProducer
     {
         private readonly bool _leaveRouterOpen;
-        private int _stopCount;
-        private readonly CancellationTokenSource _stopToken;
+        private int _disposeCount;
+        public Task Disposal { get; private set; }
+        private readonly CancellationTokenSource _disposeToken = new CancellationTokenSource();
+
         private readonly AsyncProducerConsumerQueue<ProduceTopicTask> _produceMessageQueue;
         private readonly SemaphoreSlim _produceRequestSemaphore;
-        private readonly Task _batchSendTask;
+        private readonly Task _sendTask;
 
         private int _sendingMessageCount;
         private ImmutableList<ProduceTopicTask> _batch = ImmutableList<ProduceTopicTask>.Empty;
@@ -45,11 +47,6 @@ namespace KafkaClient
         public IRouter Router { get; }
 
         public IProducerConfiguration Configuration { get; }
-
-        public Producer(KafkaOptions options)
-            : this(new Router(options), options.ProducerConfiguration, false)
-        {
-        }
 
         ///  <summary>
         ///  Construct a Producer class.
@@ -77,8 +74,7 @@ namespace KafkaClient
             Configuration = configuration ?? new ProducerConfiguration();
             _produceMessageQueue = new AsyncProducerConsumerQueue<ProduceTopicTask>();
             _produceRequestSemaphore = new SemaphoreSlim(Configuration.RequestParallelization, Configuration.RequestParallelization);
-            _stopToken = new CancellationTokenSource();
-            _batchSendTask = Task.Run(BatchSendAsync, _stopToken.Token);
+            _sendTask = Task.Run(DedicatedSendAsync, _disposeToken.Token);
         }
 
         /// <inheritdoc />
@@ -97,16 +93,16 @@ namespace KafkaClient
             }
         }
 
-        private async Task BatchSendAsync()
+        private async Task DedicatedSendAsync()
         {
             Router.Log.Info(() => LogEvent.Create("Producer sending task starting"));
             try {
-                while (!_stopToken.IsCancellationRequested) {
+                while (!_disposeToken.IsCancellationRequested) {
                     _batch = ImmutableList<ProduceTopicTask>.Empty;
                     try {
                         _batch = await GetNextBatchAsync().ConfigureAwait(false);
                         if (_batch.IsEmpty) {
-                            if (_stopCount > 0) {
+                            if (_disposeCount > 0) {
                                 Router.Log.Info(() => LogEvent.Create("Producer stopping and nothing available to send"));
                                 break;
                             }
@@ -115,14 +111,14 @@ namespace KafkaClient
                                 var filteredBatch = _batch.Where(_ => _.Codec == codec).ToImmutableList();
                                 if (filteredBatch.IsEmpty) continue;
 
-                                Router.Log.Debug(() => LogEvent.Create($"Producer compiled batch({filteredBatch.Count}) on codec {codec}{(_stopCount == 0 ? "" : ": producer is stopping")}"));
+                                Router.Log.Debug(() => LogEvent.Create($"Producer compiled batch({filteredBatch.Count}) on codec {codec}{(_disposeCount == 0 ? "" : ": producer is stopping")}"));
                                 var batchToken = filteredBatch[0].CancellationToken;
                                 if (filteredBatch.TrueForAll(p => p.CancellationToken == batchToken)) {
-                                    using (var merged = new MergedCancellation(_stopToken.Token, batchToken)) {
-                                        await SendBatchWithCodecAsync(filteredBatch, codec, merged.Token).ConfigureAwait(false);
+                                    using (var cancellation = CancellationTokenSource.CreateLinkedTokenSource(_disposeToken.Token, batchToken)) {
+                                        await SendBatchWithCodecAsync(filteredBatch, codec, cancellation.Token).ConfigureAwait(false);
                                     }
                                 } else {
-                                    await SendBatchWithCodecAsync(filteredBatch, codec, _stopToken.Token).ConfigureAwait(false);
+                                    await SendBatchWithCodecAsync(filteredBatch, codec, _disposeToken.Token).ConfigureAwait(false);
                                 }
                                 _batch = _batch.Where(_ => _.Codec != codec).ToImmutableList(); // so the below catch doesn't update tasks that are already completed
                             }
@@ -135,7 +131,9 @@ namespace KafkaClient
             } catch(Exception ex) { 
                 Router.Log.Warn(() => LogEvent.Create(ex, "Error during producer send"));
             } finally {
+                Dispose();
                 Router.Log.Info(() => LogEvent.Create("Producer sending task ending"));
+                await Disposal;
             }
         }
 
@@ -143,8 +141,8 @@ namespace KafkaClient
         {
             var batch = ImmutableList<ProduceTopicTask>.Empty;
             try {
-                await _produceMessageQueue.OutputAvailableAsync(_stopToken.Token).ConfigureAwait(false);
-                using (var cancellation = new TimedCancellation(_stopToken.Token, Configuration.BatchMaxDelay)) {
+                await _produceMessageQueue.OutputAvailableAsync(_disposeToken.Token).ConfigureAwait(false);
+                using (var cancellation = new TimedCancellation(_disposeToken.Token, Configuration.BatchMaxDelay)) {
                     while (batch.Count < Configuration.BatchSize && !cancellation.Token.IsCancellationRequested) {
                         // Try rather than simply Take (in case the collection has been closed and is not empty)
                         var result = await _produceMessageQueue.DequeueAsync(cancellation.Token).ConfigureAwait(false);
@@ -188,12 +186,8 @@ namespace KafkaClient
                 Router.Log.Debug(() => LogEvent.Create($"Produce request for topics{request.Payloads.Aggregate("", (buffer, p) => $"{buffer} {p}")} with {messageCount} messages"));
 
                 var connection = endpointGroup.Select(_ => _.Route).First().Connection; // they'll all be the same since they're grouped by this
-                await _produceRequestSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-
                 // TODO: what about retryability like for the broker router?? Need this to be robust to node failures
-                var sendGroupTask = connection.SendAsync(request, cancellationToken);
-                // ReSharper disable once UnusedVariable
-                var continuation = sendGroupTask.ContinueWith(t => _produceRequestSemaphore.Release(), CancellationToken.None);
+                var sendGroupTask = _produceRequestSemaphore.LockAsync(() => connection.SendAsync(request, cancellationToken), cancellationToken);
                 sendBatches.Add(new ProduceTaskBatch(connection.Endpoint, endpointGroup.Key.Acks, sendGroupTask, produceTasksByTopicPayload));
             }
 
@@ -253,32 +247,31 @@ namespace KafkaClient
             }
         }
 
-        /// <summary>
-        /// Stops the producer from accepting new messages, waiting for in-flight messages to be sent before returning.
-        /// </summary>
-        public async Task<bool> StopAsync(CancellationToken cancellationToken)
+        private async Task DisposeAsync()
         {
-            if (Interlocked.Increment(ref _stopCount) != 1) return false;
-
             Router.Log.Info(() => LogEvent.Create("Producer stopping"));
             _produceMessageQueue.CompleteAdding(); // block incoming data
-            await Task.WhenAny(_batchSendTask, Task.Delay(Configuration.StopTimeout, cancellationToken)).ConfigureAwait(false);
-            _stopToken.Cancel();
-            return true;
-        }
+            await Task.WhenAny(_sendTask, Task.Delay(Configuration.StopTimeout)).ConfigureAwait(false);
+            _disposeToken.Cancel();
 
-        public void Dispose()
-        {
-            if (!AsyncContext.Run(() => StopAsync(new CancellationToken(true)))) return;
-
-            // cleanup
-            using (_stopToken) {
+            using (_disposeToken) {
                 if (!_leaveRouterOpen) {
-                    using (Router)
-                    {
+                    using (Router) {
                     }
                 }
+                _produceRequestSemaphore.Dispose();
             }
+        }
+
+        /// <summary>
+        /// Stops the producer from accepting new messages, allows in-flight messages to be sent before returning.
+        /// </summary>
+        public void Dispose()
+        {
+            // skip multiple calls to dispose
+            if (Interlocked.Increment(ref _disposeCount) != 1) return;
+
+            Disposal = DisposeAsync(); // other final cleanup taken care of in _sendTask
         }
 
         private class ProduceTopicTask : CancellableTask<ProduceResponse.Topic>

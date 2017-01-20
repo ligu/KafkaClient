@@ -353,17 +353,6 @@ namespace KafkaClient.Tests.Unit
             Assert.ThrowsAsync<ObjectDisposedException>(async () => await producer.SendMessageAsync(new Message("1"), "Test", CancellationToken.None));
         }
 
-        [Test]
-        public async Task SendingMessageWhenStoppedShouldThrow()
-        {
-            var router = Substitute.For<IRouter>();
-            using (var producer = new Producer(router, new ProducerConfiguration(stopTimeout: TimeSpan.FromMilliseconds(200))))
-            {
-                await producer.StopAsync(CancellationToken.None);
-                Assert.ThrowsAsync<ObjectDisposedException>(async () => await producer.SendMessageAsync(new Message("1"), "Test", CancellationToken.None));
-            }
-        }
-
         //[Test,Repeat(IntegrationConfig.TestAttempts)]
         //public async void StopShouldWaitUntilCollectionEmpty()
         //{
@@ -384,22 +373,24 @@ namespace KafkaClient.Tests.Unit
         //}
 
         [Test]
-        public void EnsureProducerDisposesRouter()
+        public async Task EnsureProducerDisposesRouter()
         {
             var router = Substitute.For<IRouter>();
 
-            var producer = new Producer(router, leaveRouterOpen: false);
+            var producer = new Producer(router, new ProducerConfiguration(stopTimeout: TimeSpan.FromMilliseconds(5)), leaveRouterOpen: false);
             using (producer) { }
+            await producer.Disposal;
             router.Received(1).Dispose();
         }
 
         [Test]
-        public void EnsureProducerDoesNotDisposeRouter()
+        public async Task EnsureProducerDoesNotDisposeRouter()
         {
             var router = Substitute.For<IRouter>();
 
-            var producer = new Producer(router);
+            var producer = new Producer(router, new ProducerConfiguration(stopTimeout: TimeSpan.FromMilliseconds(5)));
             using (producer) { }
+            await producer.Disposal;
             router.DidNotReceive().Dispose();
         }
 

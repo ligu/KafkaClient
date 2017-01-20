@@ -11,8 +11,6 @@ namespace KafkaClient.Tests.Integration
     [TestFixture]
     internal class ManualTesting
     {
-        private readonly KafkaOptions _options = new KafkaOptions(TestConfig.IntegrationUri, log: TestConfig.Log);
-
         /// <summary>
         /// These tests are for manual run. You need to stop the partition leader and then start it again and let it became the leader.        
         /// </summary>
@@ -22,7 +20,7 @@ namespace KafkaClient.Tests.Integration
         public async Task NewlyCreatedTopicShouldRetryUntilBrokerIsAssigned()
         {
             var expectedTopic = Guid.NewGuid().ToString();
-            var router = new Router(_options);
+            var router = await TestConfig.Options.CreateRouterAsync();
             var response = router.GetMetadataAsync(new MetadataRequest(expectedTopic), CancellationToken.None);
             var topic = (await response).Topics.FirstOrDefault();
 
@@ -36,8 +34,8 @@ namespace KafkaClient.Tests.Integration
         public async Task ManualConsumerFailure()
         {
             var topicName = "TestTopicIssue13-3R-1P";
-            using (var router = new Router(_options)) {
-                var consumer = new Consumer(new Router(_options), new ConsumerConfiguration(maxPartitionFetchBytes: 10000));
+            using (var router = await TestConfig.Options.CreateRouterAsync()) {
+                var consumer = new Consumer(await TestConfig.Options.CreateRouterAsync(), new ConsumerConfiguration(maxPartitionFetchBytes: 10000));
                 var offset = await router.GetTopicOffsetAsync(topicName, 0, CancellationToken.None);
 
                 var producer = new Producer(router);

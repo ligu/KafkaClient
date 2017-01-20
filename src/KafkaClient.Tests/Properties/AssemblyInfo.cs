@@ -35,4 +35,4 @@ using NUnit.Framework;
 [assembly: AssemblyVersion("1.0.0.0")]
 [assembly: AssemblyFileVersion("1.0.0.0")]
 
-[assembly: Timeout(30000)]
+[assembly: Timeout(60000)]

@@ -12,6 +12,11 @@ namespace KafkaClient
 {
     public static class ConsumerExtensions
     {
+        public static async Task<IConsumer> CreateConsumerAsync(this KafkaOptions options)
+        {
+            return new Consumer(await options.CreateRouterAsync(), options.ConsumerConfiguration, options.ConnectionConfiguration.Encoders, false);
+        }
+
         public static Task<int> FetchAsync(this IConsumer consumer, Func<Message, CancellationToken, Task> onMessageAsync, string topicName, int partitionId, long offset, CancellationToken cancellationToken, int? batchSize = null)
         {
             return consumer.FetchAsync(async (batch, token) => {

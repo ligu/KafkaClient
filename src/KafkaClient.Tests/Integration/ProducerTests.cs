@@ -15,7 +15,7 @@ namespace KafkaClient.Tests.Integration
         [Test]
         public async Task ProducerShouldNotExpectResponseWhenAckIsZero()
         {
-            using (var router = new Router(new KafkaOptions(TestConfig.IntegrationUri))) {
+            using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     using (var producer = new Producer(router)) {
                         var sendTask = producer.SendMessageAsync(
@@ -33,7 +33,7 @@ namespace KafkaClient.Tests.Integration
         [Test]
         public async Task SendAsyncShouldGetOneResultForMessage()
         {
-            using (var router = new Router(new KafkaOptions(TestConfig.IntegrationUri))) {
+            using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     using (var producer = new Producer(router)) {
                         var result = await producer.SendMessagesAsync(new[] { new Message(Guid.NewGuid().ToString()) }, TestConfig.TopicName(), CancellationToken.None);
@@ -47,7 +47,7 @@ namespace KafkaClient.Tests.Integration
         [Test]
         public async Task SendAsyncShouldGetAResultForEachPartitionSentTo()
         {
-            using (var router = new Router(new KafkaOptions(TestConfig.IntegrationUri))) {
+            using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     using (var producer = new Producer(router)) {
                         var messages = new[] { new Message("1"), new Message("2"), new Message("3") };
@@ -64,7 +64,7 @@ namespace KafkaClient.Tests.Integration
         [Test]
         public async Task SendAsyncShouldGetOneResultForEachPartitionThroughBatching()
         {
-            using (var router = new Router(new KafkaOptions(TestConfig.IntegrationUri))) {
+            using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     using (var producer = new Producer(router)) {
                         var tasks = new[] {
@@ -85,7 +85,7 @@ namespace KafkaClient.Tests.Integration
         [Test]
         public async Task ProducerAckLevel()
         {
-            using (var router = new Router(TestConfig.IntegrationUri, log: TestConfig.Log)) {
+            using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     using (var producer = new Producer(router)) {
                         var responseAckLevel0 = await producer.SendMessageAsync(new Message("Ack Level 0"), topicName, 0, new SendMessageConfiguration(acks: 0), CancellationToken.None);
@@ -100,7 +100,7 @@ namespace KafkaClient.Tests.Integration
         [Test]
         public async Task ProducerAckLevel1ResponseOffsetShouldBeEqualToLastOffset()
         {
-            using (var router = new Router(TestConfig.IntegrationUri, log: TestConfig.Log )) {
+            using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     using (var producer = new Producer(router)) {
                         var responseAckLevel1 = await producer.SendMessageAsync(new Message("Ack Level 1"), topicName, 0, new SendMessageConfiguration(acks: 1), CancellationToken.None);
@@ -115,7 +115,7 @@ namespace KafkaClient.Tests.Integration
         [Test]
         public async Task ProducerLastResposeOffsetAckLevel1ShouldBeEqualsToLastOffset()
         {
-            using (var router = new Router(TestConfig.IntegrationUri, log: TestConfig.Log)) {
+            using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     using (var producer = new Producer(router)) {
                         var responseAckLevel1 =
@@ -139,7 +139,7 @@ namespace KafkaClient.Tests.Integration
             partitionSelector.Select(null, null)
                              .ReturnsForAnyArgs(_ => _.Arg<MetadataResponse.Topic>().Partitions.Single(p => p.PartitionId == 1));
 
-            using (var router = new Router(new KafkaOptions(TestConfig.IntegrationUri, partitionSelector: partitionSelector))) {
+            using (var router = await new KafkaOptions(TestConfig.IntegrationUri, partitionSelector: partitionSelector).CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                 var offset = await router.GetTopicOffsetAsync(topicName, 0, CancellationToken.None);
                     using (var producer = new Producer(router)) {

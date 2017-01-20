@@ -14,20 +14,14 @@ namespace KafkaClient.Tests.Integration
     {
         private readonly KafkaOptions _options = new KafkaOptions(TestConfig.IntegrationUri, log: TestConfig.Log);
 
-        private Connection GetKafkaConnection()
-        {
-            var endpoint = new ConnectionFactory().Resolve(_options.ServerUris.First(), _options.Log);
-            var configuration = _options.ConnectionConfiguration;
-            return new Connection(endpoint, configuration, _options.Log);
-        }
-
         [Test]
         public async Task EnsureGzipCompressedMessageCanSend()
         {
-            using (var router = new Router(_options)) {
+            using (var router = await _options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     TestConfig.Log.Info(() => LogEvent.Create(">> Start EnsureGzipCompressedMessageCanSend"));
-                    using (var conn1 = GetKafkaConnection()) {
+                    var endpoint = await _options.ConnectionFactory.ResolveAsync(_options.ServerUris.First(), _options.Log);
+                    using (var conn1 = _options.CreateConnection(endpoint)) {
                         await conn1.SendAsync(new MetadataRequest(topicName), CancellationToken.None);
                     }
 
@@ -58,7 +52,7 @@ namespace KafkaClient.Tests.Integration
             const int partitionId = 0;
 
             TestConfig.Log.Info(() => LogEvent.Create(">> Start EnsureGzipCanDecompressMessageFromKafka"));
-            using (var router = new Router(_options)) {
+            using (var router = await _options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     OffsetResponse.Topic offset;
                     var messages = new List<Message>();

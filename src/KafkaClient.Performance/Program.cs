@@ -8,6 +8,7 @@ namespace KafkaClient.Performance
         {
             var switcher = new BenchmarkSwitcher(new[] {
                 typeof(ProduceBenchmark),
+                typeof(ProduceRequestBenchmark),
                 typeof(FetchBenchmark)
             });
             switcher.Run(args);

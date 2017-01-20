@@ -9,6 +9,11 @@ namespace KafkaClient
 {
     public static class ProducerExtensions
     {
+        public static async Task<IProducer> CreateProducerAsync(this KafkaOptions options)
+        {
+            return new Producer(await options.CreateRouterAsync(), options.ProducerConfiguration, false);
+        }
+
         /// <summary>
         /// Send a message to the given topic.
         /// </summary>
