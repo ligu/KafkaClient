@@ -232,8 +232,12 @@ namespace KafkaClient.Tests.Integration
                         var offset = 0;
                         var partitionId = 100;
 
-                        Assert.ThrowsAsync<CachedMetadataException>(
-                            async () => await consumer.FetchBatchAsync(topicName, partitionId, offset, CancellationToken.None, 5));
+                        try {
+                            await consumer.FetchBatchAsync(topicName, partitionId, offset, CancellationToken.None, 5);
+                            Assert.Fail("should have thrown CachedMetadataException");
+                        } catch (CachedMetadataException ex) when (ex.Message.StartsWith($"The topic ({topicName}) has no partitionId {partitionId} defined.")) {
+                            // expected
+                        }
                     }
                 });
             }
@@ -317,7 +321,12 @@ namespace KafkaClient.Tests.Integration
                     var partitionId = 100;
                     var groupId = TestConfig.GroupId();
 
-                    Assert.ThrowsAsync<CachedMetadataException>(async () => await router.GetTopicOffsetAsync(topicName, partitionId, groupId, CancellationToken.None));
+                    try {
+                        await router.GetTopicOffsetAsync(topicName, partitionId, groupId, CancellationToken.None);
+                        Assert.Fail("should have thrown CachedMetadataException");
+                    } catch (CachedMetadataException ex) when (ex.Message.StartsWith($"The topic ({topicName}) has no partitionId {partitionId} defined.")) {
+                        // expected
+                    }
                 });
             }
         }
@@ -406,8 +415,12 @@ namespace KafkaClient.Tests.Integration
                     var groupId = Guid.NewGuid().ToString();
 
                     var offest = 5;
-
-                    Assert.ThrowsAsync<CachedMetadataException>(async () => await router.CommitTopicOffsetAsync(topicName, partitionId, groupId, offest, CancellationToken.None));
+                    try {
+                        await router.CommitTopicOffsetAsync(topicName, partitionId, groupId, offest, CancellationToken.None);
+                        Assert.Fail("should have thrown CachedMetadataException");
+                    } catch (CachedMetadataException ex) when (ex.Message.StartsWith($"The topic ({topicName}) has no partitionId {partitionId} defined.")) {
+                        // expected
+                    }
                 });
             }
         }
