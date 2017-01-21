@@ -88,32 +88,32 @@ namespace KafkaClient.Common
 
         public override short ReadInt16()
         {
-            return EndianAwareRead(2, BitConverter.ToInt16);
+            return BitConverter.ToInt16(GetNextBytes(2), 0).ToBigEndian();
         }
 
         public override int ReadInt32()
         {
-            return EndianAwareRead(4, BitConverter.ToInt32);
+            return BitConverter.ToInt32(GetNextBytes(4), 0).ToBigEndian();
         }
 
         public override long ReadInt64()
         {
-            return EndianAwareRead(8, BitConverter.ToInt64);
+            return BitConverter.ToInt64(GetNextBytes(8), 0).ToBigEndian();
         }
 
         public override ushort ReadUInt16()
         {
-            return EndianAwareRead(2, BitConverter.ToUInt16);
+            return BitConverter.ToUInt16(GetNextBytes(2), 0).ToBigEndian();
         }
 
         public override uint ReadUInt32()
         {
-            return EndianAwareRead(4, BitConverter.ToUInt32);
+            return BitConverter.ToUInt32(GetNextBytes(4), 0).ToBigEndian();
         }
 
         public override ulong ReadUInt64()
         {
-            return EndianAwareRead(8, BitConverter.ToUInt64);
+            return BitConverter.ToUInt64(GetNextBytes(8), 0).ToBigEndian();
         }
 
         public override string ReadString()

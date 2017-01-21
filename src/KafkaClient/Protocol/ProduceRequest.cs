@@ -37,7 +37,7 @@ namespace KafkaClient.Protocol
         {
             Timeout = timeout.GetValueOrDefault(TimeSpan.FromSeconds(1));
             Acks = acks;
-            Payloads = ImmutableList<Payload>.Empty.AddNotNullRange(payload);
+            Payloads = payload != null ? payload.ToImmutableList() : ImmutableList<Payload>.Empty;
         }
 
         /// <summary>

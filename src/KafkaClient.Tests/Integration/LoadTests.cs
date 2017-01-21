@@ -18,6 +18,8 @@ namespace KafkaClient.Tests.Integration
         [TestCase(10, 1000)]
         [TestCase(100, 1000)]
         [TestCase(1000, 1000)]
+        [TestCase(10000, 5000)]
+        [TestCase(100000, 5000)]
         public async Task SendAsyncShouldHandleHighVolumeOfMessages(int amount, int maxAsync)
         {
             using (var router = await TestConfig.Options.CreateRouterAsync()) {
@@ -27,7 +29,7 @@ namespace KafkaClient.Tests.Integration
                         var tasks = new Task<ProduceResponse.Topic>[amount];
 
                         for (var i = 0; i < amount; i++) {
-                            tasks[i] = producer.SendMessageAsync(new Message(Guid.NewGuid().ToString()), TestConfig.TopicName(), CancellationToken.None);
+                            tasks[i] = producer.SendMessageAsync(new Message(Guid.NewGuid().ToString()), TestConfig.TopicName(), 0, CancellationToken.None);
                         }
                         var results = await Task.WhenAll(tasks.ToArray());
 
@@ -51,6 +53,10 @@ namespace KafkaClient.Tests.Integration
         [TestCase(10000, 100, MessageCodec.CodecGzip)]
         [TestCase(100000, 1000, MessageCodec.CodecNone)]
         [TestCase(100000, 1000, MessageCodec.CodecGzip)]
+        [TestCase(1000000, 5000, MessageCodec.CodecNone)]
+        [TestCase(1000000, 5000, MessageCodec.CodecGzip)]
+        [TestCase(5000000, 5000, MessageCodec.CodecNone)]
+        [TestCase(5000000, 5000, MessageCodec.CodecGzip)]
         public async Task ProducerSpeed(int totalMessages, int batchSize, MessageCodec codec)
         {
             int timeoutInMs = Math.Max(100, totalMessages / 20);
@@ -62,7 +68,7 @@ namespace KafkaClient.Tests.Integration
                         var maxTimeToRun = TimeSpan.FromMilliseconds(timeoutInMs);
                         var stopwatch = new Stopwatch();
                         stopwatch.Start();
-                        var sendList = new List<Task>(totalMessages);
+                        var sendList = new List<Task>(totalMessages/batchSize);
                         var timedOut = Task.Delay(maxTimeToRun);
                         for (var i = 0; i < totalMessages; i+=batchSize) {
                             var sendTask = producer.SendMessagesAsync(batchSize.Repeat(x => new Message(x.ToString())), offset.TopicName, offset.PartitionId, new SendMessageConfiguration(codec: codec), CancellationToken.None);
@@ -102,7 +108,7 @@ namespace KafkaClient.Tests.Integration
                         var missingMessages = Math.Max(0, totalMessages - (int)offset.Offset);
                         if (missingMessages > 0) {
                             stopwatch.Start();
-                            var sendList = new List<Task>(missingMessages);
+                            var sendList = new List<Task>(missingMessages/batchSize);
                             for (var i = 0; i < missingMessages; i+=batchSize) {
                                 var sendTask = producer.SendMessagesAsync(batchSize.Repeat(x => new Message(x.ToString())), offset.TopicName, offset.PartitionId, new SendMessageConfiguration(codec: MessageCodec.CodecGzip), CancellationToken.None);
                                 sendList.Add(sendTask);

@@ -35,8 +35,8 @@ namespace KafkaClient.Connections
         protected int ActiveReaderCount;
         private static int _correlationIdSeed;
 
-        private readonly SemaphoreSlim _socketSemaphore = new SemaphoreSlim(1);
-        private readonly SemaphoreSlim _versionSupportSemaphore = new SemaphoreSlim(1);
+        private readonly SemaphoreSlim _socketSemaphore = new SemaphoreSlim(1, 1);
+        private readonly SemaphoreSlim _versionSupportSemaphore = new SemaphoreSlim(1, 1);
         private IVersionSupport _versionSupport;
 
         /// <summary>
@@ -194,7 +194,7 @@ namespace KafkaClient.Connections
                                 Buffer.BlockCopy(buffer, 0, header, headerOffset, bytesRead);
                                 headerOffset += bytesRead;
                             }, _disposeToken.Token).ConfigureAwait(false);
-                            responseSize = header.ToInt32();
+                            responseSize = BitConverter.ToInt32(header, 0).ToBigEndian();
                             // TODO: read correlation id at this point too, and do association before the rest of the read ?
                         }
 
@@ -411,7 +411,7 @@ namespace KafkaClient.Connections
         private void CorrelatePayloadToRequest(byte[] payload)
         {
             if (payload.Length < 4) return;
-            var correlationId = payload.ToInt32();
+            var correlationId = BitConverter.ToInt32(payload, 0).ToBigEndian();
 
             AsyncItem asyncItem;
             if (_requestsByCorrelation.TryRemove(correlationId, out asyncItem)) {

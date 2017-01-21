@@ -28,12 +28,35 @@ namespace KafkaClient.Tests.Unit
             var actualValue = binaryReader.ReadInt32();
 
             // assert
-            Assert.That(expectedValue, Is.EqualTo(actualValue));
+            Assert.That(actualValue, Is.EqualTo(expectedValue));
+        }
+
+        [Test]
+        [TestCase((short)0, new byte[] { 0x00, 0x00 })]
+        [TestCase((short)1, new byte[] { 0x00, 0x01 })]
+        [TestCase((short)256, new byte[] { 0x01, 0x00 })]
+        [TestCase((short)16295, new byte[] { 0x3F, 0xA7 })]
+        [TestCase((short)(-1), new byte[] { 0xFF, 0xFF })]
+        [TestCase(short.MinValue, new byte[] { 0x80, 0x00 })]
+        [TestCase(short.MaxValue, new byte[] { 0x7F, 0xFF })]
+        public void Int16Tests(short expectedValue, byte[] givenBytes)
+        {
+            // arrange
+            var binaryReader = new BigEndianBinaryReader(givenBytes);
+
+            // act
+            var actualValue = binaryReader.ReadInt16();
+
+            // assert
+            Assert.That(actualValue, Is.EqualTo(expectedValue));
         }
 
         [Test]
         [TestCase((int)0, new byte[] { 0x00, 0x00, 0x00, 0x00 })]
         [TestCase((int)1, new byte[] { 0x00, 0x00, 0x00, 0x01 })]
+        [TestCase((int)256, new byte[] { 0x00, 0x00, 0x01, 0x00 })]
+        [TestCase((int)258, new byte[] { 0x00, 0x00, 0x01, 0x02 })]
+        [TestCase((int)67305985, new byte[] { 0x04, 0x03, 0x02, 0x01 })]
         [TestCase((int)(-1), new byte[] { 0xFF, 0xFF, 0xFF, 0xFF })]
         [TestCase(int.MinValue, new byte[] { 0x80, 0x00, 0x00, 0x00 })]
         [TestCase(int.MaxValue, new byte[] { 0x7F, 0xFF, 0xFF, 0xFF })]
@@ -46,7 +69,27 @@ namespace KafkaClient.Tests.Unit
             var actualValue = binaryReader.ReadInt32();
 
             // assert
-            Assert.That(expectedValue, Is.EqualTo(actualValue));
+            Assert.That(actualValue, Is.EqualTo(expectedValue));
+        }
+
+        [Test]
+        [TestCase((long)0L, new byte[] { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 })]
+        [TestCase((long)1L, new byte[] { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01 })]
+        [TestCase((long)258L, new byte[] { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x02 })]
+        [TestCase((long)1234567890123L, new byte[] { 0x00, 0x00, 0x01, 0x1F, 0x71, 0xFB, 0x04, 0xCB })]
+        [TestCase((long)(-1L), new byte[] { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF })]
+        [TestCase(long.MinValue, new byte[] { 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 })]
+        [TestCase(long.MaxValue, new byte[] { 0x7F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF })]
+        public void Int64Tests(long expectedValue, byte[] givenBytes)
+        {
+            // arrange
+            var binaryReader = new BigEndianBinaryReader(givenBytes);
+
+            // act
+            var actualValue = binaryReader.ReadInt64();
+
+            // assert
+            Assert.That(actualValue, Is.EqualTo(expectedValue));
         }
 
         [Test]
@@ -63,7 +106,7 @@ namespace KafkaClient.Tests.Unit
             var actualValue = binaryReader.ReadUInt32();
 
             // assert
-            Assert.That(expectedValue, Is.EqualTo(actualValue));
+            Assert.That(actualValue, Is.EqualTo(expectedValue));
         }
 
         [Test]
@@ -84,7 +127,7 @@ namespace KafkaClient.Tests.Unit
             var actualValue = binaryReader.ReadSingle();
 
             // assert
-            Assert.That(expectedValue, Is.EqualTo(actualValue));
+            Assert.That(actualValue, Is.EqualTo(expectedValue));
         }
 
         [Test]

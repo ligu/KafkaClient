@@ -42,12 +42,8 @@ namespace KafkaClient.Common
             if (BitConverter.IsLittleEndian)
                 Array.Reverse(ints);
 
-            for (var i = 0; i < 4; ++i)
-            {
-                var bytes = BitConverter.GetBytes(ints[i]);
-                if (BitConverter.IsLittleEndian)
-                    Array.Reverse(bytes);
-
+            for (var i = 0; i < 4; ++i) {
+                var bytes = BitConverter.GetBytes(ints[i].ToBigEndian());
                 base.Write(bytes);
             }
         }
@@ -66,38 +62,38 @@ namespace KafkaClient.Common
 
         public override void Write(short value)
         {
-            var bytes = BitConverter.GetBytes(value);
-            WriteBigEndian(bytes);
+            var bytes = BitConverter.GetBytes(value.ToBigEndian());
+            base.Write(bytes);
         }
 
         public override void Write(int value)
         {
-            var bytes = BitConverter.GetBytes(value);
-            WriteBigEndian(bytes);
+            var bytes = BitConverter.GetBytes(value.ToBigEndian());
+            base.Write(bytes);
         }
 
         public override void Write(long value)
         {
-            var bytes = BitConverter.GetBytes(value);
-            WriteBigEndian(bytes);
+            var bytes = BitConverter.GetBytes(value.ToBigEndian());
+            base.Write(bytes);
         }
 
         public override void Write(ushort value)
         {
-            var bytes = BitConverter.GetBytes(value);
-            WriteBigEndian(bytes);
+            var bytes = BitConverter.GetBytes(value.ToBigEndian());
+            base.Write(bytes);
         }
 
         public override void Write(uint value)
         {
-            var bytes = BitConverter.GetBytes(value);
-            WriteBigEndian(bytes);
+            var bytes = BitConverter.GetBytes(value.ToBigEndian());
+            base.Write(bytes);
         }
 
         public override void Write(ulong value)
         {
-            var bytes = BitConverter.GetBytes(value);
-            WriteBigEndian(bytes);
+            var bytes = BitConverter.GetBytes(value.ToBigEndian());
+            base.Write(bytes);
         }
 
         public void Write(byte[] value, bool includePrefix)

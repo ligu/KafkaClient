@@ -35,8 +35,8 @@ namespace KafkaClient
         private ImmutableDictionary<string, Tuple<DescribeGroupsResponse.Group, DateTimeOffset>> _groupCache = ImmutableDictionary<string, Tuple<DescribeGroupsResponse.Group, DateTimeOffset>>.Empty;
         private readonly ConcurrentDictionary<string, Tuple<IImmutableList<SyncGroupRequest.GroupAssignment>, int>> _memberAssignmentCache = new ConcurrentDictionary<string, Tuple<IImmutableList<SyncGroupRequest.GroupAssignment>, int>>();
 
-        private readonly SemaphoreSlim _connectionSemaphore = new SemaphoreSlim(1);
-        private readonly SemaphoreSlim _groupSemaphore = new SemaphoreSlim(1);
+        private readonly SemaphoreSlim _connectionSemaphore = new SemaphoreSlim(1, 1);
+        private readonly SemaphoreSlim _groupSemaphore = new SemaphoreSlim(1, 1);
 
         public static Task<Router> CreateAsync(
             Uri serverUri, IConnectionFactory connectionFactory = null,

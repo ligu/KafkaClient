@@ -134,15 +134,22 @@ namespace KafkaClient.Common
         private void WriteLength(int offset)
         {
             _stream.BaseStream.Position = offset;
-            var length = _stream.BaseStream.Length - (offset + KafkaEncoder.IntegerByteSize); 
-            Write((int)length);
+            var length = (int)_stream.BaseStream.Length - (offset + KafkaEncoder.IntegerByteSize); 
+            Write(length);
         }
 
         private void WriteCrc(int offset)
         {
-            _stream.BaseStream.Position = offset + KafkaEncoder.IntegerByteSize;
+            byte[] crc;
+            ArraySegment<byte> segment;
+            var computeFrom = offset + KafkaEncoder.IntegerByteSize;
+            if (_memStream.TryGetBuffer(out segment)) {
+                crc = Crc32Provider.ComputeHash(segment.Array, segment.Offset + computeFrom, segment.Count);
+            } else {
+                _stream.BaseStream.Position = computeFrom;
+                crc = Crc32Provider.ComputeHash(_stream.BaseStream.ToEnumerable());
+            }
 
-            var crc = Crc32Provider.ComputeHash(_stream.BaseStream.ToEnumerable());
             _stream.BaseStream.Position = offset;
             _stream.Write(crc);            
         }
@@ -150,25 +157,35 @@ namespace KafkaClient.Common
         public IDisposable MarkForLength()
         {
             var markerPosition = (int)_stream.BaseStream.Position;
-            Write(KafkaEncoder.IntegerByteSize); //pre-allocate space for marker
-
-            return new Disposable(
-                () => {
-                    WriteLength(markerPosition);
-                    _stream.BaseStream.Seek(0, SeekOrigin.End);
-                });
+            _stream.BaseStream.Seek(KafkaEncoder.IntegerByteSize, SeekOrigin.Current); //pre-allocate space for marker
+            return new WriteAt(this, WriteLength, markerPosition);
         }
 
         public IDisposable MarkForCrc()
         {
             var markerPosition = (int)_stream.BaseStream.Position;
-            Write(KafkaEncoder.IntegerByteSize); //pre-allocate space for marker
+            _stream.BaseStream.Seek(KafkaEncoder.IntegerByteSize, SeekOrigin.Current); //pre-allocate space for marker
+            return new WriteAt(this, WriteCrc, markerPosition);
+        }
 
-            return new Disposable(
-                () => {
-                    WriteCrc(markerPosition);
-                    _stream.BaseStream.Seek(0, SeekOrigin.End);
-                });
+        private class WriteAt : IDisposable
+        {
+            private readonly KafkaWriter _writer;
+            private readonly int _position;
+            private readonly Action<int> _write;
+
+            public WriteAt(KafkaWriter writer, Action<int> write, int position)
+            {
+                _writer = writer;
+                _position = position;
+                _write = write;
+            }
+
+            public void Dispose()
+            {
+                _write(_position);
+                _writer._stream.BaseStream.Seek(0, SeekOrigin.End);
+            }
         }
 
         public void Dispose()

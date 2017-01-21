@@ -19,7 +19,7 @@ namespace KafkaClient.Tests.Integration
                 await router.TemporaryTopicAsync(async topicName => {
                     using (var producer = new Producer(router)) {
                         var sendTask = producer.SendMessageAsync(
-                            new Message(Guid.NewGuid().ToString()), TestConfig.TopicName(), null,
+                            new Message(Guid.NewGuid().ToString()), TestConfig.TopicName(), 0,
                             new SendMessageConfiguration(acks: 0), CancellationToken.None);
 
                         await Task.WhenAny(sendTask, Task.Delay(TimeSpan.FromMinutes(2)));
@@ -36,26 +36,9 @@ namespace KafkaClient.Tests.Integration
             using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     using (var producer = new Producer(router)) {
-                        var result = await producer.SendMessagesAsync(new[] { new Message(Guid.NewGuid().ToString()) }, TestConfig.TopicName(), CancellationToken.None);
+                        var result = await producer.SendMessagesAsync(new[] { new Message(Guid.NewGuid().ToString()) }, topicName, 0, CancellationToken.None);
 
-                        Assert.That(result.Count, Is.EqualTo(1));
-                    }
-                });
-            }
-        }
-
-        [Test]
-        public async Task SendAsyncShouldGetAResultForEachPartitionSentTo()
-        {
-            using (var router = await TestConfig.Options.CreateRouterAsync()) {
-                await router.TemporaryTopicAsync(async topicName => {
-                    using (var producer = new Producer(router)) {
-                        var messages = new[] { new Message("1"), new Message("2"), new Message("3") };
-                        var result = await producer.SendMessagesAsync(messages, TestConfig.TopicName(), CancellationToken.None);
-
-                        Assert.That(result.Count, Is.EqualTo(messages.Distinct().Count()));
-
-                        Assert.That(result.Count, Is.EqualTo(messages.Count()));
+                        Assert.That(result.TopicName, Is.EqualTo(topicName));
                     }
                 });
             }
@@ -68,9 +51,9 @@ namespace KafkaClient.Tests.Integration
                 await router.TemporaryTopicAsync(async topicName => {
                     using (var producer = new Producer(router)) {
                         var tasks = new[] {
-                            producer.SendMessageAsync(new Message("1"), TestConfig.TopicName(), CancellationToken.None),
-                            producer.SendMessageAsync(new Message("2"), TestConfig.TopicName(), CancellationToken.None),
-                            producer.SendMessageAsync(new Message("3"), TestConfig.TopicName(), CancellationToken.None),
+                            producer.SendMessageAsync(new Message("1"), TestConfig.TopicName(), 0, CancellationToken.None),
+                            producer.SendMessageAsync(new Message("2"), TestConfig.TopicName(), 0, CancellationToken.None),
+                            producer.SendMessageAsync(new Message("3"), TestConfig.TopicName(), 0, CancellationToken.None),
                         };
 
                         await Task.WhenAll(tasks);
@@ -113,7 +96,7 @@ namespace KafkaClient.Tests.Integration
         }
 
         [Test]
-        public async Task ProducerLastResposeOffsetAckLevel1ShouldBeEqualsToLastOffset()
+        public async Task ProducerLastResposeOffsetAckLevel1ShouldBeEqualToLastOffset()
         {
             using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
@@ -126,7 +109,7 @@ namespace KafkaClient.Tests.Integration
                             topicName, CancellationToken.None);
                         var maxOffset = offsetResponse.First(x => x.PartitionId == 0);
 
-                        Assert.AreEqual(responseAckLevel1.Last().Offset, maxOffset.Offset - 1);
+                        Assert.AreEqual(responseAckLevel1.Offset, maxOffset.Offset - 1);
                     }
                 });
             }

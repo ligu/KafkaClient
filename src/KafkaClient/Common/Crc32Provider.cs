@@ -89,13 +89,7 @@ namespace KafkaClient.Common
 
         private static byte[] UInt32ToBigEndianBytes(uint uint32)
         {
-            var result = BitConverter.GetBytes(uint32);
-
-            if (BitConverter.IsLittleEndian) {
-                Array.Reverse(result);
-            }
-
-            return result;
+            return BitConverter.GetBytes(uint32.ToBigEndian());
         }
     }
 }

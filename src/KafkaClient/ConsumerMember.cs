@@ -43,8 +43,8 @@ namespace KafkaClient
         private readonly TimeSpan _heartbeatDelay;
         private readonly TimeSpan _heartbeatTimeout;
 
-        private readonly SemaphoreSlim _joinSemaphore = new SemaphoreSlim(1);
-        private readonly SemaphoreSlim _syncSemaphore = new SemaphoreSlim(1);
+        private readonly SemaphoreSlim _joinSemaphore = new SemaphoreSlim(1, 1);
+        private readonly SemaphoreSlim _syncSemaphore = new SemaphoreSlim(1, 1);
         private readonly SemaphoreSlim _fetchSemaphore = new SemaphoreSlim(0, 1);
         private ImmutableDictionary<string, IMemberMetadata> _memberMetadata = ImmutableDictionary<string, IMemberMetadata>.Empty;
         private IImmutableDictionary<TopicPartition, IMessageBatch> _batches = ImmutableDictionary<TopicPartition, IMessageBatch>.Empty;
@@ -270,11 +270,11 @@ namespace KafkaClient
 
         private async Task DisposeAsync()
         {
-            await Task.WhenAll(_batches.Values.Select(b => b.CommitMarkedAsync(CancellationToken.None))).ConfigureAwait(false);
-            foreach (var batch in _batches.Values) {
+            var batches = Interlocked.Exchange(ref _batches, ImmutableDictionary<TopicPartition, IMessageBatch>.Empty);
+            await Task.WhenAll(batches.Values.Select(b => b.CommitMarkedAsync(CancellationToken.None))).ConfigureAwait(false);
+            foreach (var batch in batches.Values) {
                 batch.Dispose();
             }
-            _batches = ImmutableDictionary<TopicPartition, IMessageBatch>.Empty;
             _assignment = null;
 
             await Task.WhenAny(_heartbeatTask, Task.Delay(TimeSpan.FromSeconds(1), CancellationToken.None)).ConfigureAwait(false);

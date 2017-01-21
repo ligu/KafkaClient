@@ -54,22 +54,6 @@ namespace KafkaClient.Common
             return exception;
         }
 
-        public static async Task<int> TryApplyAsync<T>(this AsyncProducerConsumerQueue<T> collection, Action<T> apply, CancellationToken cancellationToken)
-        {
-            var count = 0;
-            try {
-                while (true) {
-                    var result = await collection.DequeueAsync(cancellationToken).ConfigureAwait(false);
-
-                    apply(result);
-                    count++;
-                }
-            } catch (InvalidOperationException) {
-            } catch (OperationCanceledException) {
-            }
-            return count;
-        }
-
         public static async Task EnqueueRangeAsync<T>(this AsyncProducerConsumerQueue<T> queue, IEnumerable<T> items, CancellationToken cancellationToken)
         {
             foreach (var item in items) {
