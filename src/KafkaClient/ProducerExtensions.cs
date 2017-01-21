@@ -31,7 +31,7 @@ namespace KafkaClient
         /// <param name="partition">The partition to send messages to</param>
         /// <param name="cancellationToken"></param>
         /// <returns>List of ProduceTopic response from each partition sent to or empty list if acks = 0.</returns>
-        public static Task<ImmutableList<ProduceResponse.Topic>> SendMessagesAsync(this IProducer producer, IEnumerable<Message> messages, string topicName, int? partition, CancellationToken cancellationToken)
+        public static Task<ImmutableList<ProduceResponse.Topic>> SendMessagesAsync(this IProducer producer, IEnumerable<Message> messages, string topicName, int partition, CancellationToken cancellationToken)
         {
             return producer.SendMessagesAsync(messages, topicName, partition, null, cancellationToken);
         }
