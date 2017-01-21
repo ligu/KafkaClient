@@ -11,7 +11,6 @@ namespace KafkaClient
         public KafkaOptions(
             IEnumerable<Uri> kafkaServerUris = null, 
             IConnectionConfiguration connectionConfiguration = null,
-            ISslConfiguration sslConfiguration = null,
             ICacheConfiguration cacheConfiguration = null,
             IConnectionFactory connectionFactory = null,
             IPartitionSelector partitionSelector = null,
@@ -21,7 +20,6 @@ namespace KafkaClient
             ServerUris = ImmutableList<Uri>.Empty.AddNotNullRange(kafkaServerUris);
             CacheConfiguration = cacheConfiguration ?? new CacheConfiguration();
             ConnectionConfiguration = connectionConfiguration ?? new ConnectionConfiguration();
-            SslConfiguration = sslConfiguration;
             ConnectionFactory = connectionFactory ?? new ConnectionFactory();
             PartitionSelector = partitionSelector ?? new PartitionSelector();
             ProducerConfiguration = producerConfiguration ?? new ProducerConfiguration();
@@ -31,13 +29,12 @@ namespace KafkaClient
         public KafkaOptions(
             Uri kafkaServerUri = null, 
             IConnectionConfiguration connectionConfiguration = null,
-            ISslConfiguration sslConfiguration = null,
             ICacheConfiguration cacheConfiguration = null,
             IConnectionFactory connectionFactory = null,
             IPartitionSelector partitionSelector = null,
             IProducerConfiguration producerConfiguration = null, 
             ILog log = null)
-            : this (ImmutableList<Uri>.Empty.AddNotNull(kafkaServerUri), connectionConfiguration, sslConfiguration, cacheConfiguration, connectionFactory, partitionSelector, producerConfiguration, log)
+            : this (ImmutableList<Uri>.Empty.AddNotNull(kafkaServerUri), connectionConfiguration, cacheConfiguration, connectionFactory, partitionSelector, producerConfiguration, log)
         {
         }
 
@@ -50,11 +47,6 @@ namespace KafkaClient
         /// Connection backoff and retry settings.
         /// </summary>
         public IConnectionConfiguration ConnectionConfiguration { get; }
-
-        /// <summary>
-        /// Configuration for SSL encrypted communication
-        /// </summary>
-        public ISslConfiguration SslConfiguration { get; }
 
         /// <summary>
         /// Cache expiry and retry settings.

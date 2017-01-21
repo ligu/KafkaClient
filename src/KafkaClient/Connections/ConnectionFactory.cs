@@ -6,9 +6,9 @@ namespace KafkaClient.Connections
     public class ConnectionFactory : IConnectionFactory
     {
         /// <inheritdoc />
-        public IConnection Create(Endpoint endpoint, IConnectionConfiguration configuration, ISslConfiguration sslConfiguration = null, ILog log = null)
+        public IConnection Create(Endpoint endpoint, IConnectionConfiguration configuration, ILog log = null)
         {
-            return new Connection(new TcpSocket(endpoint, configuration, sslConfiguration, log), configuration, log);
+            return new Connection(new TcpSocket(endpoint, configuration, log), configuration, log);
         }
 
         /// <inheritdoc />

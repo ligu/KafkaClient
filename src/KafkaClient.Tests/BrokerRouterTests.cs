@@ -29,7 +29,7 @@ namespace KafkaClient.Tests
             _connection = Substitute.For<IConnection>();
             _connectionFactory = Substitute.For<IConnectionFactory>();
             _connectionFactory
-                .Create(Arg.Is<Endpoint>(e => e.IP.Port == 1), Arg.Any<IConnectionConfiguration>(), null, Arg.Any<ILog>())
+                .Create(Arg.Is<Endpoint>(e => e.IP.Port == 1), Arg.Any<IConnectionConfiguration>(), Arg.Any<ILog>())
                 .Returns(_ => _connection);
             _connectionFactory
                 .Resolve(Arg.Any<Uri>(), Arg.Any<ILog>())
@@ -67,7 +67,7 @@ namespace KafkaClient.Tests
             await router.GetTopicMetadataAsync(TestTopic, CancellationToken.None);
             var topics = router.GetTopicMetadata(TestTopic);
             _connectionFactory.Received()
-                              .Create(Arg.Is<Endpoint>(e => e.IP.Port == 2), Arg.Any<IConnectionConfiguration>(), null, Arg.Any<ILog>());
+                              .Create(Arg.Is<Endpoint>(e => e.IP.Port == 2), Arg.Any<IConnectionConfiguration>(), Arg.Any<ILog>());
         }
 
         #region MetadataRequest Tests...

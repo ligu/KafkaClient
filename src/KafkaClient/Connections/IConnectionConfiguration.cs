@@ -41,6 +41,11 @@ namespace KafkaClient.Connections
         IImmutableDictionary<string, Protocol.Types.IProtocolTypeEncoder> Encoders { get; }
 
         /// <summary>
+        /// Configuration for SSL encrypted communication
+        /// </summary>
+        ISslConfiguration SslConfiguration { get; }
+
+        /// <summary>
         /// Triggered when the tcp socket is disconnected.
         /// </summary>
         ConnectError OnDisconnected { get; }

@@ -35,28 +35,27 @@ namespace KafkaClient
 
         /// <exception cref="ConnectionException">None of the provided Kafka servers are resolvable.</exception>
         public BrokerRouter(KafkaOptions options)
-            : this(options.ServerUris, options.ConnectionFactory, options.ConnectionConfiguration, options.SslConfiguration, options.PartitionSelector, options.CacheConfiguration, options.Log)
+            : this(options.ServerUris, options.ConnectionFactory, options.ConnectionConfiguration, options.PartitionSelector, options.CacheConfiguration, options.Log)
         {
         }
 
         /// <exception cref="ConnectionException">None of the provided Kafka servers are resolvable.</exception>
         public BrokerRouter(Uri serverUri, IConnectionFactory connectionFactory = null, IConnectionConfiguration connectionConfiguration = null, IPartitionSelector partitionSelector = null, ICacheConfiguration cacheConfiguration = null, ILog log = null)
-            : this (new []{ serverUri }, connectionFactory, connectionConfiguration, null, partitionSelector, cacheConfiguration, log)
+            : this (new []{ serverUri }, connectionFactory, connectionConfiguration, partitionSelector, cacheConfiguration, log)
         {
         }
 
         /// <exception cref="ConnectionException">None of the provided Kafka servers are resolvable.</exception>
-        public BrokerRouter(IEnumerable<Uri> serverUris, IConnectionFactory connectionFactory = null, IConnectionConfiguration connectionConfiguration = null, ISslConfiguration sslConfiguration = null, IPartitionSelector partitionSelector = null, ICacheConfiguration cacheConfiguration = null, ILog log = null)
+        public BrokerRouter(IEnumerable<Uri> serverUris, IConnectionFactory connectionFactory = null, IConnectionConfiguration connectionConfiguration = null, IPartitionSelector partitionSelector = null, ICacheConfiguration cacheConfiguration = null, ILog log = null)
         {
             Log = log ?? TraceLog.Log;
             ConnectionConfiguration = connectionConfiguration ?? new ConnectionConfiguration();
-            _sslConfiguration = sslConfiguration;
             _connectionFactory = connectionFactory ?? new ConnectionFactory();
 
             foreach (var uri in serverUris) {
                 try {
                     var endpoint = _connectionFactory.Resolve(uri, Log);
-                    var connection = _connectionFactory.Create(endpoint, ConnectionConfiguration, sslConfiguration, Log);
+                    var connection = _connectionFactory.Create(endpoint, ConnectionConfiguration, Log);
                     _allConnections = _allConnections.SetItem(endpoint, connection);
                 } catch (ConnectionException ex) {
                     Log.Warn(() => LogEvent.Create(ex, $"Ignoring uri that could not be resolved: {uri}"));
@@ -70,7 +69,6 @@ namespace KafkaClient
         }
 
         public IConnectionConfiguration ConnectionConfiguration { get; }
-        private ISslConfiguration _sslConfiguration;
         public ICacheConfiguration Configuration { get; }
 
         /// <inheritdoc />
@@ -314,13 +312,13 @@ namespace KafkaClient
                             
                             // A connection changed for a broker, so close the old connection and create a new one
                             connectionsToDispose = connectionsToDispose.Add(connection);
-                            connection = _connectionFactory.Create(endpoint, ConnectionConfiguration, _sslConfiguration, Log);
+                            connection = _connectionFactory.Create(endpoint, ConnectionConfiguration, Log);
                             // important that we create it here rather than set to null or we'll get it again from allConnections
                         }
                     }
 
                     if (connection == null && !allConnections.TryGetValue(endpoint, out connection)) {
-                        connection = _connectionFactory.Create(endpoint, ConnectionConfiguration, _sslConfiguration, Log);
+                        connection = _connectionFactory.Create(endpoint, ConnectionConfiguration, Log);
                     }
 
                     allConnections = allConnections.SetItem(endpoint, connection);
