@@ -30,7 +30,7 @@ namespace KafkaClient.Connections
         /// <param name="requestTimeout">The maximum time to wait for requests.</param>
         /// <param name="encoders">Custom Encoding support for different protocol types</param>
         public ConnectionConfiguration(ITrackEvents tracker, IRetry connectionRetry = null, IVersionSupport versionSupport = null, TimeSpan? requestTimeout = null, IEnumerable<IProtocolTypeEncoder> encoders = null)
-            : this(connectionRetry, versionSupport, requestTimeout, encoders, 
+            : this(connectionRetry, versionSupport, requestTimeout, encoders, null, 
                   tracker != null ? (ConnectError)tracker.Disconnected : null, 
                   tracker != null ? (Connecting)tracker.Connecting : null, 
                   tracker != null ? (Connecting)tracker.Connected : null, 
@@ -54,6 +54,7 @@ namespace KafkaClient.Connections
         /// <param name="versionSupport">Support for different protocol versions for Kakfa requests and responses.</param>
         /// <param name="requestTimeout">The maximum time to wait for requests.</param>
         /// <param name="encoders">Custom Encoding support for different protocol types</param>
+        /// <param name="sslConfiguration">Configuration for SSL encrypted communication</param>
         /// <param name="onDisconnected">Triggered when the tcp socket is disconnected.</param>
         /// <param name="onConnecting">Triggered when the tcp socket is connecting.</param>
         /// <param name="onConnected">Triggered after the tcp socket is successfully connected.</param>
@@ -72,6 +73,7 @@ namespace KafkaClient.Connections
             IVersionSupport versionSupport = null,
             TimeSpan? requestTimeout = null,
             IEnumerable<IProtocolTypeEncoder> encoders = null,
+            ISslConfiguration sslConfiguration = null,
             ConnectError onDisconnected = null, 
             Connecting onConnecting = null, 
             Connecting onConnected = null, 
@@ -93,6 +95,7 @@ namespace KafkaClient.Connections
             Encoders = encoders != null
                 ? encoders.ToImmutableDictionary(e => e.Type)
                 : ImmutableDictionary<string, IProtocolTypeEncoder>.Empty;
+            SslConfiguration = sslConfiguration;
             OnDisconnected = onDisconnected;
             OnConnecting = onConnecting;
             OnConnected = onConnected;
@@ -119,6 +122,9 @@ namespace KafkaClient.Connections
 
         /// <inheritdoc />
         public IImmutableDictionary<string, IProtocolTypeEncoder> Encoders { get; }
+
+        /// <inheritdoc />
+        public ISslConfiguration SslConfiguration { get; }
 
         /// <inheritdoc />
         public ConnectError OnDisconnected { get; }

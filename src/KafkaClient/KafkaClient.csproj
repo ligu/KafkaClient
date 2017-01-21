@@ -80,6 +80,7 @@
     <Compile Include="Common\BackoffRetry.cs" />
     <Compile Include="Common\DelayedRetry.cs" />
     <Compile Include="Common\TimedCancellation.cs" />
+    <Compile Include="Connections\BasicSslConfiguration.cs" />
     <Compile Include="Connections\Extensions.cs" />
     <Compile Include="Connections\IConnectionConfiguration.cs" />
     <Compile Include="Connections\ConnectionComparer.cs" />

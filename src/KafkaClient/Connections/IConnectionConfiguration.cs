@@ -29,5 +29,12 @@ namespace KafkaClient.Connections
         /// Custom Encoding support for different protocol types
         /// </summary>
         IImmutableDictionary<string, Protocol.Types.IProtocolTypeEncoder> Encoders { get; }
+
+        /// <summary>
+        /// Configuration for SSL encrypted communication
+        /// </summary>
+        ISslConfiguration SslConfiguration { get; }
+
+
     }
 }

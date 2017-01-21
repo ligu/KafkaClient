@@ -10,10 +10,9 @@ namespace KafkaClient.Connections
         /// </summary>
         /// <param name="endpoint">The specific Endpoint of the server to connect to.</param>
         /// <param name="configuration">The configuration for the connection (including things like connection and request timeouts).</param>
-        /// <param name="sslConfiguration">Configuration for SSL encrypted communication</param>
         /// <param name="log">Logging interface used to record any log messages created by the connection.</param>
         /// <returns>IConnection initialized to connecto to the given endpoint.</returns>
-        IConnection Create(Endpoint endpoint, IConnectionConfiguration configuration, ISslConfiguration sslConfiguration = null, ILog log = null);
+        IConnection Create(Endpoint endpoint, IConnectionConfiguration configuration, ILog log = null);
 
         /// <summary>
         /// Resolves a generic Uri into a uniquely identifiable Endpoint.
