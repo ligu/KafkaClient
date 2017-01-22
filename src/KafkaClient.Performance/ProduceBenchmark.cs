@@ -38,15 +38,15 @@ namespace KafkaClient.Performance
                                       "topic", 
                                       partitionId, 
                                       Enumerable.Range(1, Messages)
-                                                .Select(i => new Message(GenerateMessageBytes(), (byte) Codec, version: MessageVersion)), 
+                                                .Select(i => new Message(GenerateMessageBytes(), new ArraySegment<byte>(), (byte) Codec, version: MessageVersion)), 
                                       Codec)));
         }
 
-        private byte[] GenerateMessageBytes()
+        private ArraySegment<byte> GenerateMessageBytes()
         {
             var buffer = new byte[MessageSize];
             new Random(42).NextBytes(buffer);
-            return buffer;
+            return new ArraySegment<byte>(buffer);
         }
 
         [Benchmark]
@@ -54,12 +54,5 @@ namespace KafkaClient.Performance
         {
             return KafkaEncoder.Encode(new RequestContext(1, Version), _request);
         }
-
-        [Benchmark]
-        public ArraySegment<byte> EncodeAndSend()
-        {
-            return KafkaEncoder.Encode(new RequestContext(1, Version), _request);
-        }
-
     }
 }

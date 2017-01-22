@@ -6,17 +6,15 @@ namespace KafkaClient.Tests
 {
     public class ByteTypeMetadata : IMemberMetadata, IEquatable<ByteTypeMetadata>
     {
-        private static readonly byte[] Empty = {};
-
-        public ByteTypeMetadata(string assignmentStrategy, byte[] bytes)
+        public ByteTypeMetadata(string assignmentStrategy, ArraySegment<byte> bytes)
         {
-            Bytes = bytes ?? Empty;
+            Bytes = bytes;
             AssignmentStrategy = assignmentStrategy;
         }
 
         public string AssignmentStrategy { get; }
 
-        public byte[] Bytes { get; }
+        public ArraySegment<byte> Bytes { get; }
 
         /// <inheritdoc />
         public override bool Equals(object obj)
@@ -27,7 +25,7 @@ namespace KafkaClient.Tests
         public override int GetHashCode()
         {
             unchecked {
-                return ((AssignmentStrategy?.GetHashCode() ?? 0) * 397) ^ (Bytes?.GetHashCode() ?? 0);
+                return ((AssignmentStrategy?.GetHashCode() ?? 0) * 397) ^ Bytes.GetHashCode();
             }
         }
 

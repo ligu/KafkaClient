@@ -40,6 +40,14 @@ namespace KafkaClient.Common
             return self.Zip(other, (s, o) => Equals(s, o)).All(_ => _);
         }
 
+        public static bool HasEqualElementsInOrder(this ArraySegment<byte> self, ArraySegment<byte> other)
+        {
+            if (self.Count != other.Count) return false;
+            if (self.Count == 0) return true;
+
+            return self.Zip(other, (s, o) => Equals(s, o)).All(_ => _);
+        }
+
         /// <summary>
         /// Attempts to prepare the exception for re-throwing by preserving the stack trace. The returned exception should be immediately thrown.
         /// </summary>

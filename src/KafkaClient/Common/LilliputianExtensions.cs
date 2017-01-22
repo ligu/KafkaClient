@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Linq;
-using System.Text;
 
 namespace KafkaClient.Common
 {
@@ -9,58 +7,64 @@ namespace KafkaClient.Common
     /// </summary>
     public static class LilliputianExtensions
     {
-        public static byte[] ToIntSizedBytes(this string value)
+        public static byte[] ToBytes(this short value)
         {
-            if (string.IsNullOrEmpty(value)) return (-1).ToBytes();
-
-            return value.Length.ToBytes()
-                         .Concat(value.ToBytes())
-                         .ToArray();
-        }
-
-        public static string ToUtf8String(this byte[] value)
-        {
-            if (value == null) return string.Empty;
-
-            return Encoding.UTF8.GetString(value);
-        }
-
-        public static string ToUtf8String(this ArraySegment<byte> value)
-        {
-            if (value.Count == 0) return string.Empty;
-
-            return Encoding.UTF8.GetString(value.Array, value.Offset, value.Count);
-        }
-
-        public static byte[] ToBytes(this string value)
-        {
-            if (string.IsNullOrEmpty(value)) return (-1).ToBytes();
-
-            //UTF8 is array of bytes, no endianness
-            return Encoding.UTF8.GetBytes(value);
+            return BitConverter.GetBytes(value.ToBigEndian());
         }
 
         public static byte[] ToBytes(this int value)
         {
-            return BitConverter.GetBytes(value).ToBigEndian();
+            return BitConverter.GetBytes(value.ToBigEndian());
+        }
+
+        public static byte[] ToBytes(this long value)
+        {
+            return BitConverter.GetBytes(value.ToBigEndian());
+        }
+
+        public static byte[] ToBytes(this ushort value)
+        {
+            return BitConverter.GetBytes(value.ToBigEndian());
+        }
+
+        public static byte[] ToBytes(this uint value)
+        {
+            return BitConverter.GetBytes(value.ToBigEndian());
+        }
+
+        public static byte[] ToBytes(this ulong value)
+        {
+            return BitConverter.GetBytes(value.ToBigEndian());
+        }
+
+        public static short ToInt16(this byte[] value)
+        {
+            return BitConverter.ToInt16(value, 0).ToBigEndian();
         }
 
         public static int ToInt32(this byte[] value)
         {
-            const int oneByte = 8;
-            const int twoBytes = 16;
-            const int threeBytes = 24;
-            return BitConverter.IsLittleEndian
-                ? (value[0] << threeBytes) | (value[1] << twoBytes) | (value[2] << oneByte) | value[3]
-                : (value[3] << threeBytes) | (value[2] << twoBytes) | (value[1] << oneByte) | value[0];
+            return BitConverter.ToInt32(value, 0).ToBigEndian();
         }
 
-        public static byte[] ToBigEndian(this byte[] bytes)
+        public static long ToInt64(this byte[] value)
         {
-            if (BitConverter.IsLittleEndian) {
-                Array.Reverse(bytes);
-            }
-            return bytes;
+            return BitConverter.ToInt64(value, 0).ToBigEndian();
+        }
+
+        public static ushort ToUInt16(this byte[] value)
+        {
+            return BitConverter.ToUInt16(value, 0).ToBigEndian();
+        }
+
+        public static uint ToUInt32(this byte[] value)
+        {
+            return BitConverter.ToUInt32(value, 0).ToBigEndian();
+        }
+
+        public static ulong ToUInt64(this byte[] value)
+        {
+            return BitConverter.ToUInt64(value, 0).ToBigEndian();
         }
 
         public static long ToBigEndian(this long value)

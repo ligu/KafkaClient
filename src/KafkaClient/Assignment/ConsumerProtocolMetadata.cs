@@ -26,19 +26,24 @@ namespace KafkaClient.Assignment
     /// </summary>
     public class ConsumerProtocolMetadata : IMemberMetadata, IEquatable<ConsumerProtocolMetadata>
     {
-        private static readonly byte[] Empty = {};
+        private static readonly ArraySegment<byte> EmptySegment = new ArraySegment<byte>(new byte[0]);
 
-        public ConsumerProtocolMetadata(string topicName, string assignmentStrategy = SimpleAssignor.Strategy, byte[] userData = null, short version = 0)
-            : this(new []{ topicName }, assignmentStrategy, userData, version)
+        public ConsumerProtocolMetadata(string topicName, string assignmentStrategy = SimpleAssignor.Strategy, short version = 0)
+            : this(new []{ topicName }, assignmentStrategy, EmptySegment, version)
         {
         }
 
-        public ConsumerProtocolMetadata(IEnumerable<string> topicNames, string assignmentStrategy = SimpleAssignor.Strategy, byte[] userData = null, short version = 0)
+        public ConsumerProtocolMetadata(IEnumerable<string> topicNames, string assignmentStrategy = SimpleAssignor.Strategy, short version = 0)
+            : this(topicNames, assignmentStrategy, EmptySegment, version)
+        {
+        }
+
+        public ConsumerProtocolMetadata(IEnumerable<string> topicNames, string assignmentStrategy, ArraySegment<byte> userData, short version = 0)
         {
             AssignmentStrategy = assignmentStrategy;
             Version = version;
             Subscriptions = ImmutableList<string>.Empty.AddNotNullRange(topicNames);
-            UserData = userData ?? Empty;
+            UserData = userData;
         }
 
         public short Version { get; }
@@ -48,7 +53,7 @@ namespace KafkaClient.Assignment
         /// </summary>
         public IImmutableList<string> Subscriptions { get; }
 
-        public byte[] UserData { get; }
+        public ArraySegment<byte> UserData { get; }
 
         /// <inheritdoc />
         public override bool Equals(object obj)
@@ -72,7 +77,7 @@ namespace KafkaClient.Assignment
             unchecked {
                 var hashCode = Version.GetHashCode();
                 hashCode = (hashCode*397) ^ (Subscriptions?.GetHashCode() ?? 0);
-                hashCode = (hashCode*397) ^ (UserData?.GetHashCode() ?? 0);
+                hashCode = (hashCode*397) ^ UserData.GetHashCode();
                 return hashCode;
             }
         }

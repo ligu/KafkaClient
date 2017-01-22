@@ -20,19 +20,24 @@ namespace KafkaClient.Assignment
     /// </summary>
     public class ConsumerMemberAssignment : IMemberAssignment, IEquatable<ConsumerMemberAssignment>
     {
-        private static readonly byte[] Empty = {};
+        private static readonly ArraySegment<byte> EmptySegment = new ArraySegment<byte>(new byte[0]);
 
-        public ConsumerMemberAssignment(IEnumerable<TopicPartition> partitionAssignments = null, byte[] userData = null, short version = 0)
+        public ConsumerMemberAssignment(IEnumerable<TopicPartition> partitionAssignments = null, short version = 0)
+            : this(partitionAssignments, EmptySegment, version)
+        {
+        }
+
+        public ConsumerMemberAssignment(IEnumerable<TopicPartition> partitionAssignments, ArraySegment<byte> userData, short version = 0)
         {
             Version = version;
             PartitionAssignments = ImmutableList<TopicPartition>.Empty.AddNotNullRange(partitionAssignments);
-            UserData = userData ?? Empty;
+            UserData = userData;
         }
 
         public short Version { get; }
         public IImmutableList<TopicPartition> PartitionAssignments { get; }
 
-        public byte[] UserData { get; }
+        public ArraySegment<byte> UserData { get; }
 
         /// <inheritdoc />
         public override bool Equals(object obj)
@@ -56,7 +61,7 @@ namespace KafkaClient.Assignment
             unchecked {
                 var hashCode = Version.GetHashCode();
                 hashCode = (hashCode*397) ^ (PartitionAssignments?.GetHashCode() ?? 0);
-                hashCode = (hashCode*397) ^ (UserData?.GetHashCode() ?? 0);
+                hashCode = (hashCode*397) ^ UserData.GetHashCode();
                 return hashCode;
             }
         }

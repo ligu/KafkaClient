@@ -22,10 +22,12 @@ namespace KafkaClient.Common
     public class BigEndianBinaryReader : BinaryReader, IKafkaReader
     {
         private const int KafkaNullSize = -1;
+        private readonly MemoryStream _memStream;
 
         public BigEndianBinaryReader(Stream stream, bool leaveOpen)
             : base(stream, Encoding.UTF8, leaveOpen)
         {
+            _memStream = stream as MemoryStream;
         }
 
         public BigEndianBinaryReader(byte[] payload, int offset, int count)
@@ -88,89 +90,98 @@ namespace KafkaClient.Common
 
         public override short ReadInt16()
         {
-            return BitConverter.ToInt16(GetNextBytes(2), 0).ToBigEndian();
+            return GetNextBytes(2).ToInt16();
         }
 
         public override int ReadInt32()
         {
-            return BitConverter.ToInt32(GetNextBytes(4), 0).ToBigEndian();
+            return GetNextBytes(4).ToInt32();
         }
 
         public override long ReadInt64()
         {
-            return BitConverter.ToInt64(GetNextBytes(8), 0).ToBigEndian();
+            return GetNextBytes(8).ToInt64();
         }
 
         public override ushort ReadUInt16()
         {
-            return BitConverter.ToUInt16(GetNextBytes(2), 0).ToBigEndian();
+            return GetNextBytes(2).ToUInt16();
         }
 
         public override uint ReadUInt32()
         {
-            return BitConverter.ToUInt32(GetNextBytes(4), 0).ToBigEndian();
+            return GetNextBytes(4).ToUInt32();
         }
 
         public override ulong ReadUInt64()
         {
-            return BitConverter.ToUInt64(GetNextBytes(8), 0).ToBigEndian();
+            return GetNextBytes(8).ToUInt64();
         }
 
         public override string ReadString()
         {
             var size = ReadInt16();
             if (size == KafkaNullSize) return null;
-            return Encoding.UTF8.GetString(RawRead(size));
+
+            var segment = ReadSegment((int)Position, size);
+            var result = Encoding.UTF8.GetString(segment.Array, segment.Offset, segment.Count);
+            Position += segment.Count;
+            return result;
         }
 
-        public byte[] ReadBytes()
+        public ArraySegment<byte> ReadBytes()
         {
             var size = ReadInt32();
-            if (size == KafkaNullSize) { return null; }
-            return RawRead(size);
+            if (size == KafkaNullSize) { return EmptySegment; }
+            return ReadSegment(length: size);
         }
 
-        public byte[] ReadToEnd()
+        public uint CrcHash(int? size = null)
         {
-            var size = (int)(BaseStream.Length - BaseStream.Position);
-            var buffer = new byte[size];
-            BaseStream.Read(buffer, 0, size);
-            return buffer;
-        }
-
-        public byte[] CrcHash(int? size = null)
-        {
-            var currentPosition = BaseStream.Position;
+            var old = Position;
             try {
-                if (size.HasValue) {
-                    return Crc32Provider.ComputeHash(RawRead(size.Value));
-                } else {
-                    BaseStream.Position = 0;
-                    return Crc32Provider.ComputeHash(ReadToEnd());
+                var segment = ReadSegment(length: size);
+                return Crc32Provider.ComputeHash(segment.Array, segment.Offset, segment.Count);
+            } finally {
+                Position = old;
+            }
+        }
+
+        private static readonly ArraySegment<byte> EmptySegment = new ArraySegment<byte>(new byte[0]);
+
+        public ArraySegment<byte> ReadSegment(int? position = null, int? length = null)
+        {
+            if (position.HasValue && position.Value > BaseStream.Length) return EmptySegment;
+
+            var offset = position.GetValueOrDefault((int) Position);
+            var count = length.HasValue
+                ? Math.Min(length.Value, (int)Length - offset)
+                : (int)Length - offset;
+
+            if (count < 0) throw new EndOfStreamException();
+
+            ArraySegment<byte> segment;
+            if (_memStream != null && _memStream.TryGetBuffer(out segment)) {
+                if (!position.HasValue) {
+                    BaseStream.Seek(count, SeekOrigin.Current);
                 }
-            } finally {
-                BaseStream.Position = currentPosition;
+                return new ArraySegment<byte>(segment.Array, segment.Offset + offset, count);
             }
-        }
 
-        public uint Crc()
-        {
-            var currentPosition = BaseStream.Position;
-            try {
-                BaseStream.Position = 0;
-                return Crc32Provider.Compute(ReadToEnd());
-            } finally {
-                BaseStream.Position = currentPosition;
+            var buffer = new byte[count];
+            if (position.HasValue) {
+                // need to reset position after reading
+                var old = Position;
+                try {
+                    Position = offset;
+                    Read(buffer, 0, buffer.Length);
+                } finally {
+                    Position = old;
+                }
+            } else {
+                Read(buffer, 0, buffer.Length);
             }
-        }
-
-        public byte[] RawRead(int size)
-        {
-            if (size <= 0) { return new byte[0]; }
-
-            var buffer = new byte[size];
-            Read(buffer, 0, size);
-            return buffer;
+            return new ArraySegment<byte>(buffer);
         }
 
         private T EndianAwareRead<T>(int size, Func<byte[], int, T> converter) where T : struct

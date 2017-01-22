@@ -140,11 +140,11 @@ namespace KafkaClient.Common
 
         private void WriteCrc(int offset)
         {
-            byte[] crc;
+            uint crc;
             ArraySegment<byte> segment;
             var computeFrom = offset + KafkaEncoder.IntegerByteSize;
             if (_memStream.TryGetBuffer(out segment)) {
-                crc = Crc32Provider.ComputeHash(segment.Array, segment.Offset + computeFrom, segment.Count);
+                crc = Crc32Provider.ComputeHash(segment.Array, segment.Offset + computeFrom, segment.Count - computeFrom);
             } else {
                 _stream.BaseStream.Position = computeFrom;
                 crc = Crc32Provider.ComputeHash(_stream.BaseStream.ToEnumerable());

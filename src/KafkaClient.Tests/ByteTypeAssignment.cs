@@ -8,15 +8,13 @@ namespace KafkaClient.Tests
 {
     public class ByteTypeAssignment : IMemberAssignment, IEquatable<ByteTypeAssignment>
     {
-        private static readonly byte[] Empty = {};
-
-        public ByteTypeAssignment(byte[] bytes)
+        public ByteTypeAssignment(ArraySegment<byte> bytes)
         {
             PartitionAssignments = ImmutableList<TopicPartition>.Empty;
-            Bytes = bytes ?? Empty;
+            Bytes = bytes;
         }
 
-        public byte[] Bytes { get; }
+        public ArraySegment<byte> Bytes { get; }
 
         /// <inheritdoc />
         public override bool Equals(object obj)
@@ -26,7 +24,7 @@ namespace KafkaClient.Tests
 
         public override int GetHashCode()
         {
-            return Bytes?.GetHashCode() ?? 0;
+            return Bytes.GetHashCode();
         }
 
 

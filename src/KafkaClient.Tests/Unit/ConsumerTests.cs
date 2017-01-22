@@ -119,7 +119,7 @@ namespace KafkaClient.Tests.Unit
             var consumer = new Consumer(router);
             using (consumer) {
                 try {
-                    await consumer.JoinConsumerGroupAsync("group", protocolType, new ByteTypeMetadata("mine", new byte[] { }), CancellationToken.None);
+                    await consumer.JoinConsumerGroupAsync("group", protocolType, new ByteTypeMetadata("mine", new ArraySegment<byte>()), CancellationToken.None);
                     Assert.Fail("Should have thrown exception");
                 } catch (ArgumentOutOfRangeException ex) {
                     Assert.That(ex.Message, Is.EqualTo($"ProtocolType {protocolType} is unknown\r\nParameter name: metadata"));
@@ -139,7 +139,7 @@ namespace KafkaClient.Tests.Unit
             var consumer = new Consumer(router, new ConsumerConfiguration(coordinationRetry: new Retry(null, 2)), encoders: ConnectionConfiguration.Defaults.Encoders());
             using (consumer) {
                 try {
-                    await consumer.JoinConsumerGroupAsync("group", ConsumerEncoder.Protocol, new ByteTypeMetadata("mine", new byte[] { }), CancellationToken.None);
+                    await consumer.JoinConsumerGroupAsync("group", ConsumerEncoder.Protocol, new ByteTypeMetadata("mine", new ArraySegment<byte>()), CancellationToken.None);
                 } catch (RequestException) {
                     // since the servers aren't available
                 }

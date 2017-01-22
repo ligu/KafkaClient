@@ -564,8 +564,8 @@ namespace KafkaClient.Protocol
         /// <remarks>The return type is an Enumerable as the message could be a compressed message set.</remarks>
         public static IImmutableList<Message> ReadMessage(this IKafkaReader reader, int messageSize, long offset, int partitionId = 0)
         {
-            var crc = BitConverter.ToUInt32(reader.RawRead(4), 0);
-            var crcHash = BitConverter.ToUInt32(reader.CrcHash(messageSize - 4), 0);
+            var crc = reader.ReadUInt32();
+            var crcHash = reader.CrcHash(messageSize - 4);
             if (crc != crcHash) throw new CrcValidationException("Buffer did not match CRC validation.") { Crc = crc, CalculatedCrc = crcHash };
 
             var messageVersion = reader.ReadByte();
@@ -584,7 +584,7 @@ namespace KafkaClient.Protocol
             {
                 case MessageCodec.CodecNone: {
                     var value = reader.ReadBytes();
-                    return ImmutableList<Message>.Empty.Add(new Message(new ArraySegment<byte>(value), attribute, offset, partitionId, messageVersion, key, timestamp));
+                    return ImmutableList<Message>.Empty.Add(new Message(value, key, attribute, offset, partitionId, messageVersion, timestamp));
                 }
 
                 case MessageCodec.CodecGzip: {

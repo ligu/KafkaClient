@@ -19,10 +19,9 @@ namespace KafkaClient.Common
         uint ReadUInt32();
         long ReadInt64();
         string ReadString();
-        byte[] ReadBytes();
-        byte[] ReadToEnd();
-        byte[] CrcHash(int? size = null);
-        uint Crc();
-        byte[] RawRead(int size);
+
+        ArraySegment<byte> ReadSegment(int? position = null, int? length = null);
+        ArraySegment<byte> ReadBytes();
+        uint CrcHash(int? size = null);
     }
 }

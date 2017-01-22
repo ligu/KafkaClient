@@ -62,38 +62,32 @@ namespace KafkaClient.Common
 
         public override void Write(short value)
         {
-            var bytes = BitConverter.GetBytes(value.ToBigEndian());
-            base.Write(bytes);
+            base.Write(value.ToBytes());
         }
 
         public override void Write(int value)
         {
-            var bytes = BitConverter.GetBytes(value.ToBigEndian());
-            base.Write(bytes);
+            base.Write(value.ToBytes());
         }
 
         public override void Write(long value)
         {
-            var bytes = BitConverter.GetBytes(value.ToBigEndian());
-            base.Write(bytes);
+            base.Write(value.ToBytes());
         }
 
         public override void Write(ushort value)
         {
-            var bytes = BitConverter.GetBytes(value.ToBigEndian());
-            base.Write(bytes);
+            base.Write(value.ToBytes());
         }
 
         public override void Write(uint value)
         {
-            var bytes = BitConverter.GetBytes(value.ToBigEndian());
-            base.Write(bytes);
+            base.Write(value.ToBytes());
         }
 
         public override void Write(ulong value)
         {
-            var bytes = BitConverter.GetBytes(value.ToBigEndian());
-            base.Write(bytes);
+            base.Write(value.ToBytes());
         }
 
         public void Write(byte[] value, bool includePrefix)
@@ -140,9 +134,10 @@ namespace KafkaClient.Common
 
         private void WriteBigEndian(byte[] bytes)
         {
-            if (bytes == null) throw new ArgumentNullException(nameof(bytes));
-
-            base.Write(bytes.ToBigEndian());
+            if (BitConverter.IsLittleEndian) {
+                Array.Reverse(bytes);
+            }
+            base.Write(bytes);
         }
     }
 }

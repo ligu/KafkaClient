@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text;
 using KafkaClient.Common;
 
 namespace KafkaClient.Protocol
@@ -8,12 +9,12 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class Message : IEquatable<Message>
     {
-        public Message(byte[] value, byte attribute, long offset = 0L, int partitionId = 0, byte version = 0, byte[] key = null, DateTimeOffset? timestamp = null)
-            : this(new ArraySegment<byte>(value), attribute, offset, partitionId, version, key, timestamp)
+        public Message(ArraySegment<byte> value, byte attribute, long offset = 0L, int partitionId = 0, byte version = 0, DateTimeOffset? timestamp = null)
+            : this(value, EmptySegment, attribute, offset, partitionId, version, timestamp)
         {
         }
 
-        public Message(ArraySegment<byte> value, byte attribute, long offset = 0L, int partitionId = 0, byte version = 0, byte[] key = null, DateTimeOffset? timestamp = null)
+        public Message(ArraySegment<byte> value, ArraySegment<byte> key, byte attribute, long offset = 0L, int partitionId = 0, byte version = 0, DateTimeOffset? timestamp = null)
         {
             Offset = offset;
             PartitionId = partitionId;
@@ -32,8 +33,16 @@ namespace KafkaClient.Protocol
         /// <param name="value">The main content data of this message.</param>
         public Message(string value, string key = null)
         {
-            Key = key?.ToBytes();
-            Value = new ArraySegment<byte>(value.ToBytes());
+            Key = ToSegment(key);
+            Value = ToSegment(value);
+        }
+
+        private static readonly ArraySegment<byte> EmptySegment = new ArraySegment<byte>(new byte[0]);
+
+        private ArraySegment<byte> ToSegment(string value)
+        {
+            if (string.IsNullOrEmpty(value)) return EmptySegment;
+            return new ArraySegment<byte>(Encoding.UTF8.GetBytes(value));
         }
 
         /// <summary>
@@ -68,7 +77,7 @@ namespace KafkaClient.Protocol
         /// <summary>
         /// Key value used for routing message to partitions.
         /// </summary>
-        public byte[] Key { get; }
+        public ArraySegment<byte> Key { get; }
 
         /// <summary>
         /// The message body contents.  Can contain compressed message set.
@@ -110,7 +119,7 @@ namespace KafkaClient.Protocol
                 hashCode = (hashCode*397) ^ PartitionId;
                 hashCode = (hashCode*397) ^ MessageVersion.GetHashCode();
                 hashCode = (hashCode*397) ^ Attribute.GetHashCode();
-                hashCode = (hashCode*397) ^ (Key?.GetHashCode() ?? 0);
+                hashCode = (hashCode*397) ^ Key.GetHashCode();
                 hashCode = (hashCode*397) ^ Value.GetHashCode();
                 hashCode = (hashCode*397) ^ Timestamp.GetHashCode();
                 return hashCode;

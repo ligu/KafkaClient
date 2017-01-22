@@ -40,16 +40,16 @@ namespace KafkaClient.Performance
                               500,
                               ErrorResponseCode.None,
                               Enumerable.Range(1, Messages)
-                                        .Select(i => new Message(GenerateMessageBytes(), (byte) Codec, version: MessageVersion))
+                                        .Select(i => new Message(GenerateMessageBytes(), new ArraySegment<byte>(), (byte) Codec, version: MessageVersion))
                           )));
             _bytes = KafkaDecoder.EncodeResponseBytes(new RequestContext(1, Version), response);
         }
 
-        private byte[] GenerateMessageBytes()
+        private ArraySegment<byte> GenerateMessageBytes()
         {
             var buffer = new byte[MessageSize];
             new Random(42).NextBytes(buffer);
-            return buffer;
+            return new ArraySegment<byte>(buffer);
         }
 
         [Benchmark]

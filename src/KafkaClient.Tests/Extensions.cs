@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using KafkaClient.Common;
 using KafkaClient.Protocol;
 using NUnit.Framework;
 
@@ -58,6 +60,30 @@ namespace KafkaClient.Tests
         public static Task<int> FetchAsync(this IConsumer consumer, Func<Message, CancellationToken, Task> onMessageAsync, OffsetResponse.Topic offset, int batchSize, CancellationToken cancellationToken)
         {
             return consumer.FetchAsync(onMessageAsync, offset.TopicName, offset.PartitionId, offset.Offset, cancellationToken, batchSize);
+        }
+
+        public static byte[] ToBytes(this string value)
+        {
+            if (String.IsNullOrEmpty(value)) return (-1).ToBytes();
+
+            //UTF8 is array of bytes, no endianness
+            return Encoding.UTF8.GetBytes(value);
+        }
+
+        public static byte[] ToIntSizedBytes(this string value)
+        {
+            if (String.IsNullOrEmpty(value)) return (-1).ToBytes();
+
+            return value.Length.ToBytes()
+                         .Concat(value.ToBytes())
+                         .ToArray();
+        }
+
+        public static string ToUtf8String(this ArraySegment<byte> value)
+        {
+            if (value.Count == 0) return String.Empty;
+
+            return Encoding.UTF8.GetString(value.Array, value.Offset, value.Count);
         }
     }
 }

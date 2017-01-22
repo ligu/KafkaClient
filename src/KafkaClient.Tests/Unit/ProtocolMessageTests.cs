@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using System.Text;
 using KafkaClient.Common;
 using KafkaClient.Protocol;
@@ -106,11 +107,11 @@ namespace KafkaClient.Tests.Unit
         public void WhenMessageIsExactlyTheSizeOfBufferThenMessageIsDecoded()
         {
             // arrange
-            var expectedPayloadBytes = new byte[] { 1, 2, 3, 4 };
+            var expectedPayloadBytes = new ArraySegment<byte>(new byte[] { 1, 2, 3, 4 });
             using (var writer = new KafkaWriter()) {
                 writer.Write(0L);
                 using (writer.MarkForLength()) {
-                    writer.Write(new Message(expectedPayloadBytes, 0, version: 0, key: new byte[] { 0 }));
+                    writer.Write(new Message(expectedPayloadBytes, new ArraySegment<byte>(new byte[] { 0 }), 0, version: 0));
                 }
                 var payload = writer.ToBytes();
 

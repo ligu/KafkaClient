@@ -25,34 +25,19 @@ namespace KafkaClient.Common
             PolynomialTable = InitializeTable(DefaultPolynomial);
         }
 
-        public static uint Compute(IEnumerable<byte> buffer)
+        public static uint ComputeHash(IEnumerable<byte> buffer)
         {
             return ~CalculateHash(buffer);
         }
 
-        public static uint Compute(byte[] buffer)
+        public static uint ComputeHash(byte[] buffer)
         {
             return ~CalculateHash(buffer, 0, buffer.Length);
         }
 
-        public static uint Compute(byte[] buffer, int offset, int length)
+        public static uint ComputeHash(byte[] buffer, int offset, int length)
         {
             return ~CalculateHash(buffer, offset, length);
-        }
-
-        public static byte[] ComputeHash(IEnumerable<byte> buffer)
-        {
-            return UInt32ToBigEndianBytes(Compute(buffer));
-        }
-
-        public static byte[] ComputeHash(byte[] buffer)
-        {
-            return UInt32ToBigEndianBytes(Compute(buffer));
-        }
-
-        public static byte[] ComputeHash(byte[] buffer, int offset, int length)
-        {
-            return UInt32ToBigEndianBytes(Compute(buffer, offset, length));
         }
 
         private static uint[] InitializeTable(uint polynomial)
@@ -76,7 +61,8 @@ namespace KafkaClient.Common
         private static uint CalculateHash(byte[] buffer, int offset, int length)
         {
             var crc = DefaultSeed;
-            for (var i = offset; i < length; i++) {
+            var max = offset + length;
+            for (var i = offset; i < max; i++) {
                 crc = (crc >> 8) ^ PolynomialTable[buffer[i] ^ crc & 0xff];
             }
             return crc;
@@ -85,11 +71,6 @@ namespace KafkaClient.Common
         private static uint CalculateHash(IEnumerable<byte> buffer)
         {
             return buffer.Aggregate(DefaultSeed, (crc, value) => (crc >> 8) ^ PolynomialTable[value ^ crc & 0xff]);
-        }
-
-        private static byte[] UInt32ToBigEndianBytes(uint uint32)
-        {
-            return BitConverter.GetBytes(uint32.ToBigEndian());
         }
     }
 }

@@ -35,7 +35,7 @@ namespace KafkaClient.Tests.Unit
                                               500,
                                               ErrorResponseCode.None,
                                               Enumerable.Range(1, messages)
-                                                        .Select(i => new Message(GenerateMessageBytes(messageSize), (byte) codec, version: messageVersion))
+                                                        .Select(i => new Message(GenerateMessageBytes(messageSize), new ArraySegment<byte>(), (byte) codec, version: messageVersion))
                                           )));
                             var bytes = KafkaDecoder.EncodeResponseBytes(new RequestContext(1, version), response);
                             // var stuff = KafkaEncoder.Decode<FetchResponse>(new RequestContext(1, version), ApiKeyRequestType.Fetch, bytes, true);
@@ -74,7 +74,7 @@ namespace KafkaClient.Tests.Unit
                                                       "topic", 
                                                       partitionId, 
                                                       Enumerable.Range(1, messages)
-                                                                .Select(i => new Message(GenerateMessageBytes(messageSize), 0, version: messageVersion)), 
+                                                                .Select(i => new Message(GenerateMessageBytes(messageSize), new ArraySegment<byte>(), 0, version: messageVersion)), 
                                                       codec)));
 
                             var result = new {
@@ -92,12 +92,12 @@ namespace KafkaClient.Tests.Unit
 
             WriteResults(results);
         }
-
-        private byte[] GenerateMessageBytes(int messageSize)
+        
+        private ArraySegment<byte> GenerateMessageBytes(int messageSize)
         {
             var buffer = new byte[messageSize];
             new Random(42).NextBytes(buffer);
-            return buffer;
+            return new ArraySegment<byte>(buffer);
         }
 
         private void WriteResults(List<object> results)

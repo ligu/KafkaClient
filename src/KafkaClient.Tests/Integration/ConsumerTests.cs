@@ -943,7 +943,7 @@ namespace KafkaClient.Tests.Integration
                     payload.Add(Convert.ToByte(1));
                 }
 
-                messages.Add(new Message(payload.ToArray(), 0));
+                messages.Add(new Message(new ArraySegment<byte>(payload.ToArray()), new ArraySegment<byte>(), 0));
             }
 
             return messages;
