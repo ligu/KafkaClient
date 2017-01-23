@@ -39,12 +39,17 @@ namespace KafkaClient.Tests
             _clientConnectionHandlerTask = Task.Run(StartHandlingClientRequestAsync, _disposeToken.Token);
         }
 
-        public async Task SendDataAsync(byte[] data)
+        public Task SendDataAsync(byte[] data)
+        {
+            return SendDataAsync(new ArraySegment<byte>(data));
+        }
+
+        public async Task SendDataAsync(ArraySegment<byte> data)
         {
             try {
                 await _semaphoreSlim.WaitAsync();
-                _log.Info(() => LogEvent.Create($"FAKE Server: writing {data.Length} bytes."));
-                await _client.GetStream().WriteAsync(data, 0, data.Length).ConfigureAwait(false);
+                _log.Info(() => LogEvent.Create($"FAKE Server: writing {data.Count} bytes."));
+                await _client.GetStream().WriteAsync(data.Array, data.Offset, data.Count).ConfigureAwait(false);
             } catch (Exception ex) {
                 _log.Error(LogEvent.Create(ex));
             } finally {
@@ -55,7 +60,7 @@ namespace KafkaClient.Tests
         public Task SendDataAsync(string data)
         {
             var msg = Encoding.ASCII.GetBytes(data);
-            return SendDataAsync(msg);
+            return SendDataAsync(new ArraySegment<byte>(msg));
         }
 
         public void DropConnection()

@@ -7,20 +7,17 @@ namespace KafkaClient.Common
     public interface IKafkaWriter : IDisposable
     {
         IKafkaWriter Write(bool value);
+        IKafkaWriter Write(byte value);
         IKafkaWriter Write(short value);
         IKafkaWriter Write(int value);
         IKafkaWriter Write(long value);
 
-        IKafkaWriter Write(byte value);
-        IKafkaWriter Write(ArraySegment<byte> values, bool includeLength = true);
+        IKafkaWriter Write(ArraySegment<byte> value, bool includeLength = true);
 
         IKafkaWriter Write(string value);
         IKafkaWriter Write(IEnumerable<string> values, bool includeLength = false);
 
-        byte[] ToBytes();
-        byte[] ToBytesNoLength();
-        ArraySegment<byte> ToSegment();
-        ArraySegment<byte> ToSegmentNoLength();
+        ArraySegment<byte> ToSegment(bool includeLength = true);
 
         IDisposable MarkForLength();
         IDisposable MarkForCrc();

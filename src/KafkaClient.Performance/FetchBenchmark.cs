@@ -26,7 +26,7 @@ namespace KafkaClient.Performance
 
         public byte MessageVersion { get; } = 0;
 
-        private byte[] _bytes;
+        private ArraySegment<byte> _bytes;
 
         [Setup]
         public void SetupData()

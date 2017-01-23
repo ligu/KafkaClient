@@ -44,7 +44,7 @@ namespace KafkaClient.Tests.Unit
                                 Level = codec == MessageCodec.CodecNone ? "-" : level.ToString(),
                                 Messages = messages,
                                 MessageSize = messageSize,
-                                Bytes = bytes.Length
+                                Bytes = bytes.Count
                             };
                             results.Add(result);
                         }

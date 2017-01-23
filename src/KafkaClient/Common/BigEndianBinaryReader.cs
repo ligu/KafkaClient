@@ -43,6 +43,14 @@ namespace KafkaClient.Common
         {
         }
 
+        public BigEndianBinaryReader(ArraySegment<byte> bytes, int offset) : this(bytes.Skip(offset))
+        {
+        }
+
+        public BigEndianBinaryReader(ArraySegment<byte> bytes) : this(bytes.Array, bytes.Offset, bytes.Count)
+        {
+        }
+
         public long Length => BaseStream.Length;
         public long Position { get { return BaseStream.Position; } set { BaseStream.Position = value; } }
         public bool HasData => BaseStream.Position < BaseStream.Length;
@@ -141,7 +149,7 @@ namespace KafkaClient.Common
             var old = Position;
             try {
                 var segment = ReadSegment(length: size);
-                return Crc32Provider.ComputeHash(segment.Array, segment.Offset, segment.Count);
+                return Crc32Provider.ComputeHash(segment);
             } finally {
                 Position = old;
             }

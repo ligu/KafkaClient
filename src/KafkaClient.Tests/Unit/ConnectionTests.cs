@@ -469,7 +469,7 @@ namespace KafkaClient.Tests.Unit
                     .Write(new ArraySegment<byte>(bytes), false);
 
                 //send the combined payload
-                var send = server.SendDataAsync(payload.ToBytesNoLength());
+                var send = server.SendDataAsync(payload.ToSegment(false));
 
                 var socket = await conn.ConnectAsync(CancellationToken.None);
                 var buffer = new byte[48];
@@ -588,7 +588,7 @@ namespace KafkaClient.Tests.Unit
                             return conn.ReadBytesAsync(socket, b, b.Length, _ => { }, CancellationToken.None);
                         }).ToArray();
 
-                    var send = server.SendDataAsync(payload.ToBytes());
+                    var send = server.SendDataAsync(payload.ToSegment());
 
                     Task.WaitAll(tasks);
 
@@ -842,7 +842,11 @@ namespace KafkaClient.Tests.Unit
 
         private static byte[] CreateCorrelationMessage(int id)
         {
-            return new KafkaWriter().Write(id).ToBytes();
+            var buffer = new byte[8];
+            var stream = new MemoryStream(buffer);
+            stream.Write(KafkaEncoder.CorrelationSize.ToBytes(), 0, 4);
+            stream.Write(id.ToBytes(), 0, 4);
+            return buffer;
         }
     }
 }

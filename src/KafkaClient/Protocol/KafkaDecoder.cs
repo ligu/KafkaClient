@@ -50,7 +50,7 @@ namespace KafkaClient.Protocol
             return default(T);
         }
 
-        public static byte[] EncodeResponseBytes<T>(IRequestContext context, T response) where T : IResponse
+        public static ArraySegment<byte> EncodeResponseBytes<T>(IRequestContext context, T response) where T : IResponse
         {
             using (var writer = new KafkaWriter()) {
                 // From http://kafka.apache.org/protocol.html#protocol_messages
@@ -79,7 +79,7 @@ namespace KafkaClient.Protocol
                 || TryEncodeResponse(writer, context, response as CreateTopicsResponse)
                 || TryEncodeResponse(writer, context, response as DeleteTopicsResponse);
 
-                return writer.ToBytes();
+                return writer.ToSegment();
             }
         }
 

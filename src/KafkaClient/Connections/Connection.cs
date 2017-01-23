@@ -82,7 +82,7 @@ namespace KafkaClient.Connections
             }
             context = RequestContext.Copy(context, NextCorrelationId(), version, encoders: _configuration.Encoders, onProduceRequestMessages: _configuration.OnProduceRequestMessages);
 
-            byte[] receivedBytes;
+            ArraySegment<byte> receivedBytes;
             using (var asyncItem = new AsyncItem(context, request.ApiKey, request, _configuration.RequestTimeout)) {
                 if (request.ExpectResponse) {
                     AddToCorrelationMatching(asyncItem);
@@ -198,11 +198,15 @@ namespace KafkaClient.Connections
                             // TODO: read correlation id at this point too, and do association before the rest of the read ?
                         }
 
-                        var response = new MemoryStream(responseSize);
-                        await ReadBytesAsync(socket, buffer, responseSize, bytesRead => response.Write(buffer, 0, bytesRead), _disposeToken.Token).ConfigureAwait(false);
+                        var responseStream = new MemoryStream(responseSize);
+                        await ReadBytesAsync(socket, buffer, responseSize, bytesRead => responseStream.Write(buffer, 0, bytesRead), _disposeToken.Token).ConfigureAwait(false);
                         responseSize = 0; // reset so we read the size next time through
 
-                        CorrelatePayloadToRequest(response.ToArray());
+                        ArraySegment<byte> response;
+                        if (!responseStream.TryGetBuffer(out response)) {
+                            response = new ArraySegment<byte>(responseStream.ToArray());
+                        }
+                        CorrelatePayloadToRequest(response);
                         if (attempt > 0) {
                             _log.Info(() => LogEvent.Create($"Polling receive thread has recovered on {Endpoint}"));
                         }
@@ -408,25 +412,25 @@ namespace KafkaClient.Connections
 
         #region Correlation
 
-        private void CorrelatePayloadToRequest(byte[] payload)
+        private void CorrelatePayloadToRequest(ArraySegment<byte> bytes)
         {
-            if (payload.Length < 4) return;
-            var correlationId = BitConverter.ToInt32(payload, 0).ToBigEndian();
+            if (bytes.Count < 4) return;
+            var correlationId = BitConverter.ToInt32(bytes.Array, bytes.Offset).ToBigEndian();
 
             AsyncItem asyncItem;
             if (_requestsByCorrelation.TryRemove(correlationId, out asyncItem)) {
                 var requestType = asyncItem.RequestType;
                 var context = asyncItem.Context;
-                _log.Info(() => LogEvent.Create($"Matched {requestType} response (id {correlationId}, v {context.ApiVersion.GetValueOrDefault()}, {payload.Length} bytes) from {Endpoint}"));
-                asyncItem.ReceiveTask.SetResult(payload);
+                _log.Info(() => LogEvent.Create($"Matched {requestType} response (id {correlationId}, v {context.ApiVersion.GetValueOrDefault()}, {bytes.Count} bytes) from {Endpoint}"));
+                asyncItem.ReceiveTask.SetResult(bytes);
             } else {
                 Tuple<ApiKeyRequestType, IRequestContext> requestInfo;
                 if (_timedOutRequestsByCorrelation.TryRemove(correlationId, out requestInfo)) {
                     var requestType = requestInfo.Item1;
                     var context = requestInfo.Item2;
                     try {
-                        _log.Warn(() => LogEvent.Create($"Unexpected {requestType} response (id {correlationId}, {payload.Length} bytes) from {Endpoint}"));
-                        var result = KafkaEncoder.Decode<IResponse>(context, requestType, payload);
+                        _log.Warn(() => LogEvent.Create($"Unexpected {requestType} response (id {correlationId}, {bytes.Count} bytes) from {Endpoint}"));
+                        var result = KafkaEncoder.Decode<IResponse>(context, requestType, bytes);
                         _log.Debug(() => LogEvent.Create($"{Endpoint} -----> {requestType} (not in request queue)\n- Context:{context.ToFormattedString()}\n- Response:{result.ToFormattedString()}"));
                     } catch {
                         // ignore, since this is mostly for debugging
@@ -501,14 +505,14 @@ namespace KafkaClient.Connections
                 Timeout = timeout;
                 Request = KafkaEncoder.Encode(context, request);
                 RequestType = requestType;
-                ReceiveTask = new TaskCompletionSource<byte[]>();
+                ReceiveTask = new TaskCompletionSource<ArraySegment<byte>>();
             }
 
             public IRequestContext Context { get; }
             public ApiKeyRequestType RequestType { get; }
             public ArraySegment<byte> Request { get; }
             public TimeSpan Timeout { get; }
-            public TaskCompletionSource<byte[]> ReceiveTask { get; }
+            public TaskCompletionSource<ArraySegment<byte>> ReceiveTask { get; }
 
             public void OnDispose(Action<AsyncItem, Exception> cleanupFunction)
             {

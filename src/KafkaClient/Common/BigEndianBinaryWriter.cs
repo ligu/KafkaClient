@@ -21,6 +21,12 @@ namespace KafkaClient.Common
     /// </remarks>
     public class BigEndianBinaryWriter : BinaryWriter
     {
+        public BigEndianBinaryWriter(Stream stream)
+            : base(stream, Encoding.UTF8)
+        {
+            if (stream == null) throw new ArgumentNullException(nameof(stream));
+        }
+
         public BigEndianBinaryWriter(Stream stream, bool leaveOpen)
             : base(stream, Encoding.UTF8, leaveOpen)
         {
@@ -55,21 +61,6 @@ namespace KafkaClient.Common
         public override void Write(ulong value)
         {
             base.Write(value.ToBytes());
-        }
-
-        public void Write(byte[] value, bool includePrefix)
-        {
-            if (value == null) {
-                if (includePrefix) {
-                    Write(-1);
-                }
-                return;
-            }
-
-            if (includePrefix) {
-                Write(value.Length);
-            }
-            base.Write(value);
         }
 
         public void Write(ArraySegment<byte> value, bool includePrefix)

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using KafkaClient.Protocol;
 
 namespace KafkaClient.Common
@@ -21,43 +22,60 @@ namespace KafkaClient.Common
 
         public IKafkaWriter Write(bool value)
         {
-            _stream.Write(value);
+            _memStream.WriteByte(value ? (byte)1 : (byte)0);
             return this;
         }
 
         public IKafkaWriter Write(byte value)
         {
-            _stream.Write(value);
-            return this;
-        }
-
-        public IKafkaWriter Write(int value)
-        {
-            _stream.Write(value);
+            _memStream.WriteByte(value);
             return this;
         }
 
         public IKafkaWriter Write(short value)
         {
-            _stream.Write(value);
+            _memStream.Write(value.ToBytes(), 0, 2);
+            return this;
+        }
+
+        public IKafkaWriter Write(int value)
+        {
+            _memStream.Write(value.ToBytes(), 0, 4);
             return this;
         }
 
         public IKafkaWriter Write(long value)
         {
-            _stream.Write(value);
+            _memStream.Write(value.ToBytes(), 0, 8);
             return this;
         }
 
-        public IKafkaWriter Write(ArraySegment<byte> values, bool includeLength = true)
+        public IKafkaWriter Write(ArraySegment<byte> value, bool includeLength = true)
         {
-            _stream.Write(values, includeLength);
+            if (value.Count == 0) {
+                if (includeLength) {
+                    Write(-1);
+                }
+                return this;
+            }
+
+            if (includeLength) {
+                Write(value.Count);
+            }
+            _memStream.Write(value.Array, value.Offset, value.Count);
             return this;
         }
 
         public IKafkaWriter Write(string value)
         {
-            _stream.Write(value);
+            if (value == null) {
+                Write((short)-1);
+                return this;
+            }
+
+            var bytes = Encoding.UTF8.GetBytes(value); 
+            Write((short)bytes.Length);
+            _memStream.Write(bytes, 0, bytes.Length);
             return this;
         }
 
@@ -65,26 +83,15 @@ namespace KafkaClient.Common
         {
             if (includeLength) {
                 var valuesList = values.ToList();
-                _stream.Write(valuesList.Count);
-                Write(valuesList);
+                Write(valuesList.Count);
+                Write(valuesList); // NOTE: !includeLength passed next time
                 return this;
             }
 
             foreach (var item in values) {
-                _stream.Write(item);
+                Write(item);
             }
             return this;
-        }
-
-        public byte[] ToBytes()
-        {
-            WriteLength(0);
-            return ToBytes(0);
-        }
-
-        public byte[] ToBytesNoLength()
-        {
-            return ToBytes(KafkaEncoder.IntegerByteSize);
         }
 
         private byte[] ToBytes(int offset)
@@ -96,14 +103,12 @@ namespace KafkaClient.Common
             return buffer;
         }
 
-        public ArraySegment<byte> ToSegment()
+        public ArraySegment<byte> ToSegment(bool includeLength = true)
         {
-            WriteLength(0);
-            return ToSegment(0);
-        }
-
-        public ArraySegment<byte> ToSegmentNoLength()
-        {
+            if (includeLength) {
+                WriteLength(0);
+                return ToSegment(0);
+            }
             return ToSegment(KafkaEncoder.IntegerByteSize);
         }
 
@@ -111,7 +116,7 @@ namespace KafkaClient.Common
         {
             ArraySegment<byte> segment;
             if (_memStream.TryGetBuffer(out segment)) {
-                return new ArraySegment<byte>(segment.Array, segment.Offset + offset, segment.Count - offset);
+                return segment.Skip(offset);
             }
             var buffer = ToBytes(offset);
             return new ArraySegment<byte>(buffer, 0, buffer.Length);
@@ -138,7 +143,7 @@ namespace KafkaClient.Common
             ArraySegment<byte> segment;
             var computeFrom = offset + KafkaEncoder.IntegerByteSize;
             if (_memStream.TryGetBuffer(out segment)) {
-                crc = Crc32Provider.ComputeHash(segment.Array, segment.Offset + computeFrom, segment.Count - computeFrom);
+                crc = Crc32Provider.ComputeHash(segment.Skip(computeFrom));
             } else {
                 _stream.BaseStream.Position = computeFrom;
                 crc = Crc32Provider.ComputeHash(_stream.BaseStream.ToEnumerable());

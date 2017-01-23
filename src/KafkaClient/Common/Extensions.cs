@@ -48,6 +48,11 @@ namespace KafkaClient.Common
             return self.Zip(other, (s, o) => Equals(s, o)).All(_ => _);
         }
 
+        public static ArraySegment<T> Skip<T>(this ArraySegment<T> self, int offset)
+        {
+            return new ArraySegment<T>(self.Array, self.Offset + offset, self.Count - offset);
+        }
+
         /// <summary>
         /// Attempts to prepare the exception for re-throwing by preserving the stack trace. The returned exception should be immediately thrown.
         /// </summary>

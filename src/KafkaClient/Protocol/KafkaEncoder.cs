@@ -6,7 +6,6 @@ using System.Linq;
 using System.Threading;
 using KafkaClient.Assignment;
 using KafkaClient.Common;
-using KafkaClient.Connections;
 
 namespace KafkaClient.Protocol
 {
@@ -16,43 +15,43 @@ namespace KafkaClient.Protocol
         public const int CorrelationSize = IntegerByteSize;
         public const int ResponseHeaderSize = IntegerByteSize + CorrelationSize;
 
-        public static T Decode<T>(IRequestContext context, ApiKeyRequestType requstType, byte[] payload, bool hasSize = false) where T : class, IResponse
+        public static T Decode<T>(IRequestContext context, ApiKeyRequestType requstType, ArraySegment<byte> bytes, bool hasSize = false) where T : class, IResponse
         {
             switch (requstType) {
                 case ApiKeyRequestType.Produce:
-                    return (T)ProduceResponse(context, payload, hasSize);
+                    return (T)ProduceResponse(context, bytes, hasSize);
                 case ApiKeyRequestType.Fetch:
-                    return (T)FetchResponse(context, payload, hasSize);
+                    return (T)FetchResponse(context, bytes, hasSize);
                 case ApiKeyRequestType.Offset:
-                    return (T)OffsetResponse(context, payload, hasSize);
+                    return (T)OffsetResponse(context, bytes, hasSize);
                 case ApiKeyRequestType.Metadata:
-                    return (T)MetadataResponse(context, payload, hasSize);
+                    return (T)MetadataResponse(context, bytes, hasSize);
                 case ApiKeyRequestType.OffsetCommit:
-                    return (T)OffsetCommitResponse(context, payload, hasSize);
+                    return (T)OffsetCommitResponse(context, bytes, hasSize);
                 case ApiKeyRequestType.OffsetFetch:
-                    return (T)OffsetFetchResponse(context, payload, hasSize);
+                    return (T)OffsetFetchResponse(context, bytes, hasSize);
                 case ApiKeyRequestType.GroupCoordinator:
-                    return (T)GroupCoordinatorResponse(context, payload, hasSize);
+                    return (T)GroupCoordinatorResponse(context, bytes, hasSize);
                 case ApiKeyRequestType.JoinGroup:
-                    return (T)JoinGroupResponse(context, payload, hasSize);
+                    return (T)JoinGroupResponse(context, bytes, hasSize);
                 case ApiKeyRequestType.Heartbeat:
-                    return (T)HeartbeatResponse(context, payload, hasSize);
+                    return (T)HeartbeatResponse(context, bytes, hasSize);
                 case ApiKeyRequestType.LeaveGroup:
-                    return (T)LeaveGroupResponse(context, payload, hasSize);
+                    return (T)LeaveGroupResponse(context, bytes, hasSize);
                 case ApiKeyRequestType.SyncGroup:
-                    return (T)SyncGroupResponse(context, payload, hasSize);
+                    return (T)SyncGroupResponse(context, bytes, hasSize);
                 case ApiKeyRequestType.DescribeGroups:
-                    return (T)DescribeGroupsResponse(context, payload, hasSize);
+                    return (T)DescribeGroupsResponse(context, bytes, hasSize);
                 case ApiKeyRequestType.ListGroups:
-                    return (T)ListGroupsResponse(context, payload, hasSize);
+                    return (T)ListGroupsResponse(context, bytes, hasSize);
                 case ApiKeyRequestType.SaslHandshake:
-                    return (T)SaslHandshakeResponse(context, payload, hasSize);
+                    return (T)SaslHandshakeResponse(context, bytes, hasSize);
                 case ApiKeyRequestType.ApiVersions:
-                    return (T)ApiVersionsResponse(context, payload, hasSize);
+                    return (T)ApiVersionsResponse(context, bytes, hasSize);
                 case ApiKeyRequestType.CreateTopics:
-                    return (T)CreateTopicsResponse(context, payload, hasSize);
+                    return (T)CreateTopicsResponse(context, bytes, hasSize);
                 case ApiKeyRequestType.DeleteTopics:
-                    return (T)DeleteTopicsResponse(context, payload, hasSize);
+                    return (T)DeleteTopicsResponse(context, bytes, hasSize);
                 default:
                     return default (T);
             }
@@ -202,7 +201,7 @@ namespace KafkaClient.Protocol
                 case MessageCodec.CodecGzip:
                     using (var messageWriter = new KafkaWriter()) {
                         messageWriter.Write(messages);
-                        var messageSet = messageWriter.ToSegmentNoLength();
+                        var messageSet = messageWriter.ToSegment(false);
 
                         using (writer.MarkForLength()) { // messageset
                             writer.Write(0L); // offset
@@ -524,7 +523,6 @@ namespace KafkaClient.Protocol
         /// Decode a byte[] that represents a collection of messages.
         /// </summary>
         /// <param name="reader">The reader</param>
-        /// <param name="partitionId">The partitionId messages are being read from.</param>
         /// <param name="codec">The codec of the containing messageset, if any</param>
         /// <returns>Enumerable representing stream of messages decoded from byte[]</returns>
         public static IImmutableList<Message> ReadMessages(this IKafkaReader reader, MessageCodec? codec = null)
@@ -647,7 +645,7 @@ namespace KafkaClient.Protocol
             }
         }
 
-        private static IResponse ProduceResponse(IRequestContext context, byte[] payload, bool hasSize)
+        private static IResponse ProduceResponse(IRequestContext context, ArraySegment<byte> payload, bool hasSize)
         {
             using (var reader = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
                 TimeSpan? throttleTime = null;
@@ -682,7 +680,7 @@ namespace KafkaClient.Protocol
             }
         }
 
-        private static IResponse FetchResponse(IRequestContext context, byte[] payload, bool hasSize)
+        private static IResponse FetchResponse(IRequestContext context, ArraySegment<byte> payload, bool hasSize)
         {
             using (var reader = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
                 TimeSpan? throttleTime = null;
@@ -710,7 +708,7 @@ namespace KafkaClient.Protocol
             }
         }
 
-        private static IResponse OffsetResponse(IRequestContext context, byte[] payload, bool hasSize)
+        private static IResponse OffsetResponse(IRequestContext context, ArraySegment<byte> payload, bool hasSize)
         {
             using (var reader = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
                 var topics = new List<OffsetResponse.Topic>();
@@ -740,7 +738,7 @@ namespace KafkaClient.Protocol
             }
         }
 
-        private static IResponse MetadataResponse(IRequestContext context, byte[] payload, bool hasSize)
+        private static IResponse MetadataResponse(IRequestContext context, ArraySegment<byte> payload, bool hasSize)
         {
             using (var reader = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
                 var brokers = new Broker[reader.ReadInt32()];
@@ -797,7 +795,7 @@ namespace KafkaClient.Protocol
             }
         }
         
-        private static IResponse OffsetCommitResponse(IRequestContext context, byte[] payload, bool hasSize)
+        private static IResponse OffsetCommitResponse(IRequestContext context, ArraySegment<byte> payload, bool hasSize)
         {
             using (var reader = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
                 var topics = new List<TopicResponse>();
@@ -818,7 +816,7 @@ namespace KafkaClient.Protocol
             }
         }
 
-        private static IResponse OffsetFetchResponse(IRequestContext context, byte[] payload, bool hasSize)
+        private static IResponse OffsetFetchResponse(IRequestContext context, ArraySegment<byte> payload, bool hasSize)
         {
             using (var reader = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
                 var topics = new List<OffsetFetchResponse.Topic>();
@@ -841,7 +839,7 @@ namespace KafkaClient.Protocol
             }
         }
         
-        private static IResponse GroupCoordinatorResponse(IRequestContext context, byte[] payload, bool hasSize)
+        private static IResponse GroupCoordinatorResponse(IRequestContext context, ArraySegment<byte> payload, bool hasSize)
         {
             using (var reader = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
                 var errorCode = (ErrorResponseCode)reader.ReadInt16();
@@ -853,7 +851,7 @@ namespace KafkaClient.Protocol
             }
         }
 
-        private static IResponse JoinGroupResponse(IRequestContext context, byte[] payload, bool hasSize)
+        private static IResponse JoinGroupResponse(IRequestContext context, ArraySegment<byte> payload, bool hasSize)
         {
             using (var reader = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
                 var errorCode = (ErrorResponseCode)reader.ReadInt16();
@@ -874,7 +872,7 @@ namespace KafkaClient.Protocol
             }
         }
 
-        private static IResponse HeartbeatResponse(IRequestContext context, byte[] payload, bool hasSize)
+        private static IResponse HeartbeatResponse(IRequestContext context, ArraySegment<byte> payload, bool hasSize)
         {
             using (var reader = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
                 var errorCode = (ErrorResponseCode)reader.ReadInt16();
@@ -883,7 +881,7 @@ namespace KafkaClient.Protocol
             }
         }
 
-        private static IResponse LeaveGroupResponse(IRequestContext context, byte[] payload, bool hasSize)
+        private static IResponse LeaveGroupResponse(IRequestContext context, ArraySegment<byte> payload, bool hasSize)
         {
             using (var reader = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
                 var errorCode = (ErrorResponseCode)reader.ReadInt16();
@@ -892,7 +890,7 @@ namespace KafkaClient.Protocol
             }
         }
 
-        private static IResponse SyncGroupResponse(IRequestContext context, byte[] payload, bool hasSize)
+        private static IResponse SyncGroupResponse(IRequestContext context, ArraySegment<byte> payload, bool hasSize)
         {
             using (var reader = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
                 var errorCode = (ErrorResponseCode)reader.ReadInt16();
@@ -903,7 +901,7 @@ namespace KafkaClient.Protocol
             }
         }
 
-        private static IResponse DescribeGroupsResponse(IRequestContext context, byte[] payload, bool hasSize)
+        private static IResponse DescribeGroupsResponse(IRequestContext context, ArraySegment<byte> payload, bool hasSize)
         {
             using (var reader = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
                 var groups = new DescribeGroupsResponse.Group[reader.ReadInt32()];
@@ -932,7 +930,7 @@ namespace KafkaClient.Protocol
             }
         }
 
-        private static IResponse ListGroupsResponse(IRequestContext context, byte[] payload, bool hasSize)
+        private static IResponse ListGroupsResponse(IRequestContext context, ArraySegment<byte> payload, bool hasSize)
         {
             using (var reader = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
                 var errorCode = (ErrorResponseCode)reader.ReadInt16();
@@ -947,7 +945,7 @@ namespace KafkaClient.Protocol
             }
         }
 
-        private static IResponse SaslHandshakeResponse(IRequestContext context, byte[] payload, bool hasSize)
+        private static IResponse SaslHandshakeResponse(IRequestContext context, ArraySegment<byte> payload, bool hasSize)
         {
             using (var reader = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
                 var errorCode = (ErrorResponseCode)reader.ReadInt16();
@@ -960,7 +958,7 @@ namespace KafkaClient.Protocol
             }
         }
 
-        private static IResponse ApiVersionsResponse(IRequestContext context, byte[] payload, bool hasSize)
+        private static IResponse ApiVersionsResponse(IRequestContext context, ArraySegment<byte> payload, bool hasSize)
         {
             using (var reader = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
                 var errorCode = (ErrorResponseCode)reader.ReadInt16();
@@ -976,7 +974,7 @@ namespace KafkaClient.Protocol
             }
         }        
 
-        private static IResponse CreateTopicsResponse(IRequestContext context, byte[] payload, bool hasSize)
+        private static IResponse CreateTopicsResponse(IRequestContext context, ArraySegment<byte> payload, bool hasSize)
         {
             using (var reader = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
                 var topics = new TopicsResponse.Topic[reader.ReadInt32()];
@@ -989,7 +987,7 @@ namespace KafkaClient.Protocol
             }
         }        
 
-        private static IResponse DeleteTopicsResponse(IRequestContext context, byte[] payload, bool hasSize)
+        private static IResponse DeleteTopicsResponse(IRequestContext context, ArraySegment<byte> payload, bool hasSize)
         {
             using (var reader = new BigEndianBinaryReader(payload, hasSize ? 8 : 4)) {
                 var topics = new TopicsResponse.Topic[reader.ReadInt32()];

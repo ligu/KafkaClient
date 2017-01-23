@@ -17,10 +17,10 @@ namespace KafkaClient.Tests.Unit
 
             using (var writer = new KafkaWriter()) {
                 writer.Write(testMessage);
-                var encoded = writer.ToBytesNoLength();
-                encoded[0] += 1;
+                var encoded = writer.ToSegment(false);
+                encoded.Array[encoded.Offset] += 1;
                 using (var reader = new BigEndianBinaryReader(encoded)) {
-                    Assert.Throws<CrcValidationException>(() => reader.ReadMessage(encoded.Length, 0).First());
+                    Assert.Throws<CrcValidationException>(() => reader.ReadMessage(encoded.Count, 0).First());
                 }
             }
         }
@@ -36,9 +36,9 @@ namespace KafkaClient.Tests.Unit
 
             using (var writer = new KafkaWriter()) {
                 writer.Write(testMessage);
-                var encoded = writer.ToBytesNoLength();
+                var encoded = writer.ToSegment(false);
                 using (var reader = new BigEndianBinaryReader(encoded)) {
-                    var result = reader.ReadMessage(encoded.Length, 0).First();
+                    var result = reader.ReadMessage(encoded.Count, 0).First();
 
                     Assert.That(testMessage.Key, Is.EqualTo(result.Key));
                     Assert.That(testMessage.Value, Is.EqualTo(result.Value));
@@ -66,7 +66,7 @@ namespace KafkaClient.Tests.Unit
 
             using (var writer = new KafkaWriter()) {
                 writer.Write(messages);
-                var result = writer.ToBytesNoLength();
+                var result = writer.ToSegment(false);
                 Assert.That(expected, Is.EqualTo(result));
             }
         }
@@ -95,8 +95,8 @@ namespace KafkaClient.Tests.Unit
                 writer.Write(0L)
                        .Write(messageSize)
                        .Write(new ArraySegment<byte>(message));
-                var bytes = writer.ToBytes();
-                using (var reader = new BigEndianBinaryReader(bytes)) {
+                var segment = writer.ToSegment();
+                using (var reader = new BigEndianBinaryReader(segment.Array, segment.Offset, segment.Count)) {
                     // act/assert
                     Assert.Throws<BufferUnderRunException>(() => reader.ReadMessages(0));
                 }
@@ -113,10 +113,10 @@ namespace KafkaClient.Tests.Unit
                 using (writer.MarkForLength()) {
                     writer.Write(new Message(expectedPayloadBytes, new ArraySegment<byte>(new byte[] { 0 }), 0, version: 0));
                 }
-                var payload = writer.ToBytes();
+                var segment = writer.ToSegment();
 
                 // act/assert
-                using (var reader = new BigEndianBinaryReader(payload)) {
+                using (var reader = new BigEndianBinaryReader(segment.Array, segment.Offset, segment.Count)) {
                     var messages = reader.ReadMessages(0);
                     var actualPayload = messages.First().Value;
 

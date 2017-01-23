@@ -35,9 +35,9 @@ namespace KafkaClient.Common
             return ~CalculateHash(buffer, 0, buffer.Length);
         }
 
-        public static uint ComputeHash(byte[] buffer, int offset, int length)
+        public static uint ComputeHash(ArraySegment<byte> bytes)
         {
-            return ~CalculateHash(buffer, offset, length);
+            return ~CalculateHash(bytes.Array, bytes.Offset, bytes.Count);
         }
 
         private static uint[] InitializeTable(uint polynomial)

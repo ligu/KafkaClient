@@ -58,7 +58,7 @@ namespace KafkaClient.Performance
                 {
                     var header = KafkaDecoder.DecodeHeader(b.Array);
                     var bytes = KafkaDecoder.EncodeResponseBytes(new RequestContext(header.CorrelationId), response);
-                    AsyncContext.Run(async () => await _server.WriteBytesAsync(new ArraySegment<byte>(bytes)));
+                    AsyncContext.Run(async () => await _server.WriteBytesAsync(bytes));
                 }
             };
             _connection = new Connection(endpoint);

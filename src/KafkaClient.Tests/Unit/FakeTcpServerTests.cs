@@ -64,7 +64,7 @@ namespace KafkaClient.Tests.Unit
             using (var server = new FakeTcpServer(TestConfig.Log, serverUri.Port))
             using (var client = new TcpClient())
             {
-                var send = server.SendDataAsync(testData.ToBytes());
+                var send = server.SendDataAsync(new ArraySegment<byte>(testData.ToBytes()));
                 await Task.Delay(100);
                 await client.ConnectAsync(serverUri.Host, serverUri.Port);
 
