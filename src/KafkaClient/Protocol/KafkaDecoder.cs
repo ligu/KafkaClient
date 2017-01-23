@@ -11,42 +11,42 @@ namespace KafkaClient.Protocol
     /// </summary>
     internal static class KafkaDecoder
     {
-        public static IRequestContext DecodeHeader(byte[] data)
+        public static IRequestContext DecodeHeader(ArraySegment<byte> bytes)
         {
             IRequestContext context;
-            using (ReadHeader(data, out context)) {
+            using (ReadHeader(bytes, out context)) {
                 return context;
             }            
         }
 
-        public static T Decode<T>(byte[] data, IRequestContext context = null) where T : class, IRequest
+        public static T Decode<T>(ArraySegment<byte> bytes, IRequestContext context = null) where T : class, IRequest
         {
             var protocolType = context?.ProtocolType;
             var encoders = context?.Encoders;
-            using (ReadHeader(data, out context)) { }
+            using (ReadHeader(bytes, out context)) { }
 
-            return Decode<T>(new RequestContext(context.CorrelationId, context.ApiVersion, context.ClientId, encoders, protocolType), data);
+            return Decode<T>(new RequestContext(context.CorrelationId, context.ApiVersion, context.ClientId, encoders, protocolType), bytes);
         }
 
-        public static T Decode<T>(IRequestContext context, byte[] data) where T : class, IRequest
+        public static T Decode<T>(IRequestContext context, ArraySegment<byte> bytes) where T : class, IRequest
         {
-            if (typeof(T) == typeof(ProduceRequest)) return (T)ProduceRequest(context, data);
-            if (typeof(T) == typeof(FetchRequest)) return (T)FetchRequest(context, data);
-            if (typeof(T) == typeof(OffsetRequest)) return (T)OffsetRequest(context, data);
-            if (typeof(T) == typeof(MetadataRequest)) return (T)MetadataRequest(context, data);
-            if (typeof(T) == typeof(OffsetCommitRequest)) return (T)OffsetCommitRequest(context, data);
-            if (typeof(T) == typeof(OffsetFetchRequest)) return (T)OffsetFetchRequest(context, data);
-            if (typeof(T) == typeof(GroupCoordinatorRequest)) return (T)GroupCoordinatorRequest(context, data);
-            if (typeof(T) == typeof(JoinGroupRequest)) return (T)JoinGroupRequest(context, data);
-            if (typeof(T) == typeof(HeartbeatRequest)) return (T)HeartbeatRequest(context, data);
-            if (typeof(T) == typeof(LeaveGroupRequest)) return (T)LeaveGroupRequest(context, data);
-            if (typeof(T) == typeof(SyncGroupRequest)) return (T)SyncGroupRequest(context, data);
-            if (typeof(T) == typeof(DescribeGroupsRequest)) return (T)DescribeGroupsRequest(context, data);
-            if (typeof(T) == typeof(ListGroupsRequest)) return (T)ListGroupsRequest(context, data);
-            if (typeof(T) == typeof(SaslHandshakeRequest)) return (T)SaslHandshakeRequest(context, data);
-            if (typeof(T) == typeof(ApiVersionsRequest)) return (T)ApiVersionsRequest(context, data);
-            if (typeof(T) == typeof(CreateTopicsRequest)) return (T)CreateTopicsRequest(context, data);
-            if (typeof(T) == typeof(DeleteTopicsRequest)) return (T)DeleteTopicsRequest(context, data);
+            if (typeof(T) == typeof(ProduceRequest)) return (T)ProduceRequest(context, bytes);
+            if (typeof(T) == typeof(FetchRequest)) return (T)FetchRequest(context, bytes);
+            if (typeof(T) == typeof(OffsetRequest)) return (T)OffsetRequest(context, bytes);
+            if (typeof(T) == typeof(MetadataRequest)) return (T)MetadataRequest(context, bytes);
+            if (typeof(T) == typeof(OffsetCommitRequest)) return (T)OffsetCommitRequest(context, bytes);
+            if (typeof(T) == typeof(OffsetFetchRequest)) return (T)OffsetFetchRequest(context, bytes);
+            if (typeof(T) == typeof(GroupCoordinatorRequest)) return (T)GroupCoordinatorRequest(context, bytes);
+            if (typeof(T) == typeof(JoinGroupRequest)) return (T)JoinGroupRequest(context, bytes);
+            if (typeof(T) == typeof(HeartbeatRequest)) return (T)HeartbeatRequest(context, bytes);
+            if (typeof(T) == typeof(LeaveGroupRequest)) return (T)LeaveGroupRequest(context, bytes);
+            if (typeof(T) == typeof(SyncGroupRequest)) return (T)SyncGroupRequest(context, bytes);
+            if (typeof(T) == typeof(DescribeGroupsRequest)) return (T)DescribeGroupsRequest(context, bytes);
+            if (typeof(T) == typeof(ListGroupsRequest)) return (T)ListGroupsRequest(context, bytes);
+            if (typeof(T) == typeof(SaslHandshakeRequest)) return (T)SaslHandshakeRequest(context, bytes);
+            if (typeof(T) == typeof(ApiVersionsRequest)) return (T)ApiVersionsRequest(context, bytes);
+            if (typeof(T) == typeof(CreateTopicsRequest)) return (T)CreateTopicsRequest(context, bytes);
+            if (typeof(T) == typeof(DeleteTopicsRequest)) return (T)DeleteTopicsRequest(context, bytes);
             return default(T);
         }
 
@@ -85,7 +85,7 @@ namespace KafkaClient.Protocol
 
         #region Decode
 
-        private static IRequest ProduceRequest(IRequestContext context, byte[] data)
+        private static IRequest ProduceRequest(IRequestContext context, ArraySegment<byte> data)
         {
             using (var reader = ReadHeader(data)) {
                 var acks = reader.ReadInt16();
@@ -108,7 +108,7 @@ namespace KafkaClient.Protocol
             }
         }
 
-        private static IRequest FetchRequest(IRequestContext context, byte[] data)
+        private static IRequest FetchRequest(IRequestContext context, ArraySegment<byte> data)
         {
             using (var reader = ReadHeader(data)) {
                 // ReSharper disable once UnusedVariable
@@ -139,7 +139,7 @@ namespace KafkaClient.Protocol
             }
         }
 
-        private static IRequest OffsetRequest(IRequestContext context, byte[] data)
+        private static IRequest OffsetRequest(IRequestContext context, ArraySegment<byte> data)
         {
             using (var reader = ReadHeader(data)) {
                 // ReSharper disable once UnusedVariable
@@ -166,7 +166,7 @@ namespace KafkaClient.Protocol
             }
         }
 
-        private static IRequest MetadataRequest(IRequestContext context, byte[] data)
+        private static IRequest MetadataRequest(IRequestContext context, ArraySegment<byte> data)
         {
             using (var reader = ReadHeader(data)) {
                 var topicNames = new string[reader.ReadInt32()];
@@ -178,7 +178,7 @@ namespace KafkaClient.Protocol
             }
         }
         
-        private static IRequest OffsetCommitRequest(IRequestContext context, byte[] payload)
+        private static IRequest OffsetCommitRequest(IRequestContext context, ArraySegment<byte> payload)
         {
             using (var reader = ReadHeader(payload)) {
                 var groupId = reader.ReadString();
@@ -219,7 +219,7 @@ namespace KafkaClient.Protocol
             }
         }
 
-        private static IRequest OffsetFetchRequest(IRequestContext context, byte[] payload)
+        private static IRequest OffsetFetchRequest(IRequestContext context, ArraySegment<byte> payload)
         {
             using (var reader = ReadHeader(payload)) {
                 var groupId = reader.ReadString();
@@ -241,7 +241,7 @@ namespace KafkaClient.Protocol
             }
         }
         
-        private static IRequest GroupCoordinatorRequest(IRequestContext context, byte[] payload)
+        private static IRequest GroupCoordinatorRequest(IRequestContext context, ArraySegment<byte> payload)
         {
             using (var reader = ReadHeader(payload)) {
                 var groupId = reader.ReadString();
@@ -250,7 +250,7 @@ namespace KafkaClient.Protocol
             }
         }
 
-        private static IRequest JoinGroupRequest(IRequestContext context, byte[] payload)
+        private static IRequest JoinGroupRequest(IRequestContext context, ArraySegment<byte> payload)
         {
             using (var reader = ReadHeader(payload)) {
                 var groupId = reader.ReadString();
@@ -274,7 +274,7 @@ namespace KafkaClient.Protocol
             }
         }
 
-        private static IRequest HeartbeatRequest(IRequestContext context, byte[] payload)
+        private static IRequest HeartbeatRequest(IRequestContext context, ArraySegment<byte> payload)
         {
             using (var reader = ReadHeader(payload)) {
                 var groupId = reader.ReadString();
@@ -285,7 +285,7 @@ namespace KafkaClient.Protocol
             }
         }
 
-        private static IRequest LeaveGroupRequest(IRequestContext context, byte[] payload)
+        private static IRequest LeaveGroupRequest(IRequestContext context, ArraySegment<byte> payload)
         {
             using (var reader = ReadHeader(payload)) {
                 var groupId = reader.ReadString();
@@ -295,7 +295,7 @@ namespace KafkaClient.Protocol
             }
         }
 
-        private static IRequest SyncGroupRequest(IRequestContext context, byte[] payload)
+        private static IRequest SyncGroupRequest(IRequestContext context, ArraySegment<byte> payload)
         {
             using (var reader = ReadHeader(payload)) {
                 var groupId = reader.ReadString();
@@ -315,7 +315,7 @@ namespace KafkaClient.Protocol
             }
         }
 
-        private static IRequest DescribeGroupsRequest(IRequestContext context, byte[] payload)
+        private static IRequest DescribeGroupsRequest(IRequestContext context, ArraySegment<byte> payload)
         {
             using (var reader = ReadHeader(payload)) {
                 var groupIds = new string[reader.ReadInt32()];
@@ -327,14 +327,14 @@ namespace KafkaClient.Protocol
             }
         }
 
-        private static IRequest ListGroupsRequest(IRequestContext context, byte[] payload)
+        private static IRequest ListGroupsRequest(IRequestContext context, ArraySegment<byte> payload)
         {
             using (ReadHeader(payload)) {
                 return new ListGroupsRequest();
             }
         }
 
-        private static IRequest SaslHandshakeRequest(IRequestContext context, byte[] payload)
+        private static IRequest SaslHandshakeRequest(IRequestContext context, ArraySegment<byte> payload)
         {
             using (var reader = ReadHeader(payload)) {
                 var mechanism = reader.ReadString();
@@ -342,14 +342,14 @@ namespace KafkaClient.Protocol
             }
         }
 
-        private static IRequest ApiVersionsRequest(IRequestContext context, byte[] payload)
+        private static IRequest ApiVersionsRequest(IRequestContext context, ArraySegment<byte> payload)
         {
             using (ReadHeader(payload)) {
                 return new ApiVersionsRequest();
             }
         }
         
-        private static IRequest CreateTopicsRequest(IRequestContext context, byte[] payload)
+        private static IRequest CreateTopicsRequest(IRequestContext context, ArraySegment<byte> payload)
         {
             using (var reader = ReadHeader(payload)) {
                 var topics = new CreateTopicsRequest.Topic[reader.ReadInt32()];
@@ -383,7 +383,7 @@ namespace KafkaClient.Protocol
             }
         }
         
-        private static IRequest DeleteTopicsRequest(IRequestContext context, byte[] payload)
+        private static IRequest DeleteTopicsRequest(IRequestContext context, ArraySegment<byte> payload)
         {
             using (var reader = ReadHeader(payload)) {
                 var topics = new string[reader.ReadInt32()];
@@ -396,13 +396,13 @@ namespace KafkaClient.Protocol
             }
         }
         
-        private static IKafkaReader ReadHeader(byte[] data)
+        private static IKafkaReader ReadHeader(ArraySegment<byte> data)
         {
             IRequestContext context;
             return ReadHeader(data, out context);
         }
 
-        private static IKafkaReader ReadHeader(byte[] data, out IRequestContext context)
+        private static IKafkaReader ReadHeader(ArraySegment<byte> data, out IRequestContext context)
         {
             var reader = new BigEndianBinaryReader(data, 4);
             try {
@@ -737,17 +737,5 @@ namespace KafkaClient.Protocol
         }
 
         #endregion
-
-        public static byte[] PrefixWithInt32Length(this byte[] source)
-        {
-            var destination = new byte[source.Length + 4]; 
-            using (var stream = new MemoryStream(destination)) {
-                using (var writer = new BigEndianBinaryWriter(stream, false)) {
-                    writer.Write(source.Length);
-                }
-            }
-            Buffer.BlockCopy(source, 0, destination, 4, source.Length);
-            return destination;
-        }
     }
 }

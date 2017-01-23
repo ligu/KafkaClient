@@ -19,14 +19,14 @@ namespace KafkaClient.Common
             }
         }
 
-        public static Stream Unzip(this Stream source)
+        public static ArraySegment<byte> Unzip(this Stream source)
         {
             using (var writer = new KafkaWriter()) {
                 using (var gzip = new GZipStream(source, CompressionMode.Decompress, true)) {
                     gzip.CopyTo(writer.Stream);
                     gzip.Flush();
                 }
-                return writer.ToStream();
+                return writer.ToSegment();
             }
         }
     }

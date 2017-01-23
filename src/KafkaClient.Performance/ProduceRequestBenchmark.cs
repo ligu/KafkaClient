@@ -56,7 +56,7 @@ namespace KafkaClient.Performance
             _server = new TcpServer(endpoint.Value.Port) {
                 OnBytesRead = b =>
                 {
-                    var header = KafkaDecoder.DecodeHeader(b.Array);
+                    var header = KafkaDecoder.DecodeHeader(b);
                     var bytes = KafkaDecoder.EncodeResponseBytes(new RequestContext(header.CorrelationId), response);
                     AsyncContext.Run(async () => await _server.WriteBytesAsync(bytes));
                 }

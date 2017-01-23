@@ -587,7 +587,7 @@ namespace KafkaClient.Protocol
                 case MessageCodec.CodecGzip: {
                     var messageLength = reader.ReadInt32();
                     var messageStream = new LimitedReadableStream(reader.Stream, messageLength);
-                    using (var gzipReader = new BigEndianBinaryReader(messageStream.Unzip(), true)) {
+                    using (var gzipReader = new BigEndianBinaryReader(messageStream.Unzip())) {
                         return gzipReader.ReadMessages(codec);
                     }
                 }

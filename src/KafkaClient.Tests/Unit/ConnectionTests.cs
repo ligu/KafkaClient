@@ -640,7 +640,7 @@ namespace KafkaClient.Tests.Unit
                 {
                     server.OnClientConnected = () => Console.WriteLine("Client connected...");
                     server.OnBytesReceived = b => {
-                        var request = KafkaDecoder.DecodeHeader(b);
+                        var request = KafkaDecoder.DecodeHeader(new ArraySegment<byte>(b));
                         AsyncContext.Run(async () => await server.SendDataAsync(MessageHelper.CreateMetadataResponse(request.CorrelationId, "Test")));
                     };
 
@@ -664,7 +664,7 @@ namespace KafkaClient.Tests.Unit
             {
                 server.OnBytesReceived = data =>
                 {
-                    context = KafkaDecoder.DecodeHeader(data);
+                    context = KafkaDecoder.DecodeHeader(new ArraySegment<byte>(data));
                     var send = server.SendDataAsync(KafkaDecoder.EncodeResponseBytes(context, new FetchResponse()));
                 };
 
