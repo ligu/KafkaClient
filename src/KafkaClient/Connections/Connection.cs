@@ -173,8 +173,8 @@ namespace KafkaClient.Connections
             if (Interlocked.Increment(ref ActiveReaderCount) != 1) return;
 
             try {
-                var buffer = new byte[8192];
-                var header = new byte[KafkaEncoder.IntegerByteSize];
+                var buffer = new byte[8192]; // TODO: configuration on buffer size
+                var header = new byte[KafkaEncoder.ResponseHeaderSize];
                 var bytesToSkip = 0;
                 var responseSize = 0;
                 // use backoff so we don't take over the CPU when there's a failure

@@ -834,7 +834,7 @@ namespace KafkaClient.Tests.Unit
                 var taskResult = conn.WriteBytesAsync(socket, 6, new ArraySegment<byte>(data), token.Token);
                 await Task.WhenAny(taskResult, Task.Delay(TimeSpan.FromSeconds(5))).ConfigureAwait(false);
 
-                Assert.That(taskResult.IsCanceled, Is.True, "Task should have cancelled.");
+                Assert.That(taskResult.IsCanceled || !taskResult.IsFaulted, Is.True, "Task should have cancelled.");
             }
         }
 

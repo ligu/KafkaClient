@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using KafkaClient.Common;
 using NUnit.Framework;
 
@@ -10,7 +11,7 @@ namespace KafkaClient.Tests.Unit
     /// </summary>
     /// <remarks>Modified to work with nunit from xunit.</remarks>
     [TestFixture]
-    public class BigEndianBinaryReaderTests
+    public class KafkaReaderTests
     {
         // validates my assumptions about the default implementation doing the opposite of this implementation
         [Test]
@@ -31,6 +32,13 @@ namespace KafkaClient.Tests.Unit
             Assert.That(actualValue, Is.EqualTo(expectedValue));
         }
 
+        private ArraySegment<byte> OffsetBytes(byte[] bytes, int offset)
+        {
+            var buffer = new byte[offset + bytes.Length];
+            Buffer.BlockCopy(bytes, 0, buffer, offset, bytes.Length);
+            return new ArraySegment<byte>(buffer, offset, bytes.Length);
+        }
+
         [Test]
         [TestCase((short)0, new byte[] { 0x00, 0x00 })]
         [TestCase((short)1, new byte[] { 0x00, 0x01 })]
@@ -41,14 +49,16 @@ namespace KafkaClient.Tests.Unit
         [TestCase(short.MaxValue, new byte[] { 0x7F, 0xFF })]
         public void Int16Tests(short expectedValue, byte[] givenBytes)
         {
-            // arrange
-            var binaryReader = new BigEndianBinaryReader(givenBytes);
+            for (var offset = 0; offset <= 2; offset++) {
+                // arrange
+                var binaryReader = new KafkaReader(OffsetBytes(givenBytes, offset));
 
-            // act
-            var actualValue = binaryReader.ReadInt16();
+                // act
+                var actualValue = binaryReader.ReadInt16();
 
-            // assert
-            Assert.That(actualValue, Is.EqualTo(expectedValue));
+                // assert
+                Assert.That(actualValue, Is.EqualTo(expectedValue));
+            }
         }
 
         [Test]
@@ -62,14 +72,16 @@ namespace KafkaClient.Tests.Unit
         [TestCase(int.MaxValue, new byte[] { 0x7F, 0xFF, 0xFF, 0xFF })]
         public void Int32Tests(int expectedValue, byte[] givenBytes)
         {
-            // arrange
-            var binaryReader = new BigEndianBinaryReader(givenBytes);
+            for (var offset = 0; offset <= 4; offset++) {
+                // arrange
+                var binaryReader = new KafkaReader(OffsetBytes(givenBytes, offset));
 
-            // act
-            var actualValue = binaryReader.ReadInt32();
+                // act
+                var actualValue = binaryReader.ReadInt32();
 
-            // assert
-            Assert.That(actualValue, Is.EqualTo(expectedValue));
+                // assert
+                Assert.That(actualValue, Is.EqualTo(expectedValue));
+            }
         }
 
         [Test]
@@ -82,14 +94,16 @@ namespace KafkaClient.Tests.Unit
         [TestCase(long.MaxValue, new byte[] { 0x7F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF })]
         public void Int64Tests(long expectedValue, byte[] givenBytes)
         {
-            // arrange
-            var binaryReader = new BigEndianBinaryReader(givenBytes);
+            for (var offset = 0; offset <= 8; offset++) {
+                // arrange
+                var binaryReader = new KafkaReader(OffsetBytes(givenBytes, offset));
 
-            // act
-            var actualValue = binaryReader.ReadInt64();
+                // act
+                var actualValue = binaryReader.ReadInt64();
 
-            // assert
-            Assert.That(actualValue, Is.EqualTo(expectedValue));
+                // assert
+                Assert.That(actualValue, Is.EqualTo(expectedValue));
+            }
         }
 
         [Test]
@@ -99,14 +113,17 @@ namespace KafkaClient.Tests.Unit
         [TestCase((uint)0xffffffff, new byte[] { 0xFF, 0xFF, 0xFF, 0xFF })]
         public void UInt32Tests(uint expectedValue, byte[] givenBytes)
         {
-            // arrange
-            var binaryReader = new BigEndianBinaryReader(givenBytes);
+            for (var offset = 0; offset <= 4; offset++) {
+                // arrange
+                var binaryReader = new KafkaReader(OffsetBytes(givenBytes, offset));
 
-            // act
-            var actualValue = binaryReader.ReadUInt32();
+                // act
+                var actualValue = binaryReader.ReadUInt32();
 
-            // assert
-            Assert.That(actualValue, Is.EqualTo(expectedValue));
+                // assert
+
+                Assert.That(actualValue, Is.EqualTo(expectedValue));
+            }
         }
 
         [Test]
@@ -116,14 +133,16 @@ namespace KafkaClient.Tests.Unit
         [TestCase(null, new byte[] { 0xFF, 0xFF })]
         public void StringTests(string expectedValue, byte[] givenBytes)
         {
-            // arrange
-            var binaryReader = new BigEndianBinaryReader(givenBytes);
+            for (var offset = 0; offset <= 4; offset++) {
+                // arrange
+                var binaryReader = new KafkaReader(OffsetBytes(givenBytes, offset));
 
-            // act
-            var actualValue = binaryReader.ReadString();
+                // act
+                var actualValue = binaryReader.ReadString();
 
-            // assert
-            Assert.That(expectedValue, Is.EqualTo(actualValue));
+                // assert
+                Assert.That(expectedValue, Is.EqualTo(actualValue));
+            }
         }
     }
 }

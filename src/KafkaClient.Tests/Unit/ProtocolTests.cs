@@ -1,4 +1,5 @@
-﻿using KafkaClient.Assignment;
+﻿using System;
+using KafkaClient.Assignment;
 using KafkaClient.Common;
 using KafkaClient.Protocol;
 using NUnit.Framework;

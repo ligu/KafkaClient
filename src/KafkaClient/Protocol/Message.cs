@@ -36,7 +36,7 @@ namespace KafkaClient.Protocol
             Value = ToSegment(value);
         }
 
-        private static readonly ArraySegment<byte> EmptySegment = new ArraySegment<byte>(new byte[0]);
+        private static readonly ArraySegment<byte> EmptySegment = new ArraySegment<byte>();
 
         private ArraySegment<byte> ToSegment(string value)
         {

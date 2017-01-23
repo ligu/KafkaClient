@@ -128,6 +128,16 @@ namespace KafkaClient.Protocol
                 return;
             }
 
+            if (value is ArraySegment<byte>) {
+                var segment = (ArraySegment<byte>) value;
+                if (segment.Count == 0) {
+                    buffer.Append("[]");
+                } else {
+                    buffer.Append("{count:").Append(segment.Count).Append("}");
+                }
+                return;
+            }
+
             var enumerable = value as IEnumerable;
             if (enumerable != null) {
                 buffer.Append("[").AppendWithSeparator(enumerable.Cast<object>().Select<object, Action<StringBuilder>>(o => b => b.AppendValue(o))).Append("]");

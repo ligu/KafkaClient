@@ -12,12 +12,11 @@ namespace KafkaClient.Common
         long ReadInt64();
         string ReadString();
         ArraySegment<byte> ReadBytes();
+        uint ReadCrc(int count);
 
-        uint ReadCrc(int? size = null);
+        ArraySegment<byte> ReadSegment(int count);
+        int Position { get; set; }
 
-        long Position { get; set; }
-        bool Available(int dataSize);
-
-        ArraySegment<byte> ReadSegment(int? position = null, int? length = null);
+        bool HasBytes(int count);
     }
 }

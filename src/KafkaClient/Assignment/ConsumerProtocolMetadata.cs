@@ -26,7 +26,7 @@ namespace KafkaClient.Assignment
     /// </summary>
     public class ConsumerProtocolMetadata : IMemberMetadata, IEquatable<ConsumerProtocolMetadata>
     {
-        private static readonly ArraySegment<byte> EmptySegment = new ArraySegment<byte>(new byte[0]);
+        private static readonly ArraySegment<byte> EmptySegment = new ArraySegment<byte>();
 
         public ConsumerProtocolMetadata(string topicName, string assignmentStrategy = SimpleAssignor.Strategy, short version = 0)
             : this(new []{ topicName }, assignmentStrategy, EmptySegment, version)

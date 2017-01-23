@@ -91,15 +91,15 @@ namespace KafkaClient.Common
 
         private ArraySegment<byte> ToSegment(int offset)
         {
+            var length = _stream.Length - offset;
+            if (length < 0) throw new EndOfStreamException($"Cannot get offset {offset} past end of stream");
+
             ArraySegment<byte> segment;
             if (_stream.TryGetBuffer(out segment)) {
                 return segment.Skip(offset);
             }
 
-            var length = _stream.Length - offset;
-            if (length < 0) throw new EndOfStreamException($"Cannot get offset {offset} past end of stream");
-
-            var buffer = new byte[length];
+            var buffer = new byte[length]; // should never be called, but necessary because of the TryGet above
             _stream.Position = offset;
             _stream.Read(buffer, 0, (int)length);
             return new ArraySegment<byte>(buffer, 0, buffer.Length);

@@ -20,7 +20,7 @@ namespace KafkaClient.Assignment
     /// </summary>
     public class ConsumerMemberAssignment : IMemberAssignment, IEquatable<ConsumerMemberAssignment>
     {
-        private static readonly ArraySegment<byte> EmptySegment = new ArraySegment<byte>(new byte[0]);
+        private static readonly ArraySegment<byte> EmptySegment = new ArraySegment<byte>();
 
         public ConsumerMemberAssignment(IEnumerable<TopicPartition> partitionAssignments = null, short version = 0)
             : this(partitionAssignments, EmptySegment, version)

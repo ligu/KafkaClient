@@ -19,7 +19,7 @@ namespace KafkaClient.Tests.Unit
                 writer.Write(testMessage);
                 var encoded = writer.ToSegment(false);
                 encoded.Array[encoded.Offset] += 1;
-                using (var reader = new BigEndianBinaryReader(encoded)) {
+                using (var reader = new KafkaReader(encoded)) {
                     Assert.Throws<CrcValidationException>(() => reader.ReadMessage(encoded.Count, 0).First());
                 }
             }
@@ -37,7 +37,7 @@ namespace KafkaClient.Tests.Unit
             using (var writer = new KafkaWriter()) {
                 writer.Write(testMessage);
                 var encoded = writer.ToSegment(false);
-                using (var reader = new BigEndianBinaryReader(encoded)) {
+                using (var reader = new KafkaReader(encoded)) {
                     var result = reader.ReadMessage(encoded.Count, 0).First();
 
                     Assert.That(testMessage.Key, Is.EqualTo(result.Key));
@@ -74,7 +74,7 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public void DecodeMessageSetShouldHandleResponseWithMaxBufferSizeHit()
         {
-            using (var reader = new BigEndianBinaryReader(MessageHelper.FetchResponseMaxBytesOverflow)) {
+            using (var reader = new KafkaReader(MessageHelper.FetchResponseMaxBytesOverflow)) {
                 //This message set has a truncated message bytes at the end of it
                 var result = reader.ReadMessages(0);
 
@@ -96,7 +96,7 @@ namespace KafkaClient.Tests.Unit
                        .Write(messageSize)
                        .Write(new ArraySegment<byte>(message));
                 var segment = writer.ToSegment();
-                using (var reader = new BigEndianBinaryReader(segment.Array, segment.Offset, segment.Count)) {
+                using (var reader = new KafkaReader(segment)) {
                     // act/assert
                     Assert.Throws<BufferUnderRunException>(() => reader.ReadMessages(0));
                 }
@@ -116,7 +116,7 @@ namespace KafkaClient.Tests.Unit
                 var segment = writer.ToSegment();
 
                 // act/assert
-                using (var reader = new BigEndianBinaryReader(segment.Array, segment.Offset, segment.Count)) {
+                using (var reader = new KafkaReader(segment)) {
                     var messages = reader.ReadMessages(0);
                     var actualPayload = messages.First().Value;
 

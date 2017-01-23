@@ -404,7 +404,7 @@ namespace KafkaClient.Protocol
 
         private static IKafkaReader ReadHeader(ArraySegment<byte> data, out IRequestContext context)
         {
-            var reader = new BigEndianBinaryReader(data);
+            var reader = new KafkaReader(data);
             try {
                 // ReSharper disable once UnusedVariable
                 var apiKey = (ApiKeyRequestType) reader.ReadInt16();
