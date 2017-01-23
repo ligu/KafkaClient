@@ -15,10 +15,10 @@ namespace KafkaClient.Performance
         [Params(1, 1000)]
         public int MessageSize { get; set; }
 
-        [Params(MessageCodec.CodecGzip)]
+        [Params(MessageCodec.CodecNone, MessageCodec.CodecGzip)]
         public MessageCodec Codec { get; set; }
 
-        [Params(CompressionLevel.Fastest, CompressionLevel.Optimal)]
+        [Params(CompressionLevel.Optimal)]
         public CompressionLevel Level { get; set; }
 
         public int Partitions { get; } = 1;
