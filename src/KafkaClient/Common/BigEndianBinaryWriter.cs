@@ -21,43 +21,10 @@ namespace KafkaClient.Common
     /// </remarks>
     public class BigEndianBinaryWriter : BinaryWriter
     {
-        public BigEndianBinaryWriter(Stream stream)
-            : base(stream, Encoding.UTF8)
-        {
-            if (stream == null) throw new ArgumentNullException(nameof(stream));
-        }
-
         public BigEndianBinaryWriter(Stream stream, bool leaveOpen)
             : base(stream, Encoding.UTF8, leaveOpen)
         {
             if (stream == null) throw new ArgumentNullException(nameof(stream));
-        }
-
-        public override void Write(decimal value)
-        {
-            var ints = decimal.GetBits(value);
-            if (ints == null) throw new ArgumentNullException(nameof(value));
-            if (ints.Length != 4) throw new ArgumentOutOfRangeException(nameof(value), value, "Must evaluate to 4 ints");
-
-            if (BitConverter.IsLittleEndian)
-                Array.Reverse(ints);
-
-            for (var i = 0; i < 4; ++i) {
-                var bytes = BitConverter.GetBytes(ints[i].ToBigEndian());
-                base.Write(bytes);
-            }
-        }
-
-        public override void Write(float value)
-        {
-            var bytes = BitConverter.GetBytes(value);
-            WriteBigEndian(bytes);
-        }
-
-        public override void Write(double value)
-        {
-            var bytes = BitConverter.GetBytes(value);
-            WriteBigEndian(bytes);
         }
 
         public override void Write(short value)
@@ -129,14 +96,6 @@ namespace KafkaClient.Common
 
             var bytes = Encoding.UTF8.GetBytes(value); 
             Write((short)bytes.Length);
-            base.Write(bytes);
-        }
-
-        private void WriteBigEndian(byte[] bytes)
-        {
-            if (BitConverter.IsLittleEndian) {
-                Array.Reverse(bytes);
-            }
             base.Write(bytes);
         }
     }

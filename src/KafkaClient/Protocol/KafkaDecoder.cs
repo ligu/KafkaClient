@@ -742,7 +742,7 @@ namespace KafkaClient.Protocol
         {
             var destination = new byte[source.Length + 4]; 
             using (var stream = new MemoryStream(destination)) {
-                using (var writer = new BigEndianBinaryWriter(stream)) {
+                using (var writer = new BigEndianBinaryWriter(stream, false)) {
                     writer.Write(source.Length);
                 }
             }

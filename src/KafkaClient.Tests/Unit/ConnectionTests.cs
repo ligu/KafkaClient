@@ -466,7 +466,7 @@ namespace KafkaClient.Tests.Unit
 
                 var payload = new KafkaWriter()
                     .Write(firstMessage)
-                    .Write(bytes, false);
+                    .Write(new ArraySegment<byte>(bytes), false);
 
                 //send the combined payload
                 var send = server.SendDataAsync(payload.ToBytesNoLength());

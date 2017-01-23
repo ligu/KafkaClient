@@ -12,7 +12,6 @@ namespace KafkaClient.Common
         IKafkaWriter Write(long value);
 
         IKafkaWriter Write(byte value);
-        IKafkaWriter Write(byte[] values, bool includeLength = true);
         IKafkaWriter Write(ArraySegment<byte> values, bool includeLength = true);
 
         IKafkaWriter Write(string value);

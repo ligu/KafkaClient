@@ -94,7 +94,7 @@ namespace KafkaClient.Tests.Unit
             using (var writer = new KafkaWriter()) {
                 writer.Write(0L)
                        .Write(messageSize)
-                       .Write(message);
+                       .Write(new ArraySegment<byte>(message));
                 var bytes = writer.ToBytes();
                 using (var reader = new BigEndianBinaryReader(bytes)) {
                     // act/assert

@@ -49,12 +49,6 @@ namespace KafkaClient.Common
             return this;
         }
 
-        public IKafkaWriter Write(byte[] values, bool includeLength = true)
-        {
-            _stream.Write(values, includeLength);
-            return this;
-        }
-
         public IKafkaWriter Write(ArraySegment<byte> values, bool includeLength = true)
         {
             _stream.Write(values, includeLength);

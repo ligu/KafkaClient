@@ -210,7 +210,7 @@ namespace KafkaClient.Protocol
                                 using (writer.MarkForCrc()) {
                                     writer.Write((byte)0) // message version
                                           .Write((byte)MessageCodec.CodecGzip) // attribute
-                                          .Write((byte[])null); // key
+                                          .Write(-1); // key  -- null, so -1 length
                                     using (writer.MarkForLength()) { // value
                                         var initialPosition = writer.Stream.Position;
                                         Compression.Zip(messageSet, writer.Stream);
