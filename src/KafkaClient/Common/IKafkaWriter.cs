@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
 
 namespace KafkaClient.Common
@@ -12,17 +11,13 @@ namespace KafkaClient.Common
         IKafkaWriter Write(int value);
         IKafkaWriter Write(uint value);
         IKafkaWriter Write(long value);
-
-        IKafkaWriter Write(ArraySegment<byte> value, bool includeLength = true);
-
         IKafkaWriter Write(string value);
-        IKafkaWriter Write(IEnumerable<string> values, bool includeLength = false);
-
-        ArraySegment<byte> ToSegment(bool includeLength = true);
+        IKafkaWriter Write(ArraySegment<byte> value, bool includeLength = true);
 
         IDisposable MarkForLength();
         IDisposable MarkForCrc();
 
+        ArraySegment<byte> ToSegment(bool includeLength = true);
         Stream Stream { get; }
     }
 }

@@ -113,7 +113,7 @@ namespace KafkaClient.Connections
                 }
             }
 
-            var response = KafkaEncoder.Decode<T>(context, request.ApiKey, receivedBytes);
+            var response = KafkaEncoder.Decode<T>(context, request.ApiKey, receivedBytes.Skip(KafkaEncoder.CorrelationSize));
             _log.Debug(() => LogEvent.Create($"{Endpoint} -----> {request.ApiKey}\n- Context:{context.ToFormattedString()}\n- Response:{response.ToFormattedString()}"));
             return response;
         }
@@ -414,7 +414,7 @@ namespace KafkaClient.Connections
 
         private void CorrelatePayloadToRequest(ArraySegment<byte> bytes)
         {
-            if (bytes.Count < 4) return;
+            if (bytes.Count < KafkaEncoder.CorrelationSize) return;
             var correlationId = BitConverter.ToInt32(bytes.Array, bytes.Offset).ToBigEndian();
 
             AsyncItem asyncItem;
@@ -430,7 +430,7 @@ namespace KafkaClient.Connections
                     var context = requestInfo.Item2;
                     try {
                         _log.Warn(() => LogEvent.Create($"Unexpected {requestType} response (id {correlationId}, {bytes.Count} bytes) from {Endpoint}"));
-                        var result = KafkaEncoder.Decode<IResponse>(context, requestType, bytes);
+                        var result = KafkaEncoder.Decode<IResponse>(context, requestType, bytes.Skip(KafkaEncoder.CorrelationSize));
                         _log.Debug(() => LogEvent.Create($"{Endpoint} -----> {requestType} (not in request queue)\n- Context:{context.ToFormattedString()}\n- Response:{result.ToFormattedString()}"));
                     } catch {
                         // ignore, since this is mostly for debugging

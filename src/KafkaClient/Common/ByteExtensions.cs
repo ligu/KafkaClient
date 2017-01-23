@@ -5,7 +5,7 @@ namespace KafkaClient.Common
     /// <summary>
     /// Provides Big Endian conversion extensions to required types for the Kafka protocol.
     /// </summary>
-    public static class LilliputianExtensions
+    public static class ByteExtensions
     {
         public static byte[] ToBytes(this short value)
         {

@@ -134,7 +134,7 @@ namespace KafkaClient.Tests.Unit
 
             var context = new RequestContext(16, version, "Test-Response");
             var data = KafkaDecoder.EncodeResponseBytes(context, response);
-            var decoded = KafkaEncoder.Decode<FetchResponse>(context, ApiKeyRequestType.Fetch, data, true);
+            var decoded = KafkaEncoder.Decode<FetchResponse>(context, ApiKeyRequestType.Fetch, data.Skip(KafkaEncoder.ResponseHeaderSize));
 
             // special case the comparison in the case of gzip because of the server semantics
             if (!responseWithUpdatedAttribute.Equals(decoded)) {

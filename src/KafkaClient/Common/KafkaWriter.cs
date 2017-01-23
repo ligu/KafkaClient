@@ -1,7 +1,5 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text;
 using KafkaClient.Protocol;
 
@@ -79,21 +77,6 @@ namespace KafkaClient.Common
             var bytes = Encoding.UTF8.GetBytes(value); 
             Write((short)bytes.Length);
             _stream.Write(bytes, 0, bytes.Length);
-            return this;
-        }
-
-        public IKafkaWriter Write(IEnumerable<string> values, bool includeLength = false)
-        {
-            if (includeLength) {
-                var valuesList = values.ToList();
-                Write(valuesList.Count);
-                Write(valuesList); // NOTE: !includeLength passed next time
-                return this;
-            }
-
-            foreach (var item in values) {
-                Write(item);
-            }
             return this;
         }
 

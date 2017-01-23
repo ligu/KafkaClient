@@ -35,15 +35,7 @@ namespace KafkaClient.Common
         {
         }
 
-        public BigEndianBinaryReader(byte[] payload, int offset) : this(payload, offset, payload.Length - offset)
-        {
-        }
-
         public BigEndianBinaryReader(byte[] payload) : this(payload, 0, payload.Length)
-        {
-        }
-
-        public BigEndianBinaryReader(ArraySegment<byte> bytes, int offset) : this(bytes.Skip(offset))
         {
         }
 
@@ -53,47 +45,10 @@ namespace KafkaClient.Common
 
         public long Length => BaseStream.Length;
         public long Position { get { return BaseStream.Position; } set { BaseStream.Position = value; } }
-        public bool HasData => BaseStream.Position < BaseStream.Length;
-        public Stream Stream => BaseStream;
 
         public bool Available(int dataSize)
         {
             return BaseStream.Length - BaseStream.Position >= dataSize;
-        }
-
-        public override decimal ReadDecimal()
-        {
-            var bytes = GetNextBytesNativeEndian(16);
-
-            var ints = new int[4];
-            ints[0] = bytes[0] << 0
-                | bytes[1] << 8
-                | bytes[2] << 16
-                | bytes[3] << 24;
-            ints[1] = bytes[4] << 0
-                | bytes[5] << 8
-                | bytes[6] << 16
-                | bytes[7] << 24;
-            ints[2] = bytes[8] << 0
-                | bytes[9] << 8
-                | bytes[10] << 16
-                | bytes[11] << 24;
-            ints[3] = bytes[12] << 0
-                | bytes[13] << 8
-                | bytes[14] << 16
-                | bytes[15] << 24;
-
-            return new decimal(ints);
-        }
-
-        public override float ReadSingle()
-        {
-            return EndianAwareRead(4, BitConverter.ToSingle);
-        }
-
-        public override double ReadDouble()
-        {
-            return EndianAwareRead(8, BitConverter.ToDouble);
         }
 
         public override short ReadInt16()
@@ -144,7 +99,7 @@ namespace KafkaClient.Common
             return ReadSegment(length: size);
         }
 
-        public uint CrcHash(int? size = null)
+        public uint ReadCrc(int? size = null)
         {
             var old = Position;
             try {

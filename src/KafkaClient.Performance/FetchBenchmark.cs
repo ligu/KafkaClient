@@ -2,6 +2,7 @@
 using System.IO.Compression;
 using System.Linq;
 using BenchmarkDotNet.Attributes;
+using KafkaClient.Common;
 using KafkaClient.Protocol;
 
 namespace KafkaClient.Performance
@@ -55,7 +56,7 @@ namespace KafkaClient.Performance
         [Benchmark]
         public FetchResponse Encode()
         {
-            return KafkaEncoder.Decode<FetchResponse>(new RequestContext(1, Version), ApiKeyRequestType.Fetch, _bytes, true);
+            return KafkaEncoder.Decode<FetchResponse>(new RequestContext(1, Version), ApiKeyRequestType.Fetch, _bytes.Skip(KafkaEncoder.ResponseHeaderSize));
         }
     }
 }

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Immutable;
 using KafkaClient.Assignment;
+using KafkaClient.Common;
 using KafkaClient.Protocol;
 using NUnit.Framework;
 
@@ -17,7 +18,7 @@ namespace KafkaClient.Tests
 
             var context = new RequestContext(17, version, "Test-Request", encoders, encoder?.ProtocolType);
             var data = KafkaEncoder.Encode(context, request);
-            var decoded = KafkaDecoder.Decode<T>(data, context);
+            var decoded = KafkaDecoder.Decode<T>(data.Skip(4), context);
 
             if (!request.Equals(decoded)) {
                 var original = request.ToFormattedString();
@@ -37,7 +38,7 @@ namespace KafkaClient.Tests
 
             var context = new RequestContext(16, version, "Test-Response", encoders, encoder?.ProtocolType);
             var data = KafkaDecoder.EncodeResponseBytes(context, response);
-            var decoded = KafkaEncoder.Decode<T>(context, GetType<T>(), data, true);
+            var decoded = KafkaEncoder.Decode<T>(context, GetType<T>(), data.Skip(KafkaEncoder.ResponseHeaderSize));
 
             if (!response.Equals(decoded)) {
                 var original = response.ToFormattedString();

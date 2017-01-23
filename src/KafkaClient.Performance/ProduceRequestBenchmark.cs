@@ -5,6 +5,7 @@ using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using BenchmarkDotNet.Attributes;
+using KafkaClient.Common;
 using KafkaClient.Connections;
 using KafkaClient.Protocol;
 using Nito.AsyncEx;
@@ -56,7 +57,7 @@ namespace KafkaClient.Performance
             _server = new TcpServer(endpoint.Value.Port) {
                 OnBytesRead = b =>
                 {
-                    var header = KafkaDecoder.DecodeHeader(b);
+                    var header = KafkaDecoder.DecodeHeader(b.Skip(4));
                     var bytes = KafkaDecoder.EncodeResponseBytes(new RequestContext(header.CorrelationId), response);
                     AsyncContext.Run(async () => await _server.WriteBytesAsync(bytes));
                 }

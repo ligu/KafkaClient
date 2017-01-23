@@ -11,7 +11,7 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public void MetadataResponseShouldDecode()
         {
-            var response = KafkaEncoder.Decode<MetadataResponse>(new RequestContext(1), ApiKeyRequestType.Metadata, MessageHelper.CreateMetadataResponse(1, "Test").Skip(4));
+            var response = KafkaEncoder.Decode<MetadataResponse>(new RequestContext(1), ApiKeyRequestType.Metadata, MessageHelper.CreateMetadataResponse(1, "Test").Skip(KafkaEncoder.ResponseHeaderSize));
 
             Assert.That(response.Topics[0].TopicName, Is.EqualTo("Test"));
         }

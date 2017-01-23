@@ -1,37 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.ExceptionServices;
-using System.Threading;
-using System.Threading.Tasks;
-using Nito.AsyncEx;
 
 namespace KafkaClient.Common
 {
     public static class Extensions
     { 
-        /// <summary>
-        /// Splits a collection into given batch sizes and returns as an enumerable of batches.
-        /// </summary>
-        public static IEnumerable<IEnumerable<T>> Batch<T>(this IEnumerable<T> collection, int batchSize)
-        {
-            var nextbatch = new List<T>(batchSize);
-            foreach (T item in collection)
-            {
-                nextbatch.Add(item);
-                if (nextbatch.Count == batchSize)
-                {
-                    yield return nextbatch;
-                    nextbatch = new List<T>(batchSize);
-                }
-            }
-            if (nextbatch.Count > 0)
-                yield return nextbatch;
-        }
-
         public static bool HasEqualElementsInOrder<T>(this IEnumerable<T> self, IEnumerable<T> other)
         {
             if (ReferenceEquals(self, other)) return true;
@@ -67,134 +44,6 @@ namespace KafkaClient.Common
             return exception;
         }
 
-        public static async Task EnqueueRangeAsync<T>(this AsyncProducerConsumerQueue<T> queue, IEnumerable<T> items, CancellationToken cancellationToken)
-        {
-            foreach (var item in items) {
-                await queue.EnqueueAsync(item, cancellationToken).ConfigureAwait(false);
-            }
-        }
-
-        public static IEnumerable<T> Repeat<T>(this int count, Func<T> producer)
-        {
-            for (var i = 0; i < count; i++) {
-                yield return producer();
-            }
-        }
-
-        public static IEnumerable<T> Repeat<T>(this int count, Func<int, T> producer)
-        {
-            for (var i = 0; i < count; i++) {
-                yield return producer(i);
-            }
-        }
-
-        public static async Task AttemptAsync(
-            this IRetry policy, 
-            Func<int, Task> action, 
-            Action<Exception, int, TimeSpan> onException, 
-            Action<Exception, int> onFinalException, 
-            CancellationToken cancellationToken)
-        {
-            var timer = new Stopwatch();
-            timer.Start();
-            for (var attempt = 0; !cancellationToken.IsCancellationRequested; attempt++) {
-                cancellationToken.ThrowIfCancellationRequested();
-                try {
-                    await action(attempt).ConfigureAwait(false);
-                    // reset attempt when successful
-                    attempt = -1;
-                    timer.Restart();
-                } catch (Exception ex) {
-                    if (attempt == 0) { // first failure
-                        timer.Restart();
-                    }
-                    await policy.HandleErrorAndDelayAsync(onException, onFinalException, attempt, timer, ex, cancellationToken).ConfigureAwait(false);
-                }
-            }
-        }
-
-        public static async Task<T> AttemptAsync<T>(
-            this IRetry policy, 
-            Func<int, Stopwatch, Task<RetryAttempt<T>>> action, 
-            Action<int, TimeSpan> onRetry, 
-            Action<int> onFinal, 
-            Action<Exception> onException, 
-            CancellationToken cancellationToken)
-        {
-            var timer = new Stopwatch();
-            timer.Start();
-            for (var attempt = 0;; attempt++) {
-                cancellationToken.ThrowIfCancellationRequested();
-                try {
-                    var response = await action(attempt, timer).ConfigureAwait(false);
-                    if (response.IsSuccessful) return response.Value;
-
-                    var retryDelay = policy.RetryDelay(attempt, timer.Elapsed);
-                    if (retryDelay.HasValue) {
-                        onRetry?.Invoke(attempt, retryDelay.Value);
-                        await Task.Delay(retryDelay.Value, cancellationToken).ConfigureAwait(false);
-                    } else {
-                        onFinal?.Invoke(attempt);
-                        return response.Value;
-                    }
-                } catch (Exception ex) {
-                    onException?.Invoke(ex);
-                    onFinal?.Invoke(attempt);
-                    return default(T);
-                }
-            }
-        }
-
-        public static async Task<T> AttemptAsync<T>(
-            this IRetry policy, 
-            Func<int, Stopwatch, Task<RetryAttempt<T>>> action, 
-            Action<int, TimeSpan> onRetry, 
-            Action<int> onFinal, 
-            Action<Exception, int, TimeSpan> onException, 
-            Action<Exception, int> onFinalException, 
-            CancellationToken cancellationToken)
-        {
-            var timer = new Stopwatch();
-            timer.Start();
-            for (var attempt = 0;; attempt++) {
-                cancellationToken.ThrowIfCancellationRequested();
-                try {
-                    var response = await action(attempt, timer).ConfigureAwait(false);
-                    if (response.IsSuccessful) return response.Value;
-
-                    var retryDelay = policy.RetryDelay(attempt, timer.Elapsed);
-                    if (retryDelay.HasValue) {
-                        onRetry?.Invoke(attempt, retryDelay.Value);
-                        await Task.Delay(retryDelay.Value, cancellationToken).ConfigureAwait(false);
-                    } else {
-                        onFinal?.Invoke(attempt);
-                        return response.Value;
-                    }
-                } catch (Exception ex) {
-                    await policy.HandleErrorAndDelayAsync(onException, onFinalException, attempt, timer, ex, cancellationToken).ConfigureAwait(false);
-                }
-            }
-        }
-
-        private static async Task HandleErrorAndDelayAsync(
-            this IRetry policy, 
-            Action<Exception, int, TimeSpan> onException, 
-            Action<Exception, int> onFinalException, 
-            int attempt, 
-            Stopwatch timer, 
-            Exception ex, 
-            CancellationToken cancellationToken)
-        {
-            var retryDelay = policy.RetryDelay(attempt, timer.Elapsed);
-            if (retryDelay.HasValue) {
-                onException?.Invoke(ex, attempt, retryDelay.Value);
-                await Task.Delay(retryDelay.Value, cancellationToken).ConfigureAwait(false);
-            } else {
-                onFinalException?.Invoke(ex, attempt);
-                throw ex.PrepareForRethrow();
-            }
-        }
-
         public static IImmutableList<T> AddNotNull<T>(this IImmutableList<T> list, T item) where T : class
         {
             return item != null ? list.Add(item) : list;
@@ -217,6 +66,22 @@ namespace KafkaClient.Common
             while (-1 != (value = stream.ReadByte())) yield return (byte)value;
         }
 
+        public static IKafkaWriter Write(this IKafkaWriter writer, IEnumerable<string> values, bool includeLength = false)
+        {
+            if (includeLength) {
+                var valuesList = values.ToList();
+                writer.Write(valuesList.Count);
+                writer.Write(valuesList); // NOTE: !includeLength passed next time
+                return writer;
+            }
+
+            foreach (var item in values) {
+                writer.Write(item);
+            }
+            return writer;
+        }
+
+
         public static Exception FlattenAggregates(this IEnumerable<Exception> exceptions)
         {
             var exceptionList = exceptions.ToArray();
@@ -228,68 +93,6 @@ namespace KafkaClient.Common
                     if (aggregateException != null) return aggregateException.InnerExceptions;
                     return new[] { ex };
                 }));
-            
         }
-
-        public static void Lock(this SemaphoreSlim semaphore, Action action, CancellationToken cancellationToken)
-        {
-            semaphore.Wait(cancellationToken);
-            try {
-                action();
-            } finally {
-                semaphore.Release(1);
-            }
-        }
-
-        public static T Lock<T>(this SemaphoreSlim semaphore, Func<T> function, CancellationToken cancellationToken)
-        {
-            semaphore.Wait(cancellationToken);
-            try {
-                return function();
-            } finally {
-                semaphore.Release(1);
-            }
-        }
-
-        public static async Task LockAsync(this SemaphoreSlim semaphore, Action action, CancellationToken cancellationToken)
-        {
-            await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-            try {
-                action();
-            } finally {
-                semaphore.Release(1);
-            }
-        }
-
-        public static async Task<T> LockAsync<T>(this SemaphoreSlim semaphore, Func<T> function, CancellationToken cancellationToken)
-        {
-            await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-            try {
-                return function();
-            } finally {
-                semaphore.Release(1);
-            }
-        }
-
-        public static async Task LockAsync(this SemaphoreSlim semaphore, Func<Task> asyncAction, CancellationToken cancellationToken)
-        {
-            await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-            try {
-                await asyncAction();
-            } finally {
-                semaphore.Release(1);
-            }
-        }
-
-        public static async Task<T> LockAsync<T>(this SemaphoreSlim semaphore, Func<Task<T>> asyncFunction, CancellationToken cancellationToken)
-        {
-            await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-            try {
-                return await asyncFunction();
-            } finally {
-                semaphore.Release(1);
-            }
-        }
-
     }
 }
