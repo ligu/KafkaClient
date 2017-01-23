@@ -2,7 +2,6 @@
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using KafkaClient.Common;
 using KafkaClient.Protocol;
 using NSubstitute;
 using NUnit.Framework;
@@ -119,13 +118,13 @@ namespace KafkaClient.Tests.Integration
         public async Task ProducerShouldUsePartitionIdInsteadOfMessageKeyToChoosePartition()
         {
             var partitionSelector = Substitute.For<IPartitionSelector>();
-            partitionSelector.Select(null, null)
+            partitionSelector.Select(null, new ArraySegment<byte>())
                              .ReturnsForAnyArgs(_ => _.Arg<MetadataResponse.Topic>().Partitions.Single(p => p.PartitionId == 1));
 
-            using (var router = await new KafkaOptions(TestConfig.IntegrationUri, partitionSelector: partitionSelector).CreateRouterAsync()) {
+            using (var router = await new KafkaOptions(TestConfig.IntegrationUri).CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                 var offset = await router.GetTopicOffsetAsync(topicName, 0, CancellationToken.None);
-                    using (var producer = new Producer(router)) {
+                    using (var producer = new Producer(router, new ProducerConfiguration(partitionSelector: partitionSelector))) {
                         //message should send to PartitionId and not use the key to Select Broker Route !!
                         for (var i = 0; i < 20; i++) {
                             await producer.SendMessageAsync(new Message(i.ToString(), "key"), offset.TopicName, offset.PartitionId, CancellationToken.None);

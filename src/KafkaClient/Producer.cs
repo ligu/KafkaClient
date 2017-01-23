@@ -92,6 +92,23 @@ namespace KafkaClient
             }
         }
 
+        /// <inheritdoc />
+        public async Task<IEnumerable<ProduceResponse.Topic>> SendMessagesAsync(IEnumerable<Message> messages, string topicName, ISendMessageConfiguration configuration, CancellationToken cancellationToken)
+        {
+            if (_disposeCount > 0) throw new ObjectDisposedException("Cannot send messages after Stopped or Disposed");
+
+            var topic = await Router.GetTopicMetadataAsync(topicName, cancellationToken);
+            var partitionedMessages =
+                from message in messages
+                group message by Configuration.PartitionSelector.Select(topic, message.Key).PartitionId
+                into partition
+                select new { PartitionId = partition.Key, Messages = partition };
+
+            var sendPartitions = partitionedMessages.Select(p => SendMessagesAsync(p.Messages, topicName, p.PartitionId, configuration, cancellationToken)).ToArray();
+            await Task.WhenAll(sendPartitions);
+            return sendPartitions.Select(p => p.Result);
+        }
+
         private async Task DedicatedSendAsync()
         {
             Router.Log.Info(() => LogEvent.Create("Producer sending task starting"));

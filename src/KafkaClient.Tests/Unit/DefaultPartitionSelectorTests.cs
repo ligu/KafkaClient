@@ -33,9 +33,9 @@ namespace KafkaClient.Tests.Unit
         {
             var selector = new PartitionSelector();
 
-            var first = selector.Select(_topicA, null);
-            var second = selector.Select(_topicA, null);
-            var third = selector.Select(_topicA, null);
+            var first = selector.Select(_topicA, new ArraySegment<byte>());
+            var second = selector.Select(_topicA, new ArraySegment<byte>());
+            var third = selector.Select(_topicA, new ArraySegment<byte>());
 
             Assert.That(first.PartitionId, Is.EqualTo(0));
             Assert.That(second.PartitionId, Is.EqualTo(1));
@@ -48,7 +48,7 @@ namespace KafkaClient.Tests.Unit
             var selector = new PartitionSelector();
             var bag = new ConcurrentBag<MetadataResponse.Partition>();
 
-            Parallel.For(0, 100, x => bag.Add(selector.Select(_topicA, null)));
+            Parallel.For(0, 100, x => bag.Add(selector.Select(_topicA, new ArraySegment<byte>())));
 
             Assert.That(bag.Count(x => x.PartitionId == 0), Is.EqualTo(50));
             Assert.That(bag.Count(x => x.PartitionId == 1), Is.EqualTo(50));
@@ -59,10 +59,10 @@ namespace KafkaClient.Tests.Unit
         {
             var selector = new PartitionSelector();
 
-            var a1 = selector.Select(_topicA, null);
-            var b1 = selector.Select(_topicB, null);
-            var a2 = selector.Select(_topicA, null);
-            var b2 = selector.Select(_topicB, null);
+            var a1 = selector.Select(_topicA, new ArraySegment<byte>());
+            var b1 = selector.Select(_topicB, new ArraySegment<byte>());
+            var a2 = selector.Select(_topicA, new ArraySegment<byte>());
+            var b2 = selector.Select(_topicB, new ArraySegment<byte>());
 
             Assert.That(a1.PartitionId, Is.EqualTo(0));
             Assert.That(a2.PartitionId, Is.EqualTo(1));
@@ -84,7 +84,7 @@ namespace KafkaClient.Tests.Unit
             var topic = new MetadataResponse.Topic("a", partitions: partitions);
 
             var bag = new ConcurrentBag<MetadataResponse.Partition>();
-            Parallel.For(0, TotalPartitions * 3, x => bag.Add(selector.Select(topic, null)));
+            Parallel.For(0, TotalPartitions * 3, x => bag.Add(selector.Select(topic, new ArraySegment<byte>())));
 
             var eachPartitionHasThree = bag.GroupBy(x => x.PartitionId).Count();
 
@@ -103,13 +103,13 @@ namespace KafkaClient.Tests.Unit
             Assert.That(second.PartitionId, Is.EqualTo(1));
         }
 
-        private byte[] CreateKeyForPartition(int partitionId)
+        private ArraySegment<byte> CreateKeyForPartition(int partitionId)
         {
             while (true)
             {
                 var key = Guid.NewGuid().ToString().ToIntSizedBytes();
                 if ((Crc32Provider.ComputeHash(key) % 2) == partitionId)
-                    return key;
+                    return new ArraySegment<byte>(key);
             }
         }
 

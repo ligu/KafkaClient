@@ -26,7 +26,6 @@ namespace KafkaClient
     public class Router : IRouter
     {
         private readonly IConnectionFactory _connectionFactory;
-        private readonly IPartitionSelector _partitionSelector;
 
         private ImmutableDictionary<Endpoint, IConnection> _allConnections = ImmutableDictionary<Endpoint, IConnection>.Empty;
         private ImmutableDictionary<int, IConnection> _brokerConnections = ImmutableDictionary<int, IConnection>.Empty;
@@ -40,15 +39,15 @@ namespace KafkaClient
 
         public static Task<Router> CreateAsync(
             Uri serverUri, IConnectionFactory connectionFactory = null,
-            IConnectionConfiguration connectionConfiguration = null, IPartitionSelector partitionSelector = null,
+            IConnectionConfiguration connectionConfiguration = null, 
             IRouterConfiguration routerConfiguration = null, ILog log = null)
         {
-            return CreateAsync(new [] { serverUri }, connectionFactory, connectionConfiguration, partitionSelector, routerConfiguration, log);
+            return CreateAsync(new [] { serverUri }, connectionFactory, connectionConfiguration, routerConfiguration, log);
         }
 
         public static async Task<Router> CreateAsync(
             IEnumerable<Uri> serverUris, IConnectionFactory connectionFactory = null,
-            IConnectionConfiguration connectionConfiguration = null, IPartitionSelector partitionSelector = null,
+            IConnectionConfiguration connectionConfiguration = null,
             IRouterConfiguration routerConfiguration = null, ILog log = null)
         {
             var endpoints = new List<Endpoint>();
@@ -61,19 +60,19 @@ namespace KafkaClient
                     log.Warn(() => LogEvent.Create(ex, $"Ignoring uri that could not be resolved: {uri}"));
                 }
             }
-            return new Router(endpoints, connectionFactory, connectionConfiguration, partitionSelector, routerConfiguration, log);
+            return new Router(endpoints, connectionFactory, connectionConfiguration, routerConfiguration, log);
         }
 
         public Router(
             Endpoint endpoint, IConnectionFactory connectionFactory = null,
-            IConnectionConfiguration connectionConfiguration = null, IPartitionSelector partitionSelector = null,
+            IConnectionConfiguration connectionConfiguration = null, 
             IRouterConfiguration routerConfiguration = null, ILog log = null)
-            : this (new []{ endpoint }, connectionFactory, connectionConfiguration, partitionSelector, routerConfiguration, log)
+            : this (new []{ endpoint }, connectionFactory, connectionConfiguration, routerConfiguration, log)
         {
         }
 
         /// <exception cref="ConnectionException">None of the provided Kafka servers are resolvable.</exception>
-        public Router(IEnumerable<Endpoint> endpoints, IConnectionFactory connectionFactory = null, IConnectionConfiguration connectionConfiguration = null, IPartitionSelector partitionSelector = null, IRouterConfiguration routerConfiguration = null, ILog log = null)
+        public Router(IEnumerable<Endpoint> endpoints, IConnectionFactory connectionFactory = null, IConnectionConfiguration connectionConfiguration = null, IRouterConfiguration routerConfiguration = null, ILog log = null)
         {
             Log = log ?? TraceLog.Log;
             ConnectionConfiguration = connectionConfiguration ?? new ConnectionConfiguration();
@@ -91,7 +90,6 @@ namespace KafkaClient
             if (_allConnections.IsEmpty) throw new ConnectionException("None of the provided Kafka servers are resolvable.");
 
             Configuration = routerConfiguration ?? new RouterConfiguration();
-            _partitionSelector = partitionSelector ?? new PartitionSelector();
         }
 
         public IConnectionConfiguration ConnectionConfiguration { get; }
@@ -118,13 +116,6 @@ namespace KafkaClient
                 };
 
             return GetCachedTopicBroker(topicName, partition);
-        }
-
-        /// <inheritdoc />
-        public TopicBroker GetTopicBroker(string topicName, byte[] key)
-        {
-            var topic = GetCachedTopic(topicName);
-            return GetCachedTopicBroker(topicName, _partitionSelector.Select(topic, key));
         }
 
         /// <inheritdoc />

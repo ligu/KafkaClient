@@ -12,7 +12,6 @@ namespace KafkaClient
             IConnectionConfiguration connectionConfiguration = null, 
             IRouterConfiguration routerConfiguration = null,
             IConnectionFactory connectionFactory = null,
-            IPartitionSelector partitionSelector = null,
             IProducerConfiguration producerConfiguration = null, 
             IConsumerConfiguration consumerConfiguration = null, 
             ILog log = null)
@@ -21,7 +20,6 @@ namespace KafkaClient
             RouterConfiguration = routerConfiguration ?? new RouterConfiguration();
             ConnectionConfiguration = connectionConfiguration ?? new ConnectionConfiguration();
             ConnectionFactory = connectionFactory ?? new ConnectionFactory();
-            PartitionSelector = partitionSelector ?? new PartitionSelector();
             ProducerConfiguration = producerConfiguration ?? new ProducerConfiguration();
             ConsumerConfiguration = consumerConfiguration ?? new ConsumerConfiguration();
             Log = log ?? TraceLog.Log;
@@ -31,11 +29,10 @@ namespace KafkaClient
             IConnectionConfiguration connectionConfiguration = null, 
             IRouterConfiguration routerConfiguration = null,
             IConnectionFactory connectionFactory = null,
-            IPartitionSelector partitionSelector = null,
             IProducerConfiguration producerConfiguration = null, 
             IConsumerConfiguration consumerConfiguration = null, 
             ILog log = null)
-            : this (ImmutableList<Uri>.Empty.AddNotNull(kafkaServerUri), connectionConfiguration, routerConfiguration, connectionFactory, partitionSelector, producerConfiguration, consumerConfiguration, log)
+            : this (ImmutableList<Uri>.Empty.AddNotNull(kafkaServerUri), connectionConfiguration, routerConfiguration, connectionFactory, producerConfiguration, consumerConfiguration, log)
         {
         }
 
@@ -58,11 +55,6 @@ namespace KafkaClient
         /// Provides a factory for creating new kafka connections.
         /// </summary>
         public IConnectionFactory ConnectionFactory { get; }
-
-        /// <summary>
-        /// Selector function for routing messages to partitions. Default is key/hash and round robin.
-        /// </summary>
-        public IPartitionSelector PartitionSelector { get; }
 
         /// <summary>
         /// BatchSize and delay settings.

@@ -48,15 +48,6 @@ namespace KafkaClient
         TopicBroker GetTopicBroker(string topicName, int partitionId);
 
         /// <summary>
-        /// Get a broker for a given topic using the IPartitionSelector function, from the cache.
-        /// </summary>
-        /// <param name="topicName">The topic to retreive a broker route for.</param>
-        /// <param name="key">The key used by the IPartitionSelector to collate to a consistent partition. Null value means key will be ignored in selection process.</param>
-        /// <returns>A broker route for the given topic.</returns>
-        /// <exception cref="CachedMetadataException">Thrown if the topic metadata does not exist in the cache.</exception>
-        TopicBroker GetTopicBroker(string topicName, byte[] key);
-
-        /// <summary>
         /// Get a broker for a specific topic and partitionId.
         /// </summary>
         /// <param name="topicName">The topic name to select a broker for.</param>

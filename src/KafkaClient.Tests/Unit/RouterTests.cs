@@ -379,60 +379,6 @@ namespace KafkaClient.Tests.Unit
         }
 
         #endregion SelectBrokerRouteAsync Exact Tests...
-
-        #region SelectBrokerRouteAsync Select Tests...
-
-        [Test]
-        [TestCase(null)]
-        [TestCase("withkey")]
-        public async Task SelectPartitionShouldUsePartitionSelector(string testCase)
-        {
-            var key = testCase.ToIntSizedBytes();
-            var routerProxy = new BrokerRouterProxy();
-
-            var partitionSelector = Substitute.For<IPartitionSelector>();
-            partitionSelector
-                .Select(Arg.Any<MetadataResponse.Topic>(), key)
-                .Returns(new MetadataResponse.Partition(0, 0, ErrorResponseCode.None, new[] { 1 }, new[] { 1 }));
-
-            routerProxy.PartitionSelector = partitionSelector;
-            var router = routerProxy.Create();
-            await router.GetTopicMetadataAsync(TestTopic, CancellationToken.None);
-            var result = router.GetTopicBroker(TestTopic, key);
-
-            partitionSelector.Received().Select(Arg.Is<MetadataResponse.Topic>(x => x.TopicName == TestTopic), key);
-        }
-
-        [Test]
-        public async Task SelectPartitionShouldThrowWhenTopicsCollectionIsEmpty()
-        {
-            var metadataResponse = await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers();
-            metadataResponse.Topics.Clear();
-
-            var routerProxy = new BrokerRouterProxy();
-#pragma warning disable 1998
-            routerProxy.Connection1.Add(ApiKeyRequestType.Metadata, async _ => metadataResponse);
-#pragma warning restore 1998
-
-            Assert.Throws<CachedMetadataException>(() => routerProxy.Create().GetTopicBroker(TestTopic, new byte[] {}));
-        }
-
-        [Test]
-        public async Task SelectPartitionShouldThrowWhenBrokerCollectionIsEmpty()
-        {
-            var metadataResponse = await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers();
-            metadataResponse = new MetadataResponse(topics: metadataResponse.Topics);
-
-            var routerProxy = new BrokerRouterProxy();
-            var router = routerProxy.Connection1;
-#pragma warning disable 1998
-            routerProxy.Connection1.Add(ApiKeyRequestType.Metadata, async _ => metadataResponse);
-#pragma warning restore 1998
-            var routerProxy1 = routerProxy.Create();
-            await routerProxy1.GetTopicMetadataAsync(TestTopic, CancellationToken.None);
-            Assert.Throws<CachedMetadataException>(() => routerProxy1.GetTopicBroker(TestTopic, new byte[] {}));
-        }
-
-        #endregion SelectBrokerRouteAsync Select Tests...
+       
     }
 }

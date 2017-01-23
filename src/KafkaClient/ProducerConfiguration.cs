@@ -9,12 +9,14 @@ namespace KafkaClient
             int batchSize = Defaults.BatchSize, 
             TimeSpan? batchMaxDelay = null,
             TimeSpan? stopTimeout = null,
+            IPartitionSelector partitionSelector = null,
             ISendMessageConfiguration sendDefaults = null)
         {
             RequestParallelization = requestParallelization;
             BatchSize = Math.Max(1, batchSize);
             BatchMaxDelay = batchMaxDelay ?? TimeSpan.FromMilliseconds(Defaults.BatchMaxDelayMilliseconds);
             StopTimeout = stopTimeout ?? TimeSpan.FromSeconds(Defaults.DefaultStopTimeoutSeconds);
+            PartitionSelector = partitionSelector ?? new PartitionSelector();
             SendDefaults = sendDefaults ?? new SendMessageConfiguration();
         }
 
@@ -32,6 +34,9 @@ namespace KafkaClient
 
         /// <inheritdoc />
         public ISendMessageConfiguration SendDefaults { get; }
+
+        /// <inheritdoc />
+        public IPartitionSelector PartitionSelector { get; }
 
         public static class Defaults
         {

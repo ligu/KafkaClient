@@ -29,7 +29,7 @@ namespace KafkaClient.Tests.Unit
                     new Message("1"), new Message("2")
                 };
 
-                var response = await producer.SendMessagesAsync(messages, "UnitTest", 0, CancellationToken.None);
+                var response = await producer.SendMessagesAsync(messages, "UnitTest", CancellationToken.None);
 
                 Assert.That(routerProxy.BrokerConn0[ApiKeyRequestType.Produce], Is.EqualTo(1));
                 Assert.That(routerProxy.BrokerConn1[ApiKeyRequestType.Produce], Is.EqualTo(1));
@@ -47,7 +47,7 @@ namespace KafkaClient.Tests.Unit
             {
                 var messages = new List<Message> { new Message("1"), new Message("2") };
 
-                var sendTask = producer.SendMessagesAsync(messages, "UnitTest", 0, CancellationToken.None).ConfigureAwait(false);
+                var sendTask = producer.SendMessagesAsync(messages, "UnitTest", CancellationToken.None).ConfigureAwait(false);
                 Assert.ThrowsAsync<RequestException>(async () => await sendTask);
 
                 Assert.That(routerProxy.BrokerConn0[ApiKeyRequestType.Produce], Is.EqualTo(1));
@@ -74,7 +74,7 @@ namespace KafkaClient.Tests.Unit
 
                 Assert.That(producer.ActiveSenders, Is.EqualTo(0));
 
-                var sendTask = producer.SendMessagesAsync(messages, BrokerRouterProxy.TestTopic, 0, CancellationToken.None);
+                var sendTask = producer.SendMessagesAsync(messages, BrokerRouterProxy.TestTopic, CancellationToken.None);
 
                 await TaskTest.WaitFor(() => producer.ActiveSenders > 0);
                 Assert.That(producer.ActiveSenders, Is.EqualTo(1), "One async operation should be sending.");
@@ -108,11 +108,11 @@ namespace KafkaClient.Tests.Unit
 
                 var task = Task.Run(async () =>
                 {
-                    var t = producer.SendMessagesAsync(messages, BrokerRouterProxy.TestTopic, 0, CancellationToken.None);
+                    var t = producer.SendMessagesAsync(messages, BrokerRouterProxy.TestTopic, CancellationToken.None);
                     Interlocked.Increment(ref count);
                     await t;
 
-                    t = producer.SendMessagesAsync(messages, BrokerRouterProxy.TestTopic, 0, CancellationToken.None);
+                    t = producer.SendMessagesAsync(messages, BrokerRouterProxy.TestTopic, CancellationToken.None);
 
                     Interlocked.Increment(ref count);
                     await t;
@@ -149,7 +149,7 @@ namespace KafkaClient.Tests.Unit
                 //should we return a ProduceResponse with an error and no error for the other messages?
                 //at this point though the client does not know which message is routed to which server.
                 //the whole batch of messages would need to be returned.
-                var test = producer.SendMessagesAsync(messages, "UnitTest", 0, CancellationToken.None).Result;
+                var test = producer.SendMessagesAsync(messages, "UnitTest", CancellationToken.None).Result;
             }
         }
 
@@ -166,8 +166,8 @@ namespace KafkaClient.Tests.Unit
             {
                 var calls = new[]
                 {
-                    producer.SendMessageAsync(new Message("1"), FakeBrokerRouter.TestTopic, 0, CancellationToken.None),
-                    producer.SendMessageAsync(new Message("2"), FakeBrokerRouter.TestTopic, 0, CancellationToken.None)
+                    producer.SendMessageAsync(new Message("1"), FakeBrokerRouter.TestTopic, CancellationToken.None),
+                    producer.SendMessageAsync(new Message("2"), FakeBrokerRouter.TestTopic, CancellationToken.None)
                 };
 
                 await Task.WhenAll(calls);
@@ -186,14 +186,14 @@ namespace KafkaClient.Tests.Unit
             {
                 var calls = new[]
                 {
-                    producer.SendMessageAsync(new Message("1"), FakeBrokerRouter.TestTopic, 0, CancellationToken.None),
-                    producer.SendMessageAsync(new Message("2"), FakeBrokerRouter.TestTopic, 0, CancellationToken.None),
-                    producer.SendMessageAsync(new Message("3"), FakeBrokerRouter.TestTopic, 0, CancellationToken.None),
-                    producer.SendMessageAsync(new Message("4"), FakeBrokerRouter.TestTopic, 0, CancellationToken.None),
-                    producer.SendMessageAsync(new Message("5"), FakeBrokerRouter.TestTopic, 0, CancellationToken.None),
-                    producer.SendMessageAsync(new Message("6"), FakeBrokerRouter.TestTopic, 0, CancellationToken.None),
-                    producer.SendMessageAsync(new Message("7"), FakeBrokerRouter.TestTopic, 0, CancellationToken.None),
-                    producer.SendMessageAsync(new Message("8"), FakeBrokerRouter.TestTopic, 0, CancellationToken.None)
+                    producer.SendMessageAsync(new Message("1"), FakeBrokerRouter.TestTopic, CancellationToken.None),
+                    producer.SendMessageAsync(new Message("2"), FakeBrokerRouter.TestTopic, CancellationToken.None),
+                    producer.SendMessageAsync(new Message("3"), FakeBrokerRouter.TestTopic, CancellationToken.None),
+                    producer.SendMessageAsync(new Message("4"), FakeBrokerRouter.TestTopic, CancellationToken.None),
+                    producer.SendMessageAsync(new Message("5"), FakeBrokerRouter.TestTopic, CancellationToken.None),
+                    producer.SendMessageAsync(new Message("6"), FakeBrokerRouter.TestTopic, CancellationToken.None),
+                    producer.SendMessageAsync(new Message("7"), FakeBrokerRouter.TestTopic, CancellationToken.None),
+                    producer.SendMessageAsync(new Message("8"), FakeBrokerRouter.TestTopic, CancellationToken.None)
                 };
 
                 await Task.WhenAll(calls);
@@ -215,8 +215,8 @@ namespace KafkaClient.Tests.Unit
             {
                 var calls = new[]
                 {
-                    producer.SendMessagesAsync(new[] {new Message("1"), new Message("2")}, FakeBrokerRouter.TestTopic, 0, new SendMessageConfiguration(ack1, TimeSpan.FromMilliseconds(time1)), CancellationToken.None),
-                    producer.SendMessagesAsync(new[] {new Message("1"), new Message("2")}, FakeBrokerRouter.TestTopic, 0, new SendMessageConfiguration(ack2, TimeSpan.FromMilliseconds(time2)), CancellationToken.None)
+                    producer.SendMessagesAsync(new[] {new Message("1"), new Message("2")}, FakeBrokerRouter.TestTopic, new SendMessageConfiguration(ack1, TimeSpan.FromMilliseconds(time1)), CancellationToken.None),
+                    producer.SendMessagesAsync(new[] {new Message("1"), new Message("2")}, FakeBrokerRouter.TestTopic, new SendMessageConfiguration(ack2, TimeSpan.FromMilliseconds(time2)), CancellationToken.None)
                 };
 
                 await Task.WhenAll(calls);
@@ -238,8 +238,8 @@ namespace KafkaClient.Tests.Unit
             {
                 var calls = new[]
                 {
-                    producer.SendMessagesAsync(new[] {new Message("1"), new Message("2")}, FakeBrokerRouter.TestTopic, 0, new SendMessageConfiguration(codec: codec1), CancellationToken.None),
-                    producer.SendMessagesAsync(new[] {new Message("1"), new Message("2")}, FakeBrokerRouter.TestTopic, 0, new SendMessageConfiguration(codec: codec2), CancellationToken.None)
+                    producer.SendMessagesAsync(new[] {new Message("1"), new Message("2")}, FakeBrokerRouter.TestTopic, new SendMessageConfiguration(codec: codec1), CancellationToken.None),
+                    producer.SendMessagesAsync(new[] {new Message("1"), new Message("2")}, FakeBrokerRouter.TestTopic, new SendMessageConfiguration(codec: codec2), CancellationToken.None)
                 };
 
                 await Task.WhenAll(calls);
@@ -261,7 +261,7 @@ namespace KafkaClient.Tests.Unit
 
                 var senderTask = Task.Run(() => {
                     for (var i = 0; i < count; i++) {
-                        producer.SendMessageAsync(new Message(i.ToString()), FakeBrokerRouter.TestTopic, 0, CancellationToken.None);
+                        producer.SendMessageAsync(new Message(i.ToString()), FakeBrokerRouter.TestTopic, CancellationToken.None);
                     }
                 });
                 await senderTask;
@@ -287,7 +287,7 @@ namespace KafkaClient.Tests.Unit
             {
                 var senderTask = Task.Factory.StartNew(async () => {
                     for (int i = 0; i < 3; i++) {
-                        await producer.SendMessageAsync(new Message(i.ToString()), FakeBrokerRouter.TestTopic, 0, CancellationToken.None);
+                        await producer.SendMessageAsync(new Message(i.ToString()), FakeBrokerRouter.TestTopic, CancellationToken.None);
                         Console.WriteLine("Buffered: {0}, In Flight: {1}", producer.BufferedMessageCount, producer.InFlightMessageCount);
                         Interlocked.Increment(ref count);
                     }
@@ -328,7 +328,7 @@ namespace KafkaClient.Tests.Unit
             using (producer)
             {
                 var sendTasks = Enumerable.Range(0, 5)
-                    .Select(x => producer.SendMessageAsync(new Message(x.ToString()), FakeBrokerRouter.TestTopic, 0, CancellationToken.None))
+                    .Select(x => producer.SendMessageAsync(new Message(x.ToString()), FakeBrokerRouter.TestTopic, CancellationToken.None))
                     .ToList();
 
                 var wait = TaskTest.WaitFor(() => producer.ActiveSenders > 0);
@@ -349,7 +349,7 @@ namespace KafkaClient.Tests.Unit
             var router = Substitute.For<IRouter>();
             var producer = new Producer(router);
             using (producer) { }
-            Assert.ThrowsAsync<ObjectDisposedException>(async () => await producer.SendMessageAsync(new Message("1"), "Test", 0, CancellationToken.None));
+            Assert.ThrowsAsync<ObjectDisposedException>(async () => await producer.SendMessageAsync(new Message("1"), "Test", CancellationToken.None));
         }
 
         //[Test,Repeat(IntegrationConfig.TestAttempts)]

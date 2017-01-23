@@ -25,8 +25,6 @@ namespace KafkaClient.Tests
         public Func<Task<MetadataResponse>> MetadataResponse = CreateMetadataResponseWithMultipleBrokers;
         public Func<Task<GroupCoordinatorResponse>> GroupCoordinatorResponse = () => CreateGroupCoordinatorResponse(0);
 
-        public IPartitionSelector PartitionSelector = new PartitionSelector();
-
         public BrokerRouterProxy()
         {
             //setup mock IConnection
@@ -82,7 +80,6 @@ namespace KafkaClient.Tests
             return new Router(
                 new [] { new Endpoint(new IPEndPoint(IPAddress.Loopback, 1)), new Endpoint(new IPEndPoint(IPAddress.Loopback, 2)) },
                 KafkaConnectionFactory,
-                partitionSelector: PartitionSelector,
                 routerConfiguration: new RouterConfiguration(cacheExpiration: CacheExpiration));
         }
 

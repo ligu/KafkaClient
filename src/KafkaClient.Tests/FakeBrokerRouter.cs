@@ -24,8 +24,6 @@ namespace KafkaClient.Tests
 
         public Func<Task<IResponse>> MetadataResponse = DefaultMetadataResponse;
 
-        public IPartitionSelector PartitionSelector = new PartitionSelector();
-
         public FakeBrokerRouter()
         {
             //setup mock IConnection
@@ -72,7 +70,6 @@ namespace KafkaClient.Tests
             return new Router(
                 new [] { new Endpoint(new IPEndPoint(IPAddress.Loopback, 1)), new Endpoint(new IPEndPoint(IPAddress.Loopback, 2)) },
                 _mockConnectionFactory,
-                partitionSelector: PartitionSelector,
                 routerConfiguration: new RouterConfiguration(cacheExpiration: _cacheExpiration));
         }
 

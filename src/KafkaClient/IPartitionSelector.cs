@@ -1,4 +1,5 @@
-﻿using KafkaClient.Protocol;
+﻿using System;
+using KafkaClient.Protocol;
 
 namespace KafkaClient
 {
@@ -10,6 +11,6 @@ namespace KafkaClient
         /// <param name="topic">The topic at which the message will be sent.</param>
         /// <param name="key">The data used to consistently route a message to a particular partition.  Value can be null.</param>
         /// <returns>The partition to send the message to.</returns>
-        MetadataResponse.Partition Select(MetadataResponse.Topic topic, byte[] key);
+        MetadataResponse.Partition Select(MetadataResponse.Topic topic, ArraySegment<byte> key);
     }
 }

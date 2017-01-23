@@ -10,20 +10,20 @@ namespace KafkaClient
     {
         private readonly ConcurrentDictionary<string, int> _roundRobinTracker = new ConcurrentDictionary<string, int>();
 
-        public MetadataResponse.Partition Select(MetadataResponse.Topic topic, byte[] key)
+        public MetadataResponse.Partition Select(MetadataResponse.Topic topic, ArraySegment<byte> key)
         {
             if (topic == null) throw new ArgumentNullException(nameof(topic));
             if (topic.Partitions.Count <= 0) throw new CachedMetadataException($"topic/{topic.TopicName} has no partitions.") { TopicName = topic.TopicName };
 
             long partitionId;
             var partitions = topic.Partitions;
-            if (key == null) {
+            if (key.Count == 0) {
                 // use round robin
                 var paritionIndex = _roundRobinTracker.AddOrUpdate(topic.TopicName, p => 0, (s, i) => (i + 1) % partitions.Count);
                 return partitions[paritionIndex];
             } else {
                 // use key hash
-                partitionId = Crc32Provider.ComputeHash(key) % partitions.Count;
+                partitionId = Crc32Provider.ComputeHash(key.Array, key.Offset, key.Count) % partitions.Count;
                 var partition = partitions.FirstOrDefault(x => x.PartitionId == partitionId);
                 if (partition != null) return partition;
             }

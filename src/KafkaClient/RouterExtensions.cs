@@ -18,7 +18,6 @@ namespace KafkaClient
                 options.ServerUris,
                 options.ConnectionFactory,
                 options.ConnectionConfiguration,
-                options.PartitionSelector,
                 options.RouterConfiguration,
                 options.Log);
         }

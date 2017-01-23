@@ -29,5 +29,10 @@ namespace KafkaClient
         /// Defaults used for send if they aren't specified
         /// </summary>
         ISendMessageConfiguration SendDefaults { get; }
+
+        /// <summary>
+        /// Selector function for routing messages to partitions. Default is key/hash and round robin.
+        /// </summary>
+        IPartitionSelector PartitionSelector { get; }
     }
 }
