@@ -9,15 +9,14 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class Message : IEquatable<Message>
     {
-        public Message(ArraySegment<byte> value, byte attribute, long offset = 0L, int partitionId = 0, byte version = 0, DateTimeOffset? timestamp = null)
-            : this(value, EmptySegment, attribute, offset, partitionId, version, timestamp)
+        public Message(ArraySegment<byte> value, byte attribute, long offset = 0L, byte version = 0, DateTimeOffset? timestamp = null)
+            : this(value, EmptySegment, attribute, offset, version, timestamp)
         {
         }
 
-        public Message(ArraySegment<byte> value, ArraySegment<byte> key, byte attribute, long offset = 0L, int partitionId = 0, byte version = 0, DateTimeOffset? timestamp = null)
+        public Message(ArraySegment<byte> value, ArraySegment<byte> key, byte attribute, long offset = 0L, byte version = 0, DateTimeOffset? timestamp = null)
         {
             Offset = offset;
-            PartitionId = partitionId;
             MessageVersion = version;
             Attribute = (byte)(attribute & AttributeMask);
             Key = key;
@@ -49,11 +48,6 @@ namespace KafkaClient.Protocol
         /// The log offset of this message as stored by the Kafka server.
         /// </summary>
         public long Offset { get; }
-
-        /// <summary>
-        /// The partition id this offset is from.
-        /// </summary>
-        public int PartitionId { get; }
 
         /// <summary>
         /// This is a version id used to allow backwards compatible evolution of the message binary format.
@@ -103,7 +97,6 @@ namespace KafkaClient.Protocol
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
             return Offset == other.Offset 
-                && PartitionId == other.PartitionId 
                 && MessageVersion == other.MessageVersion 
                 && Attribute == other.Attribute 
                 && Key.HasEqualElementsInOrder(other.Key)
@@ -116,7 +109,6 @@ namespace KafkaClient.Protocol
         {
             unchecked {
                 var hashCode = Offset.GetHashCode();
-                hashCode = (hashCode*397) ^ PartitionId;
                 hashCode = (hashCode*397) ^ MessageVersion.GetHashCode();
                 hashCode = (hashCode*397) ^ Attribute.GetHashCode();
                 hashCode = (hashCode*397) ^ Key.GetHashCode();

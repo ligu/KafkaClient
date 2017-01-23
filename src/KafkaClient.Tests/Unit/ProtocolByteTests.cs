@@ -129,7 +129,7 @@ namespace KafkaClient.Tests.Unit
             }
             var response = new FetchResponse(topics, version >= 1 ? TimeSpan.FromMilliseconds(throttleTime) : (TimeSpan?)null);
             var responseWithUpdatedAttribute = new FetchResponse(response.Topics.Select(t => new FetchResponse.Topic(t.TopicName, t.PartitionId, t.HighWaterMark, t.ErrorCode, 
-                t.Messages.Select(m => m.Attribute == 0 ? m : new Message(m.Value, m.Key, 0, m.Offset, m.PartitionId, m.MessageVersion, m.Timestamp)))), 
+                t.Messages.Select(m => m.Attribute == 0 ? m : new Message(m.Value, m.Key, 0, m.Offset, m.MessageVersion, m.Timestamp)))), 
                 response.ThrottleTime);
 
             var context = new RequestContext(16, version, "Test-Response");
@@ -848,7 +848,7 @@ namespace KafkaClient.Tests.Unit
                 }
                 _randomizer.NextBytes(value);
 
-                messages.Add(new Message(new ArraySegment<byte>(value), key != null ? new ArraySegment<byte>(key) : new ArraySegment<byte>(), (byte)codec, partitionId: partition, version: version, timestamp: version > 0 ? DateTimeOffset.UtcNow : (DateTimeOffset?)null));
+                messages.Add(new Message(new ArraySegment<byte>(value), key != null ? new ArraySegment<byte>(key) : new ArraySegment<byte>(), (byte)codec, version: version, timestamp: version > 0 ? DateTimeOffset.UtcNow : (DateTimeOffset?)null));
             }
             return messages;
         }

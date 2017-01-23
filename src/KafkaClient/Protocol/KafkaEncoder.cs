@@ -527,7 +527,7 @@ namespace KafkaClient.Protocol
         /// <param name="partitionId">The partitionId messages are being read from.</param>
         /// <param name="codec">The codec of the containing messageset, if any</param>
         /// <returns>Enumerable representing stream of messages decoded from byte[]</returns>
-        public static IImmutableList<Message> ReadMessages(this IKafkaReader reader, int partitionId, MessageCodec? codec = null)
+        public static IImmutableList<Message> ReadMessages(this IKafkaReader reader, MessageCodec? codec = null)
         {
             var expectedLength = reader.ReadInt32();
             if (!reader.Available(expectedLength)) throw new BufferUnderRunException($"Message set size of {expectedLength} is not fully available (codec? {codec}).");
@@ -545,7 +545,7 @@ namespace KafkaClient.Protocol
                 if (reader.Available(messageSize) == false) throw new BufferUnderRunException($"Message header size of {MessageHeaderSize} is not fully available (codec? {codec}).");
 
                 try {
-                    messages = messages.AddRange(reader.ReadMessage(messageSize, offset, partitionId));
+                    messages = messages.AddRange(reader.ReadMessage(messageSize, offset));
                 } catch (EndOfStreamException ex) {
                     throw new BufferUnderRunException($"Message size of {messageSize} is not available (codec? {codec}).", ex);
                 }
@@ -559,10 +559,9 @@ namespace KafkaClient.Protocol
         /// <param name="reader">The reader</param>
         /// <param name="messageSize">The size of the message, for Crc Hash calculation</param>
         /// <param name="offset">The offset represting the log entry from kafka of this message.</param>
-        /// <param name="partitionId">The partition being read</param>
         /// <returns>Enumerable representing stream of messages decoded from byte[].</returns>
         /// <remarks>The return type is an Enumerable as the message could be a compressed message set.</remarks>
-        public static IImmutableList<Message> ReadMessage(this IKafkaReader reader, int messageSize, long offset, int partitionId = 0)
+        public static IImmutableList<Message> ReadMessage(this IKafkaReader reader, int messageSize, long offset)
         {
             var crc = reader.ReadUInt32();
             var crcHash = reader.CrcHash(messageSize - 4);
@@ -584,14 +583,14 @@ namespace KafkaClient.Protocol
             {
                 case MessageCodec.CodecNone: {
                     var value = reader.ReadBytes();
-                    return ImmutableList<Message>.Empty.Add(new Message(value, key, attribute, offset, partitionId, messageVersion, timestamp));
+                    return ImmutableList<Message>.Empty.Add(new Message(value, key, attribute, offset, messageVersion, timestamp));
                 }
 
                 case MessageCodec.CodecGzip: {
                     var messageLength = reader.ReadInt32();
                     var messageStream = new LimitedReadableStream(reader.Stream, messageLength);
                     using (var gzipReader = new BigEndianBinaryReader(messageStream.Unzip(), true)) {
-                        return gzipReader.ReadMessages(partitionId, codec);
+                        return gzipReader.ReadMessages(codec);
                     }
                 }
 
@@ -702,7 +701,7 @@ namespace KafkaClient.Protocol
                         var partitionId = reader.ReadInt32();
                         var errorCode = (ErrorResponseCode) reader.ReadInt16();
                         var highWaterMarkOffset = reader.ReadInt64();
-                        var messages = reader.ReadMessages(partitionId);
+                        var messages = reader.ReadMessages();
 
                         topics.Add(new FetchResponse.Topic(topicName, partitionId, highWaterMarkOffset, errorCode, messages));
                     }
