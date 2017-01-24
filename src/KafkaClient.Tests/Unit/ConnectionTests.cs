@@ -204,7 +204,7 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public async Task ShouldSkipPartiallyReadMessage()
         {
-            var mockLog = new MemoryLog { WriteToConsole = true };
+            var mockLog = new MemoryLog();
             var bytesRead = 0;
 
             var config = new ConnectionConfiguration(onReadBytes: (e, attempted, actual, elapsed) => Interlocked.Add(ref bytesRead, actual));

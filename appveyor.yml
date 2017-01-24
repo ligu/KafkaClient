@@ -13,7 +13,7 @@ build_script:
   - cmd: dotnet build -c %CONFIGURATION% src\KafkaClient --no-dependencies --no-incremental --version-suffix %APPVEYOR_BUILD_NUMBER%
 
 test_script:
-  - cmd: dotnet test -c %CONFIGURATION% src\KafkaClient.Tests --where "cat != Load"
+  - cmd: dotnet test -c %CONFIGURATION% src\KafkaClient.Tests --where "cat != Load" --labels=Off --noheader --result=myresults.xml;format=AppVeyor
 
 after_build:
   - cmd: dotnet pack -c %CONFIGURATION% src\KafkaClient --version-suffix beta -o artifacts 

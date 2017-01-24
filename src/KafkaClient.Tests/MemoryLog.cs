@@ -8,7 +8,7 @@ namespace KafkaClient.Tests
     {
         public ImmutableList<Tuple<LogLevel, LogEvent>> LogEvents { get; private set; } = ImmutableList<Tuple<LogLevel, LogEvent>>.Empty;
 
-        public bool WriteToConsole { get; set; } = true;
+        public bool WriteToConsole { get; set; } = false;
 
         /// <inheritdoc />
         public void Write(LogLevel level, Func<LogEvent> producer)
