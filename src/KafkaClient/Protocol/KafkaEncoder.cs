@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -585,62 +586,15 @@ namespace KafkaClient.Protocol
                 }
 
                 case MessageCodec.CodecGzip: {
-                    var zippedMessage = reader.ReadBytes();
-                    using (var gzipReader = new KafkaReader(zippedMessage.Unzip())) {
-                        return gzipReader.ReadMessages(codec);
+                    var zippedBytes = reader.ReadBytes();
+                    var unzippedBytes = zippedBytes.Unzip();
+                    using (var messageSetReader = new KafkaReader(unzippedBytes)) {
+                        return messageSetReader.ReadMessages(codec);
                     }
                 }
 
                 default:
                     throw new NotSupportedException($"Codec type of {codec} is not supported.");
-            }
-        }
-
-        private class LimitedReadableStream : Stream
-        {
-            private readonly Stream _stream;
-            private readonly long _finalPosition;
-
-            public LimitedReadableStream(Stream stream, int maxRead)
-            {
-                _stream = stream;
-                _finalPosition = _stream.Position + maxRead;
-            }
-
-            public override void Flush()
-            {
-                _stream.Flush();
-            }
-
-            public override long Seek(long offset, SeekOrigin origin)
-            {
-                throw new NotImplementedException();
-            }
-
-            public override void SetLength(long value)
-            {
-                throw new NotImplementedException();
-            }
-
-            public override int Read(byte[] buffer, int offset, int count)
-            {
-                var toRead = Math.Min(count, (int)(_finalPosition - _stream.Position));
-                return _stream.Read(buffer, offset, toRead);
-            }
-
-            public override void Write(byte[] buffer, int offset, int count)
-            {
-                throw new NotImplementedException();
-            }
-
-            public override bool CanRead => _stream.CanRead;
-            public override bool CanSeek => false;
-            public override bool CanWrite => false;
-            public override long Length => _stream.Length;
-
-            public override long Position {
-                get { throw new NotImplementedException(); }
-                set { throw new NotImplementedException(); }
             }
         }
 
