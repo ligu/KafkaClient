@@ -211,9 +211,9 @@ namespace KafkaClient.Protocol
                                           .Write((byte)MessageCodec.CodecGzip) // attribute
                                           .Write(-1); // key  -- null, so -1 length
                                     using (writer.MarkForLength()) { // value
-                                        var initialPosition = writer.Stream.Position;
-                                        Compression.Zip(messageSet, writer.Stream);
-                                        var compressedMessageLength = (int)(writer.Stream.Position - initialPosition);
+                                        var initialPosition = writer.Position;
+                                        Compression.Zip(messageSet, writer);
+                                        var compressedMessageLength = writer.Position - initialPosition;
                                         return messageSet.Count - compressedMessageLength;
                                     }
                                 }

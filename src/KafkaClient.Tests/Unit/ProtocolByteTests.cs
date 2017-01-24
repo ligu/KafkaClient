@@ -59,7 +59,7 @@ namespace KafkaClient.Tests.Unit
             var payloads = new List<ProduceRequest.Payload>();
             for (var t = 0; t < topicsPerRequest; t++) {
                 var partition = 1 + t%totalPartitions;
-                payloads.Add(new ProduceRequest.Payload(topic + t, partition, GenerateMessages(messagesPerSet, (byte) (version >= 2 ? 1 : 0), partition)));
+                payloads.Add(new ProduceRequest.Payload(topic + t, partition, GenerateMessages(messagesPerSet, (byte) (version >= 2 ? 1 : 0))));
             }
             var request = new ProduceRequest(payloads, TimeSpan.FromMilliseconds(timeoutMilliseconds), acks);
 
@@ -124,7 +124,7 @@ namespace KafkaClient.Tests.Unit
             var topics = new List<FetchResponse.Topic>();
             for (var t = 0; t < topicsPerRequest; t++) {
                 var partitionId = t % totalPartitions;
-                var messages = GenerateMessages(messagesPerSet, (byte) (version >= 2 ? 1 : 0), partitionId, codec);
+                var messages = GenerateMessages(messagesPerSet, (byte) (version >= 2 ? 1 : 0), codec);
                 topics.Add(new FetchResponse.Topic(topicName + t, partitionId, _randomizer.Next(), errorCode, messages));
             }
             var response = new FetchResponse(topics, version >= 1 ? TimeSpan.FromMilliseconds(throttleTime) : (TimeSpan?)null);
@@ -837,16 +837,17 @@ namespace KafkaClient.Tests.Unit
             response.AssertCanEncodeDecodeResponse(0);
         }
 
-        private IEnumerable<Message> GenerateMessages(int count, byte version, int partition = 0, MessageCodec codec = MessageCodec.CodecNone)
+        private IEnumerable<Message> GenerateMessages(int count, byte version, MessageCodec codec = MessageCodec.CodecNone)
         {
+            var random = new Random(42);
             var messages = new List<Message>();
             for (var m = 0; m < count; m++) {
                 var key = m > 0 ? new byte[8] : null;
                 var value = new byte[8*(m + 1)];
                 if (key != null) {
-                    _randomizer.NextBytes(key);
+                    random.NextBytes(key);
                 }
-                _randomizer.NextBytes(value);
+                random.NextBytes(value);
 
                 messages.Add(new Message(new ArraySegment<byte>(value), key != null ? new ArraySegment<byte>(key) : new ArraySegment<byte>(), (byte)codec, version: version, timestamp: version > 0 ? DateTimeOffset.UtcNow : (DateTimeOffset?)null));
             }

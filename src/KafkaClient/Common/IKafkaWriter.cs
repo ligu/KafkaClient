@@ -18,6 +18,9 @@ namespace KafkaClient.Common
         IDisposable MarkForCrc();
 
         ArraySegment<byte> ToSegment(bool includeLength = true);
+        int Position { get; }
+        int Capacity { get; set; }
+
         Stream Stream { get; }
     }
 }

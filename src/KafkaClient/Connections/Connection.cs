@@ -422,7 +422,7 @@ namespace KafkaClient.Connections
                 var requestType = asyncItem.RequestType;
                 var context = asyncItem.Context;
                 _log.Info(() => LogEvent.Create($"Matched {requestType} response (id {correlationId}, v {context.ApiVersion.GetValueOrDefault()}, {bytes.Count} bytes) from {Endpoint}"));
-                asyncItem.ReceiveTask.SetResult(bytes);
+                asyncItem.ReceiveTask.TrySetResult(bytes);
             } else {
                 Tuple<ApiKeyRequestType, IRequestContext> requestInfo;
                 if (_timedOutRequestsByCorrelation.TryRemove(correlationId, out requestInfo)) {
