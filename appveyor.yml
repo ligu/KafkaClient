@@ -1,6 +1,7 @@
 version: 0.2.{build}
 skip_branch_with_pr: true
 os: Visual Studio 2015
+configuration: Release
 environment:
   # Don't report back to the mothership
   DOTNET_CLI_TELEMETRY_OPTOUT: 1
@@ -9,14 +10,13 @@ before_build:
   - cmd: appveyor-retry dotnet restore -v Minimal
 
 build_script:
-  - cmd: dotnet build -c Release src\KafkaClient --no-dependencies --no-incremental --version-suffix %APPVEYOR_BUILD_NUMBER%
-  - cmd: dotnet build -c Release src\KafkaClient.Tests --no-dependencies --no-incremental --version-suffix %APPVEYOR_BUILD_NUMBER%
+  - cmd: dotnet build -c %CONFIGURATION% src\KafkaClient --no-dependencies --no-incremental --version-suffix %APPVEYOR_BUILD_NUMBER%
 
 test_script:
-  - cmd: dotnet test -c Release src\KafkaClient.Tests --where "cat != Load"
+  - cmd: dotnet test -c %CONFIGURATION% src\KafkaClient.Tests --where "cat != Load"
 
 after_build:
-  - cmd: dotnet pack -c Release src\KafkaClient --version-suffix beta -o artifacts 
+  - cmd: dotnet pack -c %CONFIGURATION% src\KafkaClient --version-suffix beta -o artifacts 
 
 artifacts:
 - path: artifacts\**\*.*
