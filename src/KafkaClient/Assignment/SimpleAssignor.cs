@@ -44,7 +44,9 @@ namespace KafkaClient.Assignment
             var memberIndex = 0;
             foreach (var partition in partitions.OrderBy(_ => _.PartitionId)) {
                  var memberId = memberIds[memberIndex++ % memberIds.Length];
-                assignments[memberId].Add(partition);
+                if (assignments[memberId].Count == 0) {
+                    assignments[memberId].Add(partition);
+                }
             }
 
             return assignments.ToImmutableDictionary(pair => pair.Key, pair => new ConsumerMemberAssignment(pair.Value));
