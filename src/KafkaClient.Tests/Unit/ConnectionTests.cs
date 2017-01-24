@@ -638,7 +638,7 @@ namespace KafkaClient.Tests.Unit
                 // Starting server to establish connection
                 using (var server = new FakeTcpServer(TestConfig.Log, endpoint.Value.Port))
                 {
-                    server.OnClientConnected = () => Console.WriteLine("Client connected...");
+                    server.OnClientConnected = () => TestConfig.Log.Info(() => LogEvent.Create("Client connected..."));
                     server.OnBytesReceived = b => {
                         var request = KafkaDecoder.DecodeHeader(new ArraySegment<byte>(b, 4, b.Length - 4));
                         AsyncContext.Run(async () => await server.SendDataAsync(MessageHelper.CreateMetadataResponse(request.CorrelationId, "Test")));

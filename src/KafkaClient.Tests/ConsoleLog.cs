@@ -7,21 +7,21 @@ namespace KafkaClient.Tests
 {
     public class ConsoleLog : ILog
     {
-        private readonly LogLevel _minLevel;
+        private readonly LogLevel? _minLevel;
         private static readonly ImmutableDictionary<LogLevel, string> _levels = ImmutableDictionary<LogLevel, string>
                 .Empty
                 .Add(LogLevel.Debug, "d")
                 .Add(LogLevel.Info, "i")
                 .Add(LogLevel.Warn, "w")
                 .Add(LogLevel.Error, "e");
-        public ConsoleLog(LogLevel minLevel)
+        public ConsoleLog(LogLevel? minLevel = null)
         {
             _minLevel = minLevel;
         }
 
         public void Write(LogLevel level, Func<LogEvent> producer)
         {
-            if (level < _minLevel) return;
+            if (!_minLevel.HasValue || level < _minLevel) return;
 
             var logEvent = producer();
             Write(level, ToText(level, logEvent));

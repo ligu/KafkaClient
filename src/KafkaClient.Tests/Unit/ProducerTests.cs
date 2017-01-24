@@ -288,7 +288,7 @@ namespace KafkaClient.Tests.Unit
                 var senderTask = Task.Factory.StartNew(async () => {
                     for (int i = 0; i < 3; i++) {
                         await producer.SendMessageAsync(new Message(i.ToString()), FakeBrokerRouter.TestTopic, CancellationToken.None);
-                        Console.WriteLine("Buffered: {0}, In Flight: {1}", producer.BufferedMessageCount, producer.InFlightMessageCount);
+                        TestConfig.Log.Info(() => LogEvent.Create($"Buffered {producer.BufferedMessageCount}, In Flight: {producer.InFlightMessageCount}"));
                         Interlocked.Increment(ref count);
                     }
                 });
@@ -296,13 +296,11 @@ namespace KafkaClient.Tests.Unit
                 await TaskTest.WaitFor(() => count > 0);
                 Assert.That(producer.BufferedMessageCount, Is.EqualTo(1));
 
-                Console.WriteLine("Waiting for the rest...");
+                TestConfig.Log.Info(() => LogEvent.Create("Waiting for the rest..."));
                 senderTask.Wait(TimeSpan.FromSeconds(5));
 
                 Assert.That(senderTask.IsCompleted);
                 Assert.That(producer.BufferedMessageCount, Is.EqualTo(1), "One message should be left in the buffer.");
-
-                Console.WriteLine("Unwinding...");
             }
         }
 
