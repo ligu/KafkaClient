@@ -94,7 +94,6 @@ namespace KafkaClient.Tests.Integration
         [TestCase(50000, 100)]
         [TestCase(100000, 1000)]
         [TestCase(500000, 5000)]
-        [TestCase(1000000, 10000)]
         public async Task ConsumerSpeed(int totalMessages, int batchSize)
         {
             int timeoutInMs = Math.Max(100, totalMessages / 20);

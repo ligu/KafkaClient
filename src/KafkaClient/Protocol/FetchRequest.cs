@@ -46,7 +46,7 @@ namespace KafkaClient.Protocol
         {
             MaxWaitTime = maxWaitTime ?? TimeSpan.FromMilliseconds(DefaultMaxBlockingWaitTime);
             MinBytes = minBytes.GetValueOrDefault(DefaultMinBlockingByteBufferSize);
-            MaxBytes = maxBytes.GetValueOrDefault();
+            MaxBytes = maxBytes.GetValueOrDefault(MinBytes);
             Topics = ImmutableList<Topic>.Empty.AddNotNullRange(fetches);
         }
 

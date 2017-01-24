@@ -247,12 +247,11 @@ namespace KafkaClient
                             continue;
                         }
 
-                        var offsetCount = 0;
+                        var messageCount = produceTasks.Sum(t => t.Messages.Count);
                         foreach (var produceTask in produceTasks) {
                             produceTask.Tcs.SetResult(batch.Acks == 0
                                 ? new ProduceResponse.Topic(topic.TopicName, topic.PartitionId, ErrorResponseCode.None, -1)
-                                : new ProduceResponse.Topic(topic.TopicName, topic.PartitionId, topic.ErrorCode, topic.Offset + offsetCount, topic.Timestamp));
-                            offsetCount += 1;
+                                : new ProduceResponse.Topic(topic.TopicName, topic.PartitionId, topic.ErrorCode, topic.Offset + messageCount - 1, topic.Timestamp));
                         }
                     }
                 } catch (Exception ex) {
