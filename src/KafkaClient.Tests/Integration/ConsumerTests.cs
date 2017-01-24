@@ -181,7 +181,7 @@ namespace KafkaClient.Tests.Integration
                             await consumer.FetchBatchAsync(offset.TopicName, offset.PartitionId, offset.Offset + 1, CancellationToken.None, 5);
                             Assert.Fail("should have thrown FetchOutOfRangeException");
                         } catch (FetchOutOfRangeException ex) when (ex.Message.StartsWith("Kafka returned OffsetOutOfRange for Fetch request")) {
-                            Console.WriteLine(ex.ToString());
+                            TestConfig.Log.Error(LogEvent.Create(ex));
                         }
                     }
                 });
