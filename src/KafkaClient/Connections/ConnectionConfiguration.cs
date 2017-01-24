@@ -29,22 +29,30 @@ namespace KafkaClient.Connections
         /// <param name="versionSupport">Support for different protocol versions for Kakfa requests and responses.</param>
         /// <param name="requestTimeout">The maximum time to wait for requests.</param>
         /// <param name="encoders">Custom Encoding support for different protocol types</param>
-        public ConnectionConfiguration(ITrackEvents tracker, IRetry connectionRetry = null, IVersionSupport versionSupport = null, TimeSpan? requestTimeout = null, IEnumerable<IMembershipEncoder> encoders = null)
-            : this(connectionRetry, versionSupport, requestTimeout, encoders, 
-                  tracker != null ? (ConnectError)tracker.Disconnected : null, 
-                  tracker != null ? (Connecting)tracker.Connecting : null, 
-                  tracker != null ? (Connecting)tracker.Connected : null, 
-                  tracker != null ? (Writing)tracker.Writing : null, 
-                  tracker != null ? (StartingBytes)tracker.WritingBytes : null, 
-                  tracker != null ? (FinishedBytes)tracker.WroteBytes : null, 
-                  tracker != null ? (WriteSuccess)tracker.Written : null, 
-                  tracker != null ? (WriteError)tracker.WriteFailed : null, 
-                  tracker != null ? (Reading)tracker.Reading : null, 
-                  tracker != null ? (StartingBytes)tracker.ReadingBytes : null, 
-                  tracker != null ? (FinishedBytes)tracker.ReadBytes : null, 
-                  tracker != null ? (ReadSuccess)tracker.Read : null, 
-                  tracker != null ? (ReadError)tracker.ReadFailed: null, 
-                  tracker != null ? (ProduceRequestMessages)tracker.ProduceRequestMessages : null)
+        public ConnectionConfiguration(
+            ITrackEvents tracker, 
+            IRetry connectionRetry = null, 
+            IVersionSupport versionSupport = null, 
+            TimeSpan? requestTimeout = null, 
+            int? readBufferSize = null, 
+            int? writeBufferSize = null, 
+            IEnumerable<IMembershipEncoder> encoders = null
+        ) : this(
+            connectionRetry, versionSupport, requestTimeout, readBufferSize, writeBufferSize, encoders, 
+            tracker != null ? (ConnectError)tracker.Disconnected : null, 
+            tracker != null ? (Connecting)tracker.Connecting : null, 
+            tracker != null ? (Connecting)tracker.Connected : null, 
+            tracker != null ? (Writing)tracker.Writing : null, 
+            tracker != null ? (StartingBytes)tracker.WritingBytes : null, 
+            tracker != null ? (FinishedBytes)tracker.WroteBytes : null, 
+            tracker != null ? (WriteSuccess)tracker.Written : null, 
+            tracker != null ? (WriteError)tracker.WriteFailed : null, 
+            tracker != null ? (Reading)tracker.Reading : null, 
+            tracker != null ? (StartingBytes)tracker.ReadingBytes : null, 
+            tracker != null ? (FinishedBytes)tracker.ReadBytes : null, 
+            tracker != null ? (ReadSuccess)tracker.Read : null, 
+            tracker != null ? (ReadError)tracker.ReadFailed: null, 
+            tracker != null ? (ProduceRequestMessages)tracker.ProduceRequestMessages : null)
         {
         }
 
@@ -54,6 +62,8 @@ namespace KafkaClient.Connections
         /// <param name="connectionRetry">Retry details for (re)establishing the connection.</param>
         /// <param name="versionSupport">Support for different protocol versions for Kakfa requests and responses.</param>
         /// <param name="requestTimeout">The maximum time to wait for requests.</param>
+        /// <param name="readBufferSize">The buffer size to use for the socket, when receiving bytes.</param>
+        /// <param name="writeBufferSize">The buffer size to use for the socket, when sending bytes.</param>
         /// <param name="encoders">Custom Encoding support for different protocol types</param>
         /// <param name="onDisconnected">Triggered when the tcp socket is disconnected.</param>
         /// <param name="onConnecting">Triggered when the tcp socket is connecting.</param>
@@ -73,6 +83,8 @@ namespace KafkaClient.Connections
             IRetry connectionRetry = null, 
             IVersionSupport versionSupport = null,
             TimeSpan? requestTimeout = null,
+            int? readBufferSize = null, 
+            int? writeBufferSize = null,
             IEnumerable<IMembershipEncoder> encoders = null,
             ConnectError onDisconnected = null, 
             Connecting onConnecting = null, 
@@ -93,6 +105,8 @@ namespace KafkaClient.Connections
             ConnectionRetry = connectionRetry ?? Defaults.ConnectionRetry();
             VersionSupport = versionSupport ?? Connections.VersionSupport.Kafka8;
             RequestTimeout = requestTimeout ?? TimeSpan.FromSeconds(Defaults.RequestTimeoutSeconds);
+            ReadBufferSize = readBufferSize.GetValueOrDefault(Defaults.BufferSize);
+            WriteBufferSize = writeBufferSize.GetValueOrDefault(Defaults.BufferSize);
             Encoders = Defaults.Encoders(encoders);
             OnDisconnected = onDisconnected;
             OnConnecting = onConnecting;
@@ -118,6 +132,12 @@ namespace KafkaClient.Connections
 
         /// <inheritdoc />
         public TimeSpan RequestTimeout { get; }
+
+        /// <inheritdoc />
+        public int ReadBufferSize { get; }
+
+        /// <inheritdoc />
+        public int WriteBufferSize { get; }
 
         /// <inheritdoc />
         public IImmutableDictionary<string, IMembershipEncoder> Encoders { get; }
@@ -175,6 +195,11 @@ namespace KafkaClient.Connections
             /// The default <see cref="ConnectionConfiguration.ConnectionRetry"/> timeout
             /// </summary>
             public const int ConnectingTimeoutMinutes = 5;
+
+            /// <summary>
+            /// The default size for <see cref="ConnectionConfiguration.ReadBufferSize"/> and <see cref="ConnectionConfiguration.WriteBufferSize"/>
+            /// </summary>
+            public const int BufferSize = 8192;
 
             /// <summary>
             /// The default max retries for <see cref="ConnectionConfiguration.ConnectionRetry"/>

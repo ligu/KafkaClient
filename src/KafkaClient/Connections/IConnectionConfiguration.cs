@@ -27,6 +27,16 @@ namespace KafkaClient.Connections
         TimeSpan RequestTimeout { get; }
 
         /// <summary>
+        /// The buffer size to use for the socket, when receiving bytes
+        /// </summary>
+        int ReadBufferSize { get; }
+
+        /// <summary>
+        /// The buffer size to use for the socket, when sending bytes
+        /// </summary>
+        int WriteBufferSize { get; }
+
+        /// <summary>
         /// Custom Encoding support for different protocol types
         /// </summary>
         IImmutableDictionary<string, IMembershipEncoder> Encoders { get; }

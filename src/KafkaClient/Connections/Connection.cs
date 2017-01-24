@@ -173,7 +173,7 @@ namespace KafkaClient.Connections
             if (Interlocked.Increment(ref ActiveReaderCount) != 1) return;
 
             try {
-                var buffer = new byte[8192]; // TODO: configuration on buffer size
+                var buffer = new byte[_configuration.ReadBufferSize];
                 var header = new byte[KafkaEncoder.ResponseHeaderSize];
                 var bytesToSkip = 0;
                 var responseSize = 0;
@@ -267,11 +267,10 @@ namespace KafkaClient.Connections
 
             return new Socket(Endpoint.Value.AddressFamily, SocketType.Stream, ProtocolType.Tcp) {
                 Blocking = false,
-                SendTimeout = (int)_configuration.RequestTimeout.TotalMilliseconds,
-                ReceiveTimeout = (int)_configuration.RequestTimeout.TotalMilliseconds,
                 NoDelay = true,
-                SendBufferSize = 8092, // Add to configuration?
-                ReceiveBufferSize = 8092 // Add to configuration?
+                SendTimeout = (int)_configuration.RequestTimeout.TotalMilliseconds,
+                SendBufferSize = _configuration.WriteBufferSize,
+                ReceiveBufferSize = _configuration.ReadBufferSize
             };
         }
 
