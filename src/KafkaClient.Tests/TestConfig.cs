@@ -27,7 +27,7 @@ namespace KafkaClient.Tests
 
         public static int ServerPort([CallerMemberName] string name = null)
         {
-            return 10000 + (name ?? "").GetHashCode() % 1000;
+            return 10000 + (name ?? "").GetHashCode() % 100;
         }
 
         //public static Uri IntegrationUri { get; } = new Uri("http://kafka1:9092");
