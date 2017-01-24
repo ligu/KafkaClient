@@ -854,17 +854,21 @@ namespace KafkaClient.Tests.Integration
                     var fetched = 0;
                     using (var consumer = new Consumer(router, _consumerConfig, _config.Encoders)) {
                         using (var member = await consumer.JoinConsumerGroupAsync(groupId, new ConsumerProtocolMetadata(topicName), cancellationToken)) {
-                            await member.FetchAsync(async (batch, token) => {
-                                router.Log.Info(() => LogEvent.Create($"Starting batch of {batch.Messages.Count}"));
-                                foreach (var message in batch.Messages) {
-                                    batch.MarkSuccessful(message);
-                                    if (Interlocked.Increment(ref fetched) >= totalMessages) {
-                                        cancellation.Cancel();
-                                        break;
+                            try {
+                                await member.FetchAsync(async (batch, token) => {
+                                    router.Log.Info(() => LogEvent.Create($"Member {member.MemberId} starting batch of {batch.Messages.Count}"));
+                                    foreach (var message in batch.Messages) {
+                                        batch.MarkSuccessful(message);
+                                        if (Interlocked.Increment(ref fetched) >= totalMessages) {
+                                            cancellation.Cancel();
+                                            break;
+                                        }
                                     }
-                                }
-                                router.Log.Info(() => LogEvent.Create($"Finished batch of {batch.Messages.Count} at {fetched}"));
-                            }, cancellationToken, count);
+                                    router.Log.Info(() => LogEvent.Create($"Member {member.MemberId} finished batch size {batch.Messages.Count} ({fetched} of {totalMessages})"));
+                                }, cancellationToken, count);
+                            } catch (OperationCanceledException) {
+                                // that's fine ...
+                            }
                         }
                     }
                     Assert.That(fetched, Is.EqualTo(totalMessages));
@@ -879,7 +883,8 @@ namespace KafkaClient.Tests.Integration
             var cancellation = new CancellationTokenSource();
             var cancellationToken = cancellation.Token;
             var totalMessages = 100;
-            using (var router = await TestConfig.Options.CreateRouterAsync()) {
+            var connectionConfig = new ConnectionConfiguration(TestConfig.Options.ConnectionConfiguration.ConnectionRetry, new VersionSupport(VersionSupport.Kafka10_1, true));
+            using (var router = await Router.CreateAsync(TestConfig.IntegrationUri, connectionConfiguration: connectionConfig, log: TestConfig.Log)) {
                 await router.TemporaryTopicAsync(async topicName => {
                     var groupId = TestConfig.GroupId();
 
@@ -896,7 +901,7 @@ namespace KafkaClient.Tests.Integration
                                 async () => {
                                     using (var member = await consumer.JoinConsumerGroupAsync(groupId, new ConsumerProtocolMetadata(topicName), cancellationToken)) {
                                         await member.FetchAsync(async (batch, token) => {
-                                            router.Log.Info(() => LogEvent.Create($"{memberIndex} Starting batch of {batch.Messages.Count}"));
+                                            router.Log.Info(() => LogEvent.Create($"Member {member.MemberId} starting batch of {batch.Messages.Count}"));
                                             foreach (var message in batch.Messages) {
                                                 batch.MarkSuccessful(message);
                                                 await Task.Delay(1);
@@ -905,7 +910,7 @@ namespace KafkaClient.Tests.Integration
                                                     break;
                                                 }
                                             }
-                                            router.Log.Info(() => LogEvent.Create($"{memberIndex} Finished batch of {batch.Messages.Count} at {fetched}"));
+                                            router.Log.Info(() => LogEvent.Create($"Member {member.MemberId} finished batch size {batch.Messages.Count} ({fetched} of {totalMessages})"));
                                         }, cancellationToken, 10);
                                     }
                                 }, cancellationToken));

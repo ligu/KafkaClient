@@ -17,7 +17,6 @@ namespace KafkaClient
     public class Producer : IProducer
     {
         private readonly bool _leaveRouterOpen;
-        private int _disposeCount;
         public Task Disposal { get; private set; }
         private readonly CancellationTokenSource _disposeToken = new CancellationTokenSource();
 
@@ -95,7 +94,7 @@ namespace KafkaClient
         /// <inheritdoc />
         public async Task<IEnumerable<ProduceResponse.Topic>> SendMessagesAsync(IEnumerable<Message> messages, string topicName, ISendMessageConfiguration configuration, CancellationToken cancellationToken)
         {
-            if (_disposeCount > 0) throw new ObjectDisposedException("Cannot send messages after Stopped or Disposed");
+            if (Disposal != null) throw new ObjectDisposedException("Cannot send messages after Stopped or Disposed");
 
             var topic = await Router.GetTopicMetadataAsync(topicName, cancellationToken);
             var partitionedMessages =
@@ -118,7 +117,7 @@ namespace KafkaClient
                     try {
                         _batch = await GetNextBatchAsync().ConfigureAwait(false);
                         if (_batch.IsEmpty) {
-                            if (_disposeCount > 0) {
+                            if (Disposal != null) {
                                 Router.Log.Info(() => LogEvent.Create("Producer stopping and nothing available to send"));
                                 break;
                             }
@@ -127,7 +126,7 @@ namespace KafkaClient
                                 var filteredBatch = _batch.Where(_ => _.Codec == codec).ToImmutableList();
                                 if (filteredBatch.IsEmpty) continue;
 
-                                Router.Log.Debug(() => LogEvent.Create($"Producer compiled batch({filteredBatch.Count}) on codec {codec}{(_disposeCount == 0 ? "" : ": producer is stopping")}"));
+                                Router.Log.Debug(() => LogEvent.Create($"Producer compiled batch({filteredBatch.Count}) on codec {codec}{(Disposal == null ? "" : ": producer is stopping")}"));
                                 var batchToken = filteredBatch[0].CancellationToken;
                                 if (filteredBatch.TrueForAll(p => p.CancellationToken == batchToken)) {
                                     using (var cancellation = CancellationTokenSource.CreateLinkedTokenSource(_disposeToken.Token, batchToken)) {
@@ -284,10 +283,11 @@ namespace KafkaClient
         /// </summary>
         public void Dispose()
         {
-            // skip multiple calls to dispose
-            if (Interlocked.Increment(ref _disposeCount) != 1) return;
-
-            Disposal = DisposeAsync(); // other final cleanup taken care of in _sendTask
+            lock (this) {
+                // skip multiple calls to dispose
+                if (Disposal != null) return;
+                Disposal = DisposeAsync(); // other final cleanup taken care of in _sendTask
+            }
         }
 
         private class ProduceTask : CancellableTask<ProduceResponse.Topic>

@@ -35,8 +35,6 @@ namespace KafkaClient
 
         private readonly CancellationTokenSource _disposeToken = new CancellationTokenSource();
         private Task _disposal;
-        private int _disposeCount;
-        private int _syncCount;
 
         private int _activeHeartbeatCount;
         private readonly Task _heartbeatTask;
@@ -45,6 +43,7 @@ namespace KafkaClient
 
         private readonly SemaphoreSlim _joinSemaphore = new SemaphoreSlim(1, 1);
         private readonly SemaphoreSlim _syncSemaphore = new SemaphoreSlim(1, 1);
+        private int _syncCount; // used with _fetchSemaphore as a wait until sync has completed for the first time
         private readonly SemaphoreSlim _fetchSemaphore = new SemaphoreSlim(0, 1);
         private ImmutableDictionary<string, IMemberMetadata> _memberMetadata = ImmutableDictionary<string, IMemberMetadata>.Empty;
         private IImmutableDictionary<TopicPartition, IMessageBatch> _batches = ImmutableDictionary<TopicPartition, IMessageBatch>.Empty;
@@ -122,10 +121,10 @@ namespace KafkaClient
         /// </summary>
         private async Task DedicatedHeartbeatTask()
         {
-            try {
-                // only allow one heartbeat to execute, dump out all other requests
-                if (Interlocked.Increment(ref _activeHeartbeatCount) != 1) return;
+            // only allow one heartbeat to execute, dump out all other requests
+            if (Interlocked.Increment(ref _activeHeartbeatCount) != 1) return;
 
+            try {
                 var state = MemberState.Assign;
                 var response = ErrorResponseCode.None;
                 var lastHeartbeat = DateTimeOffset.UtcNow;
@@ -199,7 +198,7 @@ namespace KafkaClient
 
         private async Task<ErrorResponseCode> JoinGroupAsync(CancellationToken cancellationToken)
         {
-            if (_disposeCount > 0) throw new ObjectDisposedException($"Member {MemberId} is no longer valid");
+            if (_disposal != null) throw new ObjectDisposedException($"Member {MemberId} is no longer valid");
 
             var protocols = _joinSemaphore.Lock(() => IsLeader ? _memberMetadata?.Values.Select(m => new JoinGroupRequest.GroupProtocol(m)) : null, cancellationToken);
 
@@ -214,7 +213,7 @@ namespace KafkaClient
         public void OnJoinGroup(JoinGroupResponse response)
         {
             if (response.MemberId != MemberId) throw new ArgumentOutOfRangeException(nameof(response), $"Member is not valid ({MemberId} != {response.MemberId})");
-            if (_disposeCount > 0) throw new ObjectDisposedException($"Member {MemberId} is no longer valid");
+            if (_disposal != null) throw new ObjectDisposedException($"Member {MemberId} is no longer valid");
 
             _joinSemaphore.Lock(
                 () => {
@@ -234,7 +233,7 @@ namespace KafkaClient
 
         public async Task<ErrorResponseCode> SyncGroupAsync(CancellationToken cancellationToken)
         {
-            if (_disposeCount > 0) throw new ObjectDisposedException($"Member {MemberId} is no longer valid");
+            if (_disposal != null) throw new ObjectDisposedException($"Member {MemberId} is no longer valid");
 
             var groupAssignments = await _joinSemaphore.LockAsync(
                 async () => {
@@ -255,7 +254,7 @@ namespace KafkaClient
             _syncSemaphore.Lock(
                 () => {
                     _assignment = response.MemberAssignment;
-                    var validPartitions = _assignment.PartitionAssignments.ToImmutableHashSet();
+                    var validPartitions = response.MemberAssignment.PartitionAssignments.ToImmutableHashSet();
                     var invalidPartitions = _batches.Where(pair => !validPartitions.Contains(pair.Key)).ToList();
                     foreach (var invalidPartition in invalidPartitions) {
                         invalidPartition.Value.Dispose();
@@ -270,17 +269,29 @@ namespace KafkaClient
 
         private async Task DisposeAsync()
         {
-            var batches = Interlocked.Exchange(ref _batches, ImmutableDictionary<TopicPartition, IMessageBatch>.Empty);
-            await Task.WhenAll(batches.Values.Select(b => b.CommitMarkedAsync(CancellationToken.None))).ConfigureAwait(false);
-            foreach (var batch in batches.Values) {
-                batch.Dispose();
+            _disposeToken.Cancel();
+            _fetchSemaphore.Dispose();
+            _joinSemaphore.Dispose();
+            _syncSemaphore.Dispose();
+
+            try {
+                var batches = Interlocked.Exchange(ref _batches, ImmutableDictionary<TopicPartition, IMessageBatch>.Empty);
+                await Task.WhenAll(batches.Values.Select(b => b.CommitMarkedAsync(CancellationToken.None))).ConfigureAwait(false);
+                foreach (var batch in batches.Values) {
+                    batch.Dispose();
+                }
+            } catch (Exception ex) {
+                Log.Info(() => LogEvent.Create(ex));
             }
             _assignment = null;
 
-            await Task.WhenAny(_heartbeatTask, Task.Delay(TimeSpan.FromSeconds(1), CancellationToken.None)).ConfigureAwait(false);
-            var request = new LeaveGroupRequest(GroupId, MemberId, false);
-            await Router.SendAsync(request, GroupId, CancellationToken.None, retryPolicy: Configuration.GroupCoordinationRetry).ConfigureAwait(false);
-
+            try {
+                await Task.WhenAny(_heartbeatTask, Task.Delay(TimeSpan.FromSeconds(1), CancellationToken.None)).ConfigureAwait(false);
+                var request = new LeaveGroupRequest(GroupId, MemberId, false);
+                await Router.SendAsync(request, GroupId, CancellationToken.None, retryPolicy: Configuration.GroupCoordinationRetry).ConfigureAwait(false);
+            } catch (Exception ex) {
+                Log.Info(() => LogEvent.Create(ex));
+            }
             _disposeToken.Dispose();
         }
 
@@ -289,14 +300,12 @@ namespace KafkaClient
         /// </summary>
         public void Dispose()
         {
-            // skip multiple calls to dispose
-            if (Interlocked.Increment(ref _disposeCount) != 1) return;
+            lock (this) {
+                // skip multiple calls to dispose
+                if (_disposal != null) return;
 
-            _disposeToken.Cancel();
-            _fetchSemaphore.Dispose();
-            _joinSemaphore.Dispose();
-            _syncSemaphore.Dispose();
-            _disposal = DisposeAsync();
+                _disposal = DisposeAsync();
+            }
         }
 
         public string ProtocolType { get; }
@@ -305,7 +314,7 @@ namespace KafkaClient
         {
             return await _fetchSemaphore.LockAsync(
                 async () => {
-                    if (_disposeCount > 0) throw new ObjectDisposedException($"Member {MemberId} is no longer valid");
+                    if (_disposal != null) throw new ObjectDisposedException($"Member {MemberId} is no longer valid");
 
                     var generationId = GenerationId;
                     var partition = _syncSemaphore.Lock(() => _assignment?.PartitionAssignments.FirstOrDefault(p => !_batches.ContainsKey(p)), _disposeToken.Token);
