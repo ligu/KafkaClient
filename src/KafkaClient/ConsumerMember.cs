@@ -174,12 +174,12 @@ namespace KafkaClient
                         await Task.Delay(1, _disposeToken.Token).ConfigureAwait(false); // to avoid killing the CPU
                     }
                 }
-                Dispose();
-                await _disposal.ConfigureAwait(false);
             } catch (OperationCanceledException) { // cancellation token fired while attempting to get tasks: normal behavior
             } catch (Exception ex) {
                 Log.Warn(() => LogEvent.Create(ex));
             } finally {
+                Dispose();
+                await _disposal.ConfigureAwait(false);
                 Interlocked.Decrement(ref _activeHeartbeatCount);
                 Log.Info(() => LogEvent.Create($"Stopped heartbeat for {GroupId}/{MemberId}"));
             }
@@ -198,7 +198,7 @@ namespace KafkaClient
 
         private async Task<ErrorResponseCode> JoinGroupAsync(CancellationToken cancellationToken)
         {
-            if (_disposal != null) throw new ObjectDisposedException($"Member {MemberId} is no longer valid");
+            if (_disposal != null) throw new ObjectDisposedException($"Consumer {MemberId} is no longer valid");
 
             var protocols = _joinSemaphore.Lock(() => IsLeader ? _memberMetadata?.Values.Select(m => new JoinGroupRequest.GroupProtocol(m)) : null, cancellationToken);
 
@@ -213,7 +213,7 @@ namespace KafkaClient
         public void OnJoinGroup(JoinGroupResponse response)
         {
             if (response.MemberId != MemberId) throw new ArgumentOutOfRangeException(nameof(response), $"Member is not valid ({MemberId} != {response.MemberId})");
-            if (_disposal != null) throw new ObjectDisposedException($"Member {MemberId} is no longer valid");
+            if (_disposal != null) throw new ObjectDisposedException($"Consumer {MemberId} is no longer valid");
 
             _joinSemaphore.Lock(
                 () => {
@@ -233,7 +233,7 @@ namespace KafkaClient
 
         public async Task<ErrorResponseCode> SyncGroupAsync(CancellationToken cancellationToken)
         {
-            if (_disposal != null) throw new ObjectDisposedException($"Member {MemberId} is no longer valid");
+            if (_disposal != null) throw new ObjectDisposedException($"Consumer {MemberId} is no longer valid");
 
             var groupAssignments = await _joinSemaphore.LockAsync(
                 async () => {
@@ -269,6 +269,7 @@ namespace KafkaClient
 
         private async Task DisposeAsync()
         {
+            Log.Debug(() => LogEvent.Create($"Disposing Consumer {MemberId}"));
             _disposeToken.Cancel();
             _fetchSemaphore.Dispose();
             _joinSemaphore.Dispose();
@@ -314,7 +315,7 @@ namespace KafkaClient
         {
             return await _fetchSemaphore.LockAsync(
                 async () => {
-                    if (_disposal != null) throw new ObjectDisposedException($"Member {MemberId} is no longer valid");
+                    if (_disposal != null) throw new ObjectDisposedException($"Consumer {MemberId} is no longer valid");
 
                     var generationId = GenerationId;
                     var partition = _syncSemaphore.Lock(() => _assignment?.PartitionAssignments.FirstOrDefault(p => !_batches.ContainsKey(p)), _disposeToken.Token);

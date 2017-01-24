@@ -815,25 +815,24 @@ namespace KafkaClient.Tests.Integration
             }
         }
 
-        private static async Task ProduceMessages(Router router, string topicName, string groupId, int totalMessages, int partitionId = 0)
+        private static async Task ProduceMessages(Router router, string topicName, string groupId, int totalMessages, IEnumerable<int> partitionIds = null)
         {
-            using (var producer = new Producer(router,
-                    new ProducerConfiguration(batchSize: totalMessages / 10, batchMaxDelay: TimeSpan.FromMilliseconds(25))))
-            {
-                //await router.SendAsync(new GroupCoordinatorRequest(groupId), topicName, partitionId, CancellationToken.None).ConfigureAwait(false);
-                var offset = await router.GetTopicOffsetAsync(topicName, partitionId, CancellationToken.None);
-                await router.GetGroupBrokerIdAsync(groupId, CancellationToken.None);
-                var groupOffset = await router.GetTopicOffsetAsync(topicName, partitionId, groupId, CancellationToken.None);
+            using (var producer = new Producer(router, new ProducerConfiguration(batchSize: totalMessages / 10, batchMaxDelay: TimeSpan.FromMilliseconds(25)))) {
+                foreach (var partitionId in partitionIds ?? new [] { 0 }) {
+                    //await router.SendAsync(new GroupCoordinatorRequest(groupId), topicName, partitionId, CancellationToken.None).ConfigureAwait(false);
+                    var offset = await router.GetTopicOffsetAsync(topicName, partitionId, CancellationToken.None);
+                    await router.GetGroupBrokerIdAsync(groupId, CancellationToken.None);
+                    var groupOffset = await router.GetTopicOffsetAsync(topicName, partitionId, groupId, CancellationToken.None);
 
-                var missingMessages = Math.Max(0, totalMessages + groupOffset.Offset - offset.Offset + 1);
-                if (missingMessages > 0)
-                {
-                    var messages = new List<Message>();
-                    for (var i = 0; i < missingMessages; i++)
+                    var missingMessages = Math.Max(0, totalMessages + groupOffset.Offset - offset.Offset + 1);
+                    if (missingMessages > 0)
                     {
-                        messages.Add(new Message(i.ToString()));
+                        var messages = new List<Message>();
+                        for (var i = 0; i < missingMessages; i++) {
+                            messages.Add(new Message(i.ToString()));
+                        }
+                        await producer.SendMessagesAsync(messages, topicName, partitionId, CancellationToken.None);
                     }
-                    await producer.SendMessagesAsync(messages, topicName, partitionId, CancellationToken.None);
                 }
             }
         }
@@ -854,21 +853,17 @@ namespace KafkaClient.Tests.Integration
                     var fetched = 0;
                     using (var consumer = new Consumer(router, _consumerConfig, _config.Encoders)) {
                         using (var member = await consumer.JoinConsumerGroupAsync(groupId, new ConsumerProtocolMetadata(topicName), cancellationToken)) {
-                            try {
-                                await member.FetchAsync(async (batch, token) => {
-                                    router.Log.Info(() => LogEvent.Create($"Member {member.MemberId} starting batch of {batch.Messages.Count}"));
-                                    foreach (var message in batch.Messages) {
-                                        batch.MarkSuccessful(message);
-                                        if (Interlocked.Increment(ref fetched) >= totalMessages) {
-                                            cancellation.Cancel();
-                                            break;
-                                        }
+                            await member.FetchUntilDisposedAsync(async (batch, token) => {
+                                router.Log.Info(() => LogEvent.Create($"Member {member.MemberId} starting batch of {batch.Messages.Count}"));
+                                foreach (var message in batch.Messages) {
+                                    batch.MarkSuccessful(message);
+                                    if (Interlocked.Increment(ref fetched) >= totalMessages) {
+                                        cancellation.Cancel();
+                                        break;
                                     }
-                                    router.Log.Info(() => LogEvent.Create($"Member {member.MemberId} finished batch size {batch.Messages.Count} ({fetched} of {totalMessages})"));
-                                }, cancellationToken, count);
-                            } catch (OperationCanceledException) {
-                                // that's fine ...
-                            }
+                                }
+                                router.Log.Info(() => LogEvent.Create($"Member {member.MemberId} finished batch size {batch.Messages.Count} ({fetched} of {totalMessages})"));
+                            }, cancellationToken, count);
                         }
                     }
                     Assert.That(fetched, Is.EqualTo(totalMessages));
@@ -876,7 +871,7 @@ namespace KafkaClient.Tests.Integration
             }
         }
 
-        [Test, Explicit]
+        [Test]
         public async Task CanConsumeFromMultipleGroups()
         {
             int members = 2;
@@ -888,19 +883,16 @@ namespace KafkaClient.Tests.Integration
                 await router.TemporaryTopicAsync(async topicName => {
                     var groupId = TestConfig.GroupId();
 
-                    for (var partition = 0; partition < members; partition++) {
-                        await ProduceMessages(router, topicName, groupId, totalMessages, partition);
-                    }
+                    await ProduceMessages(router, topicName, groupId, totalMessages, Enumerable.Range(0, members));
 
                     var fetched = 0;
                     using (var consumer = new Consumer(router, _consumerConfig, _config.Encoders)) {
                         var tasks = new List<Task>();
                         for (var index = 0; index < members; index++) {
-                            var memberIndex = index;
                             tasks.Add(Task.Run(
                                 async () => {
                                     using (var member = await consumer.JoinConsumerGroupAsync(groupId, new ConsumerProtocolMetadata(topicName), cancellationToken)) {
-                                        await member.FetchAsync(async (batch, token) => {
+                                        await member.FetchUntilDisposedAsync(async (batch, token) => {
                                             router.Log.Info(() => LogEvent.Create($"Member {member.MemberId} starting batch of {batch.Messages.Count}"));
                                             foreach (var message in batch.Messages) {
                                                 batch.MarkSuccessful(message);
@@ -911,14 +903,14 @@ namespace KafkaClient.Tests.Integration
                                                 }
                                             }
                                             router.Log.Info(() => LogEvent.Create($"Member {member.MemberId} finished batch size {batch.Messages.Count} ({fetched} of {totalMessages})"));
-                                        }, cancellationToken, 10);
-                                    }
-                                }, cancellationToken));
+                                    }, cancellationToken, 10);
+                                }
+                            }, CancellationToken.None));
                         }
-                        tasks.Add(Task.Delay(TimeSpan.FromMinutes(2), cancellationToken));
+                        tasks.Add(Task.Delay(TimeSpan.FromMinutes(2), CancellationToken.None));
                         await Task.WhenAll(tasks);
                     }
-                    Assert.That(fetched, Is.EqualTo(totalMessages));
+                    Assert.That(fetched, Is.AtLeast(totalMessages));
                 }, 5);
             }
         }

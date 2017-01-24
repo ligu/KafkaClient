@@ -108,9 +108,14 @@ namespace KafkaClient
             return sendPartitions.Select(p => p.Result);
         }
 
+        private int _activeSenderCount;
+
         private async Task DedicatedSendAsync()
         {
-            Router.Log.Info(() => LogEvent.Create("Producer sending task starting"));
+            // only allow one sender to execute, dump out all other requests
+            if (Interlocked.Increment(ref _activeSenderCount) != 1) return;
+
+            Router.Log.Info(() => LogEvent.Create("Started sending from Producer"));
             try {
                 while (!_disposeToken.IsCancellationRequested) {
                     _batch = ImmutableList<ProduceTask>.Empty;
@@ -118,7 +123,6 @@ namespace KafkaClient
                         _batch = await GetNextBatchAsync().ConfigureAwait(false);
                         if (_batch.IsEmpty) {
                             if (Disposal != null) {
-                                Router.Log.Info(() => LogEvent.Create("Producer stopping and nothing available to send"));
                                 break;
                             }
                         } else {
@@ -147,8 +151,8 @@ namespace KafkaClient
                 Router.Log.Warn(() => LogEvent.Create(ex, "Error during producer send"));
             } finally {
                 Dispose();
-                Router.Log.Info(() => LogEvent.Create("Producer sending task ending"));
-                await Disposal;
+                await Disposal.ConfigureAwait(false);
+                Router.Log.Info(() => LogEvent.Create("Stopped sending from Producer"));
             }
         }
 
@@ -264,7 +268,7 @@ namespace KafkaClient
 
         private async Task DisposeAsync()
         {
-            Router.Log.Info(() => LogEvent.Create("Producer stopping"));
+            Router.Log.Debug(() => LogEvent.Create("Disposing Producer"));
             _produceMessageQueue.CompleteAdding(); // block incoming data
             await Task.WhenAny(_sendTask, Task.Delay(Configuration.StopTimeout)).ConfigureAwait(false);
             _disposeToken.Cancel();

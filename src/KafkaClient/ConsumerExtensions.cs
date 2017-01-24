@@ -57,6 +57,15 @@ namespace KafkaClient
             return batches.ToImmutableList();
         }
 
+        public static async Task FetchUntilDisposedAsync(this IConsumerMember member, Func<IMessageBatch, CancellationToken, Task> onMessagesAsync, CancellationToken cancellationToken, int? batchSize = null)
+        {
+            try {
+                await member.FetchAsync(onMessagesAsync, cancellationToken, batchSize);
+            } catch (ObjectDisposedException) {
+                // ignore
+            }
+        }
+
         public static async Task FetchAsync(this IConsumerMember member, Func<IMessageBatch, CancellationToken, Task> onMessagesAsync, CancellationToken cancellationToken, int? batchSize = null)
         {
             var tasks = new List<Task>();
