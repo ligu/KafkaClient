@@ -222,3 +222,4 @@ pip-log.txt
 TestResult.xml
 src/BDN.Generated/**
 src/KafkaClient.Performance/BenchmarkDotNet.Artifacts/**/*
+.vs/**
