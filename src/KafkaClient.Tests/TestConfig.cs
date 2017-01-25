@@ -35,8 +35,7 @@ namespace KafkaClient.Tests
             }
         }
 
-        //public static Uri IntegrationUri { get; } = new Uri("http://kafka1:9092");
-        public static Uri IntegrationUri { get; } = new Uri("http://kafkaclient.westus.cloudapp.azure.com:9092");
+        public static Uri IntegrationUri { get; } = new Uri("http://kafka1:9092");
 
         public static KafkaOptions Options { get; } = new KafkaOptions(
             IntegrationUri,

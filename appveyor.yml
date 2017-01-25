@@ -1,10 +1,22 @@
 version: 0.2.{build}
+
+# branches / commits to build
+skip_commits:
+  message: /WIP/
+
 skip_branch_with_pr: true
-os: Visual Studio 2015
+
+# environment
+image: Visual Studio 2015
+
+hosts:
+  kafka1: 40.112.218.47
+
 environment:
   # Don't report back to the mothership
   DOTNET_CLI_TELEMETRY_OPTOUT: 1
 
+# built-in goodness
 assembly_info:
   patch: true
   file: AssemblyInfo.*
@@ -12,22 +24,17 @@ assembly_info:
   assembly_file_version: "{version}"
   assembly_informational_version: "{version}"
 
-configuration: Release
-
-before_build:
-  - cmd: appveyor-retry dotnet restore -v Minimal
-
 build_script:
-  - cmd: dotnet build -c %CONFIGURATION% src\KafkaClient --no-dependencies --no-incremental --version-suffix %APPVEYOR_BUILD_NUMBER%
+  - cmd: appveyor-retry dotnet restore -v Minimal
+  - cmd: dotnet build -c Release src\KafkaClient --no-dependencies --no-incremental --version-suffix %APPVEYOR_BUILD_NUMBER%
+  - cmd: dotnet pack -c Release src\KafkaClient --version-suffix beta -o artifacts 
 
 test_script:
-  - cmd: dotnet test -c %CONFIGURATION% src\KafkaClient.Tests --where "cat != Load" --labels=Off --noheader --result=nunit3-results.xml;format=AppVeyor
-
-after_build:
-  - cmd: dotnet pack -c %CONFIGURATION% src\KafkaClient --version-suffix beta -o artifacts 
+  - cmd: dotnet test -c Release src\KafkaClient.Tests --where "cat != Load" --labels=Off --noheader --result=nunit3-results.xml;format=nunit3
+  - ps: (New-Object 'System.Net.WebClient').UploadFile("https://ci.appveyor.com/api/testresults/nunit3/$($env:APPVEYOR_JOB_ID)", (Resolve-Path .\nunit3-results.xml))
 
 artifacts:
-- path: artifacts\**\*.*
+  - path: artifacts\**\*.*
 
 notifications:
 - provider: Email
