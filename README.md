@@ -10,8 +10,8 @@ Status
 
 | OS      | Status |
 |---------|--------|
-| Windows | [![Windows status](https://ci.appveyor.com/api/projects/status/e7ej2g9q77if8mkf/branch/master?svg=true)](https://ci.appveyor.com/project/AndrewRobinson/kafkanetclient/branch/master) |
-| Linux   | [![Linux status](https://api.travis-ci.org/awr/KafkaClient.svg?branch=master)](https://travis-ci.org/awr/KafkaClient) |
+| Windows | [![Build status](https://ci.appveyor.com/api/projects/status/e7ej2g9q77if8mkf?svg=true)](https://ci.appveyor.com/project/AndrewRobinson/kafkanetclient) |
+| Linux   | [![Build status](https://api.travis-ci.org/awr/KafkaClient.svg?branch=master)](https://travis-ci.org/awr/KafkaClient) |
 
 License
 -----------
