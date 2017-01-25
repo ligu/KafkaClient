@@ -2,8 +2,12 @@ language: csharp
 env: DOTNET_CLI_TELEMETRY_OPTOUT=1
 sudo: false
 cache: ccache
+addons:
+  hosts:
+  - kafka1: 40.112.218.47
 
 dotnet: 1.0.0-preview2-003121
+
 install:
   - dotnet restore -v Minimal
 
@@ -14,7 +18,3 @@ script:
 after_success:
   - dotnet pack -c Release src/KafkaClient --version-suffix beta -o artifacts 
 
-# environment
-addons:
-  hosts:
-  - kafka1: 40.112.218.47

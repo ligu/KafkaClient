@@ -655,7 +655,7 @@ namespace KafkaClient.Tests.Unit
             }
         }
 
-        [Test, Timeout(15000)]
+        [Test]
         public async Task SendAsyncShouldNotAllowResponseToTimeoutWhileAwaitingKafkaToEstableConnection()
         {
             var endpoint = await Endpoint.ResolveAsync(TestConfig.ServerUri(), TestConfig.Log);

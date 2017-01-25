@@ -106,7 +106,7 @@ namespace KafkaClient.Tests.Unit
             var output = new List<Tuple<string, List<string>, int>>();
             if (results == null || results.Count == 0) return;
             var type = results[0].GetType();
-            foreach (var p in type.GetTypeInfo().GetRuntimeProperties()) {
+            foreach (var p in type.GetRuntimeProperties()) {
                 var values = results.Select(result => p.GetValue(result).ToString()).ToList();
                 output.Add(new Tuple<string, List<string>, int>(p.Name, values, Math.Max(p.Name.Length, values.Select(v => v.Length).Max())));
             }
