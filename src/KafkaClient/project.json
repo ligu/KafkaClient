@@ -2,7 +2,7 @@
   "name": "KafkaClient",
   "version": "0.2.0-*",
   "description": "Provides high and low level classes for communicating with an Apache Kafka cluster.",
-  "copyright": "Nudge Software 2016",
+  "copyright": "Nudge Software 2017",
   "authors": [
     "Nudge Software Inc"
   ],

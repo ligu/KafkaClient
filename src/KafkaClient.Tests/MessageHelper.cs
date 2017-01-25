@@ -1,5 +1,6 @@
 ﻿using System;
 using KafkaClient.Protocol;
+using KafkaClient.Testing;
 
 namespace KafkaClient.Tests
 {

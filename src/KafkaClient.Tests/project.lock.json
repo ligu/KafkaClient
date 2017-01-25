@@ -2695,6 +2695,22 @@
         "runtime": {
           "netstandard1.3/KafkaClient.dll": {}
         }
+      },
+      "KafkaClient.Testing/1.0.0": {
+        "type": "project",
+        "framework": ".NETStandard,Version=v1.3",
+        "dependencies": {
+          "KafkaClient": "1.0.0",
+          "Nito.AsyncEx.Coordination": "1.0.2",
+          "System.Collections.Immutable": "1.2.0",
+          "System.Net.Sockets": "4.3.0"
+        },
+        "compile": {
+          "netstandard1.3/KafkaClient.Testing.dll": {}
+        },
+        "runtime": {
+          "netstandard1.3/KafkaClient.Testing.dll": {}
+        }
       }
     }
   },
@@ -7991,11 +8007,17 @@
       "type": "project",
       "path": "../KafkaClient/project.json",
       "msbuildProject": "../KafkaClient/KafkaClient.xproj"
+    },
+    "KafkaClient.Testing/1.0.0": {
+      "type": "project",
+      "path": "../KafkaClient.Testing/project.json",
+      "msbuildProject": "../KafkaClient.Testing/KafkaClient.Testing.xproj"
     }
   },
   "projectFileDependencyGroups": {
     "": [
       "KafkaClient",
+      "KafkaClient.Testing",
       "NSubstitute >= 2.0.0-rc",
       "NUnit >= 3.6.0",
       "Nito.AsyncEx.Context >= 1.1.0",

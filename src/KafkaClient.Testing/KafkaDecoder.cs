@@ -1,15 +1,15 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using KafkaClient.Common;
+using KafkaClient.Protocol;
 
-namespace KafkaClient.Protocol
+namespace KafkaClient.Testing
 {
     /// <summary>
     /// Only used by testing and benchmarking code
     /// </summary>
-    internal static class KafkaDecoder
+    public static class KafkaDecoder
     {
         public static IRequestContext DecodeHeader(ArraySegment<byte> bytes)
         {

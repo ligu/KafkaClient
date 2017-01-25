@@ -4,6 +4,7 @@ using System.Linq;
 using BenchmarkDotNet.Attributes;
 using KafkaClient.Common;
 using KafkaClient.Protocol;
+using KafkaClient.Testing;
 
 namespace KafkaClient.Performance
 {

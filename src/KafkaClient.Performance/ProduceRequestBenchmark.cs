@@ -8,6 +8,7 @@ using BenchmarkDotNet.Attributes;
 using KafkaClient.Common;
 using KafkaClient.Connections;
 using KafkaClient.Protocol;
+using KafkaClient.Testing;
 using Nito.AsyncEx;
 
 namespace KafkaClient.Performance
@@ -55,11 +56,11 @@ namespace KafkaClient.Performance
             var port = 10000;
             var endpoint = new Endpoint(new IPEndPoint(IPAddress.Loopback, port), "localhost");
             _server = new TcpServer(endpoint.Value.Port) {
-                OnBytesRead = b =>
+                OnBytesReceived = b =>
                 {
                     var header = KafkaDecoder.DecodeHeader(b.Skip(4));
                     var bytes = KafkaDecoder.EncodeResponseBytes(new RequestContext(header.CorrelationId), response);
-                    AsyncContext.Run(async () => await _server.WriteBytesAsync(bytes));
+                    AsyncContext.Run(async () => await _server.SendDataAsync(bytes));
                 }
             };
             _connection = new Connection(endpoint);

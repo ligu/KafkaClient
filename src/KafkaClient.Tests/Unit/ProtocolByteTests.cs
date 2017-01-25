@@ -4,6 +4,7 @@ using System.Linq;
 using KafkaClient.Assignment;
 using KafkaClient.Common;
 using KafkaClient.Protocol;
+using KafkaClient.Testing;
 using NUnit.Framework;
 using NUnit.Framework.Internal;
 

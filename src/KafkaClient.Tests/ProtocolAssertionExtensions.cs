@@ -3,6 +3,7 @@ using System.Collections.Immutable;
 using KafkaClient.Assignment;
 using KafkaClient.Common;
 using KafkaClient.Protocol;
+using KafkaClient.Testing;
 using NUnit.Framework;
 
 namespace KafkaClient.Tests

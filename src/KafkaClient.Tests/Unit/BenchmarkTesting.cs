@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Text;
 using KafkaClient.Common;
 using KafkaClient.Protocol;
+using KafkaClient.Testing;
 using NUnit.Framework;
 
 namespace KafkaClient.Tests.Unit

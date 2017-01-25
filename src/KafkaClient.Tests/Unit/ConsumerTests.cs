@@ -260,12 +260,14 @@ namespace KafkaClient.Tests.Unit
                 await Task.Delay(totalMilliseconds);
             }
 
-#pragma warning disable 4014
-            conn.Received(expectedHeartbeats).SendAsync(
-                Arg.Is((HeartbeatRequest s) => s.GroupId == request.GroupId && s.MemberId == memberId && s.GroupGenerationId == response.GenerationId), 
-                Arg.Any<CancellationToken>(),
-                Arg.Any<IRequestContext>());
-#pragma warning restore 4014
+
+            Assert.That(conn.ReceivedCalls()
+                            .Count(c => {
+                                if (c.GetMethodInfo().Name != nameof(Connection.SendAsync)) return false;
+                                var s = c.GetArguments()[0] as HeartbeatRequest;
+                                if (s == null) return false;
+                                return s.GroupId == request.GroupId && s.MemberId == memberId && s.GroupGenerationId == response.GenerationId;
+                            }), Is.InRange(expectedHeartbeats - 1, expectedHeartbeats));
         }
 
         [TestCase(100, 700)]

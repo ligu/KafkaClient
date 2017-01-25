@@ -5,6 +5,9 @@
     "KafkaClient": {
       "target": "project"
     },
+    "KafkaClient.Testing": {
+      "target": "project"
+    },
     "System.Collections.Immutable": "1.2.0",
     "System.Net.Sockets": "4.3.0",
     "Nito.AsyncEx.Coordination": "1.0.2",
