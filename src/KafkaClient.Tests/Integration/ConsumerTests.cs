@@ -889,30 +889,28 @@ namespace KafkaClient.Tests.Integration
                     await ProduceMessages(router, topicName, groupId, totalMessages, Enumerable.Range(0, members));
 
                     var fetched = 0;
-                    using (var consumer = new Consumer(router, _consumerConfig, _config.Encoders)) {
-                        var tasks = new List<Task>();
-                        for (var index = 0; index < members; index++) {
-                            tasks.Add(Task.Run(
-                                async () => {
-                                    using (var member = await consumer.JoinConsumerGroupAsync(groupId, new ConsumerProtocolMetadata(topicName), cancellationToken)) {
-                                        await member.FetchUntilDisposedAsync(async (batch, token) => {
-                                            router.Log.Info(() => LogEvent.Create($"Member {member.MemberId} starting batch of {batch.Messages.Count}"));
-                                            foreach (var message in batch.Messages) {
-                                                batch.MarkSuccessful(message);
-                                                await Task.Delay(1);
-                                                if (Interlocked.Increment(ref fetched) >= totalMessages) {
-                                                    cancellation.Cancel();
-                                                    break;
-                                                }
-                                            }
-                                            router.Log.Info(() => LogEvent.Create($"Member {member.MemberId} finished batch size {batch.Messages.Count} ({fetched} of {totalMessages})"));
-                                    }, cancellationToken, 10);
-                                }
-                            }, CancellationToken.None));
-                        }
-                        tasks.Add(Task.Delay(TimeSpan.FromMinutes(2), CancellationToken.None));
-                        await Task.WhenAll(tasks);
+                    var consumer = new Consumer(router, _consumerConfig, _config.Encoders);
+                    var tasks = new List<Task>();
+                    for (var index = 0; index < members; index++) {
+                        tasks.Add(Task.Run(async () => {
+                            var member = await consumer.JoinConsumerGroupAsync(groupId, new ConsumerProtocolMetadata(topicName), cancellationToken);
+                            await member.UsingAsync(async () => {
+                                await member.FetchUntilDisposedAsync(async (batch, token) => {
+                                    router.Log.Info(() => LogEvent.Create($"Member {member.MemberId} starting batch of {batch.Messages.Count}"));
+                                    foreach (var message in batch.Messages) {
+                                        batch.MarkSuccessful(message);
+                                        await Task.Delay(1);
+                                        if (Interlocked.Increment(ref fetched) >= totalMessages) {
+                                            cancellation.Cancel();
+                                            break;
+                                        }
+                                    }
+                                    router.Log.Info(() => LogEvent.Create($"Member {member.MemberId} finished batch size {batch.Messages.Count} ({fetched} of {totalMessages})"));
+                                }, cancellationToken, 10);
+                            });
+                        }, CancellationToken.None));
                     }
+                    await Task.WhenAny(Task.WhenAll(tasks), Task.Delay(TimeSpan.FromMinutes(1)));
                     Assert.That(fetched, Is.AtLeast(totalMessages));
                 }, 5);
             }
