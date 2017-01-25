@@ -248,6 +248,8 @@ namespace KafkaClient.Connections
             return new ConnectionException($"Lost connection to {Endpoint}", ex) { Endpoint = Endpoint };
         }
 
+        private SslStream _sslStream = null;
+
         private async Task<Stream> GetStreamAsync()
         {
             using (await _clientLock.LockAsync(_disposeToken.Token).ConfigureAwait(false)) {
@@ -257,6 +259,9 @@ namespace KafkaClient.Connections
 
                 if(_configuration.SslConfiguration == null || _client == null)
                     return _client?.GetStream();
+
+                if (_sslStream != null)
+                    return _sslStream;
 
                 //SSL stream setup
                 var sslStream = new SslStream(
@@ -271,6 +276,7 @@ namespace KafkaClient.Connections
                 {
                     await sslStream.AuthenticateAsClientAsync(Endpoint.ServerUri.Host).ConfigureAwait(false);
                     _log.Info(() => LogEvent.Create($"Successful SSL connection, SslProtocol:{sslStream.SslProtocol}, KeyExchange:{sslStream.KeyExchangeAlgorithm}.{sslStream.KeyExchangeStrength}, Cipher:{sslStream.CipherAlgorithm}.{sslStream.CipherStrength}, Hash:{sslStream.HashAlgorithm}.{sslStream.HashStrength}, Authenticated:{sslStream.IsAuthenticated}, MutuallyAuthenticated:{sslStream.IsMutuallyAuthenticated}, Encrypted:{sslStream.IsEncrypted}, Signed:{sslStream.IsSigned}"));
+                    _sslStream = sslStream;
                     return sslStream;
                 }
                 catch (Exception ex)
@@ -290,6 +296,7 @@ namespace KafkaClient.Connections
         private Task<TcpClient> ReEstablishConnectionAsync()
         {
             _log.Info(() => LogEvent.Create($"No connection to {Endpoint}: Attempting to connect..."));
+            _sslStream = null;
 
             return _configuration.ConnectionRetry.AttemptAsync(
                 async (attempt, timer) => {
@@ -325,7 +332,11 @@ namespace KafkaClient.Connections
 
             using (_disposeToken) {
                 using (_disposeRegistration) {
-                    using (_client) { }
+                    using (_client)
+                    {
+                        if(_sslStream != null)
+                            using (_sslStream) {}
+                    }
                 }
             }
         }
