@@ -122,7 +122,7 @@ namespace KafkaClient.Tests.Unit
                     await consumer.JoinConsumerGroupAsync("group", protocolType, new ByteTypeMetadata("mine", new ArraySegment<byte>()), CancellationToken.None);
                     Assert.Fail("Should have thrown exception");
                 } catch (ArgumentOutOfRangeException ex) {
-                    Assert.That(ex.Message, Is.EqualTo($"ProtocolType {protocolType} is unknown\r\nParameter name: metadata"));
+                    Assert.That(ex.Message.StartsWith($"ProtocolType {protocolType} is unknown"));
                 }
             }
         }
