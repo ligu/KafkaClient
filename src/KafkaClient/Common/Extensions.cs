@@ -45,14 +45,6 @@ namespace KafkaClient.Common
             return items != null ? dictionary.AddRange(items) : dictionary;
         }
 
-        public static IEnumerable<byte> ToEnumerable(this Stream stream)
-        {
-            if (stream == null) yield break;
-
-            int value;
-            while (-1 != (value = stream.ReadByte())) yield return (byte)value;
-        }
-
         public static IKafkaWriter Write(this IKafkaWriter writer, IEnumerable<string> values, bool includeLength = false)
         {
             if (includeLength) {

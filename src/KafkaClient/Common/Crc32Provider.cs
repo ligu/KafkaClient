@@ -4,8 +4,6 @@
 // Originally published at http://damieng.com/blog/2006/08/08/calculating_crc32_in_c_and_net
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace KafkaClient.Common
 {
@@ -25,19 +23,14 @@ namespace KafkaClient.Common
             PolynomialTable = InitializeTable(DefaultPolynomial);
         }
 
-        public static uint ComputeHash(IEnumerable<byte> buffer)
-        {
-            return ~CalculateHash(buffer);
-        }
-
-        public static uint ComputeHash(byte[] buffer)
-        {
-            return ~CalculateHash(buffer, 0, buffer.Length);
-        }
-
         public static uint ComputeHash(ArraySegment<byte> bytes)
         {
-            return ~CalculateHash(bytes.Array, bytes.Offset, bytes.Count);
+            var crc = DefaultSeed;
+            var max = bytes.Offset + bytes.Count;
+            for (var i = bytes.Offset; i < max; i++) {
+                crc = (crc >> 8) ^ PolynomialTable[bytes.Array[i] ^ crc & 0xff];
+            }
+            return ~crc;
         }
 
         private static uint[] InitializeTable(uint polynomial)
@@ -56,21 +49,6 @@ namespace KafkaClient.Common
             }
 
             return createTable;
-        }
-
-        private static uint CalculateHash(byte[] buffer, int offset, int length)
-        {
-            var crc = DefaultSeed;
-            var max = offset + length;
-            for (var i = offset; i < max; i++) {
-                crc = (crc >> 8) ^ PolynomialTable[buffer[i] ^ crc & 0xff];
-            }
-            return crc;
-        }
-
-        private static uint CalculateHash(IEnumerable<byte> buffer)
-        {
-            return buffer.Aggregate(DefaultSeed, (crc, value) => (crc >> 8) ^ PolynomialTable[value ^ crc & 0xff]);
         }
     }
 }

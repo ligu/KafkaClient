@@ -55,11 +55,11 @@ namespace KafkaClient
         public void MetadataRetry(int attempt, Exception exception, out bool? retry)
         {
             retry = true;
-            _log.Debug(() => LogEvent.Create(exception, $"Retrying request {_request.ApiKey} (attempt {attempt})"));
             if (exception != null) {
                 if (!exception.IsPotentiallyRecoverableByMetadataRefresh()) throw exception.PrepareForRethrow();
                 retry = null; // ie. the state of the metadata is unknown
             }
+            _log.Debug(() => LogEvent.Create(exception, $"Retrying request {_request.ApiKey} (attempt {attempt})"));
         }
 
         public void ThrowExtractedException(int attempt)

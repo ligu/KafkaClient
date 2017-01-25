@@ -95,14 +95,12 @@ namespace KafkaClient.Common
             if (length < 0) throw new EndOfStreamException($"Cannot get offset {offset} past end of stream");
 
             ArraySegment<byte> segment;
-            if (_stream.TryGetBuffer(out segment)) {
-                return segment.Skip(offset);
+            if (!_stream.TryGetBuffer(out segment)) {
+                // the stream is a memorystream, always owning its own buffer
+                throw new NotSupportedException();
             }
 
-            var buffer = new byte[length]; // should never be called, but necessary because of the TryGet above
-            _stream.Position = offset;
-            _stream.Read(buffer, 0, (int)length);
-            return new ArraySegment<byte>(buffer, 0, buffer.Length);
+            return segment.Skip(offset);
         }
 
         private void WriteLength(int offset)
@@ -117,13 +115,12 @@ namespace KafkaClient.Common
             uint crc;
             ArraySegment<byte> segment;
             var computeFrom = offset + KafkaEncoder.IntegerByteSize;
-            if (_stream.TryGetBuffer(out segment)) {
-                crc = Crc32Provider.ComputeHash(segment.Skip(computeFrom));
-            } else {
-                _stream.Position = computeFrom;
-                crc = Crc32Provider.ComputeHash(_stream.ToEnumerable());
+            if (!_stream.TryGetBuffer(out segment)) {
+                // the stream is a memorystream, always owning its own buffer
+                throw new NotSupportedException();
             }
 
+            crc = Crc32Provider.ComputeHash(segment.Skip(computeFrom));
             _stream.Position = offset;
             Write(crc);            
         }

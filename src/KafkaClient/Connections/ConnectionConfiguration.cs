@@ -28,6 +28,8 @@ namespace KafkaClient.Connections
         /// <param name="connectionRetry">Retry details for (re)establishing the connection.</param>
         /// <param name="versionSupport">Support for different protocol versions for Kakfa requests and responses.</param>
         /// <param name="requestTimeout">The maximum time to wait for requests.</param>
+        /// <param name="readBufferSize">The buffer size to use for the socket, when receiving bytes.</param>
+        /// <param name="writeBufferSize">The buffer size to use for the socket, when sending bytes.</param>
         /// <param name="encoders">Custom Encoding support for different protocol types</param>
         public ConnectionConfiguration(
             ITrackEvents tracker, 

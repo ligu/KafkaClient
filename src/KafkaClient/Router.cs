@@ -364,6 +364,7 @@ namespace KafkaClient
                         }
                         UpdateGroupBrokerCache(request, response);
 
+                        // ReSharper disable once PossibleNullReferenceException
                         return response.BrokerId;
                     } catch (Exception ex) {
                         throw new CachedMetadataException($"Unable to refresh brokers for group {groupId}", ex);

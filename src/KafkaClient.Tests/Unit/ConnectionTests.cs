@@ -45,13 +45,16 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public async Task ThrowsConnectionExceptionOnInvalidEndpoint()
         {
+            var conn = new ExplicitlyReadingConnection(new Endpoint(null, "not.com"));
             try {
-                using (var conn = new ExplicitlyReadingConnection(new Endpoint(null, "not.com"))) {
+                using (conn) {
                     await conn.SendAsync(new ApiVersionsRequest(), CancellationToken.None);
                 }
                 Assert.Fail("should have thrown ConnectionException");
             } catch (ConnectionException) {
                 // expected
+            } finally {
+                await conn.Disposal;
             }
         }
 
@@ -139,21 +142,25 @@ namespace KafkaClient.Tests.Unit
             int readSize = 0;
             var config = new ConnectionConfiguration(onReading: (e, size) => readSize = size);
             var endpoint = await Endpoint.ResolveAsync(TestConfig.ServerUri(), TestConfig.Log);
-            using (new FakeTcpServer(TestConfig.Log, endpoint.Value.Port))
-            using (var test = new ExplicitlyReadingConnection(endpoint, config, TestConfig.Log))
-            {
-                var socket = await test.ConnectAsync(CancellationToken.None);
-                var buffer = new byte[4];
-                var taskResult = test.ReadBytesAsync(socket, buffer, 4, _ => { }, CancellationToken.None);
+            using (new FakeTcpServer(TestConfig.Log, endpoint.Value.Port)) {
+                var test = new ExplicitlyReadingConnection(endpoint, config, TestConfig.Log);
+                try {
+                    var socket = await test.ConnectAsync(CancellationToken.None);
+                    var buffer = new byte[4];
+                    var taskResult = test.ReadBytesAsync(socket, buffer, 4, _ => { }, CancellationToken.None);
 
-                await TaskTest.WaitFor(() => readSize > 0);
+                    await TaskTest.WaitFor(() => readSize > 0);
 
-                using (test) { }
+                    using (test) { }
 
-                await Task.WhenAny(taskResult, Task.Delay(1000)).ConfigureAwait(false);
+                    await Task.WhenAny(taskResult, Task.Delay(1000)).ConfigureAwait(false);
 
-                Assert.That(taskResult.IsFaulted, Is.True);
-                Assert.That(taskResult.Exception.InnerException, Is.TypeOf<ObjectDisposedException>());
+                    Assert.That(taskResult.IsFaulted, Is.True);
+                    Assert.That(taskResult.Exception.InnerException, Is.TypeOf<ObjectDisposedException>());
+                } finally {
+                    test.Dispose();
+                    await test.Disposal;
+                }
             }
         }
 
@@ -210,7 +217,7 @@ namespace KafkaClient.Tests.Unit
 
             var endpoint = await Endpoint.ResolveAsync(TestConfig.ServerUri(), TestConfig.Log);
             using (var server = new FakeTcpServer(TestConfig.Log, endpoint.Value.Port))
-            using (new Connection(endpoint, config, log: mockLog))
+            using (new Connection(endpoint, config, mockLog))
             {
                 // send size
                 var size = 200;
@@ -307,7 +314,7 @@ namespace KafkaClient.Tests.Unit
             int connectionAttempt = 0;
             var config = new ConnectionConfiguration(onConnecting: (e, attempt, elapsed) => connectionAttempt = attempt);
             var endpoint = await Endpoint.ResolveAsync(TestConfig.ServerUri(), TestConfig.Log);
-            using (var conn = new Connection(endpoint, config, log: TestConfig.Log))
+            using (var conn = new Connection(endpoint, config, TestConfig.Log))
             using (var token = new CancellationTokenSource())
             {
                 var taskResult = conn.SendAsync(new FetchRequest(), token.Token);
@@ -328,7 +335,7 @@ namespace KafkaClient.Tests.Unit
             int connectionAttempt = 0;
             var config = new ConnectionConfiguration(onConnecting: (e, attempt, elapsed) => Interlocked.Exchange(ref connectionAttempt, attempt));
             var endpoint = await Endpoint.ResolveAsync(TestConfig.ServerUri(), TestConfig.Log);
-            using (var conn = new Connection(endpoint, config, log: TestConfig.Log))
+            using (var conn = new Connection(endpoint, config, TestConfig.Log))
             using (var token = new CancellationTokenSource())
             {
                 var taskResult = conn.SendAsync(new FetchRequest(), token.Token);
@@ -353,12 +360,6 @@ namespace KafkaClient.Tests.Unit
                 // to avoid reading on a background task
                 ActiveReaderCount = 1;
             }
-
-            public override void Dispose()
-            {
-                base.Dispose();
-                DisposeFinal();
-            }
         }
 
         [Test]
@@ -369,35 +370,39 @@ namespace KafkaClient.Tests.Unit
             var config = new ConnectionConfiguration(
                 onReadBytes: (e, attempted, actual, elapsed) => Interlocked.Add(ref bytesReceived, actual));
             var endpoint = await Endpoint.ResolveAsync(TestConfig.ServerUri(), TestConfig.Log);
-            using (var server = new FakeTcpServer(TestConfig.Log, endpoint.Value.Port))
-            using (var conn = new ExplicitlyReadingConnection(endpoint, config, log: TestConfig.Log))
-            {
-                var socket = await conn.ConnectAsync(CancellationToken.None);
-                var buffer = new byte[4];
-                var taskResult = conn.ReadBytesAsync(socket, buffer, 4, _ => { }, CancellationToken.None).ContinueWith(t =>
-                    {
-                        Interlocked.Increment(ref sendCompleted);
-                    });
+            using (var server = new FakeTcpServer(TestConfig.Log, endpoint.Value.Port)) {
+                var conn = new ExplicitlyReadingConnection(endpoint, config, TestConfig.Log);
+                try {
+                    var socket = await conn.ConnectAsync(CancellationToken.None);
+                    var buffer = new byte[4];
+                    var taskResult = conn.ReadBytesAsync(socket, buffer, 4, _ => { }, CancellationToken.None).ContinueWith(t =>
+                        {
+                            Interlocked.Increment(ref sendCompleted);
+                        });
 
-                // Sending first 3 bytes...
-                await server.HasClientConnected;
-                await server.SendDataAsync(new byte[] { 0, 0, 0 });
+                    // Sending first 3 bytes...
+                    await server.HasClientConnected;
+                    await server.SendDataAsync(new byte[] { 0, 0, 0 });
 
-                // Ensuring task blocks...
-                await TaskTest.WaitFor(() => bytesReceived > 0);
-                Assert.That(taskResult.IsCompleted, Is.False, "Task should still be running, blocking.");
-                Assert.That(sendCompleted, Is.EqualTo(0), "Should still block even though bytes have been received.");
-                Assert.That(bytesReceived, Is.EqualTo(3), "Three bytes should have been received and we are waiting on the last byte.");
+                    // Ensuring task blocks...
+                    await TaskTest.WaitFor(() => bytesReceived > 0);
+                    Assert.That(taskResult.IsCompleted, Is.False, "Task should still be running, blocking.");
+                    Assert.That(sendCompleted, Is.EqualTo(0), "Should still block even though bytes have been received.");
+                    Assert.That(bytesReceived, Is.EqualTo(3), "Three bytes should have been received and we are waiting on the last byte.");
 
-                // Sending last byte...
-                var sendLastByte = server.SendDataAsync(new byte[] { 0 }).Wait(TimeSpan.FromSeconds(10));
-                Assert.That(sendLastByte, Is.True, "Last byte should have sent.");
+                    // Sending last byte...
+                    var sendLastByte = server.SendDataAsync(new byte[] { 0 }).Wait(TimeSpan.FromSeconds(10));
+                    Assert.That(sendLastByte, Is.True, "Last byte should have sent.");
 
-                // Ensuring task unblocks...
-                await TaskTest.WaitFor(() => taskResult.IsCompleted);
-                Assert.That(bytesReceived, Is.EqualTo(4), "Should have received 4 bytes.");
-                Assert.That(taskResult.IsCompleted, Is.True, "Task should have completed.");
-                Assert.That(sendCompleted, Is.EqualTo(1), "Task ContinueWith should have executed.");
+                    // Ensuring task unblocks...
+                    await TaskTest.WaitFor(() => taskResult.IsCompleted);
+                    Assert.That(bytesReceived, Is.EqualTo(4), "Should have received 4 bytes.");
+                    Assert.That(taskResult.IsCompleted, Is.True, "Task should have completed.");
+                    Assert.That(sendCompleted, Is.EqualTo(1), "Task ContinueWith should have executed.");
+                } finally {
+                    conn.Dispose();
+                    await conn.Disposal;
+                }
             }
         }
 
@@ -405,25 +410,29 @@ namespace KafkaClient.Tests.Unit
         public async Task ReadShouldBeAbleToReceiveMoreThanOnce()
         {
             var endpoint = await Endpoint.ResolveAsync(TestConfig.ServerUri(), TestConfig.Log);
-            using (var server = new FakeTcpServer(TestConfig.Log, endpoint.Value.Port))
-            using (var conn = new ExplicitlyReadingConnection(endpoint, log: TestConfig.Log))
-            {
-                const int firstMessage = 99;
-                const string secondMessage = "testmessage";
+            using (var server = new FakeTcpServer(TestConfig.Log, endpoint.Value.Port)) {
+                var conn = new ExplicitlyReadingConnection(endpoint, log: TestConfig.Log);
+                try {
+                    const int firstMessage = 99;
+                    const string secondMessage = "testmessage";
 
-                // Sending first message to receive...
-                var send = server.SendDataAsync(firstMessage.ToBytes());
+                    // Sending first message to receive...
+                    var send = server.SendDataAsync(firstMessage.ToBytes());
 
-                var socket = await conn.ConnectAsync(CancellationToken.None);
-                var buffer = new byte[48];
-                await conn.ReadBytesAsync(socket, buffer, 4, _ => { }, CancellationToken.None);
-                Assert.That(buffer.ToInt32(), Is.EqualTo(firstMessage));
+                    var socket = await conn.ConnectAsync(CancellationToken.None);
+                    var buffer = new byte[48];
+                    await conn.ReadBytesAsync(socket, buffer, 4, _ => { }, CancellationToken.None);
+                    Assert.That(buffer.ToInt32(), Is.EqualTo(firstMessage));
 
-                // Sending second message to receive...
-                var send2 = server.SendDataAsync(secondMessage);
-                var result = new MemoryStream();
-                await conn.ReadBytesAsync(socket, buffer, secondMessage.Length, _ => { result.Write(buffer, 0, _); }, CancellationToken.None);
-                Assert.That(Encoding.ASCII.GetString(result.ToArray(), 0, (int)result.Position), Is.EqualTo(secondMessage));
+                    // Sending second message to receive...
+                    var send2 = server.SendDataAsync(secondMessage);
+                    var result = new MemoryStream();
+                    await conn.ReadBytesAsync(socket, buffer, secondMessage.Length, _ => { result.Write(buffer, 0, _); }, CancellationToken.None);
+                    Assert.That(Encoding.ASCII.GetString(result.ToArray(), 0, (int)result.Position), Is.EqualTo(secondMessage));
+                } finally {
+                    conn.Dispose();
+                    await conn.Disposal;
+                }                
             }
         }
 
@@ -431,27 +440,31 @@ namespace KafkaClient.Tests.Unit
         public async Task ReadShouldBeAbleToReceiveMoreThanOnceAsyncronously()
         {
             var endpoint = await Endpoint.ResolveAsync(TestConfig.ServerUri(), TestConfig.Log);
-            using (var server = new FakeTcpServer(TestConfig.Log, endpoint.Value.Port))
-            using (var conn = new ExplicitlyReadingConnection(endpoint, log: TestConfig.Log))
-            {
-                const int firstMessage = 99;
-                const int secondMessage = 100;
+            using (var server = new FakeTcpServer(TestConfig.Log, endpoint.Value.Port)) {
+                var conn = new ExplicitlyReadingConnection(endpoint, log: TestConfig.Log);
+                try {
+                    const int firstMessage = 99;
+                    const int secondMessage = 100;
 
-                var socket = await conn.ConnectAsync(CancellationToken.None);
+                    var socket = await conn.ConnectAsync(CancellationToken.None);
 
-                // Sending first message to receive..."
-                var send1 = server.SendDataAsync(firstMessage.ToBytes());
-                var buffer1 = new byte[4];
-                var firstResponseTask = conn.ReadBytesAsync(socket, buffer1, 4, _ => { }, CancellationToken.None);
+                    // Sending first message to receive..."
+                    var send1 = server.SendDataAsync(firstMessage.ToBytes());
+                    var buffer1 = new byte[4];
+                    var firstResponseTask = conn.ReadBytesAsync(socket, buffer1, 4, _ => { }, CancellationToken.None);
 
-                // Sending second message to receive...
-                var send2 = server.SendDataAsync(secondMessage.ToBytes());
-                var buffer2 = new byte[4];
-                var secondResponseTask = conn.ReadBytesAsync(socket, buffer2, 4, _ => { }, CancellationToken.None);
+                    // Sending second message to receive...
+                    var send2 = server.SendDataAsync(secondMessage.ToBytes());
+                    var buffer2 = new byte[4];
+                    var secondResponseTask = conn.ReadBytesAsync(socket, buffer2, 4, _ => { }, CancellationToken.None);
 
-                await Task.WhenAll(firstResponseTask, secondResponseTask);
-                Assert.That(buffer1.ToInt32(), Is.EqualTo(firstMessage));
-                Assert.That(buffer2.ToInt32(), Is.EqualTo(secondMessage));
+                    await Task.WhenAll(firstResponseTask, secondResponseTask);
+                    Assert.That(buffer1.ToInt32(), Is.EqualTo(firstMessage));
+                    Assert.That(buffer2.ToInt32(), Is.EqualTo(secondMessage));
+                } finally {
+                    conn.Dispose();
+                    await conn.Disposal;
+                }                
             }
         }
 
@@ -459,30 +472,34 @@ namespace KafkaClient.Tests.Unit
         public async Task ReadShouldNotLoseDataFromStreamOverMultipleReads()
         {
             var endpoint = await Endpoint.ResolveAsync(TestConfig.ServerUri(), TestConfig.Log);
-            using (var server = new FakeTcpServer(TestConfig.Log, endpoint.Value.Port))
-            using (var conn = new ExplicitlyReadingConnection(endpoint, log: TestConfig.Log))
-            {
-                const int firstMessage = 99;
-                const string secondMessage = "testmessage";
-                var bytes = Encoding.UTF8.GetBytes(secondMessage);
+            using (var server = new FakeTcpServer(TestConfig.Log, endpoint.Value.Port)) {
+                var conn = new ExplicitlyReadingConnection(endpoint, log: TestConfig.Log);
+                try {
+                    const int firstMessage = 99;
+                    const string secondMessage = "testmessage";
+                    var bytes = Encoding.UTF8.GetBytes(secondMessage);
 
-                var payload = new KafkaWriter()
-                    .Write(firstMessage)
-                    .Write(new ArraySegment<byte>(bytes), false);
+                    var payload = new KafkaWriter()
+                        .Write(firstMessage)
+                        .Write(new ArraySegment<byte>(bytes), false);
 
-                //send the combined payload
-                var send = server.SendDataAsync(payload.ToSegment(false));
+                    //send the combined payload
+                    var send = server.SendDataAsync(payload.ToSegment(false));
 
-                var socket = await conn.ConnectAsync(CancellationToken.None);
-                var buffer = new byte[48];
-                await conn.ReadBytesAsync(socket, buffer, 4, _ => { }, CancellationToken.None);
-                Assert.That(buffer.ToInt32(), Is.EqualTo(firstMessage));
+                    var socket = await conn.ConnectAsync(CancellationToken.None);
+                    var buffer = new byte[48];
+                    await conn.ReadBytesAsync(socket, buffer, 4, _ => { }, CancellationToken.None);
+                    Assert.That(buffer.ToInt32(), Is.EqualTo(firstMessage));
 
-                // Sending second message to receive...
-                var send2 = server.SendDataAsync(secondMessage);
-                var result = new MemoryStream();
-                await conn.ReadBytesAsync(socket, buffer, secondMessage.Length, _ => { result.Write(buffer, 0, _); }, CancellationToken.None);
-                Assert.That(Encoding.ASCII.GetString(result.ToArray(), 0, (int)result.Position), Is.EqualTo(secondMessage));
+                    // Sending second message to receive...
+                    var send2 = server.SendDataAsync(secondMessage);
+                    var result = new MemoryStream();
+                    await conn.ReadBytesAsync(socket, buffer, secondMessage.Length, _ => { result.Write(buffer, 0, _); }, CancellationToken.None);
+                    Assert.That(Encoding.ASCII.GetString(result.ToArray(), 0, (int)result.Position), Is.EqualTo(secondMessage));
+                } finally {
+                    conn.Dispose();
+                    await conn.Disposal;
+                }                
             }
         }
 
@@ -490,24 +507,28 @@ namespace KafkaClient.Tests.Unit
         public async Task ReadShouldThrowServerDisconnectedExceptionWhenDisconnected()
         {
             var endpoint = await Endpoint.ResolveAsync(TestConfig.ServerUri(), TestConfig.Log);
-            using (var server = new FakeTcpServer(TestConfig.Log, endpoint.Value.Port))
-            using (var conn = new ExplicitlyReadingConnection(endpoint, log: TestConfig.Log))
-            {
-                var socket = await conn.ConnectAsync(CancellationToken.None);
-                var buffer = new byte[48];
-                var taskResult = conn.ReadBytesAsync(socket, buffer, 4, _ => { }, CancellationToken.None);
+            using (var server = new FakeTcpServer(TestConfig.Log, endpoint.Value.Port)) {
+                var conn = new ExplicitlyReadingConnection(endpoint, log: TestConfig.Log);
+                try {
+                    var socket = await conn.ConnectAsync(CancellationToken.None);
+                    var buffer = new byte[48];
+                    var taskResult = conn.ReadBytesAsync(socket, buffer, 4, _ => { }, CancellationToken.None);
 
-                //wait till connected
-                await TaskTest.WaitFor(() => server.ConnectionEventcount > 0);
+                    //wait till connected
+                    await TaskTest.WaitFor(() => server.ConnectionEventcount > 0);
 
-                server.DropConnection();
+                    server.DropConnection();
 
-                await TaskTest.WaitFor(() => server.DisconnectionEventCount > 0);
+                    await TaskTest.WaitFor(() => server.DisconnectionEventCount > 0);
 
-                await Task.WhenAny(taskResult, Task.Delay(1000)).ConfigureAwait(false);
+                    await Task.WhenAny(taskResult, Task.Delay(1000)).ConfigureAwait(false);
 
-                Assert.That(taskResult.IsFaulted, Is.True);
-                Assert.That(taskResult.Exception.InnerException, Is.TypeOf<ConnectionException>());
+                    Assert.That(taskResult.IsFaulted, Is.True);
+                    Assert.That(taskResult.Exception.InnerException, Is.TypeOf<ConnectionException>());
+                } finally {
+                    conn.Dispose();
+                    await conn.Disposal;
+                }
             }
         }
 
@@ -521,7 +542,8 @@ namespace KafkaClient.Tests.Unit
                 new Retry(null, maxRetries),
                 onConnecting: (e, attempt, elapsed) => Interlocked.Increment(ref reconnectionAttempt)
                 );
-            using (var conn = new ExplicitlyReadingConnection(endpoint, config, log: TestConfig.Log)) {
+            var conn = new ExplicitlyReadingConnection(endpoint, config, TestConfig.Log);
+            try {
                 try {
                     await conn.ConnectAsync(CancellationToken.None);
                     Assert.Fail("Did not throw ConnectionException");
@@ -529,6 +551,10 @@ namespace KafkaClient.Tests.Unit
                     // expected
                 }
                 Assert.That(reconnectionAttempt, Is.EqualTo(maxRetries + 1));
+
+            } finally {
+                conn.Dispose();
+                await conn.Disposal;
             }
         }
 
@@ -582,7 +608,8 @@ namespace KafkaClient.Tests.Unit
 
                 var payload = new KafkaWriter().Write(messages);
 
-                using (var conn = new ExplicitlyReadingConnection(endpoint, log: TestConfig.Log)) {
+                var conn = new ExplicitlyReadingConnection(endpoint, log: TestConfig.Log);
+                try {
                     var socket = await conn.ConnectAsync(CancellationToken.None);
                     var tasks = messages.Select(
                         x =>
@@ -598,6 +625,9 @@ namespace KafkaClient.Tests.Unit
                     foreach (var task in tasks) {
                         Assert.That(task.Result, Is.EqualTo(expectedLength));
                     }
+                } finally {
+                    conn.Dispose();
+                    await conn.Disposal;
                 }
             }
         }
@@ -750,41 +780,45 @@ namespace KafkaClient.Tests.Unit
             var readOnClient = new ConcurrentBag<int>();
 
             var endpoint = await Endpoint.ResolveAsync(TestConfig.ServerUri(), TestConfig.Log);
-            using (var server = new FakeTcpServer(TestConfig.Log, endpoint.Value.Port))
-            using (var conn = new ExplicitlyReadingConnection(endpoint, new ConnectionConfiguration(requestTimeout: TimeSpan.FromSeconds(1000), versionSupport: VersionSupport.Kafka10), log: TestConfig.Log))
-            {
-                server.OnBytesReceived = data => {
-                    var d = data.Batch(4).Select(x => x.ToArray().ToInt32());
-                    foreach (var item in d) {
-                        readOnServer.Add(item);
+            using (var server = new FakeTcpServer(TestConfig.Log, endpoint.Value.Port)) {
+                var conn = new ExplicitlyReadingConnection(endpoint, new ConnectionConfiguration(requestTimeout: TimeSpan.FromSeconds(1000), versionSupport: VersionSupport.Kafka10), TestConfig.Log);
+                try {
+                    server.OnBytesReceived = data => {
+                        var d = data.Batch(4).Select(x => x.ToArray().ToInt32());
+                        foreach (var item in d) {
+                            readOnServer.Add(item);
+                        }
+                    };
+                    var socket = await conn.ConnectAsync(CancellationToken.None);
+
+                    var clientWriteTasks = expected.Select(i => conn.WriteBytesAsync(socket, i, new ArraySegment<byte>(i.ToBytes()), CancellationToken.None));
+                    var clientReadTasks = expected.Select(
+                        i =>
+                        {
+                            var b = new byte[4];
+                            return conn.ReadBytesAsync(socket, b, b.Length, _ => { }, CancellationToken.None)
+                                       .ContinueWith(t => readOnClient.Add(b.ToInt32()));
+                        });
+                    var serverWriteTasks = expected.Select(i => server.SendDataAsync(i.ToBytes()));
+
+                    await Task.WhenAll(clientWriteTasks.Union(clientReadTasks).Union(serverWriteTasks));
+                    await TaskTest.WaitFor(() => readOnServer.Count == requests);
+                    Assert.That(readOnServer.Count, Is.EqualTo(requests), "not all writes propagated to the server in time");
+                    await TaskTest.WaitFor(() => readOnClient.Count == requests);
+                    Assert.That(readOnClient.Count, Is.EqualTo(requests), "not all reads happend on the client in time");
+                    var w = readOnServer.OrderBy(x => x);
+                    var r = readOnClient.OrderBy(x => x);
+
+                    for (var i = 0; i < requests; i++) {
+                        Assert.That(w.ElementAt(i), Is.EqualTo(expected[i]));
                     }
-                };
-                var socket = await conn.ConnectAsync(CancellationToken.None);
-
-                var clientWriteTasks = expected.Select(i => conn.WriteBytesAsync(socket, i, new ArraySegment<byte>(i.ToBytes()), CancellationToken.None));
-                var clientReadTasks = expected.Select(
-                    i =>
-                    {
-                        var b = new byte[4];
-                        return conn.ReadBytesAsync(socket, b, b.Length, _ => { }, CancellationToken.None)
-                                   .ContinueWith(t => readOnClient.Add(b.ToInt32()));
-                    });
-                var serverWriteTasks = expected.Select(i => server.SendDataAsync(i.ToBytes()));
-
-                await Task.WhenAll(clientWriteTasks.Union(clientReadTasks).Union(serverWriteTasks));
-                await TaskTest.WaitFor(() => readOnServer.Count == requests);
-                Assert.That(readOnServer.Count, Is.EqualTo(requests), "not all writes propagated to the server in time");
-                await TaskTest.WaitFor(() => readOnClient.Count == requests);
-                Assert.That(readOnClient.Count, Is.EqualTo(requests), "not all reads happend on the client in time");
-                var w = readOnServer.OrderBy(x => x);
-                var r = readOnClient.OrderBy(x => x);
-
-                for (var i = 0; i < requests; i++) {
-                    Assert.That(w.ElementAt(i), Is.EqualTo(expected[i]));
-                }
-                for (var i = 0; i < requests; i++) {
-                    Assert.That(r.ElementAt(i), Is.EqualTo(expected[i]));
-                }
+                    for (var i = 0; i < requests; i++) {
+                        Assert.That(r.ElementAt(i), Is.EqualTo(expected[i]));
+                    }
+                } finally {
+                    conn.Dispose();
+                    await conn.Disposal;
+                }                
             }
         }
 
@@ -793,23 +827,27 @@ namespace KafkaClient.Tests.Unit
         {
             var readOnServer = new ConcurrentBag<int>();
             var endpoint = await Endpoint.ResolveAsync(TestConfig.ServerUri(), TestConfig.Log);
-            using (var server = new FakeTcpServer(TestConfig.Log, endpoint.Value.Port))
-            using (var conn = new ExplicitlyReadingConnection(endpoint, new ConnectionConfiguration(requestTimeout: TimeSpan.FromSeconds(1000), versionSupport: VersionSupport.Kafka10), log: TestConfig.Log))
-            {
-                server.OnBytesReceived = data =>
-                {
-                    var d = data.Batch(4).Select(x => x.ToArray().ToInt32());
-                    foreach (var item in d) {
-                        readOnServer.Add(item);
-                    }
-                };
-                var socket = await conn.ConnectAsync(CancellationToken.None);
-                var clientWriteTasks = Enumerable.Range(1, requests).Select(i => conn.WriteBytesAsync(socket, i, new ArraySegment<byte>(i.ToBytes()), CancellationToken.None));
+            using (var server = new FakeTcpServer(TestConfig.Log, endpoint.Value.Port)) {
+                var conn = new ExplicitlyReadingConnection(endpoint, new ConnectionConfiguration(requestTimeout: TimeSpan.FromSeconds(1000), versionSupport: VersionSupport.Kafka10), TestConfig.Log);
+                try {
+                    server.OnBytesReceived = data =>
+                    {
+                        var d = data.Batch(4).Select(x => x.ToArray().ToInt32());
+                        foreach (var item in d) {
+                            readOnServer.Add(item);
+                        }
+                    };
+                    var socket = await conn.ConnectAsync(CancellationToken.None);
+                    var clientWriteTasks = Enumerable.Range(1, requests).Select(i => conn.WriteBytesAsync(socket, i, new ArraySegment<byte>(i.ToBytes()), CancellationToken.None));
 
-                await Task.WhenAll(clientWriteTasks);
-                await TaskTest.WaitFor(() => readOnServer.Count == requests);
-                Assert.That(readOnServer.Count, Is.EqualTo(requests), "not all writes propagated to the server in time");
-                Assert.That(readOnServer.OrderBy(x => x), Is.EqualTo(Enumerable.Range(1, requests)));
+                    await Task.WhenAll(clientWriteTasks);
+                    await TaskTest.WaitFor(() => readOnServer.Count == requests);
+                    Assert.That(readOnServer.Count, Is.EqualTo(requests), "not all writes propagated to the server in time");
+                    Assert.That(readOnServer.OrderBy(x => x), Is.EqualTo(Enumerable.Range(1, requests)));
+                } finally {
+                    conn.Dispose();
+                    await conn.Disposal;
+                }
             }
         }
 
@@ -819,25 +857,31 @@ namespace KafkaClient.Tests.Unit
             var clientWriteAttempts = 0;
             var config = new ConnectionConfiguration(onWritingBytes: (e, payload) => Interlocked.Increment(ref clientWriteAttempts));
             var endpoint = await Endpoint.ResolveAsync(TestConfig.ServerUri(), TestConfig.Log);
-            using (var server = new FakeTcpServer(TestConfig.Log, endpoint.Value.Port))
-            using (var conn = new ExplicitlyReadingConnection(endpoint, config, log: TestConfig.Log))
-            using (var token = new CancellationTokenSource())
-            {
-                var socket = await conn.ConnectAsync(token.Token);
-                var write = conn.WriteBytesAsync(socket, 5, new ArraySegment<byte>(1.ToBytes()), token.Token);
+            using (var server = new FakeTcpServer(TestConfig.Log, endpoint.Value.Port)) {
+                var conn = new ExplicitlyReadingConnection(endpoint, config, TestConfig.Log);
+                try {
+                    using (var token = new CancellationTokenSource())
+                    {
+                        var socket = await conn.ConnectAsync(token.Token);
+                        var write = conn.WriteBytesAsync(socket, 5, new ArraySegment<byte>(1.ToBytes()), token.Token);
 
-                await TaskTest.WaitFor(() => server.ConnectionEventcount > 0);
-                await TaskTest.WaitFor(() => clientWriteAttempts > 0);
+                        await TaskTest.WaitFor(() => server.ConnectionEventcount > 0);
+                        await TaskTest.WaitFor(() => clientWriteAttempts > 0);
 
-                Assert.That(clientWriteAttempts, Is.EqualTo(1), "Socket should have attempted to write.");
+                        Assert.That(clientWriteAttempts, Is.EqualTo(1), "Socket should have attempted to write.");
 
-                //create a buffer write that will take a long time
-                var data = Enumerable.Range(0, 100000000).Select(b => (byte)b).ToArray();
-                token.Cancel();
-                var taskResult = conn.WriteBytesAsync(socket, 6, new ArraySegment<byte>(data), token.Token);
-                await Task.WhenAny(taskResult, Task.Delay(TimeSpan.FromSeconds(5))).ConfigureAwait(false);
+                        //create a buffer write that will take a long time
+                        var data = Enumerable.Range(0, 100000000).Select(b => (byte)b).ToArray();
+                        token.Cancel();
+                        var taskResult = conn.WriteBytesAsync(socket, 6, new ArraySegment<byte>(data), token.Token);
+                        await Task.WhenAny(taskResult, Task.Delay(TimeSpan.FromSeconds(5))).ConfigureAwait(false);
 
-                Assert.That(taskResult.IsCanceled || !taskResult.IsFaulted, Is.True, "Task should have cancelled.");
+                        Assert.That(taskResult.IsCanceled || !taskResult.IsFaulted, Is.True, "Task should have cancelled.");
+                    }
+                } finally {
+                    conn.Dispose();
+                    await conn.Disposal;
+                }
             }
         }
 

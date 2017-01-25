@@ -105,7 +105,7 @@ namespace KafkaClient
                     topic = new FetchRequest.Topic(topic.TopicName, topic.PartitionId, topic.Offset, maxBytes);
                 }
             }
-            return response.Topics.SingleOrDefault()?.Messages?.ToImmutableList() ?? ImmutableList<Message>.Empty;
+            return response?.Topics?.SingleOrDefault()?.Messages?.ToImmutableList() ?? ImmutableList<Message>.Empty;
         }
 
         private class MessageBatch : IMessageBatch

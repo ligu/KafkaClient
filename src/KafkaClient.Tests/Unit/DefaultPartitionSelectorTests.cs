@@ -107,9 +107,9 @@ namespace KafkaClient.Tests.Unit
         {
             while (true)
             {
-                var key = Guid.NewGuid().ToString().ToIntSizedBytes();
+                var key = new ArraySegment<byte>(Guid.NewGuid().ToString().ToIntSizedBytes());
                 if ((Crc32Provider.ComputeHash(key) % 2) == partitionId)
-                    return new ArraySegment<byte>(key);
+                    return key;
             }
         }
 
