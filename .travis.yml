@@ -1,20 +1,54 @@
-language: csharp
-env: DOTNET_CLI_TELEMETRY_OPTOUT=1
-dist: trusty
-sudo: required
-addons:
-  hosts:
-  - kafka1: 40.112.218.47
+language: generic
 
-dotnet: 1.0.0-preview2-003121
+addons:
+  apt:
+    packages:
+    - gettext
+    - libcurl4-openssl-dev
+    - libicu-dev
+    - libssl-dev
+    - libunwind8
+    - zlib1g
+  hosts:
+    - kafka1: 40.112.218.47
+
+matrix:
+  include:
+    - os: linux
+      dist: trusty
+      sudo: required
+      env: 
+        - CONFIGURATION=Release
+        - VERSION=beta
+
+before_install:
+  # Install .NET CLI
+  - export DOTNET_SDK_URL="https://go.microsoft.com/fwlink/?LinkID=809129";
+  - export DOTNET_INSTALL_DIR="$PWD/.dotnetcli"
+  - mkdir $DOTNET_INSTALL_DIR
+  - curl -L $DOTNET_SDK_URL -o dotnet_package
+  - tar -xvzf dotnet_package -C $DOTNET_INSTALL_DIR
+
+  # Add dotnet to PATH
+  - export PATH="$DOTNET_INSTALL_DIR:$PATH"
 
 install:
+  # Display dotnet version info
+  - which dotnet;
+    if [ $? -eq 0 ]; then
+      echo "Using dotnet:";
+      dotnet --info;
+    else
+      echo "dotnet.exe not found"
+      exit 1;
+    fi
+
   - dotnet restore -v Minimal
 
 script:
-  - dotnet build -c Release src/KafkaClient --no-dependencies --no-incremental --version-suffix %APPVEYOR_BUILD_NUMBER%
-  - dotnet test -c Release src/KafkaClient.Tests --where "cat != Load && cat != Unit" --labels=Off --noheader --result=nunit3-results.xml;format=nunit3
+  - dotnet build -c $CONFIGURATION src/KafkaClient --no-dependencies --no-incremental --version-suffix $VERSION
+  - dotnet test -c $CONFIGURATION src/KafkaClient.Tests --where "cat != Load"
 
 after_success:
-  - dotnet pack -c Release src/KafkaClient --version-suffix beta -o artifacts 
+  - dotnet pack -c $CONFIGURATION src/KafkaClient --version-suffix $VERSION -o artifacts 
 
