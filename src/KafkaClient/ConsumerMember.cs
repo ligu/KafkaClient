@@ -287,7 +287,7 @@ namespace KafkaClient
 
             try {
                 await Task.WhenAny(_heartbeatTask, Task.Delay(TimeSpan.FromSeconds(1), CancellationToken.None)).ConfigureAwait(false);
-                var request = new LeaveGroupRequest(GroupId, MemberId, false);
+                var request = new LeaveGroupRequest(GroupId, MemberId);
                 await Router.SendAsync(request, GroupId, CancellationToken.None, retryPolicy: Configuration.GroupCoordinationRetry).ConfigureAwait(false);
             } catch (Exception ex) {
                 Log.Info(() => LogEvent.Create(ex));

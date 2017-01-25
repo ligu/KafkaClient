@@ -16,7 +16,7 @@ namespace KafkaClient.Protocol
     public class LeaveGroupRequest : Request, IRequest<LeaveGroupResponse>, IGroupMember, IEquatable<LeaveGroupRequest>
     {
         /// <inheritdoc />
-        public LeaveGroupRequest(string groupId, string memberId, bool awaitResponse = true) : base(ApiKeyRequestType.LeaveGroup, awaitResponse)
+        public LeaveGroupRequest(string groupId, string memberId) : base(ApiKeyRequestType.LeaveGroup)
         {
             GroupId = groupId;
             MemberId = memberId;

@@ -94,8 +94,8 @@ namespace KafkaClient.Connections
                     try {
                         await ConnectAsync(cancellation.Token).ConfigureAwait(false);
                         var item = asyncItem;
-                        _log.Info(() => LogEvent.Create($"Sending {request.ApiKey} (id {context.CorrelationId}, v {version.GetValueOrDefault()}, {item.RequestBytes.Count} bytes) to {Endpoint}"));
-                        _log.Debug(() => LogEvent.Create($"{request.ApiKey} -----> {Endpoint}\n{{ Context:{context.ToFormattedString()},\n  Request:{request.ToFormattedString()}}}"));
+                        _log.Info(() => LogEvent.Create($"Sending {request.ApiKey} (id {context.CorrelationId}, v{version.GetValueOrDefault()}, {item.RequestBytes.Count} bytes) to {Endpoint}"));
+                        _log.Debug(() => LogEvent.Create($"{request.ApiKey} -----> {Endpoint}\n{{Context:{context.ToFormattedString()},\n Request:{request.ToFormattedString()}}}"));
                         _configuration.OnWriting?.Invoke(Endpoint, request.ApiKey);
                         timer.Start();
                         var bytesWritten = await WriteBytesAsync(_socket, context.CorrelationId, asyncItem.RequestBytes, cancellationToken).ConfigureAwait(false);
@@ -115,7 +115,7 @@ namespace KafkaClient.Connections
             }
 
             var response = KafkaEncoder.Decode<T>(context, request.ApiKey, receivedBytes);
-            _log.Debug(() => LogEvent.Create($"{Endpoint} -----> {request.ApiKey}\n{{ Context:{context.ToFormattedString()},\n  Response:{response.ToFormattedString()}}}"));
+            _log.Debug(() => LogEvent.Create($"{Endpoint} -----> {request.ApiKey}\n{{Context:{context.ToFormattedString()},\n Response:{response.ToFormattedString()}}}"));
             return response;
         }
 
@@ -398,7 +398,7 @@ namespace KafkaClient.Connections
         {
             AsyncItem asyncItem;
             if (_requestsByCorrelation.TryRemove(correlationId, out asyncItem) || _timedOutRequestsByCorrelation.TryRemove(correlationId, out asyncItem)) {
-                _log.Info(() => LogEvent.Create($"Matched {asyncItem.RequestType} response (id {correlationId}, v {asyncItem.Context.ApiVersion.GetValueOrDefault()}, {expectedBytes}? bytes) from {Endpoint}"));
+                _log.Info(() => LogEvent.Create($"Matched {asyncItem.RequestType} response (id {correlationId}, v{asyncItem.Context.ApiVersion.GetValueOrDefault()}, {expectedBytes}? bytes) from {Endpoint}"));
                 return asyncItem;
             }
 
@@ -511,12 +511,12 @@ namespace KafkaClient.Connections
                     log.Debug(() => LogEvent.Create($"Received {ResponseStream.Length + KafkaEncoder.CorrelationSize} bytes (id {Context.CorrelationId})"));
                     return;
                 }
-                log.Debug(() => LogEvent.Create($"Received {RequestType} response (id {Context.CorrelationId}, v {Context.ApiVersion.GetValueOrDefault()}, {ResponseStream.Length + KafkaEncoder.CorrelationSize} bytes)"));
+                log.Debug(() => LogEvent.Create($"Received {RequestType} response (id {Context.CorrelationId}, v{Context.ApiVersion.GetValueOrDefault()}, {ResponseStream.Length + KafkaEncoder.CorrelationSize} bytes)"));
                 if (!ReceiveTask.TrySetResult(bytes)) {
                     log.Debug(
                         () => {
                             var result = KafkaEncoder.Decode<IResponse>(Context, RequestType, bytes);
-                            return LogEvent.Create($"Timed out -----> {RequestType} (timed out or otherwise errored in client)\n{{ Context:{Context.ToFormattedString()},\n  Response:{result.ToFormattedString()}}}");
+                            return LogEvent.Create($"Timed out -----> {RequestType} (timed out or otherwise errored in client)\n{{Context:{Context.ToFormattedString()},\n Response:{result.ToFormattedString()}}}");
                         });
                 }
             }
