@@ -201,7 +201,7 @@ namespace KafkaClient.Tests.Unit
         }
 
         [Test]
-        public async Task ShouldSkipPartiallyReadMessage()
+        public async Task ShouldFinishPartiallyReadMessage()
         {
             var mockLog = new MemoryLog();
             var bytesRead = 0;
@@ -215,31 +215,33 @@ namespace KafkaClient.Tests.Unit
                 // send size
                 var size = 200;
                 await server.SendDataAsync(size.ToBytes());
-                var randomizer = Randomizer.CreateRandomizer();
+                var random = new Random(42);
                 var firstBytes = new byte[99];
-                for (var i = 0; i < firstBytes.Length; i++)
-                {
-                    firstBytes[i] = randomizer.NextByte();
+                random.NextBytes(firstBytes);
+                var offset = 0;
+                var correlationId = 99;
+                foreach (var b in correlationId.ToBytes()) {
+                    firstBytes[offset++] = b;
                 }
 
                 // send half of payload
                 await server.SendDataAsync(firstBytes);
                 await TaskTest.WaitFor(() => bytesRead == firstBytes.Length);
 
-                Assert.That(mockLog.LogEvents.Count(e => e.Item1 == LogLevel.Warn && e.Item2.Message.StartsWith("Skipping")), Is.EqualTo(0));
+                Assert.That(mockLog.LogEvents.Count(e => e.Item1 == LogLevel.Warn && e.Item2.Message.StartsWith($"Unexpected response (id {correlationId}, {size}? bytes) from")), Is.EqualTo(1));
+                Assert.That(mockLog.LogEvents.Count(e => e.Item1 == LogLevel.Debug && e.Item2.Message.StartsWith($"Received {size} bytes (id {correlationId})")), Is.EqualTo(0));
 
                 server.DropConnection();
 
                 // send half of payload should be skipped
                 var lastBytes = new byte[size];
-                for (var i = 0; i < lastBytes.Length; i++)
-                {
-                    lastBytes[i] = randomizer.NextByte();
+                random.NextBytes(lastBytes);
+                while (!await server.SendDataAsync(lastBytes)) {
+                    // repeat until the connection is all up and working ...
                 }
-                await server.SendDataAsync(lastBytes);
                 await TaskTest.WaitFor(() => bytesRead >= size);
-
-                Assert.That(mockLog.LogEvents.Count(e => e.Item1 == LogLevel.Warn && e.Item2.Message.StartsWith($"Skipping {size - firstBytes.Length} bytes on")), Is.EqualTo(1));
+                var received = await TaskTest.WaitFor(() => mockLog.LogEvents.Count(e => e.Item1 == LogLevel.Debug && e.Item2.Message.StartsWith($"Received {size} bytes (id {correlationId})")) == 1);
+                Assert.True(received);
             }
         }
 
@@ -266,7 +268,8 @@ namespace KafkaClient.Tests.Unit
                 await TaskTest.WaitFor(() => receivedData);
 
                 // shortly after receivedData, but still after
-                await TaskTest.WaitFor(() => mockLog.LogEvents.Any(e => e.Item1 == LogLevel.Warn && e.Item2.Message == $"Unexpected response from {endpoint} with correlation id {correlationId} (not in request queue)."));
+                var found = await TaskTest.WaitFor(() => mockLog.LogEvents.Any(e => e.Item1 == LogLevel.Warn && e.Item2.Message == $"Unexpected response (id {correlationId}, 4? bytes) from {endpoint}"));
+                Assert.True(found);
             }
         }
 
@@ -560,9 +563,10 @@ namespace KafkaClient.Tests.Unit
                     await TaskTest.WaitFor(() => serverConnects == 2, 6000);
                     Assert.That(serverConnects, Is.EqualTo(2), "Socket should have reconnected.");
 
+                    await server.SendDataAsync(8.ToBytes());
                     await server.SendDataAsync(99.ToBytes());
-                    await TaskTest.WaitFor(() => clientBytesRead == 4, 1000);
-                    Assert.That(clientBytesRead, Is.AtLeast(4), "client should have read the 4 bytes.");
+                    await TaskTest.WaitFor(() => clientBytesRead == 8, 1000);
+                    Assert.That(clientBytesRead, Is.AtLeast(4), "client should have read the 8 bytes.");
                 }
             }
         }

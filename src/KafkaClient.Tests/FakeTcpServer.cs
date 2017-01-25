@@ -39,19 +39,21 @@ namespace KafkaClient.Tests
             _clientConnectionHandlerTask = Task.Run(StartHandlingClientRequestAsync, _disposeToken.Token);
         }
 
-        public Task SendDataAsync(byte[] data)
+        public Task<bool> SendDataAsync(byte[] data)
         {
             return SendDataAsync(new ArraySegment<byte>(data));
         }
 
-        public async Task SendDataAsync(ArraySegment<byte> data)
+        public async Task<bool> SendDataAsync(ArraySegment<byte> data)
         {
             try {
                 await _semaphoreSlim.WaitAsync();
-                _log.Info(() => LogEvent.Create($"FAKE Server: writing {data.Count} bytes."));
+                _log.Debug(() => LogEvent.Create($"FAKE Server: writing {data.Count} bytes."));
                 await _client.GetStream().WriteAsync(data.Array, data.Offset, data.Count).ConfigureAwait(false);
+                return true;
             } catch (Exception ex) {
-                _log.Error(LogEvent.Create(ex));
+                _log.Info(() => LogEvent.Create(ex));
+                return false;
             } finally {
                 _semaphoreSlim.Release();
             }
@@ -76,10 +78,10 @@ namespace KafkaClient.Tests
         private async Task StartHandlingClientRequestAsync()
         {
             while (!_disposeToken.IsCancellationRequested) {
-                _log.Info(() => LogEvent.Create("FAKE Server: Accepting clients."));
+                _log.Debug(() => LogEvent.Create("FAKE Server: Accepting clients."));
                 _client = await _listener.AcceptTcpClientAsync();
 
-                _log.Info(() => LogEvent.Create("FAKE Server: Connected client"));
+                _log.Debug(() => LogEvent.Create("FAKE Server: Connected client"));
                 _clientConnectedTrigger.TrySetResult(true);
                 Interlocked.Increment(ref ConnectionEventcount);
                 OnClientConnected?.Invoke();
@@ -98,10 +100,12 @@ namespace KafkaClient.Tests
                         }
                     }
                 } catch (Exception ex) {
-                    _log.Error(LogEvent.Create(ex, "FAKE Server: Client exception..."));
+                    if (!(ex is OperationCanceledException)) {
+                        _log.Debug(() => LogEvent.Create(ex, "FAKE Server: Client exception..."));
+                    }
                 }
 
-                _log.Warn(() => LogEvent.Create("FAKE Server: Client Disconnected."));
+                _log.Debug(() => LogEvent.Create("FAKE Server: Client Disconnected."));
                 await _semaphoreSlim.WaitAsync(_disposeToken.Token); //remove the one client
                 _clientConnectedTrigger = new TaskCompletionSource<bool>();
                 Interlocked.Increment(ref DisconnectionEventCount);

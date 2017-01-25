@@ -496,6 +496,7 @@ namespace KafkaClient
                 _memberAssignmentCache.AddOrUpdate(request.GroupId, value, (key, old) => value);
             }
 
+            Log.Info(() => LogEvent.Create($"Group {request.GroupId} syncing member {request.MemberId}"));
             return this.SendAsync(request, request.GroupId, cancellationToken, context, retryPolicy); 
         }
 

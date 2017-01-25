@@ -23,7 +23,7 @@ namespace KafkaClient.Connections
     public class Connection : IConnection
     {
         private readonly ConcurrentDictionary<int, AsyncItem> _requestsByCorrelation = new ConcurrentDictionary<int, AsyncItem>();
-        private readonly ConcurrentDictionary<int, Tuple<ApiKeyRequestType, IRequestContext>> _timedOutRequestsByCorrelation = new ConcurrentDictionary<int, Tuple<ApiKeyRequestType, IRequestContext>>();
+        private readonly ConcurrentDictionary<int, AsyncItem> _timedOutRequestsByCorrelation = new ConcurrentDictionary<int, AsyncItem>();
         private readonly ILog _log;
         private Socket _socket;
         private readonly IConnectionConfiguration _configuration;
@@ -113,7 +113,7 @@ namespace KafkaClient.Connections
                 }
             }
 
-            var response = KafkaEncoder.Decode<T>(context, request.ApiKey, receivedBytes.Skip(KafkaEncoder.CorrelationSize));
+            var response = KafkaEncoder.Decode<T>(context, request.ApiKey, receivedBytes);
             _log.Debug(() => LogEvent.Create($"{Endpoint} -----> {request.ApiKey}\n: Context:{context.ToFormattedString()}\n: Response:{response.ToFormattedString()}"));
             return response;
         }
@@ -175,38 +175,34 @@ namespace KafkaClient.Connections
             try {
                 var buffer = new byte[_configuration.ReadBufferSize];
                 var header = new byte[KafkaEncoder.ResponseHeaderSize];
-                var bytesToSkip = 0;
-                var responseSize = 0;
+                AsyncItem asyncItem = null;
                 // use backoff so we don't take over the CPU when there's a failure
                 await new BackoffRetry(null, TimeSpan.FromMilliseconds(5), maxDelay: TimeSpan.FromSeconds(5)).AttemptAsync(
                     async attempt => {
                         var socket = await ConnectAsync(_disposeToken.Token).ConfigureAwait(false);
 
-                        if (bytesToSkip > 0) {
-                            _log.Warn(() => LogEvent.Create($"Skipping {bytesToSkip} bytes on {Endpoint} because of partial read"));
-                            await ReadBytesAsync(socket, buffer, bytesToSkip, bytesRead => bytesToSkip -= bytesRead, _disposeToken.Token).ConfigureAwait(false);
-                        }
-
-                        if (responseSize == 0) {
+                        if (asyncItem == null) {
                             var headerOffset = 0;
-                            await ReadBytesAsync(socket, buffer, KafkaEncoder.IntegerByteSize, bytesRead =>
-                            {
-                                Buffer.BlockCopy(buffer, 0, header, headerOffset, bytesRead);
-                                headerOffset += bytesRead;
+                            await ReadBytesAsync(socket, buffer, KafkaEncoder.ResponseHeaderSize, bytesRead => {
+                                for (var i = 0; i < bytesRead; i++) {
+                                    header[headerOffset++] = buffer[i];
+                                }
                             }, _disposeToken.Token).ConfigureAwait(false);
-                            responseSize = BitConverter.ToInt32(header, 0).ToBigEndian();
-                            // TODO: read correlation id at this point too, and do association before the rest of the read ?
+                            var responseSize = BitConverter.ToInt32(header, 0).ToBigEndian();
+                            var correlationId = BitConverter.ToInt32(header, KafkaEncoder.IntegerByteSize).ToBigEndian();
+
+                            asyncItem = LookupByCorrelateId(correlationId, responseSize);
+                            if (asyncItem.ResponseStream != null) {
+                                _log.Error(LogEvent.Create($"Request id {correlationId} matched a previous response ({asyncItem.ResponseStream.Length + KafkaEncoder.CorrelationSize} of {asyncItem.ResponseStream.Capacity + KafkaEncoder.CorrelationSize} bytes), now overwriting with {responseSize}? bytes"));
+                            }
+                            asyncItem.ResponseStream = new MemoryStream(responseSize - KafkaEncoder.CorrelationSize);
                         }
 
-                        var responseStream = new MemoryStream(responseSize);
-                        await ReadBytesAsync(socket, buffer, responseSize, bytesRead => responseStream.Write(buffer, 0, bytesRead), _disposeToken.Token).ConfigureAwait(false);
-                        responseSize = 0; // reset so we read the size next time through
+                        var currentitem = asyncItem;
+                        await ReadBytesAsync(socket, buffer, asyncItem.RemainingResponseBytes, bytesRead => currentitem.ResponseStream.Write(buffer, 0, bytesRead), _disposeToken.Token).ConfigureAwait(false);
+                        asyncItem.ResponseCompleted(_log);
+                        asyncItem = null;
 
-                        ArraySegment<byte> response;
-                        if (!responseStream.TryGetBuffer(out response)) {
-                            response = new ArraySegment<byte>(responseStream.ToArray());
-                        }
-                        CorrelatePayloadToRequest(response);
                         if (attempt > 0) {
                             _log.Info(() => LogEvent.Create($"Polling receive thread has recovered on {Endpoint}"));
                         }
@@ -216,18 +212,10 @@ namespace KafkaClient.Connections
                             throw exception.PrepareForRethrow();
                         }
 
-                        var partialException = exception as PartialReadException;
-                        if (partialException != null) {
-                            if (responseSize > 0) {
-                                _log.Warn(() => LogEvent.Create($"Polling failure on {Endpoint} receive {partialException.BytesRead} of {partialException.ReadSize}"));
-                                bytesToSkip = partialException.ReadSize - partialException.BytesRead;
-                                responseSize = 0;
-                            }
-                            exception = partialException.InnerException;
-                        } else if (exception is ConnectionException) {
-                            // reset bytesToSkip when connection fails (and socket is recreated)
-                            bytesToSkip = 0;
-                        }
+                        // when reconnecting, will the data continue to stream or start again??
+                        //if (exception is ConnectionException) {
+                        //    asyncItem = null;
+                        //}
 
                         if (attempt == 0) {
                             _log.Error(LogEvent.Create(exception,  $"Polling failure on {Endpoint} attempt {attempt} delay {delay}"));
@@ -324,14 +312,14 @@ namespace KafkaClient.Connections
                         },
                         (ex, attempt, retry) =>
                         {
-                            if (ex is ObjectDisposedException) {
-                                if (_disposeToken.IsCancellationRequested) throw ex.PrepareForRethrow();
+                            if (_disposeToken.IsCancellationRequested) throw new ObjectDisposedException(nameof(Connection), ex);
+                            _log.Warn(() => LogEvent.Create(ex, $"Failed connection to {Endpoint}: Will retry in {retry}"));
 
+                            if (ex is ObjectDisposedException) {
                                 DisposeSocket(socket);
-                                _log.Info(() => LogEvent.Create(ex, $"Creating new socket to {Endpoint}"));
+                                _log.Info(() => LogEvent.Create($"Creating new socket to {Endpoint}"));
                                 socket = CreateSocket();
                             }
-                            _log.Warn(() => LogEvent.Create(ex, $"Failed connection to {Endpoint}: Will retry in {retry}"));
                         },
                         (ex, attempt) =>
                         {
@@ -365,8 +353,7 @@ namespace KafkaClient.Connections
 
                     if (bytesRead <= 0 && socket.Available == 0) {
                         DisposeSocket(socket);
-                        Exception ex = new ConnectionException(Endpoint);
-                        if (totalBytesRead > 0) ex = new PartialReadException(totalBytesRead, bytesToRead, ex);
+                        var ex = new ConnectionException(Endpoint);
                         _configuration.OnDisconnected?.Invoke(Endpoint, ex);
                         throw ex;
                     }
@@ -417,33 +404,16 @@ namespace KafkaClient.Connections
 
         #region Correlation
 
-        private void CorrelatePayloadToRequest(ArraySegment<byte> bytes)
+        private AsyncItem LookupByCorrelateId(int correlationId, int expectedBytes)
         {
-            if (bytes.Count < KafkaEncoder.CorrelationSize) return;
-            var correlationId = BitConverter.ToInt32(bytes.Array, bytes.Offset).ToBigEndian();
-
             AsyncItem asyncItem;
-            if (_requestsByCorrelation.TryRemove(correlationId, out asyncItem)) {
-                var requestType = asyncItem.RequestType;
-                var context = asyncItem.Context;
-                _log.Info(() => LogEvent.Create($"Matched {requestType} response (id {correlationId}, v {context.ApiVersion.GetValueOrDefault()}, {bytes.Count} bytes) from {Endpoint}"));
-                asyncItem.ReceiveTask.TrySetResult(bytes);
-            } else {
-                Tuple<ApiKeyRequestType, IRequestContext> requestInfo;
-                if (_timedOutRequestsByCorrelation.TryRemove(correlationId, out requestInfo)) {
-                    var requestType = requestInfo.Item1;
-                    var context = requestInfo.Item2;
-                    try {
-                        _log.Warn(() => LogEvent.Create($"Unexpected {requestType} response (id {correlationId}, {bytes.Count} bytes) from {Endpoint}"));
-                        var result = KafkaEncoder.Decode<IResponse>(context, requestType, bytes.Skip(KafkaEncoder.CorrelationSize));
-                        _log.Debug(() => LogEvent.Create($"{Endpoint} -----> {requestType} (not in request queue)\n: Context:{context.ToFormattedString()}\n: Response:{result.ToFormattedString()}"));
-                    } catch {
-                        // ignore, since this is mostly for debugging
-                    }
-                } else {
-                    _log.Warn(() => LogEvent.Create($"Unexpected response (id {correlationId}) from {Endpoint}"));
-                }
+            if (_requestsByCorrelation.TryRemove(correlationId, out asyncItem) || _timedOutRequestsByCorrelation.TryRemove(correlationId, out asyncItem)) {
+                _log.Info(() => LogEvent.Create($"Matched {asyncItem.RequestType} response (id {correlationId}, v {asyncItem.Context.ApiVersion.GetValueOrDefault()}, {expectedBytes}? bytes) from {Endpoint}"));
+                return asyncItem;
             }
+
+            _log.Warn(() => LogEvent.Create($"Unexpected response (id {correlationId}, {expectedBytes}? bytes) from {Endpoint}"));
+            return new AsyncItem(new RequestContext(correlationId), new UnknownRequest());
         }
 
         private const int OverflowGuard = int.MaxValue >> 1;
@@ -477,7 +447,7 @@ namespace KafkaClient.Connections
                 if (_timedOutRequestsByCorrelation.Count > 100) {
                     _timedOutRequestsByCorrelation.Clear();
                 }
-                _timedOutRequestsByCorrelation.TryAdd(correlationId, new Tuple<ApiKeyRequestType, IRequestContext>(request.RequestType, request.Context));
+                _timedOutRequestsByCorrelation.TryAdd(correlationId, request);
             }
 
             if (_disposeToken.IsCancellationRequested) {
@@ -499,6 +469,12 @@ namespace KafkaClient.Connections
             _disposeToken.Cancel(); // other final cleanup taken care of in DedicatedReceiveAsync
         }
 
+        private class UnknownRequest : IRequest
+        {
+            public bool ExpectResponse => true;
+            public ApiKeyRequestType ApiKey => ApiKeyRequestType.ApiVersions;
+        }
+
         private class AsyncItem : IDisposable
         {
             private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
@@ -508,7 +484,7 @@ namespace KafkaClient.Connections
             {
                 Context = context;
                 Request = request;
-                RequestBytes = KafkaEncoder.Encode(context, request);
+                RequestBytes = request is UnknownRequest ? new ArraySegment<byte>() : KafkaEncoder.Encode(context, request);
                 RequestType = request.ApiKey;
                 ReceiveTask = new TaskCompletionSource<ArraySegment<byte>>();
             }
@@ -518,6 +494,26 @@ namespace KafkaClient.Connections
             public ApiKeyRequestType RequestType { get; }
             public ArraySegment<byte> RequestBytes { get; }
             public TaskCompletionSource<ArraySegment<byte>> ReceiveTask { get; }
+            public MemoryStream ResponseStream { get; set; }
+            public int RemainingResponseBytes => ResponseStream.Capacity - (int)ResponseStream.Length;
+
+            public void ResponseCompleted(ILog log)
+            {
+                ArraySegment<byte> bytes;
+                ResponseStream.TryGetBuffer(out bytes);
+                if (Request is UnknownRequest) {
+                    log.Debug(() => LogEvent.Create($"Received {ResponseStream.Length + KafkaEncoder.CorrelationSize} bytes (id {Context.CorrelationId})"));
+                    return;
+                }
+                log.Debug(() => LogEvent.Create($"Received {RequestType} response (id {Context.CorrelationId}, v {Context.ApiVersion.GetValueOrDefault()}, {ResponseStream.Length + KafkaEncoder.CorrelationSize} bytes)"));
+                if (!ReceiveTask.TrySetResult(bytes)) {
+                    log.Debug(
+                        () => {
+                            var result = KafkaEncoder.Decode<IResponse>(Context, RequestType, bytes);
+                            return LogEvent.Create($"Timed out -----> {RequestType} (timed out or otherwise errored in client)\n: Context:{Context.ToFormattedString()}\n: Response:{result.ToFormattedString()}");
+                        });
+                }
+            }
 
             public void OnTimedOut(Action<AsyncItem, Exception> cleanupFunction, TimeSpan timeout)
             {
