@@ -26,7 +26,7 @@ namespace KafkaClient.Tests.Integration
         public ConsumerTests()
         {
             _config = new ConnectionConfiguration(ConnectionConfiguration.Defaults.ConnectionRetry(TimeSpan.FromSeconds(10)), requestTimeout: TimeSpan.FromSeconds(1));
-            _consumerConfig = new ConsumerConfiguration(maxPartitionFetchBytes: DefaultMaxMessageSetSize);
+            _consumerConfig = new ConsumerConfiguration(TimeSpan.FromMilliseconds(50), maxPartitionFetchBytes: DefaultMaxMessageSetSize);
             _options = new KafkaOptions(TestConfig.IntegrationUri, new ConnectionConfiguration(ConnectionConfiguration.Defaults.ConnectionRetry(TimeSpan.FromSeconds(10)), requestTimeout: TimeSpan.FromSeconds(10)), log: TestConfig.Log, consumerConfiguration: _consumerConfig);
         }
 
@@ -817,11 +817,13 @@ namespace KafkaClient.Tests.Integration
 
         private static async Task ProduceMessages(Router router, string topicName, string groupId, int totalMessages, IEnumerable<int> partitionIds = null)
         {
-            using (var producer = new Producer(router, new ProducerConfiguration(batchSize: totalMessages / 10, batchMaxDelay: TimeSpan.FromMilliseconds(25)))) {
+            var producer = new Producer(router, new ProducerConfiguration(batchSize: totalMessages / 10, batchMaxDelay: TimeSpan.FromMilliseconds(25), stopTimeout: TimeSpan.FromMilliseconds(50)));
+            await producer.UsingAsync(async () => {
+                var offsets = await router.GetTopicOffsetsAsync(topicName, CancellationToken.None);
+                await router.GetGroupBrokerIdAsync(groupId, CancellationToken.None);
                 foreach (var partitionId in partitionIds ?? new [] { 0 }) {
+                    var offset = offsets.SingleOrDefault(o => o.PartitionId == partitionId);
                     //await router.SendAsync(new GroupCoordinatorRequest(groupId), topicName, partitionId, CancellationToken.None).ConfigureAwait(false);
-                    var offset = await router.GetTopicOffsetAsync(topicName, partitionId, CancellationToken.None);
-                    await router.GetGroupBrokerIdAsync(groupId, CancellationToken.None);
                     var groupOffset = await router.GetTopicOffsetAsync(topicName, partitionId, groupId, CancellationToken.None);
 
                     var missingMessages = Math.Max(0, totalMessages + groupOffset.Offset - offset.Offset + 1);
@@ -834,7 +836,7 @@ namespace KafkaClient.Tests.Integration
                         await producer.SendMessagesAsync(messages, topicName, partitionId, CancellationToken.None);
                     }
                 }
-            }
+            });
         }
 
         [Test]

@@ -58,7 +58,7 @@ namespace KafkaClient
             /// <summary>
             /// The default value for <see cref="StopTimeout"/>
             /// </summary>
-            public const int DefaultStopTimeoutSeconds = 30;
+            public const int DefaultStopTimeoutSeconds = 5;
         }
     }
 }

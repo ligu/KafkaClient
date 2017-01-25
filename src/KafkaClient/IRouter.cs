@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading;
 using System.Threading.Tasks;
@@ -13,7 +12,7 @@ namespace KafkaClient
     /// <summary>
     /// Provides access to Brokers for a topic (and partition) as well as topic metadata.
     /// </summary>
-    public interface IRouter : IDisposable
+    public interface IRouter : IAsyncDisposable
     {
         /// <summary>
         /// Get a broker for a specific groupId, from the cache.

@@ -589,28 +589,42 @@ namespace KafkaClient
             } finally {
                 _allConnections = allConnections;
                 _brokerConnections = brokerConnections;
-                DisposeConnections(connectionsToDispose);
+                await DisposeConnectionsAsync(connectionsToDispose);
             }
         }
 
-        private void DisposeConnections(IEnumerable<IConnection> connections)
+        private async Task DisposeConnectionsAsync(IEnumerable<IConnection> connections)
         {
-            foreach (var connection in connections) {
-                using (connection) {
-                }
+            await Task.WhenAll(connections.Select(_ => _.DisposeAsync()));
+        }
+
+        private int _disposeCount = 0;
+        private readonly TaskCompletionSource<bool> _disposePromise = new TaskCompletionSource<bool>();
+
+        public async Task DisposeAsync()
+        {
+            if (Interlocked.Increment(ref _disposeCount) != 1) {
+                await _disposePromise.Task;
+                return;
+            }
+
+            try {
+                await DisposeConnectionsAsync(_allConnections.Values);
+                _connectionSemaphore.Dispose();
+                _groupSemaphore.Dispose();
+            } finally {
+                _disposePromise.TrySetResult(true);
             }
         }
 
-        private int _disposeCount;
 
         /// <inheritdoc />
         public void Dispose()
         {
-            if (Interlocked.Increment(ref _disposeCount) != 1) return;
-
-            DisposeConnections(_allConnections.Values);
-            _connectionSemaphore.Dispose();
-            _groupSemaphore.Dispose();
+#pragma warning disable 4014
+            // trigger, and set the promise appropriately
+            DisposeAsync();
+#pragma warning restore 4014
         }
 
         /// <inheritdoc />

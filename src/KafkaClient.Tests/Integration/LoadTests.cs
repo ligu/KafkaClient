@@ -62,7 +62,8 @@ namespace KafkaClient.Tests.Integration
             int timeoutInMs = Math.Max(100, totalMessages / 20);
             using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
-                    using (var producer = new Producer(router, new ProducerConfiguration(batchSize: totalMessages / 10, batchMaxDelay: TimeSpan.FromMilliseconds(25)))) {
+                    var producer = new Producer(router, new ProducerConfiguration(batchSize: totalMessages / 10, batchMaxDelay: TimeSpan.FromMilliseconds(25)));
+                    await producer.UsingAsync(async () => {
                         var offset = await producer.Router.GetTopicOffsetAsync(TestConfig.TopicName(), 0, CancellationToken.None);
 
                         var maxTimeToRun = TimeSpan.FromMilliseconds(timeoutInMs);
@@ -83,7 +84,7 @@ namespace KafkaClient.Tests.Integration
                         }
                         await doneSend;
                         TestConfig.Log.Info(() => LogEvent.Create($">> done send, time Milliseconds:{stopwatch.ElapsedMilliseconds}"));
-                    }
+                    });
                 });
             }
         }

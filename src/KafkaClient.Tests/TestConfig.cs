@@ -41,6 +41,7 @@ namespace KafkaClient.Tests
             IntegrationUri,
             new ConnectionConfiguration(new Retry(TimeSpan.FromSeconds(3), 3)),
             new RouterConfiguration(new Retry(null, 2)),
+            producerConfiguration: new ProducerConfiguration(stopTimeout: TimeSpan.FromSeconds(1)),
             consumerConfiguration: new ConsumerConfiguration(heartbeatTimeout: TimeSpan.FromSeconds(10)),
             log: Log);
     }

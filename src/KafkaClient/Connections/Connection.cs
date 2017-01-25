@@ -189,7 +189,7 @@ namespace KafkaClient.Connections
                                 for (var i = 0; i < bytesRead; i++) {
                                     header[headerOffset++] = buffer[i];
                                 }
-                            }, _disposeToken.Token).ConfigureAwait(false);
+                            }, CancellationToken.None).ConfigureAwait(false);
                             var responseSize = BitConverter.ToInt32(header, 0).ToBigEndian();
                             var correlationId = BitConverter.ToInt32(header, KafkaEncoder.IntegerByteSize).ToBigEndian();
 
@@ -201,7 +201,7 @@ namespace KafkaClient.Connections
                         }
 
                         var currentitem = asyncItem;
-                        await ReadBytesAsync(socket, buffer, asyncItem.RemainingResponseBytes, bytesRead => currentitem.ResponseStream.Write(buffer, 0, bytesRead), _disposeToken.Token).ConfigureAwait(false);
+                        await ReadBytesAsync(socket, buffer, asyncItem.RemainingResponseBytes, bytesRead => currentitem.ResponseStream.Write(buffer, 0, bytesRead), CancellationToken.None).ConfigureAwait(false);
                         asyncItem.ResponseCompleted(_log);
                         asyncItem = null;
 
@@ -327,16 +327,21 @@ namespace KafkaClient.Connections
         {
             var timer = new Stopwatch();
             var totalBytesRead = 0;
-            var cancellation = CancellationTokenSource.CreateLinkedTokenSource(_disposeToken.Token, cancellationToken);
+            var token = _disposeToken.Token;
+            CancellationTokenSource cancellation = null;
+            if (cancellationToken.CanBeCanceled) {
+                cancellation = CancellationTokenSource.CreateLinkedTokenSource(_disposeToken.Token, cancellationToken);
+                token = cancellation.Token;
+            }
             try {
                 _configuration.OnReading?.Invoke(Endpoint, bytesToRead);
                 timer.Start();
-                while (totalBytesRead < bytesToRead && !cancellation.Token.IsCancellationRequested) {
+                while (totalBytesRead < bytesToRead && !token.IsCancellationRequested) {
                     var bytesRemaining = bytesToRead - totalBytesRead;
                     _log.Debug(() => LogEvent.Create($"Reading ({bytesRemaining}? bytes) from {Endpoint}"));
                     _configuration.OnReadingBytes?.Invoke(Endpoint, bytesRemaining);
                     var bytes = new ArraySegment<byte>(buffer, 0, Math.Min(buffer.Length, bytesRemaining));
-                    var bytesRead = await socket.ReceiveAsync(bytes, SocketFlags.None).ThrowIfCancellationRequested(cancellation.Token).ConfigureAwait(false);
+                    var bytesRead = await socket.ReceiveAsync(bytes, SocketFlags.None).ThrowIfCancellationRequested(token).ConfigureAwait(false);
                     totalBytesRead += bytesRead;
                     _configuration.OnReadBytes?.Invoke(Endpoint, bytesRemaining, bytesRead, timer.Elapsed);
                     _log.Debug(() => LogEvent.Create($"Read {bytesRead} bytes from {Endpoint}"));
@@ -357,7 +362,7 @@ namespace KafkaClient.Connections
                 if (_disposeToken.IsCancellationRequested) throw new ObjectDisposedException(nameof(Connection));
                 throw;
             } finally {
-                cancellation.Dispose();
+                cancellation?.Dispose();
             }
             return totalBytesRead;
         }
