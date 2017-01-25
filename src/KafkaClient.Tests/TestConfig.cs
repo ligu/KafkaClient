@@ -29,20 +29,14 @@ namespace KafkaClient.Tests
 
         public static int ServerPort()
         {
-            if (!_availablePort.HasValue) {
-                using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)) {
-                    socket.Bind(new IPEndPoint(IPAddress.Loopback, 0));
-                    _availablePort = ((IPEndPoint) socket.LocalEndPoint).Port;
-                }
+            using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)) {
+                socket.Bind(new IPEndPoint(IPAddress.Loopback, 0));
+                return ((IPEndPoint) socket.LocalEndPoint).Port;
             }
-
-            return _availablePort.Value;
         }
 
         //public static Uri IntegrationUri { get; } = new Uri("http://kafka1:9092");
         public static Uri IntegrationUri { get; } = new Uri("http://kafkaclient.westus.cloudapp.azure.com:9092");
-        private static int? _availablePort;
-
 
         public static KafkaOptions Options { get; } = new KafkaOptions(
             IntegrationUri,
