@@ -16,7 +16,6 @@ os: linux
 dist: trusty
 sudo: required
 env: 
-  - CONFIGURATION=Release
   - VERSION=beta
 
 before_install:
@@ -34,9 +33,9 @@ install:
   - dotnet restore -v Minimal
 
 script:
-  - dotnet build -c $CONFIGURATION -f netstandard1.3 src/KafkaClient --no-dependencies --no-incremental --version-suffix $VERSION
-  - dotnet test -c $CONFIGURATION src/KafkaClient.Tests --where "cat != Load"
+  - dotnet build -c Release -f netstandard1.3 src/KafkaClient --no-dependencies --no-incremental --version-suffix $VERSION
+  - dotnet test -c Release src/KafkaClient.Tests --where "cat != Load"
 
 after_success:
-  - dotnet pack -c $CONFIGURATION src/KafkaClient --version-suffix $VERSION -o artifacts 
+  - dotnet pack -c Release src/KafkaClient --version-suffix $VERSION -o artifacts 
 
