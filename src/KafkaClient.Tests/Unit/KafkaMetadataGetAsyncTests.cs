@@ -23,7 +23,6 @@ namespace KafkaClient.Tests.Unit
         public void Setup()
         {
             _log = new MemoryLog();
-            //_log = Substitute.ForPartsOf<MemoryLog>();
             _brokerRouter = Substitute.For<IRouter>();
             _brokerRouter.Log.ReturnsForAnyArgs(_log);
             _brokerRouter.Configuration.ReturnsForAnyArgs(new RouterConfiguration());

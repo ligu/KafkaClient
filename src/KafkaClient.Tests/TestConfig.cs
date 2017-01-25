@@ -1,4 +1,6 @@
 using System;
+using System.Net;
+using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using KafkaClient.Common;
 using KafkaClient.Connections;
@@ -17,21 +19,30 @@ namespace KafkaClient.Tests
             return $"{Environment.MachineName}-Group-{name}-{Guid.NewGuid():N}";
         }
 
-        // turned down to reduce log noise -- turn up if necessary
+        // turned down to reduce log noise -- turn up Level if necessary
         public static ILog Log = new ConsoleLog();
 
-        public static Uri ServerUri([CallerMemberName] string name = null)
+        public static Uri ServerUri()
         {
-            return new Uri($"http://localhost:{ServerPort(name)}");
+            return new Uri($"http://localhost:{ServerPort()}");
         }
 
-        public static int ServerPort([CallerMemberName] string name = null)
+        public static int ServerPort()
         {
-            return 10000 + (name ?? "").GetHashCode() % 100;
+            if (!_availablePort.HasValue) {
+                using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)) {
+                    socket.Bind(new IPEndPoint(IPAddress.Loopback, 0));
+                    _availablePort = ((IPEndPoint) socket.LocalEndPoint).Port;
+                }
+            }
+
+            return _availablePort.Value;
         }
 
         //public static Uri IntegrationUri { get; } = new Uri("http://kafka1:9092");
         public static Uri IntegrationUri { get; } = new Uri("http://kafkaclient.westus.cloudapp.azure.com:9092");
+        private static int? _availablePort;
+
 
         public static KafkaOptions Options { get; } = new KafkaOptions(
             IntegrationUri,
