@@ -305,7 +305,7 @@ namespace KafkaClient.Connections
                             if (_disposeToken.IsCancellationRequested) throw new ObjectDisposedException(nameof(Connection), ex);
                             _log.Warn(() => LogEvent.Create(ex, $"Failed connection to {Endpoint}: Will retry in {retry}"));
 
-                            if (ex is ObjectDisposedException) {
+                            if (ex is ObjectDisposedException || ex is PlatformNotSupportedException) {
                                 DisposeSocket(socket);
                                 _log.Info(() => LogEvent.Create($"Creating new socket to {Endpoint}"));
                                 socket = CreateSocket();
