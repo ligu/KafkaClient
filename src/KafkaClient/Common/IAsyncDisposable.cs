@@ -5,6 +5,6 @@ namespace KafkaClient.Common
 {
     public interface IAsyncDisposable : IDisposable
     {
-        Task Disposal { get; }
+        Task DisposeAsync();
     }
 }

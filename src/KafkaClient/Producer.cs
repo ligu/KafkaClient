@@ -17,8 +17,10 @@ namespace KafkaClient
     public class Producer : IProducer
     {
         private readonly bool _leaveRouterOpen;
-        public Task Disposal { get; private set; }
+
         private readonly CancellationTokenSource _disposeToken = new CancellationTokenSource();
+        private int _disposeCount = 0;
+        private readonly TaskCompletionSource<bool> _disposePromise = new TaskCompletionSource<bool>();
 
         private readonly AsyncProducerConsumerQueue<ProduceTask> _produceMessageQueue;
         private readonly SemaphoreSlim _produceRequestSemaphore;
@@ -94,7 +96,7 @@ namespace KafkaClient
         /// <inheritdoc />
         public async Task<IEnumerable<ProduceResponse.Topic>> SendMessagesAsync(IEnumerable<Message> messages, string topicName, ISendMessageConfiguration configuration, CancellationToken cancellationToken)
         {
-            if (Disposal != null) throw new ObjectDisposedException("Cannot send messages after Stopped or Disposed");
+            if (_disposeCount > 0) throw new ObjectDisposedException("Cannot send messages after Stopped or Disposed");
 
             var topic = await Router.GetTopicMetadataAsync(topicName, cancellationToken);
             var partitionedMessages =
@@ -122,7 +124,7 @@ namespace KafkaClient
                     try {
                         _batch = await GetNextBatchAsync().ConfigureAwait(false);
                         if (_batch.IsEmpty) {
-                            if (Disposal != null) {
+                            if (_disposeCount > 0) {
                                 break;
                             }
                         } else {
@@ -130,7 +132,7 @@ namespace KafkaClient
                                 var filteredBatch = _batch.Where(_ => _.Codec == codec).ToImmutableList();
                                 if (filteredBatch.IsEmpty) continue;
 
-                                Router.Log.Debug(() => LogEvent.Create($"Producer compiled batch({filteredBatch.Count}) on codec {codec}{(Disposal == null ? "" : ": producer is stopping")}"));
+                                Router.Log.Debug(() => LogEvent.Create($"Producer compiled batch({filteredBatch.Count}) on codec {codec}{(_disposeCount == 0 ? "" : ": producer is stopping")}"));
                                 var batchToken = filteredBatch[0].CancellationToken;
                                 if (filteredBatch.TrueForAll(p => p.CancellationToken == batchToken)) {
                                     using (var cancellation = CancellationTokenSource.CreateLinkedTokenSource(_disposeToken.Token, batchToken)) {
@@ -150,8 +152,7 @@ namespace KafkaClient
             } catch(Exception ex) { 
                 Router.Log.Warn(() => LogEvent.Create(ex, "Error during producer send"));
             } finally {
-                Dispose();
-                await Disposal.ConfigureAwait(false);
+                await DisposeAsync().ConfigureAwait(false);
                 Router.Log.Info(() => LogEvent.Create("Stopped sending from Producer"));
             }
         }
@@ -266,19 +267,28 @@ namespace KafkaClient
             }
         }
 
-        private async Task DisposeAsync()
+        public async Task DisposeAsync()
         {
-            Router.Log.Debug(() => LogEvent.Create("Disposing Producer"));
-            _produceMessageQueue.CompleteAdding(); // block incoming data
-            await Task.WhenAny(_sendTask, Task.Delay(Configuration.StopTimeout)).ConfigureAwait(false);
-            _disposeToken.Cancel();
+            if (Interlocked.Increment(ref _disposeCount) != 1) {
+                await _disposePromise.Task;
+                return;
+            }
 
-            using (_disposeToken) {
-                if (!_leaveRouterOpen) {
-                    using (Router) {
+            try {
+                Router.Log.Debug(() => LogEvent.Create("Disposing Producer"));
+                _produceMessageQueue.CompleteAdding(); // block incoming data
+                await Task.WhenAny(_sendTask, Task.Delay(Configuration.StopTimeout)).ConfigureAwait(false);
+                _disposeToken.Cancel();
+
+                using (_disposeToken) {
+                    if (!_leaveRouterOpen) {
+                        using (Router) {
+                        }
                     }
+                    _produceRequestSemaphore.Dispose();
                 }
-                _produceRequestSemaphore.Dispose();
+            } finally {
+                _disposePromise.TrySetResult(true);
             }
         }
 
@@ -287,11 +297,10 @@ namespace KafkaClient
         /// </summary>
         public void Dispose()
         {
-            lock (this) {
-                // skip multiple calls to dispose
-                if (Disposal != null) return;
-                Disposal = DisposeAsync(); // other final cleanup taken care of in _sendTask
-            }
+#pragma warning disable 4014
+            // trigger, and set the promise appropriately
+            DisposeAsync();
+#pragma warning restore 4014
         }
 
         private class ProduceTask : CancellableTask<ProduceResponse.Topic>

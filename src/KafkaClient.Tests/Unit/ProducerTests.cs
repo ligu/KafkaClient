@@ -375,8 +375,7 @@ namespace KafkaClient.Tests.Unit
             var router = Substitute.For<IRouter>();
 
             var producer = new Producer(router, new ProducerConfiguration(stopTimeout: TimeSpan.FromMilliseconds(5)), leaveRouterOpen: false);
-            using (producer) { }
-            await producer.Disposal;
+            await producer.UsingAsync(() => { });
             router.Received(1).Dispose();
         }
 
@@ -386,8 +385,7 @@ namespace KafkaClient.Tests.Unit
             var router = Substitute.For<IRouter>();
 
             var producer = new Producer(router, new ProducerConfiguration(stopTimeout: TimeSpan.FromMilliseconds(5)));
-            using (producer) { }
-            await producer.Disposal;
+            await producer.UsingAsync(() => { });
             router.DidNotReceive().Dispose();
         }
 

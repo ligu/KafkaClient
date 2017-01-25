@@ -1,11 +1,11 @@
-﻿using System;
-using System.Threading;
+﻿using System.Threading;
 using System.Threading.Tasks;
+using KafkaClient.Common;
 using KafkaClient.Protocol;
 
 namespace KafkaClient.Connections
 {
-    public interface IConnection : IDisposable
+    public interface IConnection : IAsyncDisposable
     {
         /// <summary>
         /// The unique ip/port endpoint of this connection.

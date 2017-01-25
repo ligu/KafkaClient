@@ -80,5 +80,10 @@ namespace KafkaClient.Tests
         {
             throw new NotImplementedException();
         }
+
+        public Task DisposeAsync()
+        {
+            return Task.FromResult(0);
+        }
     }
 }

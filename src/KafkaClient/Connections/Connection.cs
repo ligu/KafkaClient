@@ -29,7 +29,8 @@ namespace KafkaClient.Connections
         private readonly IConnectionConfiguration _configuration;
 
         private readonly CancellationTokenSource _disposeToken = new CancellationTokenSource();
-        public Task Disposal { get; private set; }
+        private int _disposeCount = 0;
+        private readonly TaskCompletionSource<bool> _disposePromise = new TaskCompletionSource<bool>();
 
         private readonly Task _receiveTask;
         protected int ActiveReaderCount;
@@ -230,8 +231,7 @@ namespace KafkaClient.Connections
             } catch (Exception ex) {
                 _log.Debug(() => LogEvent.Create(ex));
             } finally {
-                Dispose();
-                await Disposal.ConfigureAwait(false);
+                await DisposeAsync().ConfigureAwait(false);
                 Interlocked.Decrement(ref ActiveReaderCount);
                 _log.Info(() => LogEvent.Create($"Stopped receiving from {Endpoint}"));
             }
@@ -242,7 +242,7 @@ namespace KafkaClient.Connections
         private Socket CreateSocket()
         {
             if (Endpoint.Value == null) throw new ConnectionException(Endpoint);
-            if (Disposal != null) throw new ObjectDisposedException($"Connection to {Endpoint}");
+            if (_disposeCount > 0) throw new ObjectDisposedException($"Connection to {Endpoint}");
 
             return new Socket(Endpoint.Value.AddressFamily, SocketType.Stream, ProtocolType.Tcp) {
                 Blocking = false,
@@ -269,7 +269,7 @@ namespace KafkaClient.Connections
 
         internal async Task<Socket> ConnectAsync(CancellationToken cancellationToken)
         {
-            if (Disposal != null) throw new ObjectDisposedException(nameof(Connection));
+            if (_disposeCount > 0) throw new ObjectDisposedException(nameof(Connection));
 
             var existing = _socket;
             if (existing?.Connected ?? cancellationToken.IsCancellationRequested) return existing;
@@ -451,28 +451,36 @@ namespace KafkaClient.Connections
 
         #endregion
 
-        private async Task DisposeAsync()
+        public async Task DisposeAsync()
         {
-            _log.Debug(() => LogEvent.Create("Disposing Connection"));
-            _disposeToken.Cancel();
-            await Task.WhenAny(_receiveTask, Task.Delay(1000)).ConfigureAwait(false);
+            if (Interlocked.Increment(ref _disposeCount) != 1) {
+                await _disposePromise.Task;
+                return;
+            }
 
-            using (_disposeToken) {
-                DisposeSocket(_socket);
-                _connectSemaphore.Dispose();
-                _sendSemaphore.Dispose();
-                _versionSupportSemaphore.Dispose();
-                _timedOutRequestsByCorrelation.Clear();
+            try {
+                _log.Debug(() => LogEvent.Create("Disposing Connection"));
+                _disposeToken.Cancel();
+                await Task.WhenAny(_receiveTask, Task.Delay(1000)).ConfigureAwait(false);
+
+                using (_disposeToken) {
+                    DisposeSocket(_socket);
+                    _connectSemaphore.Dispose();
+                    _sendSemaphore.Dispose();
+                    _versionSupportSemaphore.Dispose();
+                    _timedOutRequestsByCorrelation.Clear();
+                }
+            } finally {
+                _disposePromise.TrySetResult(true);
             }
         }
 
         public void Dispose()
         {
-            lock (this) {
-                // skip multiple calls to dispose
-                if (Disposal != null) return;
-                Disposal = DisposeAsync(); // other final cleanup taken care of in DedicatedReceiveAsync
-            }
+#pragma warning disable 4014
+            // trigger, and set the promise appropriately
+            DisposeAsync();
+#pragma warning restore 4014
         }
 
         private class UnknownRequest : IRequest

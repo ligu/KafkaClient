@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -195,12 +196,15 @@ namespace KafkaClient
 
             var protocols = metadata?.Select(m => new JoinGroupRequest.GroupProtocol(m));
             var request = new JoinGroupRequest(groupId, Configuration.GroupHeartbeat, "", protocolType, protocols, Configuration.GroupRebalanceTimeout);
+            var timer = new Stopwatch();
+            timer.Start();
             var response = await Router.SendAsync(request, groupId, cancellationToken, retryPolicy: Configuration.GroupCoordinationRetry, context: new RequestContext(protocolType: protocolType)).ConfigureAwait(false);
+            timer.Stop();
             if (!response.ErrorCode.IsSuccess()) {
                 throw request.ExtractExceptions(response);
             }
 
-            return new ConsumerMember(this, request, response);
+            return new ConsumerMember(this, request, response, timer.Elapsed);
         }
     }
 }

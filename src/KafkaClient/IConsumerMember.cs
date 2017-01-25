@@ -1,12 +1,11 @@
-﻿using System;
-using System.Threading;
+﻿using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Common;
 using KafkaClient.Protocol;
 
 namespace KafkaClient
 {
-    public interface IConsumerMember : IGroupMember, IDisposable
+    public interface IConsumerMember : IGroupMember, IAsyncDisposable
     {
         int GenerationId { get; }
         bool IsLeader { get; }
