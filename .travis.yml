@@ -1,0 +1,20 @@
+language: csharp
+env: DOTNET_CLI_TELEMETRY_OPTOUT=1
+sudo: false
+cache: ccache
+
+dotnet: 1.0.0-preview2-003121
+install:
+  - dotnet restore -v Minimal
+
+script:
+  - dotnet build -c Release src/KafkaClient --no-dependencies --no-incremental --version-suffix %APPVEYOR_BUILD_NUMBER%
+  - dotnet test -c Release src/KafkaClient.Tests --where "cat != Load && cat != Unit" --labels=Off --noheader --result=nunit3-results.xml;format=nunit3
+
+after_success:
+  - dotnet pack -c Release src/KafkaClient --version-suffix beta -o artifacts 
+
+# environment
+addons:
+  hosts:
+  - kafka1: 40.112.218.47

@@ -162,7 +162,7 @@ namespace KafkaClient.Tests.Unit
             var memberId = Guid.NewGuid().ToString("N");
             var response = new JoinGroupResponse(ErrorResponseCode.None, 1, protocol.Name, memberId, memberId, new []{ new JoinGroupResponse.Member(memberId, new ConsumerProtocolMetadata("mine")) });
 
-            using (new ConsumerMember(consumer, request, response, TestConfig.Log)) {
+            using (new ConsumerMember(consumer, request, response, log: TestConfig.Log)) {
                 await Task.Delay(300);
             }
 
@@ -195,7 +195,7 @@ namespace KafkaClient.Tests.Unit
             var memberId = Guid.NewGuid().ToString("N");
             var response = new JoinGroupResponse(ErrorResponseCode.None, 1, protocol.Name, memberId, memberId, new []{ new JoinGroupResponse.Member(memberId, new ConsumerProtocolMetadata("mine")) });
 
-            using (new ConsumerMember(consumer, request, response, TestConfig.Log)) {
+            using (new ConsumerMember(consumer, request, response, log: TestConfig.Log)) {
                 await Task.Delay(300);
             }
 
@@ -224,7 +224,7 @@ namespace KafkaClient.Tests.Unit
             var memberId = Guid.NewGuid().ToString("N");
             var response = new JoinGroupResponse(ErrorResponseCode.None, 1, protocol.Name, "other" + memberId, memberId, new []{ new JoinGroupResponse.Member(memberId, new ConsumerProtocolMetadata("mine")) });
 
-            using (new ConsumerMember(consumer, request, response, TestConfig.Log)) {
+            using (new ConsumerMember(consumer, request, response, log: TestConfig.Log)) {
                 await Task.Delay(300);
             }
 
@@ -256,7 +256,7 @@ namespace KafkaClient.Tests.Unit
             var memberId = Guid.NewGuid().ToString("N");
             var response = new JoinGroupResponse(ErrorResponseCode.None, 1, protocol.Name, memberId, memberId, new []{ new JoinGroupResponse.Member(memberId, new ConsumerProtocolMetadata("mine")) });
 
-            using (new ConsumerMember(consumer, request, response, TestConfig.Log)) {
+            using (new ConsumerMember(consumer, request, response, log: TestConfig.Log)) {
                 await Task.Delay(totalMilliseconds);
             }
 
@@ -293,7 +293,7 @@ namespace KafkaClient.Tests.Unit
             var response = new JoinGroupResponse(ErrorResponseCode.None, 1, protocol.Name, memberId, memberId, new []{ new JoinGroupResponse.Member(memberId, new ConsumerProtocolMetadata("mine")) });
             lastHeartbeat = DateTimeOffset.UtcNow;
 
-            using (new ConsumerMember(consumer, request, response, TestConfig.Log)) {
+            using (new ConsumerMember(consumer, request, response, log: TestConfig.Log)) {
                 await Task.Delay(totalMilliseconds);
             }
 
@@ -322,7 +322,7 @@ namespace KafkaClient.Tests.Unit
             var memberId = Guid.NewGuid().ToString("N");
             var response = new JoinGroupResponse(ErrorResponseCode.None, 1, protocol.Name, memberId, memberId, new []{ new JoinGroupResponse.Member(memberId, new ConsumerProtocolMetadata("mine")) });
 
-            using (new ConsumerMember(consumer, request, response, TestConfig.Log)) {
+            using (new ConsumerMember(consumer, request, response, log: TestConfig.Log)) {
                 await Task.Delay(heartbeatMilliseconds * 3);
 
 #pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
