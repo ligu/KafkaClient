@@ -314,7 +314,7 @@ namespace KafkaClient.Connections
                         (ex, attempt) =>
                         {
                             _log.Warn(() => LogEvent.Create(ex, $"Failed connection to {Endpoint} on attempt {attempt}"));
-                            if (ex is SocketException) {
+                            if (ex is SocketException || ex is PlatformNotSupportedException) {
                                 throw new ConnectionException(Endpoint, ex);
                             }
                         },
