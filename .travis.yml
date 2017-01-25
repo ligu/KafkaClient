@@ -12,14 +12,12 @@ addons:
   hosts:
     - kafka1: 40.112.218.47
 
-matrix:
-  include:
-    - os: linux
-      dist: trusty
-      sudo: required
-      env: 
-        - CONFIGURATION=Release
-        - VERSION=beta
+os: linux
+dist: trusty
+sudo: required
+env: 
+  - CONFIGURATION=Release
+  - VERSION=beta
 
 before_install:
   # Install .NET CLI
@@ -33,20 +31,10 @@ before_install:
   - export PATH="$DOTNET_INSTALL_DIR:$PATH"
 
 install:
-  # Display dotnet version info
-  - which dotnet;
-    if [ $? -eq 0 ]; then
-      echo "Using dotnet:";
-      dotnet --info;
-    else
-      echo "dotnet.exe not found"
-      exit 1;
-    fi
-
   - dotnet restore -v Minimal
 
 script:
-  - dotnet build -c $CONFIGURATION src/KafkaClient --no-dependencies --no-incremental --version-suffix $VERSION
+  - dotnet build -c $CONFIGURATION -f netstandard1.3 src/KafkaClient --no-dependencies --no-incremental --version-suffix $VERSION
   - dotnet test -c $CONFIGURATION src/KafkaClient.Tests --where "cat != Load"
 
 after_success:
