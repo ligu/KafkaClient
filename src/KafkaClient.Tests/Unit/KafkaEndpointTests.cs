@@ -6,7 +6,6 @@ using NUnit.Framework;
 
 namespace KafkaClient.Tests.Unit
 {
-    [Category("Unit")]
     [TestFixture]
     public class KafkaEndpointTests
     {
