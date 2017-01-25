@@ -52,7 +52,7 @@ namespace KafkaClient.Tests.Unit
             [Values(0, 1, 2)] short version,
             [Values(0, 2, -1)] short acks, 
             [Values(0, 1000)] int timeoutMilliseconds, 
-            [Values("test", "a really long name, with spaces and punctuation!")] string topic, 
+            [Values("testTopic")] string topic, 
             [Values(1, 10)] int topicsPerRequest, 
             [Values(1, 5)] int totalPartitions, 
             [Values(3)] int messagesPerSet)
@@ -71,7 +71,7 @@ namespace KafkaClient.Tests.Unit
         public void ProduceResponse(
             [Values(0, 1, 2)] short version,
             [Values(-1, 0, 10000000)] long timestampMilliseconds, 
-            [Values("test", "a really long name, with spaces and punctuation!")] string topicName, 
+            [Values("testTopic")] string topicName, 
             [Values(1, 10)] int topicsPerRequest, 
             [Values(1, 5)] int totalPartitions, 
             [Values(
@@ -94,7 +94,7 @@ namespace KafkaClient.Tests.Unit
             [Values(0, 1, 2, 3)] short version,
             [Values(0, 100)] int maxWaitMilliseconds, 
             [Values(0, 64000)] int minBytes, 
-            [Values("test", "a really long name, with spaces and punctuation!")] string topic, 
+            [Values("testTopic")] string topic, 
             [Values(1, 10)] int topicsPerRequest, 
             [Values(1, 5)] int totalPartitions, 
             [Values(25600000)] int maxBytes)
@@ -111,7 +111,7 @@ namespace KafkaClient.Tests.Unit
         public void FetchResponse(
             [Values(0, 1, 2, 3)] short version,
             [Values(0, 1234)] int throttleTime,
-            [Values("test", "a really long name, with spaces and punctuation!")] string topicName, 
+            [Values("testTopic")] string topicName, 
             [Values(1, 10)] int topicsPerRequest, 
             [Values(1, 5)] int totalPartitions, 
             [Values(MessageCodec.CodecNone, MessageCodec.CodecGzip)] MessageCodec codec, 
@@ -150,7 +150,7 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public void OffsetsRequest(
             [Values(0, 1)] short version,
-            [Values("test", "a really long name, with spaces and punctuation!")] string topic, 
+            [Values("testTopic")] string topic, 
             [Values(1, 10)] int topicsPerRequest, 
             [Values(1, 5)] int totalPartitions, 
             [Values(-2, -1, 123456, 10000000)] long time,
@@ -169,7 +169,7 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public void OffsetsResponse(
             [Values(0, 1)] short version,
-            [Values("test", "a really long name, with spaces and punctuation!")] string topicName, 
+            [Values("testTopic")] string topicName, 
             [Values(1, 10)] int topicsPerRequest, 
             [Values(5)] int totalPartitions, 
             [Values(
@@ -193,7 +193,7 @@ namespace KafkaClient.Tests.Unit
 
         [Test]
         public void MetadataRequest(
-            [Values("test", "a really long name, with spaces and punctuation!")] string topic,
+            [Values("testTopic")] string topic,
             [Values(0, 1, 10)] int topicsPerRequest)
         {
             var topics = new List<string>();
@@ -209,7 +209,7 @@ namespace KafkaClient.Tests.Unit
         public void MetadataResponse(
             [Values(0, 1, 2)] short version,
             [Values(1, 15)] int brokersPerRequest,
-            [Values("test", "a really long name, with spaces and punctuation!")] string topicName,
+            [Values("testTopic")] string topicName,
             [Values(1, 10)] int topicsPerRequest,
             [Values(1, 5)] int partitionsPerTopic,
             [Values(
@@ -249,7 +249,7 @@ namespace KafkaClient.Tests.Unit
             [Values("group1", "group2")] string groupId,
             [Values(0, 5)] int generation,
             [Values(-1, 20000)] int retentionTime,
-            [Values("test", "a really long name, with spaces and punctuation!")] string topic,
+            [Values("testTopic")] string topic,
             [Values(1, 10)] int topicsPerRequest,
             [Values(5)] int maxPartitions,
             [Values(10)] int maxOffsets,
@@ -277,7 +277,7 @@ namespace KafkaClient.Tests.Unit
 
         [Test]
         public void OffsetCommitResponse(
-            [Values("test", "a really long name, with spaces and punctuation!")] string topicName,
+            [Values("testTopic")] string topicName,
             [Values(1, 10)] int topicsPerRequest,
             [Values(1, 5)] int partitionsPerTopic,
             [Values(
@@ -299,7 +299,7 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public void OffsetFetchRequest(
             [Values("group1", "group2")] string groupId,
-            [Values("test", "a really long name, with spaces and punctuation!")] string topic,
+            [Values("testTopic")] string topic,
             [Values(1, 10)] int topicsPerRequest,
             [Values(5)] int maxPartitions)
         {
@@ -314,7 +314,7 @@ namespace KafkaClient.Tests.Unit
 
         [Test]
         public void OffsetFetchResponse(
-            [Values("test", "a really long name, with spaces and punctuation!")] string topicName,
+            [Values("testTopic")] string topicName,
             [Values(1, 10)] int topicsPerRequest,
             [Values(1, 5)] int partitionsPerTopic,
             [Values(
@@ -764,7 +764,7 @@ namespace KafkaClient.Tests.Unit
 
         [Test]
         public void CreateTopicsRequest(
-            [Values("test", "a really long name, with spaces and punctuation!")] string topicName,
+            [Values("testTopic")] string topicName,
             [Values(1, 10)] int topicsPerRequest,
             [Values(1, 5)] int partitionsPerTopic,
             [Values(1, 3)] short replicationFactor,
@@ -789,7 +789,7 @@ namespace KafkaClient.Tests.Unit
 
         [Test]
         public void CreateTopicsExplicitRequest(
-            [Values("test", "a really long name, with spaces and punctuation!")] string topicName,
+            [Values("testTopic")] string topicName,
             [Values(1, 10)] int topicsPerRequest,
             [Values(1, 5)] int partitionsPerTopic,
             [Values(1, 3)] short replicationFactor,

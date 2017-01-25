@@ -494,7 +494,7 @@ namespace KafkaClient.Tests.Unit
                     Assert.That(buffer.ToInt32(), Is.EqualTo(firstMessage));
 
                     // Sending second message to receive...
-                    var send2 = (Task) server.SendDataAsync(new ArraySegment<byte>(Encoding.ASCII.GetBytes(secondMessage)));
+                    var send2 = server.SendDataAsync(new ArraySegment<byte>(Encoding.ASCII.GetBytes(secondMessage)));
                     var result = new MemoryStream();
                     await conn.ReadBytesAsync(socket, buffer, secondMessage.Length, _ => { result.Write(buffer, 0, _); }, CancellationToken.None);
                     Assert.That(Encoding.ASCII.GetString(result.ToArray(), 0, (int)result.Position), Is.EqualTo(secondMessage));
