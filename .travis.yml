@@ -1,5 +1,7 @@
 language: csharp
 env: DOTNET_CLI_TELEMETRY_OPTOUT=1
+dist: trusty
+sudo: required
 addons:
   hosts:
   - kafka1: 40.112.218.47
