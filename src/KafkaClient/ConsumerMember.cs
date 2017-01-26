@@ -119,11 +119,11 @@ namespace KafkaClient
             if (Interlocked.Increment(ref _activeHeartbeatCount) != 1) return;
 
             try {
+                Log.Info(() => LogEvent.Create($"Starting heartbeat for {{GroupId:{GroupId},MemberId:{MemberId}}}"));
                 var delay = _heartbeatDelay;
                 while (!_disposeToken.IsCancellationRequested) {
                     try {
                         await Task.Delay(delay, _disposeToken.Token).ConfigureAwait(false);
-                        Log.Info(() => LogEvent.Create($"{{GroupId:{GroupId},MemberId:{MemberId}}} heartbeat"));
                         var request = new HeartbeatRequest(GroupId, GenerationId, MemberId);
                         var response = await Router.SendAsync(request, GroupId, _disposeToken.Token, retryPolicy: Configuration.GroupCoordinationRetry).ConfigureAwait(false);
 
@@ -191,11 +191,11 @@ namespace KafkaClient
                     try {
                         if (!nextRequest.HasValue) {
                             var next = await _stateChangeQueue.DequeueAsync(_disposeToken.Token);
-                            Log.Info(() => LogEvent.Create($"{{GroupId:{GroupId},MemberId:{MemberId}}} needs update {next}"));
+                            Log.Info(() => LogEvent.Create($"Triggered {next} for {{GroupId:{GroupId},MemberId:{MemberId}}}"));
                             nextRequest = next;
                         }
                         var requestType = nextRequest;
-                        ErrorResponseCode response;
+                        var response = ErrorResponseCode.None;
                         switch (requestType) {
                             case ApiKeyRequestType.JoinGroup:
                                 response = await JoinGroupAsync(_disposeToken.Token).ConfigureAwait(false);
@@ -203,26 +203,28 @@ namespace KafkaClient
                                     nextRequest = ApiKeyRequestType.SyncGroup;
                                     continue;
                                 }
-                                if (TriggerStateChange(response)) break;
-                                if (response.IsRetryable()) continue;
                                 break;
 
                             case ApiKeyRequestType.SyncGroup:
                                 response = await SyncGroupAsync(_disposeToken.Token).ConfigureAwait(false);
-                                if (response.IsSuccess()) break;
-                                if (TriggerStateChange(response)) break;
-                                if (response.IsRetryable()) continue;
                                 break;
 
                             default:
-                                Log.Warn(() => LogEvent.Create($"{{GroupId:{GroupId},MemberId:{MemberId}}} ignoring unknown update {requestType}"));
+                                Log.Warn(() => LogEvent.Create($"Ignoring unknown {requestType} for {{GroupId:{GroupId},MemberId:{MemberId}}}"));
                                 break;
                         }
-                        nextRequest = null;
+
+                        if (!TriggerStateChange(response) && response.IsRetryable()) {
+                            await Task.Delay(25); // avoid spamming, but do retry same request
+                        } else {
+                            nextRequest = null;
+                        }
                     } catch (OperationCanceledException) { // cancellation token fired while attempting to get tasks: normal behavior
                     } catch (RequestException ex) {
                         Log.Info(() => LogEvent.Create(ex));
-                        TriggerStateChange(ex.ErrorCode);
+                        if (!TriggerStateChange(ex.ErrorCode) && ex.ErrorCode.IsRetryable()) {
+                            await Task.Delay(25); // avoid spamming, but do retry same request
+                        }
                     } catch (Exception ex) {
                         Log.Warn(() => LogEvent.Create(ex));
                     }
@@ -262,6 +264,9 @@ namespace KafkaClient
                     GenerationId = response.GenerationId;
                     _groupProtocol = response.GroupProtocol;
                     _memberMetadata = response.Members.ToImmutableDictionary(member => member.MemberId, member => member.Metadata);
+                    Log.Info(() => LogEvent.Create(GenerationId == 0 
+                        ? $"Consumer {MemberId} Joined {GroupId}"
+                        : $"Consumer {MemberId} Rejoined {GroupId} Generation{GenerationId}"));
                 }, _disposeToken.Token);
         }
 
@@ -337,7 +342,7 @@ namespace KafkaClient
                     await Task.WhenAny(_heartbeatTask, _stateChangeTask, Task.Delay(TimeSpan.FromSeconds(1), CancellationToken.None)).ConfigureAwait(false);
                     if (_leaveOnDispose) {
                         var request = new LeaveGroupRequest(GroupId, MemberId);
-                        await Router.SendAsync(request, GroupId, CancellationToken.None, retryPolicy: Configuration.GroupCoordinationRetry).ConfigureAwait(false);
+                        await Router.SendAsync(request, GroupId, CancellationToken.None, retryPolicy: new NoRetry()).ConfigureAwait(false);
                     }
                 } catch (Exception ex) {
                     Log.Info(() => LogEvent.Create(ex));

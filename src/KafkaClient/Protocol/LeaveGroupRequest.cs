@@ -17,6 +17,8 @@ namespace KafkaClient.Protocol
     {
         public override string ToString() => $"{{Api:{ApiKey},GroupId:{GroupId},MemberId:{MemberId}}}";
 
+        public override string ShortString() => $"{ApiKey} {GroupId} {MemberId}";
+
         /// <inheritdoc />
         public LeaveGroupRequest(string groupId, string memberId) : base(ApiKeyRequestType.LeaveGroup)
         {

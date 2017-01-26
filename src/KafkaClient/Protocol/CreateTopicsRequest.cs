@@ -24,6 +24,8 @@ namespace KafkaClient.Protocol
     {
         public override string ToString() => $"{{Api:{ApiKey},Topics:[{Topics.ToStrings()}],Timeout:{Timeout}}}";
 
+        public override string ShortString() => Topics.Count == 1 ? $"{ApiKey} {Topics[0].TopicName}" : ApiKey.ToString();
+
         public CreateTopicsRequest(params Topic[] topics)
             : this(topics, null)
         {

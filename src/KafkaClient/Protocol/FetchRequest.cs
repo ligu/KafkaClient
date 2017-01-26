@@ -40,6 +40,8 @@ namespace KafkaClient.Protocol
     {
         public override string ToString() => $"{{Api:{ApiKey},MaxWaitTime:{MaxWaitTime},MinBytes:{MinBytes},MaxBytes:{MaxBytes},Topics:[{Topics.ToStrings()}]}}";
 
+        public override string ShortString() => Topics.Count == 1 ? $"{ApiKey} {Topics[0].TopicName}" : ApiKey.ToString();
+
         public FetchRequest(Topic topic, TimeSpan? maxWaitTime = null, int? minBytes = null, int? maxBytes = null) 
             : this (new []{ topic }, maxWaitTime, minBytes, maxBytes)
         {

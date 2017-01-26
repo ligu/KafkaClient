@@ -497,7 +497,6 @@ namespace KafkaClient
                 _memberAssignmentCache.AddOrUpdate(request.GroupId, value, (key, old) => value);
             }
 
-            Log.Info(() => LogEvent.Create($"Syncing {{GroupId:{request.GroupId},MemberId:{request.MemberId}}}"));
             return this.SendAsync(request, request.GroupId, cancellationToken, context, retryPolicy); 
         }
 
@@ -609,6 +608,7 @@ namespace KafkaClient
             }
 
             try {
+                Log.Debug(() => LogEvent.Create("Disposing Router"));
                 await DisposeConnectionsAsync(_allConnections.Values);
                 _connectionSemaphore.Dispose();
                 _groupSemaphore.Dispose();

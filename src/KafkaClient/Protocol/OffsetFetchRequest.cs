@@ -20,6 +20,8 @@ namespace KafkaClient.Protocol
     {
         public override string ToString() => $"{{Api:{ApiKey},GroupId:{GroupId},Topics:[{Topics.ToStrings()}]}}";
 
+        public override string ShortString() => Topics.Count == 1 ? $"{ApiKey} {GroupId} {Topics[0].TopicName}" : $"{ApiKey} {GroupId}";
+
         public OffsetFetchRequest(string groupId, params TopicPartition[] topics) 
             : this(groupId, (IEnumerable<TopicPartition>)topics)
         {

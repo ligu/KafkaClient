@@ -15,6 +15,8 @@ namespace KafkaClient.Protocol
     {
         public override string ToString() => $"{{Api:{ApiKey},GroupId:{GroupId},MemberId:{MemberId},GenerationId:{GenerationId}}}";
 
+        public override string ShortString() => $"{ApiKey} {GroupId} {MemberId}";
+
         /// <inheritdoc />
         public HeartbeatRequest(string groupId, int generationId, string memberId) 
             : base(ApiKeyRequestType.Heartbeat, groupId, memberId, generationId)

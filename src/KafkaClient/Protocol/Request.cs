@@ -22,6 +22,8 @@ namespace KafkaClient.Protocol
 
         public override string ToString() => $"{{Api:{ApiKey}}}";
 
+        public virtual string ShortString() => ApiKey.ToString();
+
         #region Equals
 
         /// <inheritdoc />
