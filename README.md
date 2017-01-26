@@ -1,4 +1,4 @@
-KafkaNetClient
+KafkaClient
 =========
 
 Native C# client for Apache Kafka with full async support.
