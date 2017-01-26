@@ -20,6 +20,10 @@ namespace KafkaClient.Protocol
         /// </summary>
         public bool ExpectResponse { get; }
 
+        public override string ToString() => $"{{Api:{ApiKey}}}";
+
+        #region Equals
+
         /// <inheritdoc />
         public override bool Equals(object obj)
         {
@@ -51,5 +55,7 @@ namespace KafkaClient.Protocol
         {
             return !Equals(left, right);
         }
+
+        #endregion
     }
 }

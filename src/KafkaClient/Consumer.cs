@@ -14,7 +14,8 @@ namespace KafkaClient
 {
     public class Consumer : IConsumer
     {
-        private int _disposeCount;
+        private int _disposeCount = 0;
+        private readonly TaskCompletionSource<bool> _disposePromise = new TaskCompletionSource<bool>();
         private readonly bool _leaveRouterOpen;
 
         public Consumer(IRouter router, IConsumerConfiguration configuration = null, IImmutableDictionary<string, IMembershipEncoder> encoders = null, bool leaveRouterOpen = true)
@@ -179,14 +180,28 @@ namespace KafkaClient
             public Action OnDisposed { get; set; }
         }
 
+        public async Task DisposeAsync()
+        {
+            if (Interlocked.Increment(ref _disposeCount) != 1) {
+                await _disposePromise.Task;
+                return;
+            }
+
+            try {
+                Router.Log.Debug(() => LogEvent.Create("Disposing Consumer"));
+                if (_leaveRouterOpen) return;
+                await Router.DisposeAsync();
+            } finally {
+                _disposePromise.TrySetResult(true);
+            }
+        }
+
         public void Dispose()
         {
-            // skip multiple calls to dispose
-            if (Interlocked.Increment(ref _disposeCount) != 1) return;
-
-            if (_leaveRouterOpen) return;
-            using (Router) {
-            }
+#pragma warning disable 4014
+            // trigger, and set the promise appropriately
+            DisposeAsync();
+#pragma warning restore 4014
         }
 
         public async Task<IConsumerMember> JoinGroupAsync(string groupId, string protocolType, IEnumerable<IMemberMetadata> metadata, CancellationToken cancellationToken)

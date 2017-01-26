@@ -49,5 +49,7 @@ namespace KafkaClient.Protocol
 
         /// <inheritdoc />
         public ProduceRequestMessages OnProduceRequestMessages { get; }
+
+        public override string ToString() => $"{{id:{CorrelationId},version:{ApiVersion},client:{ClientId}}}";
     }
 }

@@ -70,7 +70,7 @@ namespace KafkaClient.Connections
                 var addresses = await Dns.GetHostAddressesAsync(hostname);
                 if (addresses.Length > 0) {
                     foreach (var address in addresses) {
-                        log?.Debug(() => LogEvent.Create($"Found address {address} for {hostname}"));
+                        log?.Verbose(() => LogEvent.Create($"Found address {address} for {hostname}"));
                     }
 
                     var selectedAddress = addresses.FirstOrDefault(item => item.AddressFamily == AddressFamily.InterNetwork) ?? addresses.First();

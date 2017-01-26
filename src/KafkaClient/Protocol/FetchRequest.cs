@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
+using System.Text;
 using KafkaClient.Common;
 
 namespace KafkaClient.Protocol
@@ -36,6 +38,8 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class FetchRequest : Request, IRequest<FetchResponse>, IEquatable<FetchRequest>
     {
+        public override string ToString() => $"{{Api:{ApiKey},MaxWaitTime:{MaxWaitTime},MinBytes:{MinBytes},MaxBytes:{MaxBytes},Topics:[{Topics.ToStrings()}]}}";
+
         public FetchRequest(Topic topic, TimeSpan? maxWaitTime = null, int? minBytes = null, int? maxBytes = null) 
             : this (new []{ topic }, maxWaitTime, minBytes, maxBytes)
         {
@@ -123,6 +127,8 @@ namespace KafkaClient.Protocol
 
         public class Topic : TopicPartition, IEquatable<Topic>
         {
+            public override string ToString() => $"{{TopicName:{TopicName},PartitionId:{PartitionId},FetchOffset:{Offset},MaxBytes:{MaxBytes}}}";
+
             public Topic(string topicName, int partitionId, long offset, int? maxBytes = null)
                 : base(topicName, partitionId)
             {

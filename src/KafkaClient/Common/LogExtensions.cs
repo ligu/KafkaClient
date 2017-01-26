@@ -5,6 +5,14 @@ namespace KafkaClient.Common
     public static class LogExtensions
     {
         /// <summary>
+        /// Record verbose information to the log.
+        /// </summary>
+        public static void Verbose(this ILog log, Func<LogEvent> producer)
+        {
+            log.Write(LogLevel.Verbose, producer);
+        }
+
+        /// <summary>
         /// Record debug information to the log.
         /// </summary>
         public static void Debug(this ILog log, Func<LogEvent> producer)

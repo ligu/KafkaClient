@@ -159,7 +159,7 @@ namespace KafkaClient.Protocol
         private static ArraySegment<byte> EncodeRequest(IRequestContext context, ProduceRequest request)
         {
             var totalCompressedBytes = 0;
-            var groupedPayloads = (from p in request.Payloads
+            var groupedPayloads = (from p in request.Topics
                                    group p by new
                                    {
                                        p.TopicName,
@@ -184,7 +184,7 @@ namespace KafkaClient.Protocol
                 }
 
                 var segment = writer.ToSegment();
-                context.OnProduceRequestMessages?.Invoke(request.Payloads.Sum(_ => _.Messages.Count), segment.Count, totalCompressedBytes);
+                context.OnProduceRequestMessages?.Invoke(request.Topics.Sum(_ => _.Messages.Count), segment.Count, totalCompressedBytes);
                 return segment;
             }
         }
@@ -299,7 +299,7 @@ namespace KafkaClient.Protocol
             using (var writer = EncodeHeader(context, request)) {
                 writer.Write(request.GroupId);
                 if (context.ApiVersion >= 1) {
-                    writer.Write(request.GroupGenerationId)
+                    writer.Write(request.GenerationId)
                           .Write(request.MemberId);
                 }
                 if (context.ApiVersion >= 2) {
@@ -393,7 +393,7 @@ namespace KafkaClient.Protocol
             using (var writer = EncodeHeader(context, request)) {
                 return writer
                     .Write(request.GroupId)
-                    .Write(request.GroupGenerationId)
+                    .Write(request.GenerationId)
                     .Write(request.MemberId)
                     .ToSegment();
             }
@@ -413,7 +413,7 @@ namespace KafkaClient.Protocol
         {
             using (var writer = EncodeHeader(context, request)) {
                 writer.Write(request.GroupId)
-                    .Write(request.GroupGenerationId)
+                    .Write(request.GenerationId)
                     .Write(request.MemberId)
                     .Write(request.GroupAssignments.Count);
 

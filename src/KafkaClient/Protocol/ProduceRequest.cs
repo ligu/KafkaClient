@@ -27,17 +27,19 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class ProduceRequest : Request, IRequest<ProduceResponse>, IEquatable<ProduceRequest>
     {
-        public ProduceRequest(Payload payload, TimeSpan? timeout = null, short acks = 1)
-            : this(new [] { payload }, timeout, acks)
+        public override string ToString() => $"{{Api:{ApiKey},RequiredAcks:{Acks},Timeout:{Timeout},Topics:[{Topics.ToStrings()}]}}";
+
+        public ProduceRequest(Topic topic, TimeSpan? timeout = null, short acks = 1)
+            : this(new [] { topic }, timeout, acks)
         {
         }
 
-        public ProduceRequest(IEnumerable<Payload> payload, TimeSpan? timeout = null, short acks = 1) 
+        public ProduceRequest(IEnumerable<Topic> payload, TimeSpan? timeout = null, short acks = 1) 
             : base(ApiKeyRequestType.Produce, acks != 0)
         {
             Timeout = timeout.GetValueOrDefault(TimeSpan.FromSeconds(1));
             Acks = acks;
-            Payloads = payload != null ? payload.ToImmutableList() : ImmutableList<Payload>.Empty;
+            Topics = payload != null ? payload.ToImmutableList() : ImmutableList<Topic>.Empty;
         }
 
         /// <summary>
@@ -53,7 +55,7 @@ namespace KafkaClient.Protocol
         /// <summary>
         /// Collection of payloads to post to kafka
         /// </summary>
-        public IImmutableList<Payload> Payloads { get; }
+        public IImmutableList<Topic> Topics { get; }
 
         #region Equality 
 
@@ -70,7 +72,7 @@ namespace KafkaClient.Protocol
             if (ReferenceEquals(this, other)) return true;
             return Timeout.Equals(other.Timeout) 
                 && Acks == other.Acks 
-                && Payloads.HasEqualElementsInOrder(other.Payloads);
+                && Topics.HasEqualElementsInOrder(other.Topics);
         }
 
         /// <inheritdoc />
@@ -79,7 +81,7 @@ namespace KafkaClient.Protocol
             unchecked {
                 var hashCode = Timeout.GetHashCode();
                 hashCode = (hashCode*397) ^ Acks.GetHashCode();
-                hashCode = (hashCode*397) ^ (Payloads?.GetHashCode() ?? 0);
+                hashCode = (hashCode*397) ^ (Topics?.GetHashCode() ?? 0);
                 return hashCode;
             }
         }
@@ -102,9 +104,11 @@ namespace KafkaClient.Protocol
         /// Buffer represents a collection of messages to be posted to a specified Topic on specified Partition.
         /// Included in <see cref="ProduceRequest"/>
         /// </summary>
-        public class Payload : TopicPartition, IEquatable<Payload>
+        public class Topic : TopicPartition, IEquatable<Topic>
         {
-            public Payload(string topicName, int partitionId, IEnumerable<Message> messages, MessageCodec codec = MessageCodec.CodecNone) 
+            public override string ToString() => $"{{TopicName:{TopicName},PartitionId:{PartitionId},Codec:{Codec},Messages:{Messages.Count}}}";
+
+            public Topic(string topicName, int partitionId, IEnumerable<Message> messages, MessageCodec codec = MessageCodec.CodecNone) 
                 : base(topicName, partitionId)
             {
                 Codec = codec;
@@ -119,11 +123,11 @@ namespace KafkaClient.Protocol
             /// <inheritdoc />
             public override bool Equals(object obj)
             {
-                return Equals(obj as Payload);
+                return Equals(obj as Topic);
             }
 
             /// <inheritdoc />
-            public bool Equals(Payload other)
+            public bool Equals(Topic other)
             {
                 if (ReferenceEquals(null, other)) return false;
                 if (ReferenceEquals(this, other)) return true;
@@ -144,13 +148,13 @@ namespace KafkaClient.Protocol
             }
 
             /// <inheritdoc />
-            public static bool operator ==(Payload left, Payload right)
+            public static bool operator ==(Topic left, Topic right)
             {
                 return Equals(left, right);
             }
 
             /// <inheritdoc />
-            public static bool operator !=(Payload left, Payload right)
+            public static bool operator !=(Topic left, Topic right)
             {
                 return !Equals(left, right);
             }

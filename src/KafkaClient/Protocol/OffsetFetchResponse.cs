@@ -18,6 +18,8 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class OffsetFetchResponse : IResponse, IEquatable<OffsetFetchResponse>
     {
+        public override string ToString() => $"{{Topics:[{Topics.ToStrings()}]}}";
+
         public OffsetFetchResponse(IEnumerable<Topic> topics = null)
         {
             Topics = ImmutableList<Topic>.Empty.AddNotNullRange(topics);
@@ -66,6 +68,8 @@ namespace KafkaClient.Protocol
 
         public class Topic : TopicResponse, IEquatable<Topic>
         {
+            public override string ToString() => $"{{TopicName:{TopicName},PartitionID:{PartitionId},Offset:{Offset},Metadata:{MetaData},ErrorCode:{ErrorCode}}}";
+
             public Topic(string topic, int partitionId, ErrorResponseCode errorCode, long offset, string metadata) 
                 : base(topic, partitionId, errorCode)
             {
@@ -120,12 +124,6 @@ namespace KafkaClient.Protocol
             }        
 
             #endregion
-
-            public override string ToString()
-            {
-                return $"[OffsetFetchResponse TopicName={TopicName}, PartitionID={PartitionId}, Offset={Offset}, Metadata={MetaData}, ErrorCode={ErrorCode}]";
-            }
         }
-
     }
 }

@@ -12,6 +12,8 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class DeleteTopicsRequest : Request, IRequest<DeleteTopicsResponse>, IEquatable<DeleteTopicsRequest>
     {
+        public override string ToString() => $"{{Api:{ApiKey},Topics:[{Topics.ToStrings()}],Timeout:{Timeout}}}";
+
         public DeleteTopicsRequest(params string[] topics)
             : this(topics, null)
         {
@@ -31,6 +33,8 @@ namespace KafkaClient.Protocol
         /// Values &lt;= 0 will trigger topic deletion and return immediately
         /// </summary>
         public TimeSpan Timeout { get; }
+
+        #region Equality
 
         public override bool Equals(object obj)
         {
@@ -65,5 +69,7 @@ namespace KafkaClient.Protocol
         {
             return !Equals(left, right);
         }
+
+        #endregion
     }
 }

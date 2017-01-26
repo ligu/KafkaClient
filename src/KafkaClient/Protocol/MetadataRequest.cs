@@ -13,6 +13,8 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class MetadataRequest : Request, IRequest<MetadataResponse>, IEquatable<MetadataRequest>
     {
+        public override string ToString() => $"{{Api:{ApiKey},TopicNames:[{Topics.ToStrings()}]}}";
+
         public MetadataRequest(string topic)
             : this (new []{topic})
         {
@@ -28,6 +30,8 @@ namespace KafkaClient.Protocol
         /// The list of topics to get metadata for.
         /// </summary>
         public IImmutableList<string> Topics { get; }
+
+        #region Equality
 
         /// <inheritdoc />
         public override bool Equals(object obj)
@@ -60,5 +64,7 @@ namespace KafkaClient.Protocol
         {
             return !Equals(left, right);
         }
+
+        #endregion
     }
 }

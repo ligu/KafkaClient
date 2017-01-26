@@ -27,6 +27,8 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class FetchResponse : IResponse, IEquatable<FetchResponse>
     {
+        public override string ToString() => $"{{ThrottleTime:{ThrottleTime},Topics:[{Topics.ToStrings()}]}}";
+
         public FetchResponse(IEnumerable<Topic> topics = null, TimeSpan? throttleTime = null)
         {
             Topics = ImmutableList<Topic>.Empty.AddNotNullRange(topics);
@@ -85,6 +87,8 @@ namespace KafkaClient.Protocol
 
         public class Topic : TopicResponse, IEquatable<Topic>
         {
+            public override string ToString() => $"{{TopicName:{TopicName},PartitionId:{PartitionId},ErrorCode:{ErrorCode},HighwaterMarkOffset:{HighWaterMark},Messages:{Messages.Count}}}";
+
             public Topic(string topic, int partitionId, long highWaterMark, ErrorResponseCode errorCode = ErrorResponseCode.None, IEnumerable<Message> messages = null)
                 : base(topic, partitionId, errorCode)
             {

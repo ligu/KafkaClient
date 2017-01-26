@@ -39,6 +39,8 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class MetadataResponse : IResponse, IEquatable<MetadataResponse>
     {
+        public override string ToString() => $"{{Brokers:[{Brokers.ToStrings()}],Topics:[{Topics.ToStrings()}],ClusterId:{ClusterId},ControllerId:{ControllerId}}}";
+
         public MetadataResponse(IEnumerable<Broker> brokers = null, IEnumerable<Topic> topics = null, int? controllerId = null, string clusterId = null)
         {
             Brokers = ImmutableList<Broker>.Empty.AddNotNullRange(brokers);
@@ -102,6 +104,8 @@ namespace KafkaClient.Protocol
 
         public class Topic : IEquatable<Topic>
         {
+            public override string ToString() => $"{{TopicName:{TopicName},ErrorCode:{ErrorCode},Partitions:[{Partitions.ToStrings()}],IsInternal:{IsInternal}}}";
+
             public Topic(string topicName, ErrorResponseCode errorCode = ErrorResponseCode.None, IEnumerable<Partition> partitions = null, bool? isInternal = null)
             {
                 ErrorCode = errorCode;
@@ -165,6 +169,8 @@ namespace KafkaClient.Protocol
 
         public class Partition : IEquatable<Partition>
         {
+            public override string ToString() => $"{{PartitionId:{PartitionId},ErrorCode:{ErrorCode},LeaderId:{LeaderId},Replicas:[{Replicas.ToStrings()}],Isr:[{Isrs.ToStrings()}]}}";
+
             public Partition(int partitionId, int leaderId, ErrorResponseCode errorCode = ErrorResponseCode.None, IEnumerable<int> replicas = null, IEnumerable<int> isrs = null)
             {
                 ErrorCode = errorCode;

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using KafkaClient.Common;
 
 namespace KafkaClient.Protocol
@@ -21,6 +22,8 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class CreateTopicsRequest : Request, IRequest<CreateTopicsResponse>, IEquatable<CreateTopicsRequest>
     {
+        public override string ToString() => $"{{Api:{ApiKey},Topics:[{Topics.ToStrings()}],Timeout:{Timeout}}}";
+
         public CreateTopicsRequest(params Topic[] topics)
             : this(topics, null)
         {
@@ -40,6 +43,8 @@ namespace KafkaClient.Protocol
         /// topic creation and return immediately
         /// </summary>
         public TimeSpan Timeout { get; }
+
+        #region Equality
 
         public override bool Equals(object obj)
         {
@@ -71,8 +76,12 @@ namespace KafkaClient.Protocol
             return !Equals(left, right);
         }
 
+        #endregion
+
         public class Topic : IEquatable<Topic>
         {
+            public override string ToString() => $"{{TopicName:{TopicName},Partitions:{NumberOfPartitions},ReplicationFactor:{ReplicationFactor},Replicas:[{ReplicaAssignments.ToStrings()}],Configs:{{{string.Join(",",Configs.Select(pair => $"{pair.Key}:{pair.Value}"))}}}}}";
+
             public Topic(string topicName, int numberOfPartitions, short replicationFactor, IEnumerable<KeyValuePair<string, string>> configs = null)
                 : this (topicName, configs)
             {
@@ -121,6 +130,8 @@ namespace KafkaClient.Protocol
             /// </summary>
             public IImmutableDictionary<string, string> Configs { get; }
 
+            #region Equality
+
             public override bool Equals(object obj)
             {
                 return Equals(obj as Topic);
@@ -158,10 +169,14 @@ namespace KafkaClient.Protocol
             {
                 return !Equals(left, right);
             }
+
+            #endregion
         }
 
         public class ReplicaAssignment : IEquatable<ReplicaAssignment>
         {
+            public override string ToString() => $"{{PartitionId:{PartitionId},Replicas:[{Replicas.ToStrings()}]}}";
+
             public ReplicaAssignment(int partitionId, IEnumerable<int> replicas = null)
             {
                 PartitionId = partitionId;
@@ -175,6 +190,8 @@ namespace KafkaClient.Protocol
             /// The first replica in the list is the preferred leader.
             /// </summary>
             public IImmutableList<int> Replicas { get; }
+
+            #region Equality
 
             public override bool Equals(object obj)
             {
@@ -205,6 +222,8 @@ namespace KafkaClient.Protocol
             {
                 return !Equals(left, right);
             }
+
+            #endregion
         }
     }
 }

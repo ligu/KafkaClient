@@ -24,6 +24,8 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class OffsetResponse : IResponse, IEquatable<OffsetResponse>
     {
+        public override string ToString() => $"{{Topics:[{Topics.ToStrings()}]}}";
+
         public OffsetResponse(Topic topic)
             : this(new[] {topic})
         {
@@ -77,6 +79,8 @@ namespace KafkaClient.Protocol
 
         public class Topic : TopicResponse, IEquatable<Topic>
         {
+            public override string ToString() => $"{{TopicName:{TopicName},PartitionId:{PartitionId},ErrorCode:{ErrorCode},Offset:{Offset}}}";
+
             public Topic(string topic, int partitionId, ErrorResponseCode errorCode = ErrorResponseCode.None, long offset = -1, DateTimeOffset? timestamp = null) 
                 : base(topic, partitionId, errorCode)
             {

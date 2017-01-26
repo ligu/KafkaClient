@@ -8,6 +8,8 @@ namespace KafkaClient.Protocol
 {
     public abstract class TopicsResponse : IResponse, IEquatable<TopicsResponse>
     {
+        public override string ToString() => $"{{Topics:[{Topics.ToStrings()}]}}";
+
         protected TopicsResponse(IEnumerable<Topic> topics = null)
         {
             Topics = ImmutableList<Topic>.Empty.AddNotNullRange(topics);
@@ -16,6 +18,8 @@ namespace KafkaClient.Protocol
 
         public IImmutableList<Topic> Topics { get; } 
         public IImmutableList<ErrorResponseCode> Errors { get; }
+
+        #region Equality
 
         public override bool Equals(object obj)
         {
@@ -44,8 +48,12 @@ namespace KafkaClient.Protocol
             return !Equals(left, right);
         }
 
+        #endregion
+
         public class Topic : IEquatable<Topic>
         {
+            public override string ToString() => $"{{TopicName:{TopicName},ErrorCode:{ErrorCode}}}";
+
             public Topic(string topicName, ErrorResponseCode errorCode)
             {
                 TopicName = topicName;
@@ -54,6 +62,8 @@ namespace KafkaClient.Protocol
 
             public string TopicName { get; }
             public ErrorResponseCode ErrorCode { get; }
+
+            #region Equality
 
             public override bool Equals(object obj)
             {
@@ -83,6 +93,8 @@ namespace KafkaClient.Protocol
             {
                 return !Equals(left, right);
             }
+
+            #endregion
         }
     }
 }

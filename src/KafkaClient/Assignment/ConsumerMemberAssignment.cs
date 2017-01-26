@@ -20,6 +20,8 @@ namespace KafkaClient.Assignment
     /// </summary>
     public class ConsumerMemberAssignment : IMemberAssignment, IEquatable<ConsumerMemberAssignment>
     {
+        public override string ToString() => $"{{Version:{Version},Assignments:[{PartitionAssignments.ToStrings()}],UserData:{UserData.Count}}}";
+
         private static readonly ArraySegment<byte> EmptySegment = new ArraySegment<byte>();
 
         public ConsumerMemberAssignment(IEnumerable<TopicPartition> partitionAssignments = null, short version = 0)
@@ -38,6 +40,8 @@ namespace KafkaClient.Assignment
         public IImmutableList<TopicPartition> PartitionAssignments { get; }
 
         public ArraySegment<byte> UserData { get; }
+
+        #region Equality
 
         /// <inheritdoc />
         public override bool Equals(object obj)
@@ -77,5 +81,7 @@ namespace KafkaClient.Assignment
         {
             return !Equals(left, right);
         }
+        
+        #endregion
     }
 }

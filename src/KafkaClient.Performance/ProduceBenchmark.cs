@@ -34,7 +34,7 @@ namespace KafkaClient.Performance
             Common.Compression.ZipLevel = Level;
             _request = new ProduceRequest(
                         Enumerable.Range(1, Partitions)
-                                  .Select(partitionId => new ProduceRequest.Payload(
+                                  .Select(partitionId => new ProduceRequest.Topic(
                                       "topic", 
                                       partitionId, 
                                       Enumerable.Range(1, Messages)

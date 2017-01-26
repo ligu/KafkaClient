@@ -16,6 +16,8 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class DescribeGroupsRequest : Request, IRequest<DescribeGroupsResponse>, IEquatable<DescribeGroupsRequest>
     {
+        public override string ToString() => $"{{Api:{ApiKey},GroupIds:[{GroupIds.ToStrings()}]}}";
+
         public DescribeGroupsRequest(params string[] groupIds) 
             : this((IEnumerable<string>) groupIds)
         {
@@ -28,6 +30,8 @@ namespace KafkaClient.Protocol
         }
 
         public IImmutableList<string> GroupIds { get; }
+
+        #region Equality
 
         /// <inheritdoc />
         public override bool Equals(object obj)
@@ -63,5 +67,7 @@ namespace KafkaClient.Protocol
         {
             return !Equals(left, right);
         }
+
+        #endregion
     }
 }

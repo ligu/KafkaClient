@@ -92,22 +92,26 @@ namespace KafkaClient.Tests.Unit
         //        }
 
         [Test]
-        public void EnsureConsumerDisposesRouter()
+        public async Task EnsureConsumerDisposesRouter()
         {
             var router = Substitute.For<IRouter>();
 
             var consumer = new Consumer(router, leaveRouterOpen: false);
-            using (consumer) { }
-            router.Received(1).Dispose();
+            await consumer.DisposeAsync();
+#pragma warning disable 4014
+            router.Received(1).DisposeAsync();
+#pragma warning restore 4014
         }
 
         [Test]
-        public void EnsureConsumerDoesNotDisposeRouter()
+        public async Task EnsureConsumerDoesNotDisposeRouter()
         {
             var router = Substitute.For<IRouter>();
-
             var consumer = new Consumer(router);
-            using (consumer) { }
+            await consumer.DisposeAsync();
+#pragma warning disable 4014
+            router.DidNotReceive().DisposeAsync();
+#pragma warning restore 4014
             router.DidNotReceive().Dispose();
         }
 
@@ -266,7 +270,7 @@ namespace KafkaClient.Tests.Unit
                                 if (c.GetMethodInfo().Name != nameof(Connection.SendAsync)) return false;
                                 var s = c.GetArguments()[0] as HeartbeatRequest;
                                 if (s == null) return false;
-                                return s.GroupId == request.GroupId && s.MemberId == memberId && s.GroupGenerationId == response.GenerationId;
+                                return s.GroupId == request.GroupId && s.MemberId == memberId && s.GenerationId == response.GenerationId;
                             }), Is.InRange(expectedHeartbeats - 1, expectedHeartbeats));
         }
 

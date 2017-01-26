@@ -6,9 +6,18 @@ namespace KafkaClient.Protocol
 {
     /// <summary>
     /// Message represents the data from a single event occurance.
+    /// Message => Crc MagicByte Attributes Key Value
+    ///   Crc => int32
+    ///   MagicByte => int8
+    ///   Attributes => int8
+    ///   Timestamp => int64
+    ///   Key => bytes
+    ///   Value => bytes
     /// </summary>
     public class Message : IEquatable<Message>
     {
+        public override string ToString() => $"{{KeySize:{Key.Count},ValueSize:{Value.Count},Offset:{Offset}}}";
+
         public Message(ArraySegment<byte> value, byte attribute, long offset = 0L, byte version = 0, DateTimeOffset? timestamp = null)
             : this(value, EmptySegment, attribute, offset, version, timestamp)
         {

@@ -19,9 +19,11 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class SyncGroupRequest : GroupRequest, IRequest<SyncGroupResponse>, IEquatable<SyncGroupRequest>
     {
+        public override string ToString() => $"{{Api:{ApiKey},GroupId:{GroupId},MemberId:{MemberId},GenerationId:{GenerationId},GroupAssignments:[{GroupAssignments.ToStrings()}]}}";
+
         /// <inheritdoc />
-        public SyncGroupRequest(string groupId, int groupGenerationId, string memberId, IEnumerable<GroupAssignment> groupAssignments = null) 
-            : base(ApiKeyRequestType.SyncGroup, groupId, memberId, groupGenerationId)
+        public SyncGroupRequest(string groupId, int generationId, string memberId, IEnumerable<GroupAssignment> groupAssignments = null) 
+            : base(ApiKeyRequestType.SyncGroup, groupId, memberId, generationId)
         {
             GroupAssignments = ImmutableList<GroupAssignment>.Empty.AddNotNullRange(groupAssignments);
         }
@@ -69,6 +71,8 @@ namespace KafkaClient.Protocol
 
         public class GroupAssignment : IEquatable<GroupAssignment>
         {
+            public override string ToString() => $"{{MemberId:{MemberId},MemberAssignment:{MemberAssignment}}}";
+
             public GroupAssignment(string memberId, IMemberAssignment memberAssignment)
             {
                 MemberId = memberId;
@@ -77,6 +81,8 @@ namespace KafkaClient.Protocol
 
             public string MemberId { get; }
             public IMemberAssignment MemberAssignment { get; }
+
+            #region Equality
 
             /// <inheritdoc />
             public override bool Equals(object obj)
@@ -112,7 +118,8 @@ namespace KafkaClient.Protocol
             {
                 return !Equals(left, right);
             }
-        }
 
+            #endregion
+        }
     }
 }

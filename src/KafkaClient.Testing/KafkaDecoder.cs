@@ -91,7 +91,7 @@ namespace KafkaClient.Testing
                 var acks = reader.ReadInt16();
                 var timeout = reader.ReadInt32();
 
-                var payloads = new List<ProduceRequest.Payload>();
+                var payloads = new List<ProduceRequest.Topic>();
                 var payloadCount = reader.ReadInt32();
                 for (var i = 0; i < payloadCount; i++) {
                     var topicName = reader.ReadString();
@@ -101,7 +101,7 @@ namespace KafkaClient.Testing
                         var partitionId = reader.ReadInt32();
                         var messages = reader.ReadMessages();
 
-                        payloads.Add(new ProduceRequest.Payload(topicName, partitionId, messages));
+                        payloads.Add(new ProduceRequest.Topic(topicName, partitionId, messages));
                     }
                 }
                 return new ProduceRequest(payloads, TimeSpan.FromMilliseconds(timeout), acks);

@@ -27,6 +27,8 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class OffsetRequest : Request, IRequest<OffsetResponse>, IEquatable<OffsetRequest>
     {
+        public override string ToString() => $"{{Api:{ApiKey},Topics:[{Topics.ToStrings()}]}}";
+
         public OffsetRequest(params Topic[] topics)
             : this((IEnumerable<Topic>)topics)
         {
@@ -78,6 +80,8 @@ namespace KafkaClient.Protocol
 
         public class Topic : TopicPartition, IEquatable<Topic>
         {
+            public override string ToString() => $"{{TopicName:{TopicName},PartitionId:{PartitionId},Timestamp:{Timestamp},MaxOffsets:{MaxOffsets}}}";
+
             public Topic(string topicName, int partitionId, long timestamp = LatestTime, int maxOffsets = DefaultMaxOffsets) : base(topicName, partitionId)
             {
                 Timestamp = timestamp;

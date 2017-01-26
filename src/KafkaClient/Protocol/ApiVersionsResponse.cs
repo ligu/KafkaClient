@@ -16,6 +16,8 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class ApiVersionsResponse : IResponse, IEquatable<ApiVersionsResponse>
     {
+        public override string ToString() => $"{{ErrorCode:{ErrorCode},Apis:[{SupportedVersions.ToStrings()}]}}";
+
         public ApiVersionsResponse(ErrorResponseCode errorCode = ErrorResponseCode.None, IEnumerable<VersionSupport> supportedVersions = null)
         {
             ErrorCode = errorCode;
@@ -73,6 +75,8 @@ namespace KafkaClient.Protocol
 
         public class VersionSupport : IEquatable<VersionSupport>
         {
+            public override string ToString() => $"{{ApiKey:{ApiKey},MinVersion:{MinVersion},MaxVersion:{MaxVersion}}}";
+
             public VersionSupport(ApiKeyRequestType apiKey, short minVersion, short maxVersion)
             {
                 ApiKey = apiKey;

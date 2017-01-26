@@ -26,6 +26,8 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class DescribeGroupsResponse : IResponse, IEquatable<DescribeGroupsResponse>
     {
+        public override string ToString() => $"{{Groups:[{Groups.ToStrings()}]}}";
+
         public DescribeGroupsResponse(IEnumerable<Group> groups)
         {
             Groups = ImmutableList<Group>.Empty.AddNotNullRange(groups);
@@ -74,6 +76,8 @@ namespace KafkaClient.Protocol
 
         public class Group : IEquatable<Group>
         {
+            public override string ToString() => $"{{ErrorCode:{ErrorCode},GroupId:{GroupId},State:{State},ProtocolType:{ProtocolType},Protocol:{Protocol},Members:[{Members.ToStrings()}]}}";
+
             public Group(ErrorResponseCode errorCode, string groupId, string state, string protocolType, string protocol, IEnumerable<Member> members)
             {
                 ErrorCode = errorCode;
@@ -239,6 +243,8 @@ namespace KafkaClient.Protocol
 
         public class Member : IEquatable<Member>
         {
+            public override string ToString() => $"{{MemberId:{MemberId},ClientId:{ClientId},ClientHost:{ClientHost},MemberMetadata:{MemberMetadata},MemberAssignment:{MemberAssignment}}}";
+
             public Member(string memberId, string clientId, string clientHost, IMemberMetadata memberMetadata, IMemberAssignment memberAssignment)
             {
                 MemberId = memberId;
@@ -272,6 +278,8 @@ namespace KafkaClient.Protocol
             /// The current assignment provided by the group leader (will only be present if the group is stable).
             /// </summary>
             public IMemberAssignment MemberAssignment { get; }
+
+            #region Equality
 
             /// <inheritdoc />
             public override bool Equals(object obj)
@@ -315,6 +323,8 @@ namespace KafkaClient.Protocol
             {
                 return !Equals(left, right);
             }
+
+            #endregion
         }
     }
 }

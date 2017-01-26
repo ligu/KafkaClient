@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.IO;
 using System.Linq;
 using System.Runtime.ExceptionServices;
 
@@ -29,6 +28,11 @@ namespace KafkaClient.Common
             // The code cannot ever get here. We just return a value to work around a badly-designed API (ExceptionDispatchInfo.Throw):
             //  https://connect.microsoft.com/VisualStudio/feedback/details/689516/exceptiondispatchinfo-api-modifications (http://www.webcitation.org/6XQ7RoJmO)
             return exception;
+        }
+
+        public static string ToStrings<T>(this IEnumerable<T> values)
+        {
+            return string.Join(",", values.Select(value => value.ToString()));
         }
 
         public static IImmutableList<T> AddNotNull<T>(this IImmutableList<T> list, T item) where T : class

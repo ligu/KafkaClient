@@ -8,6 +8,8 @@ namespace KafkaClient.Tests
 {
     public class ByteTypeAssignment : IMemberAssignment, IEquatable<ByteTypeAssignment>
     {
+        public override string ToString() => $"{{Length:{Bytes.Count},Assignments:[{PartitionAssignments.ToStrings()}]}}";
+
         public ByteTypeAssignment(ArraySegment<byte> bytes)
         {
             PartitionAssignments = ImmutableList<TopicPartition>.Empty;
@@ -15,6 +17,8 @@ namespace KafkaClient.Tests
         }
 
         public ArraySegment<byte> Bytes { get; }
+
+        #region Equality
 
         /// <inheritdoc />
         public override bool Equals(object obj)
@@ -26,7 +30,6 @@ namespace KafkaClient.Tests
         {
             return Bytes.GetHashCode();
         }
-
 
         public static bool operator ==(ByteTypeAssignment left, ByteTypeAssignment right)
         {
@@ -45,6 +48,8 @@ namespace KafkaClient.Tests
             if (ReferenceEquals(this, other)) return true;
             return Bytes.HasEqualElementsInOrder(other.Bytes);
         }
+
+        #endregion
 
         public IImmutableList<TopicPartition> PartitionAssignments { get; }
     }

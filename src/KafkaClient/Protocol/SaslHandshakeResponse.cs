@@ -12,6 +12,8 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class SaslHandshakeResponse : IResponse, IEquatable<SaslHandshakeResponse>
     {
+        public override string ToString() => $"{{ErrorCode:{ErrorCode},EnabledMechanisms:[{EnabledMechanisms.ToStrings()}]}}";
+
         public SaslHandshakeResponse(ErrorResponseCode errorCode, IEnumerable<string> enabledMechanisms = null)
         {
             ErrorCode = errorCode;
@@ -28,6 +30,8 @@ namespace KafkaClient.Protocol
         /// Array of mechanisms enabled in the server.
         /// </summary>
         public IImmutableList<string> EnabledMechanisms { get; }
+
+        #region Equality
 
         /// <inheritdoc />
         public override bool Equals(object obj)
@@ -63,5 +67,7 @@ namespace KafkaClient.Protocol
         {
             return !Equals(left, right);
         }
+        
+        #endregion
     }
 }

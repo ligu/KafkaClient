@@ -6,6 +6,8 @@ namespace KafkaClient.Tests
 {
     public class ByteTypeMetadata : IMemberMetadata, IEquatable<ByteTypeMetadata>
     {
+        public override string ToString() => $"{{Length:{Bytes.Count}}}";
+
         public ByteTypeMetadata(string assignmentStrategy, ArraySegment<byte> bytes)
         {
             Bytes = bytes;

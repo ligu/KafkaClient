@@ -16,6 +16,8 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class OffsetCommitResponse : IResponse, IEquatable<OffsetCommitResponse>
     {
+        public override string ToString() => $"{{Topics:[{Topics.ToStrings()}]}}";
+
         public OffsetCommitResponse(IEnumerable<TopicResponse> topics = null)
         {
             Topics = ImmutableList<TopicResponse>.Empty.AddNotNullRange(topics);
@@ -25,6 +27,8 @@ namespace KafkaClient.Protocol
         public IImmutableList<ErrorResponseCode> Errors { get; }
 
         public IImmutableList<TopicResponse> Topics { get; }
+
+        #region Equality
 
         /// <inheritdoc />
         public override bool Equals(object obj)
@@ -57,5 +61,7 @@ namespace KafkaClient.Protocol
         {
             return !Equals(left, right);
         }
+
+        #endregion
     }
 }

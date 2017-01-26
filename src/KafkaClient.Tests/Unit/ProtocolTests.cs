@@ -21,8 +21,8 @@ namespace KafkaClient.Tests.Unit
         public void InterfacesAreFormattedWithinProtocol()
         {
             var request = new SyncGroupRequest("group", 5, "member", new []{ new SyncGroupRequest.GroupAssignment("member", new ConsumerMemberAssignment(new []{ new TopicPartition("topic", 0), new TopicPartition("topic", 1) }))});
-            var formatted = request.ToFormattedString();
-            Assert.That(formatted.Contains("TopicName:'topic'"));
+            var formatted = request.ToString();
+            Assert.That(formatted.Contains("TopicName:topic"));
             Assert.That(formatted.Contains("PartitionId:1"));
         }
     }

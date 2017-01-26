@@ -15,6 +15,8 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class LeaveGroupRequest : Request, IRequest<LeaveGroupResponse>, IGroupMember, IEquatable<LeaveGroupRequest>
     {
+        public override string ToString() => $"{{Api:{ApiKey},GroupId:{GroupId},MemberId:{MemberId}}}";
+
         /// <inheritdoc />
         public LeaveGroupRequest(string groupId, string memberId) : base(ApiKeyRequestType.LeaveGroup)
         {
@@ -27,6 +29,8 @@ namespace KafkaClient.Protocol
 
         /// <inheritdoc />
         public string MemberId { get; }
+
+        #region Equality
 
         /// <inheritdoc />
         public override bool Equals(object obj)
@@ -66,5 +70,7 @@ namespace KafkaClient.Protocol
         {
             return !Equals(left, right);
         }
+        
+        #endregion
     }
 }

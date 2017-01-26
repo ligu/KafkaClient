@@ -10,6 +10,7 @@ namespace KafkaClient.Tests
         private readonly LogLevel? _minLevel;
         private static readonly ImmutableDictionary<LogLevel, string> _levels = ImmutableDictionary<LogLevel, string>
                 .Empty
+                .Add(LogLevel.Verbose, "v")
                 .Add(LogLevel.Debug, "d")
                 .Add(LogLevel.Info, "i")
                 .Add(LogLevel.Warn, "w")

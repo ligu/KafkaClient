@@ -8,6 +8,8 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class ApiVersionsRequest : Request, IRequest<ApiVersionsResponse>
     {
+        public override string ToString() => $"{{Api:{ApiKey}}}";
+
         public ApiVersionsRequest() 
             : base(ApiKeyRequestType.ApiVersions)
         {

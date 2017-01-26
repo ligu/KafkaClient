@@ -8,6 +8,8 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class SaslHandshakeRequest : Request, IRequest<SaslHandshakeResponse>, IEquatable<SaslHandshakeRequest>
     {
+        public override string ToString() => $"{{Api:{ApiKey},Mechanism:{Mechanism}}}";
+
         public SaslHandshakeRequest(string mechanism)
             : base(ApiKeyRequestType.SaslHandshake)
         {
@@ -18,6 +20,8 @@ namespace KafkaClient.Protocol
         /// SASL Mechanism chosen by the client.
         /// </summary>
         public string Mechanism { get; }
+
+        #region Equality
 
         /// <inheritdoc />
         public override bool Equals(object obj)
@@ -52,5 +56,7 @@ namespace KafkaClient.Protocol
         {
             return !Equals(left, right);
         }
+        
+        #endregion
     }
 }

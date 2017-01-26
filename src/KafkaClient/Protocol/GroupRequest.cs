@@ -5,13 +5,13 @@ namespace KafkaClient.Protocol
     public abstract class GroupRequest : Request, IGroupMember, IEquatable<GroupRequest>
     {
         /// <inheritdoc />
-        protected GroupRequest(ApiKeyRequestType apiKey, string groupId, string memberId, int groupGenerationId = 0, bool expectResponse = true) : base(apiKey, expectResponse)
+        protected GroupRequest(ApiKeyRequestType apiKey, string groupId, string memberId, int generationId = 0, bool expectResponse = true) : base(apiKey, expectResponse)
         {
             if (string.IsNullOrEmpty(groupId)) throw new ArgumentNullException(nameof(groupId));
 
             GroupId = groupId;
             MemberId = memberId;
-            GroupGenerationId = groupGenerationId;
+            GenerationId = generationId;
         }
 
         /// <inheritdoc />
@@ -29,7 +29,7 @@ namespace KafkaClient.Protocol
         /// completes, then it will have an old generationId, which will cause <see cref="ErrorResponseCode.IllegalGeneration"/> errors when included in 
         /// new requests.
         /// </summary>
-        public int GroupGenerationId { get; }
+        public int GenerationId { get; }
 
 
         /// <inheritdoc />
@@ -46,7 +46,7 @@ namespace KafkaClient.Protocol
             return base.Equals(other) 
                 && string.Equals(GroupId, other.GroupId) 
                 && string.Equals(MemberId, other.MemberId) 
-                && GroupGenerationId == other.GroupGenerationId;
+                && GenerationId == other.GenerationId;
         }
 
         /// <inheritdoc />
@@ -56,7 +56,7 @@ namespace KafkaClient.Protocol
                 int hashCode = base.GetHashCode();
                 hashCode = (hashCode*397) ^ (GroupId?.GetHashCode() ?? 0);
                 hashCode = (hashCode*397) ^ (MemberId?.GetHashCode() ?? 0);
-                hashCode = (hashCode*397) ^ GroupGenerationId;
+                hashCode = (hashCode*397) ^ GenerationId;
                 return hashCode;
             }
         }

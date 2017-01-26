@@ -29,10 +29,24 @@ namespace KafkaClient.Protocol
         public static Exception ExtractException(this IRequest request, ErrorResponseCode errorCode, Endpoint endpoint) 
         {
             var exception = ExtractFetchException(request as FetchRequest, errorCode) ??
+                            ExtractMemberException(request, errorCode)??
                             new RequestException(request.ApiKey, errorCode);
             exception.Endpoint = endpoint;
             return exception;
         }
+
+        private static MemberRequestException ExtractMemberException(IRequest request, ErrorResponseCode errorCode)
+        {
+            var member = request as IGroupMember;
+            if (member != null && 
+                (errorCode == ErrorResponseCode.UnknownMemberId ||
+                errorCode == ErrorResponseCode.IllegalGeneration || 
+                errorCode == ErrorResponseCode.InconsistentGroupProtocol))
+            {
+                return new MemberRequestException(member, request.ApiKey, errorCode);
+            }
+            return null;
+        } 
 
         private static FetchOutOfRangeException ExtractFetchException(FetchRequest request, ErrorResponseCode errorCode)
         {
@@ -80,72 +94,6 @@ namespace KafkaClient.Protocol
                 || code == ErrorResponseCode.GroupLoadInProgress
                 || code == ErrorResponseCode.GroupCoordinatorNotAvailable
                 || code == ErrorResponseCode.NotCoordinatorForGroup;
-        }
-
-        public static string ToFormattedString(this object o)
-        {
-            return new StringBuilder().AppendObject(o).ToString();
-        }
-
-        private static StringBuilder AppendWithSeparator(this StringBuilder buffer, IEnumerable<Action<StringBuilder>> things, string separator = ",")
-        {
-            var needsSeparator = false;
-            foreach (var thing in things) {
-                if (needsSeparator) {
-                    buffer.Append(separator);
-                }
-                thing(buffer);
-                needsSeparator = true;
-            }
-            return buffer;
-        }
-
-        private static StringBuilder AppendObject(this StringBuilder buffer, object o)
-        {
-            var properties = o.GetType().GetRuntimeProperties().Where(p => p.CanRead && p.GetIndexParameters().Length <= 1);
-            var writers = properties.Select<PropertyInfo, Action<StringBuilder>>(property => b => b.Append(property.Name).Append(":").AppendValue(property.GetValue(o)));
-            return buffer.Append("{").AppendWithSeparator(writers).Append("}");
-        }
-
-        private static void AppendValue(this StringBuilder buffer, object value)
-        {
-            if (value == null) {
-                buffer.Append("null");
-                return;
-            }
-            if (value is string) {
-                buffer.Append($"'{value}'");
-                return;
-            }
-
-            var bytes = value as byte[];
-            if (bytes != null) {
-                if (bytes.Length == 0) {
-                    buffer.Append("[]");
-                } else {
-                    buffer.Append("{length:").Append(bytes.Length).Append("}");
-                }
-                return;
-            }
-
-            if (value is ArraySegment<byte>) {
-                var segment = (ArraySegment<byte>) value;
-                if (segment.Count == 0) {
-                    buffer.Append("[]");
-                } else {
-                    buffer.Append("{count:").Append(segment.Count).Append("}");
-                }
-                return;
-            }
-
-            var enumerable = value as IEnumerable;
-            if (enumerable != null) {
-                buffer.Append("[").AppendWithSeparator(enumerable.Cast<object>().Select<object, Action<StringBuilder>>(o => b => b.AppendValue(o))).Append("]");
-            } else if (value.GetType().GetTypeInfo().IsClass) {
-                buffer.AppendObject(value);
-            } else {
-                buffer.Append(value);
-            }
         }
 
         public static IMembershipEncoder GetEncoder(this IRequestContext context, string protocolType = null)

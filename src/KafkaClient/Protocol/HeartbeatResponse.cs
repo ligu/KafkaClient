@@ -11,6 +11,8 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class HeartbeatResponse : IResponse, IEquatable<HeartbeatResponse>
     {
+        public override string ToString() => $"{{ErrorCode:{ErrorCode}}}";
+
         public HeartbeatResponse(ErrorResponseCode errorCode)
         {
             ErrorCode = errorCode;
@@ -21,6 +23,8 @@ namespace KafkaClient.Protocol
         public IImmutableList<ErrorResponseCode> Errors { get; }
 
         public ErrorResponseCode ErrorCode { get; }
+
+        #region Equality
 
         /// <inheritdoc />
         public override bool Equals(object obj)
@@ -53,5 +57,7 @@ namespace KafkaClient.Protocol
         {
             return !Equals(left, right);
         }
+
+        #endregion
     }
 }

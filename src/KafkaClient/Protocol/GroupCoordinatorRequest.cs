@@ -12,6 +12,8 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class GroupCoordinatorRequest : Request, IRequest<GroupCoordinatorResponse>, IEquatable<GroupCoordinatorRequest>
     {
+        public override string ToString() => $"{{Api:{ApiKey},GroupId:{GroupId}}}";
+
         public GroupCoordinatorRequest(string groupId) 
             : base(ApiKeyRequestType.GroupCoordinator)
         {
@@ -21,6 +23,8 @@ namespace KafkaClient.Protocol
         }
 
         public string GroupId { get; }
+
+        #region Equality
 
         /// <inheritdoc />
         public override bool Equals(object obj)
@@ -53,5 +57,7 @@ namespace KafkaClient.Protocol
         {
             return !Equals(left, right);
         }
+
+        #endregion
     }
 }

@@ -16,6 +16,8 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class ListGroupsResponse : IResponse, IEquatable<ListGroupsResponse>
     {
+        public override string ToString() => $"{{ErrorCode:{ErrorCode},Groups:[{Groups.ToStrings()}]}}";
+
         public ListGroupsResponse(ErrorResponseCode errorCode = ErrorResponseCode.None, IEnumerable<Group> groups = null)
         {
             ErrorCode = errorCode;
@@ -73,6 +75,8 @@ namespace KafkaClient.Protocol
 
         public class Group : IEquatable<Group>
         {
+            public override string ToString() => $"{{GroupId:{GroupId},ProtocolType:{ProtocolType}}}";
+
             public Group(string groupId, string protocolType)
             {
                 GroupId = groupId;
@@ -81,6 +85,8 @@ namespace KafkaClient.Protocol
 
             public string GroupId { get; }
             public string ProtocolType { get; }
+
+            #region Equality
 
             /// <inheritdoc />
             public override bool Equals(object obj)
@@ -116,7 +122,8 @@ namespace KafkaClient.Protocol
             {
                 return !Equals(left, right);
             }
+            
+            #endregion
         }
-
     }
 }

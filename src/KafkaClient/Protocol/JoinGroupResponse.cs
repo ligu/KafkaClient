@@ -31,6 +31,8 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class JoinGroupResponse : IResponse, IEquatable<JoinGroupResponse>
     {
+        public override string ToString() => $"{{ErrorCode:{ErrorCode},GenerationId:{GenerationId},GroupProtocol:{GroupProtocol},LeaderId:{LeaderId},MemberId:{MemberId},Members:[{Members.ToStrings()}]}}";
+
         public JoinGroupResponse(ErrorResponseCode errorCode, int generationId, string groupProtocol, string leaderId, string memberId, IEnumerable<Member> members)
         {
             ErrorCode = errorCode;
@@ -120,6 +122,8 @@ namespace KafkaClient.Protocol
 
         public class Member : IEquatable<Member>
         {
+            public override string ToString() => $"{{MemberId:{MemberId},Metadata:{Metadata}}}";
+
             public Member(string memberId, IMemberMetadata metadata)
             {
                 MemberId = memberId;
@@ -128,6 +132,8 @@ namespace KafkaClient.Protocol
 
             public string MemberId { get; }
             public IMemberMetadata Metadata { get; }
+
+            #region Equality
 
             /// <inheritdoc />
             public override bool Equals(object obj)
@@ -163,7 +169,8 @@ namespace KafkaClient.Protocol
             {
                 return !Equals(left, right);
             }
-        }
 
+            #endregion
+        }
     }
 }

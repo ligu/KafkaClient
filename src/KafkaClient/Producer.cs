@@ -202,9 +202,9 @@ namespace KafkaClient
                     .GroupBy(_ => new TopicPartition(_.Route.TopicName, _.Route.PartitionId))
                     .ToImmutableDictionary(g => g.Key, g => g.Select(_ => _.ProduceTask).ToImmutableList());
                 var messageCount = produceTasksByTopic.Values.Sum(_ => _.Count);
-                var payloads = produceTasksByTopic.Select(p => new ProduceRequest.Payload(p.Key.TopicName, p.Key.PartitionId, p.Value.SelectMany(_ => _.Messages), codec));
+                var payloads = produceTasksByTopic.Select(p => new ProduceRequest.Topic(p.Key.TopicName, p.Key.PartitionId, p.Value.SelectMany(_ => _.Messages), codec));
                 var request = new ProduceRequest(payloads, endpointGroup.Key.AckTimeout, endpointGroup.Key.Acks);
-                Router.Log.Debug(() => LogEvent.Create($"Produce request for topics{request.Payloads.Aggregate("", (buffer, p) => $"{buffer} {p}")} with {messageCount} messages"));
+                Router.Log.Debug(() => LogEvent.Create($"Produce request for topics{request.Topics.Aggregate("", (buffer, p) => $"{buffer} {p}")} with {messageCount} messages"));
 
                 var connection = endpointGroup.Select(_ => _.Route).First().Connection; // they'll all be the same since they're grouped by this
                 // TODO: what about retryability like for the broker router?? Need this to be robust to node failures

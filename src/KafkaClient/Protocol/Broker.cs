@@ -57,6 +57,6 @@ namespace KafkaClient.Protocol
                 
         #endregion
 
-        public override string ToString() => $"http://{Host}:{Port} Broker:{BrokerId} {Rack}";
+        public override string ToString() => $"{{NodeId:{BrokerId},Host:'{Host}',Port:{Port},Rack:{Rack}}}";
     }
 }

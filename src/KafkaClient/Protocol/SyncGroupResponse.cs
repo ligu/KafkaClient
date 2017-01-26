@@ -13,6 +13,8 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class SyncGroupResponse : IResponse, IEquatable<SyncGroupResponse>
     {
+        public override string ToString() => $"{{ErrorCode:{ErrorCode},MemberAssignment:{MemberAssignment}}}";
+
         public SyncGroupResponse(ErrorResponseCode errorCode, IMemberAssignment memberAssignment)
         {
             ErrorCode = errorCode;
@@ -25,6 +27,8 @@ namespace KafkaClient.Protocol
 
         public ErrorResponseCode ErrorCode { get; }
         public IMemberAssignment MemberAssignment { get; }
+
+        #region Equality
 
         /// <inheritdoc />
         public override bool Equals(object obj)
@@ -60,5 +64,7 @@ namespace KafkaClient.Protocol
         {
             return !Equals(left, right);
         }
+        
+        #endregion
     }
 }

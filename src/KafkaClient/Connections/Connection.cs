@@ -96,7 +96,7 @@ namespace KafkaClient.Connections
                         await ConnectAsync(cancellation.Token).ConfigureAwait(false);
                         var item = asyncItem;
                         _log.Info(() => LogEvent.Create($"Sending {request.ApiKey} (id {context.CorrelationId}, v{version.GetValueOrDefault()}, {item.RequestBytes.Count} bytes) to {Endpoint}"));
-                        _log.Debug(() => LogEvent.Create($"{request.ApiKey} -----> {Endpoint}\n{{Context:{context.ToFormattedString()},\n Request:{request.ToFormattedString()}}}"));
+                        _log.Debug(() => LogEvent.Create($"{request.ApiKey} -----> {Endpoint} {{Context:{context},\nRequest:{request}}}"));
                         _configuration.OnWriting?.Invoke(Endpoint, request.ApiKey);
                         timer.Start();
                         var bytesWritten = await WriteBytesAsync(_socket, context.CorrelationId, asyncItem.RequestBytes, cancellationToken).ConfigureAwait(false);
@@ -116,7 +116,7 @@ namespace KafkaClient.Connections
             }
 
             var response = KafkaEncoder.Decode<T>(context, request.ApiKey, receivedBytes);
-            _log.Debug(() => LogEvent.Create($"{Endpoint} -----> {request.ApiKey}\n{{Context:{context.ToFormattedString()},\n Response:{response.ToFormattedString()}}}"));
+            _log.Debug(() => LogEvent.Create($"{Endpoint} -----> {{Context:{context},\n{request.ApiKey}Response:{response}}}"));
             return response;
         }
 
@@ -338,13 +338,13 @@ namespace KafkaClient.Connections
                 timer.Start();
                 while (totalBytesRead < bytesToRead && !token.IsCancellationRequested) {
                     var bytesRemaining = bytesToRead - totalBytesRead;
-                    _log.Debug(() => LogEvent.Create($"Reading ({bytesRemaining}? bytes) from {Endpoint}"));
+                    _log.Verbose(() => LogEvent.Create($"Reading ({bytesRemaining}? bytes) from {Endpoint}"));
                     _configuration.OnReadingBytes?.Invoke(Endpoint, bytesRemaining);
                     var bytes = new ArraySegment<byte>(buffer, 0, Math.Min(buffer.Length, bytesRemaining));
                     var bytesRead = await socket.ReceiveAsync(bytes, SocketFlags.None).ThrowIfCancellationRequested(token).ConfigureAwait(false);
                     totalBytesRead += bytesRead;
                     _configuration.OnReadBytes?.Invoke(Endpoint, bytesRemaining, bytesRead, timer.Elapsed);
-                    _log.Debug(() => LogEvent.Create($"Read {bytesRead} bytes from {Endpoint}"));
+                    _log.Verbose(() => LogEvent.Create($"Read {bytesRead} bytes from {Endpoint}"));
 
                     if (bytesRead <= 0 && socket.Available == 0) {
                         DisposeSocket(socket);
@@ -379,11 +379,11 @@ namespace KafkaClient.Connections
                     cancellationToken.ThrowIfCancellationRequested();
 
                     var bytesRemaining = buffer.Count - totalBytesWritten;
-                    _log.Debug(() => LogEvent.Create($"Writing {bytesRemaining}? bytes (id {correlationId}) to {Endpoint}"));
+                    _log.Verbose(() => LogEvent.Create($"Writing {bytesRemaining}? bytes (id {correlationId}) to {Endpoint}"));
                     _configuration.OnWritingBytes?.Invoke(Endpoint, bytesRemaining);
                     var bytesWritten = await socket.SendAsync(new ArraySegment<byte>(buffer.Array, buffer.Offset + totalBytesWritten, bytesRemaining), SocketFlags.None).ConfigureAwait(false);
                     _configuration.OnWroteBytes?.Invoke(Endpoint, bytesRemaining, bytesWritten, timer.Elapsed);
-                    _log.Debug(() => LogEvent.Create($"Wrote {bytesWritten} bytes (id {correlationId}) to {Endpoint}"));
+                    _log.Verbose(() => LogEvent.Create($"Wrote {bytesWritten} bytes (id {correlationId}) to {Endpoint}"));
                     totalBytesWritten += bytesWritten;
                 }
             } catch (Exception) {
@@ -529,7 +529,7 @@ namespace KafkaClient.Connections
                     log.Debug(
                         () => {
                             var result = KafkaEncoder.Decode<IResponse>(Context, RequestType, bytes);
-                            return LogEvent.Create($"Timed out -----> {RequestType} (timed out or otherwise errored in client)\n{{Context:{Context.ToFormattedString()},\n Response:{result.ToFormattedString()}}}");
+                            return LogEvent.Create($"Timed out -----> (timed out or otherwise errored in client) {{Context:{Context},\n{RequestType}Response:{result}}}");
                         });
                 }
             }

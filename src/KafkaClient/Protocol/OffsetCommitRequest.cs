@@ -30,8 +30,10 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class OffsetCommitRequest : GroupRequest, IRequest<OffsetCommitResponse>, IEquatable<OffsetCommitRequest>
     {
-        public OffsetCommitRequest(string groupId, IEnumerable<Topic> offsetCommits, string memberId = null, int groupGenerationId = -1, TimeSpan? offsetRetention = null) 
-            : base(ApiKeyRequestType.OffsetCommit, groupId, memberId ?? "", groupGenerationId)
+        public override string ToString() => $"{{Api:{ApiKey},GroupId:{GroupId},MemberId:{MemberId},GenerationId:{GenerationId},Topics:[{Topics.ToStrings()}],RetentionTime:{OffsetRetention}}}";
+
+        public OffsetCommitRequest(string groupId, IEnumerable<Topic> offsetCommits, string memberId = null, int generationId = -1, TimeSpan? offsetRetention = null) 
+            : base(ApiKeyRequestType.OffsetCommit, groupId, memberId ?? "", generationId)
         {
             OffsetRetention = offsetRetention;
             Topics = ImmutableList<Topic>.Empty.AddNotNullRange(offsetCommits);
@@ -89,6 +91,8 @@ namespace KafkaClient.Protocol
 
         public class Topic : TopicPartition, IEquatable<Topic>
         {
+            public override string ToString() => $"{{TopicName:{TopicName},PartitionId:{PartitionId},TimeStamp:{TimeStamp},Offset:{Offset},Metadata:{Metadata}}}";
+
             public Topic(string topicName, int partitionId, long offset, string metadata = null, long? timeStamp = null) 
                 : base(topicName, partitionId)
             {

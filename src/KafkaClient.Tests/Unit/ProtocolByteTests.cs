@@ -57,10 +57,10 @@ namespace KafkaClient.Tests.Unit
             [Values(1, 5)] int totalPartitions, 
             [Values(3)] int messagesPerSet)
         {
-            var payloads = new List<ProduceRequest.Payload>();
+            var payloads = new List<ProduceRequest.Topic>();
             for (var t = 0; t < topicsPerRequest; t++) {
                 var partition = 1 + t%totalPartitions;
-                payloads.Add(new ProduceRequest.Payload(topic + t, partition, GenerateMessages(messagesPerSet, (byte) (version >= 2 ? 1 : 0))));
+                payloads.Add(new ProduceRequest.Topic(topic + t, partition, GenerateMessages(messagesPerSet, (byte) (version >= 2 ? 1 : 0))));
             }
             var request = new ProduceRequest(payloads, TimeSpan.FromMilliseconds(timeoutMilliseconds), acks);
 
@@ -139,8 +139,8 @@ namespace KafkaClient.Tests.Unit
 
             // special case the comparison in the case of gzip because of the server semantics
             if (!responseWithUpdatedAttribute.Equals(decoded)) {
-                var original = responseWithUpdatedAttribute.ToFormattedString();
-                var final = decoded.ToFormattedString();
+                var original = responseWithUpdatedAttribute.ToString();
+                var final = decoded.ToString();
                 Console.WriteLine($"Original\n{original}\nFinal\n{final}");
                 Assert.That(final, Is.EqualTo(original));
                 Assert.Fail("Not equal, although strings suggest they are?");

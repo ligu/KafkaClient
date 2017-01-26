@@ -6,7 +6,7 @@ namespace KafkaClient.Tests
     {
         public static ProduceRequest CreateProduceRequest(string topic, string message, string key = null)
         {
-            return new ProduceRequest(new ProduceRequest.Payload(topic, 0, new[] {new Message(message, key)}));
+            return new ProduceRequest(new ProduceRequest.Topic(topic, 0, new[] {new Message(message, key)}));
         }
 
         public static FetchRequest CreateFetchRequest(string topic, int offset, int partitionId = 0)

@@ -10,6 +10,8 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class ListGroupsRequest : Request, IRequest<ListGroupsResponse>
     {
+        public override string ToString() => $"{{Api:{ApiKey}}}";
+
         public ListGroupsRequest() 
             : base(ApiKeyRequestType.ListGroups)
         {
