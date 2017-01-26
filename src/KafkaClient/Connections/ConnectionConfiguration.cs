@@ -31,6 +31,7 @@ namespace KafkaClient.Connections
         /// <param name="readBufferSize">The buffer size to use for the socket, when receiving bytes.</param>
         /// <param name="writeBufferSize">The buffer size to use for the socket, when sending bytes.</param>
         /// <param name="encoders">Custom Encoding support for different protocol types</param>
+        /// <param name="sslConfiguration">Configuration for SSL encrypted communication</param>
         public ConnectionConfiguration(
             ITrackEvents tracker, 
             IRetry connectionRetry = null, 
@@ -38,9 +39,10 @@ namespace KafkaClient.Connections
             TimeSpan? requestTimeout = null, 
             int? readBufferSize = null, 
             int? writeBufferSize = null, 
-            IEnumerable<IMembershipEncoder> encoders = null
+            IEnumerable<IMembershipEncoder> encoders = null,
+            ISslConfiguration sslConfiguration = null
         ) : this(
-            connectionRetry, versionSupport, requestTimeout, readBufferSize, writeBufferSize, encoders, 
+            connectionRetry, versionSupport, requestTimeout, readBufferSize, writeBufferSize, encoders, sslConfiguration,
             tracker != null ? (ConnectError)tracker.Disconnected : null, 
             tracker != null ? (Connecting)tracker.Connecting : null, 
             tracker != null ? (Connecting)tracker.Connected : null, 
@@ -67,6 +69,7 @@ namespace KafkaClient.Connections
         /// <param name="readBufferSize">The buffer size to use for the socket, when receiving bytes.</param>
         /// <param name="writeBufferSize">The buffer size to use for the socket, when sending bytes.</param>
         /// <param name="encoders">Custom Encoding support for different protocol types</param>
+        /// <param name="sslConfiguration">Configuration for SSL encrypted communication</param>
         /// <param name="onDisconnected">Triggered when the tcp socket is disconnected.</param>
         /// <param name="onConnecting">Triggered when the tcp socket is connecting.</param>
         /// <param name="onConnected">Triggered after the tcp socket is successfully connected.</param>
@@ -88,6 +91,7 @@ namespace KafkaClient.Connections
             int? readBufferSize = null, 
             int? writeBufferSize = null,
             IEnumerable<IMembershipEncoder> encoders = null,
+            ISslConfiguration sslConfiguration = null,
             ConnectError onDisconnected = null, 
             Connecting onConnecting = null, 
             Connecting onConnected = null, 
@@ -110,6 +114,7 @@ namespace KafkaClient.Connections
             ReadBufferSize = readBufferSize.GetValueOrDefault(Defaults.BufferSize);
             WriteBufferSize = writeBufferSize.GetValueOrDefault(Defaults.BufferSize);
             Encoders = Defaults.Encoders(encoders);
+            SslConfiguration = sslConfiguration;
             OnDisconnected = onDisconnected;
             OnConnecting = onConnecting;
             OnConnected = onConnected;
@@ -143,6 +148,9 @@ namespace KafkaClient.Connections
 
         /// <inheritdoc />
         public IImmutableDictionary<string, IMembershipEncoder> Encoders { get; }
+
+        /// <inheritdoc />
+        public ISslConfiguration SslConfiguration { get; }
 
         /// <inheritdoc />
         public ConnectError OnDisconnected { get; }
