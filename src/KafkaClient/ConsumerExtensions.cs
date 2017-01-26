@@ -122,7 +122,7 @@ namespace KafkaClient
             } catch (ObjectDisposedException ex) {
                 log.Info(() => LogEvent.Create(ex));
             } catch (OperationCanceledException ex) {
-                log.Debug(() => LogEvent.Create(ex));
+                log.Verbose(() => LogEvent.Create(ex));
             } catch (Exception ex) {
                 log.Error(LogEvent.Create(ex));
                 throw;
