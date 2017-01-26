@@ -123,7 +123,7 @@
         InvalidRequiredAcks = 21,
 
         /// <summary>
-        /// Specified group generation id is not valid.
+        /// Specified group generation id is not valid (not current).
         /// </summary>
         IllegalGeneration = 22,
 
@@ -133,12 +133,12 @@
         InconsistentGroupProtocol = 23,
 
         /// <summary>
-        /// The configured groupId is invalid.
+        /// The configured groupId is invalid (empty or null).
         /// </summary>
         InvalidGroupId = 24,
 
         /// <summary>
-        /// The coordinator is not aware of this member.
+        /// The memberId is not in the current generation (on group requests).
         /// </summary>
         UnknownMemberId = 25,
 

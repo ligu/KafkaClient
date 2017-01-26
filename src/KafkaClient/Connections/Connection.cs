@@ -31,6 +31,7 @@ namespace KafkaClient.Connections
         private readonly CancellationTokenSource _disposeToken = new CancellationTokenSource();
         private int _disposeCount = 0;
         private readonly TaskCompletionSource<bool> _disposePromise = new TaskCompletionSource<bool>();
+        public bool IsDisposed => _disposeCount > 0;
 
         private readonly Task _receiveTask;
         protected int ActiveReaderCount;
@@ -63,7 +64,7 @@ namespace KafkaClient.Connections
         /// <summary>
         /// Indicates a thread is polling the stream for data to read.
         /// </summary>
-        public bool IsReaderAlive => ActiveReaderCount >= 1;
+        internal bool IsReaderAlive => ActiveReaderCount >= 1;
 
         /// <inheritdoc />
         public Endpoint Endpoint { get; }

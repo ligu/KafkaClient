@@ -85,5 +85,7 @@ namespace KafkaClient.Tests
         {
             return Task.FromResult(0);
         }
+
+        public bool IsDisposed => false;
     }
 }

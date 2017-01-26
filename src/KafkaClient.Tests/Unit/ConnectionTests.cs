@@ -12,7 +12,6 @@ using KafkaClient.Protocol;
 using KafkaClient.Testing;
 using Nito.AsyncEx;
 using NUnit.Framework;
-using NUnit.Framework.Internal;
 
 namespace KafkaClient.Tests.Unit
 {

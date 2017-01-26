@@ -238,5 +238,12 @@ namespace KafkaClient
         /// Not all results are necessarily live, although they would need to have been at some point.
         /// </remarks>
         IEnumerable<IConnection> Connections { get; }
+
+        /// <summary>
+        /// Attempt to restore or recreate the connection.
+        /// Only will be attempted on disposed connections that are owned by the router.
+        /// </summary>
+        /// <returns>True if the connection is now live</returns>
+        bool TryRestore(IConnection connection, CancellationToken cancellationToken);
     }
 }

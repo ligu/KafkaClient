@@ -210,7 +210,7 @@ namespace KafkaClient
             if (!Encoders.ContainsKey(protocolType ?? "")) throw new ArgumentOutOfRangeException(nameof(metadata), $"ProtocolType {protocolType} is unknown");
 
             var protocols = metadata?.Select(m => new JoinGroupRequest.GroupProtocol(m));
-            var request = new JoinGroupRequest(groupId, Configuration.GroupHeartbeat, "", protocolType, protocols, Configuration.GroupRebalanceTimeout);
+            var request = new JoinGroupRequest(groupId, Configuration.GroupHeartbeat, null, protocolType, protocols, Configuration.GroupRebalanceTimeout);
             var response = await Router.SendAsync(request, groupId, cancellationToken, retryPolicy: Configuration.GroupCoordinationRetry, context: new RequestContext(protocolType: protocolType)).ConfigureAwait(false);
             if (!response.ErrorCode.IsSuccess()) {
                 throw request.ExtractExceptions(response);

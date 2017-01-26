@@ -141,6 +141,7 @@ namespace KafkaClient
                         }
                     } catch (Exception ex) {
                         Log.Warn(() => LogEvent.Create(ex));
+                        HandleDispose(ex as ObjectDisposedException);
                     }
                 }
             } catch (OperationCanceledException) { // cancellation token fired while attempting to get tasks: normal behavior
@@ -150,6 +151,14 @@ namespace KafkaClient
                 await DisposeAsync().ConfigureAwait(false); // safe to call in multiple places
                 Interlocked.Decrement(ref _activeHeartbeatCount);
                 Log.Info(() => LogEvent.Create($"Stopped heartbeat for {{GroupId:{GroupId},MemberId:{MemberId}}}"));
+            }
+        }
+
+        private void HandleDispose(ObjectDisposedException exception)
+        {
+            if (exception?.ObjectName == nameof(Router)) {
+                _leaveOnDispose = false; // no point in attempting to leave the group since it will fail
+                _disposeToken.Cancel();
             }
         }
 
@@ -227,6 +236,7 @@ namespace KafkaClient
                         }
                     } catch (Exception ex) {
                         Log.Warn(() => LogEvent.Create(ex));
+                        HandleDispose(ex as ObjectDisposedException);
                     }
                 }
             } catch (OperationCanceledException) { // cancellation token fired while attempting to get tasks: normal behavior

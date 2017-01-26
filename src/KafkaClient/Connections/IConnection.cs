@@ -13,6 +13,11 @@ namespace KafkaClient.Connections
         Endpoint Endpoint { get; }
 
         /// <summary>
+        /// Visibility of state, so a container can manage whether to keep in the pool
+        /// </summary>
+        bool IsDisposed { get; }
+
+        /// <summary>
         /// Send a specific IRequest to the connected endpoint.
         /// </summary>
         /// <typeparam name="T">The type of the KafkaResponse expected from the request being sent.</typeparam>

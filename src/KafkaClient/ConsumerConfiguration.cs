@@ -25,7 +25,7 @@ namespace KafkaClient
             FetchByteMultiplier = fetchByteMultiplier;
             MaxPartitionFetchBytes = maxPartitionFetchBytes;
             GroupHeartbeat = heartbeatTimeout ?? TimeSpan.FromSeconds(Defaults.HeartbeatSeconds);
-            GroupRebalanceTimeout = rebalanceTimeout ?? TimeSpan.FromSeconds(Defaults.RebalanceTimeoutSeconds);
+            GroupRebalanceTimeout = rebalanceTimeout ?? heartbeatTimeout ?? TimeSpan.FromSeconds(Defaults.RebalanceTimeoutSeconds);
             ProtocolType = protocolType ?? Defaults.ProtocolType;
             GroupCoordinationRetry = coordinationRetry ?? Defaults.CoordinationRetry(GroupRebalanceTimeout);
             BatchSize = Math.Max(1, batchSize);

@@ -98,6 +98,30 @@ namespace KafkaClient
         /// <inheritdoc />
         public IEnumerable<IConnection> Connections => _allConnections.Values;
 
+        public bool TryRestore(IConnection connection, CancellationToken cancellationToken)
+        {
+            if (_disposeCount > 0) throw new ObjectDisposedException(nameof(Router));
+            if (connection == null) return false;
+
+            var endpoint = connection.Endpoint;
+            IConnection ownedConnection;
+            // false if the endpoint isn't part of the router
+            // true if the one in the router is already restore (or will by itself)
+            if (!_allConnections.TryGetValue(endpoint, out ownedConnection)) return false;
+            if (!ownedConnection.IsDisposed) return true;
+
+            // actually restore the connection ...
+            return _connectionSemaphore.Lock(
+                () => {
+                    // test again (same logic as above) -- to avoid race conditions
+                    if (!_allConnections.TryGetValue(endpoint, out ownedConnection)) return false;
+                    if (!ownedConnection.IsDisposed) return true;
+
+                    _allConnections = _allConnections.SetItem(endpoint, _connectionFactory.Create(connection.Endpoint, ConnectionConfiguration, Log));
+                    return true;
+                }, cancellationToken);
+        }
+
         #region Topic Brokers
 
         /// <inheritdoc />

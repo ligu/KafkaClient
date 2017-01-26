@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Common;
+using KafkaClient.Connections;
 using KafkaClient.Protocol;
 
 namespace KafkaClient
@@ -18,14 +19,19 @@ namespace KafkaClient
         private readonly ILog _log;
         private readonly IRequest<T> _request;
 
-        private Broker _route;
+        private IConnection _connection;
+        private CancellationToken _cancellationToken;
+        private IRouter _router;
         private T _response;
 
         public async Task SendAsync(IRouter router, CancellationToken cancellationToken, IRequestContext context = null)
         {
             _response = null;
-            _route = await GetBrokerAsync(router, cancellationToken).ConfigureAwait(false);
-            _response = _route == null ? null : await _route.Connection.SendAsync(_request, cancellationToken, context).ConfigureAwait(false);
+            _router = router;
+            _cancellationToken = cancellationToken;
+            var route = await GetBrokerAsync(router, cancellationToken).ConfigureAwait(false);
+            _connection = route?.Connection;
+            _response = _connection == null ? null : await _connection.SendAsync(_request, cancellationToken, context).ConfigureAwait(false);
         }
 
         protected abstract Task<Broker> GetBrokerAsync(IRouter router, CancellationToken cancellationToken);
@@ -52,11 +58,13 @@ namespace KafkaClient
             MetadataRetry(attempt, null, out ignored);
         }
 
+        private bool TryReconnect(Exception exception) => exception is ObjectDisposedException && (_router?.TryRestore(_connection, _cancellationToken) ?? false);
+
         public void MetadataRetry(int attempt, Exception exception, out bool? retry)
         {
             retry = true;
             if (exception != null) {
-                if (!exception.IsPotentiallyRecoverableByMetadataRefresh()) throw exception.PrepareForRethrow();
+                if (!TryReconnect(exception) && !exception.IsPotentiallyRecoverableByMetadataRefresh()) throw exception.PrepareForRethrow();
                 retry = null; // ie. the state of the metadata is unknown
             }
             _log.Debug(() => LogEvent.Create(exception, $"Retrying request {_request.ApiKey} (attempt {attempt})"));
@@ -67,6 +75,6 @@ namespace KafkaClient
             throw ResponseException;
         }
 
-        public Exception ResponseException => _request.ExtractExceptions(_response, _route.Connection.Endpoint);
+        public Exception ResponseException => _request.ExtractExceptions(_response, _connection?.Endpoint);
     }
 }
