@@ -233,7 +233,7 @@ namespace KafkaClient.Tests.Unit
                 await TaskTest.WaitFor(() => bytesRead == firstBytes.Length);
 
                 Assert.That(mockLog.LogEvents.Count(e => e.Item1 == LogLevel.Warn && e.Item2.Message.StartsWith($"Unexpected response (id {correlationId}, {size}? bytes) from")), Is.EqualTo(1));
-                Assert.That(mockLog.LogEvents.Count(e => e.Item1 == LogLevel.Verbose && e.Item2.Message.StartsWith($"Received {size} bytes (id {correlationId})")), Is.EqualTo(0));
+                Assert.That(mockLog.LogEvents.Count(e => e.Item1 == LogLevel.Debug && e.Item2.Message.StartsWith($"Received {size} bytes (id {correlationId})")), Is.EqualTo(0));
 
                 server.DropConnection();
 
@@ -244,7 +244,7 @@ namespace KafkaClient.Tests.Unit
                     // repeat until the connection is all up and working ...
                 }
                 await TaskTest.WaitFor(() => bytesRead >= size);
-                var received = await TaskTest.WaitFor(() => mockLog.LogEvents.Count(e => e.Item1 == LogLevel.Verbose && e.Item2.Message.StartsWith($"Received {size} bytes (id {correlationId})")) == 1);
+                var received = await TaskTest.WaitFor(() => mockLog.LogEvents.Count(e => e.Item1 == LogLevel.Debug && e.Item2.Message.StartsWith($"Received {size} bytes (id {correlationId})")) == 1);
                 Assert.True(received);
             }
         }

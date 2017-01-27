@@ -21,7 +21,7 @@ namespace KafkaClient.Common
 
         public TraceLog()
         {
-            _minLevel = LogLevel.Debug;
+            _minLevel = LogLevel.Info;
         }
 
         /// <inheritdoc />
