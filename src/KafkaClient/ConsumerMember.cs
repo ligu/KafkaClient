@@ -128,20 +128,22 @@ namespace KafkaClient
                         delay = _heartbeatDelay;
                     } catch (OperationCanceledException) { // cancellation token fired while attempting to get tasks: normal behavior
                     } catch (RequestException ex) {
-                        Log.Info(() => LogEvent.Create(ex));
                         switch (ex.ErrorCode) {
                             case ErrorResponseCode.RebalanceInProgress:
+                                Log.Info(() => LogEvent.Create(ex.Message));
                                 TriggerRejoin();
                                 delay = _heartbeatDelay;
                                 break;
 
                             case ErrorResponseCode.GroupAuthorizationFailed:
                             case ErrorResponseCode.UnknownMemberId:
+                                Log.Warn(() => LogEvent.Create(ex));
                                 _leaveOnDispose = false; // no point in attempting to leave the group since it will fail
                                 _disposeToken.Cancel();
                                 break;
 
                             default:
+                                Log.Info(() => LogEvent.Create(ex));
                                 if (ex.ErrorCode.IsRetryable()) {
                                     delay = TimeSpan.FromMilliseconds(Math.Max(delay.TotalMilliseconds / 2, 1000));
                                 }
@@ -253,9 +255,10 @@ namespace KafkaClient
                     case ErrorResponseCode.UnknownMemberId:
                     case ErrorResponseCode.InconsistentGroupProtocol:
                     case ErrorResponseCode.InvalidSessionTimeout:
+                        Log.Warn(() => LogEvent.Create(ex));
                         _leaveOnDispose = false; // no point in attempting to leave the group since it will fail
                         _disposeToken.Cancel();
-                        break;
+                        return;
                 }
                 throw;
             }
@@ -301,11 +304,13 @@ namespace KafkaClient
             } catch (RequestException ex) {
                 switch (ex.ErrorCode) {
                     case ErrorResponseCode.RebalanceInProgress:
+                        Log.Info(() => LogEvent.Create(ex.Message));
                         TriggerRejoin();
-                        break;
+                        return;
 
                     case ErrorResponseCode.GroupAuthorizationFailed:
                     case ErrorResponseCode.UnknownMemberId:
+                        Log.Warn(() => LogEvent.Create(ex));
                         _leaveOnDispose = false; // no point in attempting to leave the group since it will fail
                         _disposeToken.Cancel();
                         break;

@@ -149,27 +149,6 @@ namespace KafkaClient.Connections
             ).ConfigureAwait(false);
         }
 
-        #region Equals
-
-        public override bool Equals(object obj)
-        {
-            return Equals(obj as Connection);
-        }
-
-        protected bool Equals(Connection other)
-        {
-            if (ReferenceEquals(null, other)) return false;
-            if (ReferenceEquals(this, other)) return true;
-            return Equals(Endpoint, other.Endpoint);
-        }
-
-        public override int GetHashCode()
-        {
-            return Endpoint?.GetHashCode() ?? 0;
-        }
-
-        #endregion Equals
-
         private async Task DedicatedReceiveAsync()
         {
             // only allow one reader to execute, dump out all other requests

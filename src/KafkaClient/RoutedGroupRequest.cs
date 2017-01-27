@@ -39,7 +39,7 @@ namespace KafkaClient
         protected override void ReturnConnection(IRouter router, IConnection connection)
         {
             if (_memberId != null) {
-                router.ReturnConnection(connection);
+                router.ReturnConnection(_groupId, _memberId, connection);
             }
         }
     }

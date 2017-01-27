@@ -238,22 +238,22 @@ namespace KafkaClient
         IRouterConfiguration Configuration { get; }
 
         /// <summary>
-        /// The list of currently configured connections.
+        /// The list of currently configured connections (one per broker).
         /// </summary>
         /// <remarks>
-        /// Not all results are necessarily live, although they would need to have been at some point.
+        /// Not all results are necessarily live, although they would need to have been at some point. Use <see cref="TryRestore"/> to recreate, if needed.
         /// </remarks>
         IEnumerable<IConnection> Connections { get; }
 
         /// <summary>
         /// Most group membership rebalancing need to happen on distinct connections. This acts to get a new connection for a given member.
         /// </summary>
-        Task<IConnection> GetConnectionAsync(string groupid, string memberId, CancellationToken cancellationToken);
+        Task<IConnection> GetConnectionAsync(string groupId, string memberId, CancellationToken cancellationToken);
 
         /// <summary>
         /// Returns the connection back to the router, to be reused by other members as needed
         /// </summary>
-        void ReturnConnection(IConnection connection);
+        void ReturnConnection(string groupId, string memberId, IConnection connection);
 
         /// <summary>
         /// Attempt to restore or recreate the connection.

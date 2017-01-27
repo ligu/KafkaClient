@@ -840,46 +840,15 @@ namespace KafkaClient.Tests.Integration
         }
 
         [Test]
-        [TestCase(1000, 100)]
-        [TestCase(1000, 500)]
-        public async Task CanConsumeFromGroupWithHelper(int totalMessages, int count)
+        [TestCase(1, 100)]
+        [TestCase(2, 100)]
+        [TestCase(5, 100)]
+        [TestCase(5, 500)]
+        [TestCase(10, 500)]
+        public async Task CanConsumeFromMultipleGroups(int members, int batchSize)
         {
             var cancellation = new CancellationTokenSource();
-            var cancellationToken = cancellation.Token;
-            using (var router = await TestConfig.Options.CreateRouterAsync()) {
-                await router.TemporaryTopicAsync(async topicName => {
-                    var groupId = TestConfig.GroupId();
-
-                    await ProduceMessages(router, topicName, groupId, totalMessages);
-
-                    var fetched = 0;
-                    using (var consumer = new Consumer(router, _consumerConfig, _config.Encoders)) {
-                        using (var member = await consumer.JoinConsumerGroupAsync(groupId, new ConsumerProtocolMetadata(topicName), cancellationToken)) {
-                            await member.FetchUntilDisposedAsync(async (batch, token) => {
-                                router.Log.Info(() => LogEvent.Create($"Member {member.MemberId} starting batch of {batch.Messages.Count}"));
-                                foreach (var message in batch.Messages) {
-                                    batch.MarkSuccessful(message);
-                                    if (Interlocked.Increment(ref fetched) >= totalMessages) {
-                                        cancellation.Cancel();
-                                        break;
-                                    }
-                                }
-                                router.Log.Info(() => LogEvent.Create($"Member {member.MemberId} finished batch size {batch.Messages.Count} ({fetched} of {totalMessages})"));
-                            }, cancellationToken, count);
-                        }
-                    }
-                    Assert.That(fetched, Is.EqualTo(totalMessages));
-                });
-            }
-        }
-
-        [Test]
-        [Ignore("disable for CI until this is working locally")]
-        public async Task CanConsumeFromMultipleGroups()
-        {
-            int members = 2;
-            var cancellation = new CancellationTokenSource();
-            var totalMessages = 10000;
+            var totalMessages = 1000;
             using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName =>
                 {
@@ -905,7 +874,7 @@ namespace KafkaClient.Tests.Integration
                                         }
                                     }
                                     router.Log.Info(() => LogEvent.Create($"Member {member.MemberId} finished batch size {batch.Messages.Count} ({fetched} of {totalMessages})"));
-                                }, cancellation.Token, 100);
+                                }, cancellation.Token, batchSize);
                             });
                         }, CancellationToken.None));
                     }
