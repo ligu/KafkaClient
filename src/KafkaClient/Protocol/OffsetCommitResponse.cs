@@ -21,10 +21,10 @@ namespace KafkaClient.Protocol
         public OffsetCommitResponse(IEnumerable<TopicResponse> topics = null)
         {
             Topics = ImmutableList<TopicResponse>.Empty.AddNotNullRange(topics);
-            Errors = ImmutableList<ErrorResponseCode>.Empty.AddRange(Topics.Select(t => t.ErrorCode));
+            Errors = ImmutableList<ErrorCode>.Empty.AddRange(Topics.Select(t => t.ErrorCode));
         }
 
-        public IImmutableList<ErrorResponseCode> Errors { get; }
+        public IImmutableList<ErrorCode> Errors { get; }
 
         public IImmutableList<TopicResponse> Topics { get; }
 

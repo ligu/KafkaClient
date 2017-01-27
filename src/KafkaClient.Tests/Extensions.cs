@@ -37,7 +37,7 @@ namespace KafkaClient.Tests
             var topicName = TestConfig.TopicName(name);
             try {
                 await router.SendToAnyAsync(new CreateTopicsRequest(new [] { new CreateTopicsRequest.Topic(topicName, partitions, 1) }, TimeSpan.FromSeconds(1)), CancellationToken.None);
-            } catch (RequestException ex) when (ex.ErrorCode == ErrorResponseCode.TopicAlreadyExists) {
+            } catch (RequestException ex) when (ex.ErrorCode == ErrorCode.TopicAlreadyExists) {
                 // ignore already exists
             }
             try {
@@ -53,10 +53,10 @@ namespace KafkaClient.Tests
             var topicName = TestConfig.TopicName(name);
             try {
                 var response = await router.SendToAnyAsync(new DeleteTopicsRequest(new [] { topicName }, TimeSpan.FromMilliseconds(500)), CancellationToken.None);
-                if (response.Errors.Any(e => e == ErrorResponseCode.RequestTimedOut)) {
+                if (response.Errors.Any(e => e == ErrorCode.RequestTimedOut)) {
                     Assert.Inconclusive("Cannot validate when topic remains");
                 }
-            } catch (RequestException ex) when (ex.ErrorCode == ErrorResponseCode.TopicAlreadyExists) {
+            } catch (RequestException ex) when (ex.ErrorCode == ErrorCode.TopicAlreadyExists) {
                 // ignore already exists
             }
         }

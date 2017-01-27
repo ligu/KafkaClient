@@ -26,7 +26,7 @@ namespace KafkaClient.Tests.Integration
 
             Assert.That(topic, Is.Not.Null);
             Assert.That(topic.TopicName, Is.EqualTo(expectedTopic));
-            Assert.That(topic.ErrorCode, Is.EqualTo((int)ErrorResponseCode.None));
+            Assert.That(topic.ErrorCode, Is.EqualTo((int)ErrorCode.None));
         }
 
         [Test]

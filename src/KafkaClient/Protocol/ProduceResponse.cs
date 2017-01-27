@@ -41,11 +41,11 @@ namespace KafkaClient.Protocol
         public ProduceResponse(IEnumerable<Topic> topics = null, TimeSpan? throttleTime = null)
         {
             Topics = ImmutableList<Topic>.Empty.AddNotNullRange(topics);
-            Errors = ImmutableList<ErrorResponseCode>.Empty.AddRange(Topics.Select(t => t.ErrorCode));
+            Errors = ImmutableList<ErrorCode>.Empty.AddRange(Topics.Select(t => t.ErrorCode));
             ThrottleTime = throttleTime;
         }
 
-        public IImmutableList<ErrorResponseCode> Errors { get; }
+        public IImmutableList<ErrorCode> Errors { get; }
 
         public IImmutableList<Topic> Topics { get; }
 
@@ -100,7 +100,7 @@ namespace KafkaClient.Protocol
         {
             public override string ToString() => $"{{TopicName:{TopicName},PartitionId:{PartitionId},ErrorCode:{ErrorCode},Offset:{Offset},Timestamp:{Timestamp}}}";
 
-            public Topic(string topic, int partitionId, ErrorResponseCode errorCode, long offset, DateTimeOffset? timestamp = null)
+            public Topic(string topic, int partitionId, ErrorCode errorCode, long offset, DateTimeOffset? timestamp = null)
                 : base(topic, partitionId, errorCode)
             {
                 Offset = offset;

@@ -10,7 +10,7 @@
         {
         }
 
-        public FetchOutOfRangeException(FetchRequest.Topic topic, ApiKey apiKey, ErrorResponseCode errorCode)
+        public FetchOutOfRangeException(FetchRequest.Topic topic, ApiKey apiKey, ErrorCode errorCode)
             : base(apiKey, errorCode, topic.ToString())
         {
             Topic = topic;

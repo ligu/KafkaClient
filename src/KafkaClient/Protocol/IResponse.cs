@@ -7,6 +7,6 @@ namespace KafkaClient.Protocol
         /// <summary>
         /// Any errors from the server
         /// </summary>
-        IImmutableList<ErrorResponseCode> Errors { get; }
+        IImmutableList<ErrorCode> Errors { get; }
     }
 }

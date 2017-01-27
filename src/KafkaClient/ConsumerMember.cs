@@ -76,7 +76,7 @@ namespace KafkaClient
         ///     |                      +=====+=====+
         ///     |                            ^
         ///     | SyncGroupRequest           | JoinGroupResponse
-        ///     | (only leader assigns)      | ErrorResponseCode.None
+        ///     | (only leader assigns)      | ResponseCode.None
         ///     |                            |
         ///     |                      +-----+-----+
         ///     |                      |           |
@@ -85,8 +85,8 @@ namespace KafkaClient
         ///     |                  |   +-----+-----+
         ///     |                  |         |
         ///     |        JoinGroup |         | JoinGroupResponse
-        ///     |        Request   |         | ErrorResponseCode.GroupCoordinatorNotAvailable
-        ///     |                  |         | ErrorResponseCode.GroupLoadInProgress
+        ///     |        Request   |         | ResponseCode.GroupCoordinatorNotAvailable
+        ///     |                  |         | ResponseCode.GroupLoadInProgress
         ///     |                  |         v                 
         ///     |                  |   +-----+-----+
         ///     |                  +---+           |
@@ -95,7 +95,7 @@ namespace KafkaClient
         ///     |  | SyncGroupResponse +-----+-----+
         ///     v  | RebalanceInProgress     ^
         ///  +--+--+-----+                   | HeartbeatResponse
-        ///  |           |                   | ErrorResponseCode.RebalanceInProgress
+        ///  |           |                   | ResponseCode.RebalanceInProgress
         ///  |  Syncing  |                   |
         ///  |           |             +-----+--------+
         ///  +-----+-----+             |              |
@@ -104,14 +104,14 @@ namespace KafkaClient
         ///        |               |   +-----+--------+
         ///        |               |         |
         ///        |     Heartbeat |         | HeartbeatResponse
-        ///        |     Request   |         | ErrorResponseCode.None
+        ///        |     Request   |         | ResponseCode.None
         ///        |               |         v
         ///        |               |   +-----+-----+
         ///        |               +---+           |
         ///        |                   |  Stable   |
         ///        +------------------->           |
         ///        SyncGroupResponse   +-----------+ 
-        ///        ErrorResponseCode.None                   
+        ///        ResponseCode.None                   
         /// </remarks>
         private async Task DedicatedHeartbeatAsync()
         {
@@ -129,14 +129,14 @@ namespace KafkaClient
                     } catch (OperationCanceledException) { // cancellation token fired while attempting to get tasks: normal behavior
                     } catch (RequestException ex) {
                         switch (ex.ErrorCode) {
-                            case ErrorResponseCode.RebalanceInProgress:
+                            case ErrorCode.RebalanceInProgress:
                                 Log.Info(() => LogEvent.Create(ex.Message));
                                 TriggerRejoin();
                                 delay = _heartbeatDelay;
                                 break;
 
-                            case ErrorResponseCode.GroupAuthorizationFailed:
-                            case ErrorResponseCode.UnknownMemberId:
+                            case ErrorCode.GroupAuthorizationFailed:
+                            case ErrorCode.UnknownMemberId:
                                 Log.Warn(() => LogEvent.Create(ex));
                                 _leaveOnDispose = false; // no point in attempting to leave the group since it will fail
                                 _disposeToken.Cancel();
@@ -250,11 +250,11 @@ namespace KafkaClient
                 await _stateChangeQueue.EnqueueAsync(ApiKey.SyncGroup, _disposeToken.Token);
             } catch (RequestException ex) {
                 switch (ex.ErrorCode) {
-                    case ErrorResponseCode.IllegalGeneration:
-                    case ErrorResponseCode.GroupAuthorizationFailed:
-                    case ErrorResponseCode.UnknownMemberId:
-                    case ErrorResponseCode.InconsistentGroupProtocol:
-                    case ErrorResponseCode.InvalidSessionTimeout:
+                    case ErrorCode.IllegalGeneration:
+                    case ErrorCode.GroupAuthorizationFailed:
+                    case ErrorCode.UnknownMemberId:
+                    case ErrorCode.InconsistentGroupProtocol:
+                    case ErrorCode.InvalidSessionTimeout:
                         Log.Warn(() => LogEvent.Create(ex));
                         _leaveOnDispose = false; // no point in attempting to leave the group since it will fail
                         _disposeToken.Cancel();
@@ -303,13 +303,13 @@ namespace KafkaClient
                 response = await Router.SyncGroupAsync(request, new RequestContext(protocolType: ProtocolType), Configuration.GroupCoordinationRetry, cancellationToken).ConfigureAwait(false);
             } catch (RequestException ex) {
                 switch (ex.ErrorCode) {
-                    case ErrorResponseCode.RebalanceInProgress:
+                    case ErrorCode.RebalanceInProgress:
                         Log.Info(() => LogEvent.Create(ex.Message));
                         TriggerRejoin();
                         return;
 
-                    case ErrorResponseCode.GroupAuthorizationFailed:
-                    case ErrorResponseCode.UnknownMemberId:
+                    case ErrorCode.GroupAuthorizationFailed:
+                    case ErrorCode.UnknownMemberId:
                         Log.Warn(() => LogEvent.Create(ex));
                         _leaveOnDispose = false; // no point in attempting to leave the group since it will fail
                         _disposeToken.Cancel();

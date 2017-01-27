@@ -16,12 +16,12 @@ namespace KafkaClient.Tests.Unit
     {
         private const int PartitionId = 0;
 
-        [TestCase(ErrorResponseCode.NotLeaderForPartition)]
-        [TestCase(ErrorResponseCode.LeaderNotAvailable)]
-        [TestCase(ErrorResponseCode.GroupCoordinatorNotAvailable)]
-        [TestCase(ErrorResponseCode.UnknownTopicOrPartition)]
+        [TestCase(ErrorCode.NotLeaderForPartition)]
+        [TestCase(ErrorCode.LeaderNotAvailable)]
+        [TestCase(ErrorCode.GroupCoordinatorNotAvailable)]
+        [TestCase(ErrorCode.UnknownTopicOrPartition)]
         [Test]
-        public async Task ShouldTryToRefreshMataDataIfCanRecoverByRefreshMetadata(ErrorResponseCode code)
+        public async Task ShouldTryToRefreshMataDataIfCanRecoverByRefreshMetadata(ErrorCode code)
         {
             var routerProxy = new BrokerRouterProxy();
             routerProxy.CacheExpiration = new TimeSpan(10);
@@ -69,15 +69,15 @@ namespace KafkaClient.Tests.Unit
         }
 
         [Test]
-        [TestCase(ErrorResponseCode.InvalidFetchSize)]
-        [TestCase(ErrorResponseCode.MessageTooLarge)]
-        [TestCase(ErrorResponseCode.OffsetMetadataTooLarge)]
-        [TestCase(ErrorResponseCode.OffsetOutOfRange)]
-        [TestCase(ErrorResponseCode.Unknown)]
-        [TestCase(ErrorResponseCode.StaleControllerEpoch)]
-        [TestCase(ErrorResponseCode.ReplicaNotAvailable)]
+        [TestCase(ErrorCode.InvalidFetchSize)]
+        [TestCase(ErrorCode.MessageTooLarge)]
+        [TestCase(ErrorCode.OffsetMetadataTooLarge)]
+        [TestCase(ErrorCode.OffsetOutOfRange)]
+        [TestCase(ErrorCode.Unknown)]
+        [TestCase(ErrorCode.StaleControllerEpoch)]
+        [TestCase(ErrorCode.ReplicaNotAvailable)]
         public async Task SendProtocolRequestShouldNotTryToRefreshMataDataIfCanNotRecoverByRefreshMetadata(
-            ErrorResponseCode code)
+            ErrorCode code)
         {
             var routerProxy = new BrokerRouterProxy();
             routerProxy.CacheExpiration = TimeSpan.FromMilliseconds(10);
@@ -212,7 +212,7 @@ namespace KafkaClient.Tests.Unit
         public async Task ShouldRecoverFromFetchErrorByUpdateMetadataOnceFullScenario1()
         {
             await ShouldRecoverByUpdateMetadataOnceFullScenario(
-                FailedInFirstMessageError(ErrorResponseCode.LeaderNotAvailable, TimeSpan.Zero));
+                FailedInFirstMessageError(ErrorCode.LeaderNotAvailable, TimeSpan.Zero));
         }
 
         /// <summary>
@@ -257,13 +257,13 @@ namespace KafkaClient.Tests.Unit
         }
 
 
-        private static Func<IRequestContext, Task<IResponse>> FailedInFirstMessageError(ErrorResponseCode errorResponseCode, TimeSpan delay)
+        private static Func<IRequestContext, Task<IResponse>> FailedInFirstMessageError(ErrorCode errorCode, TimeSpan delay)
         {
             return async context => {
                 if (context.CorrelationId == 1) {
                     await Task.Delay(delay);
                     await Task.Delay(1);
-                    return new FetchResponse(new []{ new FetchResponse.Topic("foo", 1, 0, errorResponseCode)});
+                    return new FetchResponse(new []{ new FetchResponse.Topic("foo", 1, 0, errorCode)});
                 }
                 return new FetchResponse();
             };

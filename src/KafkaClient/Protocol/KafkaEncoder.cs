@@ -610,7 +610,7 @@ namespace KafkaClient.Protocol
                     var partitionCount = reader.ReadInt32();
                     for (var j = 0; j < partitionCount; j++) {
                         var partitionId = reader.ReadInt32();
-                        var errorCode = (ErrorResponseCode) reader.ReadInt16();
+                        var errorCode = (ErrorCode) reader.ReadInt16();
                         var offset = reader.ReadInt64();
                         DateTimeOffset? timestamp = null;
 
@@ -649,7 +649,7 @@ namespace KafkaClient.Protocol
                     var partitionCount = reader.ReadInt32();
                     for (var p = 0; p < partitionCount; p++) {
                         var partitionId = reader.ReadInt32();
-                        var errorCode = (ErrorResponseCode) reader.ReadInt16();
+                        var errorCode = (ErrorCode) reader.ReadInt16();
                         var highWaterMarkOffset = reader.ReadInt64();
                         var messages = reader.ReadMessages();
 
@@ -671,7 +671,7 @@ namespace KafkaClient.Protocol
                     var partitionCount = reader.ReadInt32();
                     for (var p = 0; p < partitionCount; p++) {
                         var partitionId = reader.ReadInt32();
-                        var errorCode = (ErrorResponseCode) reader.ReadInt16();
+                        var errorCode = (ErrorCode) reader.ReadInt16();
 
                         if (context.ApiVersion == 0) {
                             var offsetsCount = reader.ReadInt32();
@@ -718,7 +718,7 @@ namespace KafkaClient.Protocol
 
                 var topics = new MetadataResponse.Topic[reader.ReadInt32()];
                 for (var t = 0; t < topics.Length; t++) {
-                    var topicError = (ErrorResponseCode) reader.ReadInt16();
+                    var topicError = (ErrorCode) reader.ReadInt16();
                     var topicName = reader.ReadString();
                     bool? isInternal = null;
                     if (context.ApiVersion >= 1) {
@@ -727,7 +727,7 @@ namespace KafkaClient.Protocol
 
                     var partitions = new MetadataResponse.Partition[reader.ReadInt32()];
                     for (var p = 0; p < partitions.Length; p++) {
-                        var partitionError = (ErrorResponseCode) reader.ReadInt16();
+                        var partitionError = (ErrorCode) reader.ReadInt16();
                         var partitionId = reader.ReadInt32();
                         var leaderId = reader.ReadInt32();
 
@@ -758,7 +758,7 @@ namespace KafkaClient.Protocol
                     var partitionCount = reader.ReadInt32();
                     for (var p = 0; p < partitionCount; p++) {
                         var partitionId = reader.ReadInt32();
-                        var errorCode = (ErrorResponseCode) reader.ReadInt16();
+                        var errorCode = (ErrorCode) reader.ReadInt16();
 
                         topics.Add(new TopicResponse(topicName, partitionId, errorCode));
                     }
@@ -781,7 +781,7 @@ namespace KafkaClient.Protocol
                         var partitionId = reader.ReadInt32();
                         var offset = reader.ReadInt64();
                         var metadata = reader.ReadString();
-                        var errorCode = (ErrorResponseCode) reader.ReadInt16();
+                        var errorCode = (ErrorCode) reader.ReadInt16();
 
                         topics.Add(new OffsetFetchResponse.Topic(topicName, partitionId, errorCode, offset, metadata));
                     }
@@ -794,7 +794,7 @@ namespace KafkaClient.Protocol
         private static IResponse GroupCoordinatorResponse(IRequestContext context, ArraySegment<byte> payload)
         {
             using (var reader = new KafkaReader(payload)) {
-                var errorCode = (ErrorResponseCode)reader.ReadInt16();
+                var errorCode = (ErrorCode)reader.ReadInt16();
                 var coordinatorId = reader.ReadInt32();
                 var coordinatorHost = reader.ReadString();
                 var coordinatorPort = reader.ReadInt32();
@@ -806,7 +806,7 @@ namespace KafkaClient.Protocol
         private static IResponse JoinGroupResponse(IRequestContext context, ArraySegment<byte> payload)
         {
             using (var reader = new KafkaReader(payload)) {
-                var errorCode = (ErrorResponseCode)reader.ReadInt16();
+                var errorCode = (ErrorCode)reader.ReadInt16();
                 var generationId = reader.ReadInt32();
                 var groupProtocol = reader.ReadString();
                 var leaderId = reader.ReadString();
@@ -827,7 +827,7 @@ namespace KafkaClient.Protocol
         private static IResponse HeartbeatResponse(IRequestContext context, ArraySegment<byte> payload)
         {
             using (var reader = new KafkaReader(payload)) {
-                var errorCode = (ErrorResponseCode)reader.ReadInt16();
+                var errorCode = (ErrorCode)reader.ReadInt16();
 
                 return new HeartbeatResponse(errorCode);
             }
@@ -836,7 +836,7 @@ namespace KafkaClient.Protocol
         private static IResponse LeaveGroupResponse(IRequestContext context, ArraySegment<byte> payload)
         {
             using (var reader = new KafkaReader(payload)) {
-                var errorCode = (ErrorResponseCode)reader.ReadInt16();
+                var errorCode = (ErrorCode)reader.ReadInt16();
 
                 return new LeaveGroupResponse(errorCode);
             }
@@ -845,7 +845,7 @@ namespace KafkaClient.Protocol
         private static IResponse SyncGroupResponse(IRequestContext context, ArraySegment<byte> payload)
         {
             using (var reader = new KafkaReader(payload)) {
-                var errorCode = (ErrorResponseCode)reader.ReadInt16();
+                var errorCode = (ErrorCode)reader.ReadInt16();
 
                 var encoder = context.GetEncoder();
                 var memberAssignment = encoder.DecodeAssignment(reader);
@@ -858,7 +858,7 @@ namespace KafkaClient.Protocol
             using (var reader = new KafkaReader(payload)) {
                 var groups = new DescribeGroupsResponse.Group[reader.ReadInt32()];
                 for (var g = 0; g < groups.Length; g++) {
-                    var errorCode = (ErrorResponseCode)reader.ReadInt16();
+                    var errorCode = (ErrorCode)reader.ReadInt16();
                     var groupId = reader.ReadString();
                     var state = reader.ReadString();
                     var protocolType = reader.ReadString();
@@ -885,7 +885,7 @@ namespace KafkaClient.Protocol
         private static IResponse ListGroupsResponse(IRequestContext context, ArraySegment<byte> payload)
         {
             using (var reader = new KafkaReader(payload)) {
-                var errorCode = (ErrorResponseCode)reader.ReadInt16();
+                var errorCode = (ErrorCode)reader.ReadInt16();
                 var groups = new ListGroupsResponse.Group[reader.ReadInt32()];
                 for (var g = 0; g < groups.Length; g++) {
                     var groupId = reader.ReadString();
@@ -900,7 +900,7 @@ namespace KafkaClient.Protocol
         private static IResponse SaslHandshakeResponse(IRequestContext context, ArraySegment<byte> payload)
         {
             using (var reader = new KafkaReader(payload)) {
-                var errorCode = (ErrorResponseCode)reader.ReadInt16();
+                var errorCode = (ErrorCode)reader.ReadInt16();
                 var enabledMechanisms = new string[reader.ReadInt32()];
                 for (var m = 0; m < enabledMechanisms.Length; m++) {
                     enabledMechanisms[m] = reader.ReadString();
@@ -913,7 +913,7 @@ namespace KafkaClient.Protocol
         private static IResponse ApiVersionsResponse(IRequestContext context, ArraySegment<byte> payload)
         {
             using (var reader = new KafkaReader(payload)) {
-                var errorCode = (ErrorResponseCode)reader.ReadInt16();
+                var errorCode = (ErrorCode)reader.ReadInt16();
 
                 var apiKeys = new ApiVersionsResponse.VersionSupport[reader.ReadInt32()];
                 for (var i = 0; i < apiKeys.Length; i++) {

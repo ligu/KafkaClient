@@ -8,7 +8,7 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class RequestException : KafkaException
     {
-        public RequestException(ApiKey apiKey, ErrorResponseCode errorCode, string message = null)
+        public RequestException(ApiKey apiKey, ErrorCode errorCode, string message = null)
             : base($"Kafka returned {errorCode} for {apiKey} request: {message}")
         {
             ApiKey = apiKey;
@@ -26,7 +26,7 @@ namespace KafkaClient.Protocol
         }
 
         public ApiKey ApiKey { get; }
-        public ErrorResponseCode ErrorCode { get; }
+        public ErrorCode ErrorCode { get; }
         public Endpoint Endpoint { get; set; }
     }
 }

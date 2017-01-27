@@ -18,19 +18,19 @@ namespace KafkaClient.Protocol
     {
         public override string ToString() => $"{{ErrorCode:{ErrorCode},Apis:[{SupportedVersions.ToStrings()}]}}";
 
-        public ApiVersionsResponse(ErrorResponseCode errorCode = ErrorResponseCode.None, IEnumerable<VersionSupport> supportedVersions = null)
+        public ApiVersionsResponse(ErrorCode errorCode = Protocol.ErrorCode.None, IEnumerable<VersionSupport> supportedVersions = null)
         {
             ErrorCode = errorCode;
-            Errors = ImmutableList<ErrorResponseCode>.Empty.Add(ErrorCode);
+            Errors = ImmutableList<ErrorCode>.Empty.Add(ErrorCode);
             SupportedVersions = ImmutableList<VersionSupport>.Empty.AddNotNullRange(supportedVersions);
         }
 
-        public IImmutableList<ErrorResponseCode> Errors { get; }
+        public IImmutableList<ErrorCode> Errors { get; }
 
         /// <summary>
         /// The error code.
         /// </summary>
-        public ErrorResponseCode ErrorCode { get; }
+        public ErrorCode ErrorCode { get; }
 
         public IImmutableList<VersionSupport> SupportedVersions { get; }
 

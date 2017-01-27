@@ -23,10 +23,10 @@ namespace KafkaClient.Protocol
         public OffsetFetchResponse(IEnumerable<Topic> topics = null)
         {
             Topics = ImmutableList<Topic>.Empty.AddNotNullRange(topics);
-            Errors = ImmutableList<ErrorResponseCode>.Empty.AddRange(Topics.Select(t => t.ErrorCode));
+            Errors = ImmutableList<ErrorCode>.Empty.AddRange(Topics.Select(t => t.ErrorCode));
         }
 
-        public IImmutableList<ErrorResponseCode> Errors { get; }
+        public IImmutableList<ErrorCode> Errors { get; }
 
         public IImmutableList<Topic> Topics { get; }
 
@@ -70,7 +70,7 @@ namespace KafkaClient.Protocol
         {
             public override string ToString() => $"{{TopicName:{TopicName},PartitionID:{PartitionId},Offset:{Offset},Metadata:{MetaData},ErrorCode:{ErrorCode}}}";
 
-            public Topic(string topic, int partitionId, ErrorResponseCode errorCode, long offset, string metadata) 
+            public Topic(string topic, int partitionId, ErrorCode errorCode, long offset, string metadata) 
                 : base(topic, partitionId, errorCode)
             {
                 Offset = offset;

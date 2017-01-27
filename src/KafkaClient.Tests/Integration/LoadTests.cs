@@ -37,7 +37,7 @@ namespace KafkaClient.Tests.Integration
                         //So this assertion will never pass
                         //Assert.That(results.Count, Is.EqualTo(amount));
 
-                        Assert.That(results.Any(x => x.ErrorCode != ErrorResponseCode.None), Is.False,
+                        Assert.That(results.Any(x => x.ErrorCode != ErrorCode.None), Is.False,
                             "Should not have received any results as failures.");
                     }
                 });

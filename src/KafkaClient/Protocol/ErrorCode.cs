@@ -5,7 +5,7 @@
     /// 
     /// See http://kafka.apache.org/protocol.html#protocol_error_codes for details.
     /// </summary>
-    public enum ErrorResponseCode : short
+    public enum ErrorCode : short
     {
         /// <summary>
         /// No error -- it worked!

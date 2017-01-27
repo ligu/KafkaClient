@@ -16,19 +16,19 @@ namespace KafkaClient.Protocol
     {
         public override string ToString() => $"{{ErrorCode:{ErrorCode},NodeId:{BrokerId},Host:'{Host}',Port:{Port}}}";
 
-        public GroupCoordinatorResponse(ErrorResponseCode errorCode, int coordinatorId, string host, int port)
+        public GroupCoordinatorResponse(ErrorCode errorCode, int coordinatorId, string host, int port)
             : base(coordinatorId, host, port)
         {
             ErrorCode = errorCode;
-            Errors = ImmutableList<ErrorResponseCode>.Empty.Add(ErrorCode);
+            Errors = ImmutableList<ErrorCode>.Empty.Add(ErrorCode);
         }
 
         /// <summary>
         /// Error code of exception that occured during the request.  Zero if no error.
         /// </summary>
-        public ErrorResponseCode ErrorCode { get; }
+        public ErrorCode ErrorCode { get; }
 
-        public IImmutableList<ErrorResponseCode> Errors { get; }
+        public IImmutableList<ErrorCode> Errors { get; }
 
         /// <inheritdoc />
         public override bool Equals(object obj)

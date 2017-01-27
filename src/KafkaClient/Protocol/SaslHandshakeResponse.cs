@@ -14,17 +14,17 @@ namespace KafkaClient.Protocol
     {
         public override string ToString() => $"{{ErrorCode:{ErrorCode},EnabledMechanisms:[{EnabledMechanisms.ToStrings()}]}}";
 
-        public SaslHandshakeResponse(ErrorResponseCode errorCode, IEnumerable<string> enabledMechanisms = null)
+        public SaslHandshakeResponse(ErrorCode errorCode, IEnumerable<string> enabledMechanisms = null)
         {
             ErrorCode = errorCode;
-            Errors = ImmutableList<ErrorResponseCode>.Empty.Add(ErrorCode);
+            Errors = ImmutableList<ErrorCode>.Empty.Add(ErrorCode);
             EnabledMechanisms = ImmutableList<string>.Empty.AddNotNullRange(enabledMechanisms);
         }
 
         /// <inheritdoc />
-        public IImmutableList<ErrorResponseCode> Errors { get; }
+        public IImmutableList<ErrorCode> Errors { get; }
 
-        public ErrorResponseCode ErrorCode { get; }
+        public ErrorCode ErrorCode { get; }
 
         /// <summary>
         /// Array of mechanisms enabled in the server.

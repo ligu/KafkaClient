@@ -17,7 +17,7 @@ namespace KafkaClient.Tests
                     new[] {
                         new MetadataResponse.Topic(
                             topic,
-                            ErrorResponseCode.None,
+                            ErrorCode.None,
                             new[] {new MetadataResponse.Partition(0, 0), new MetadataResponse.Partition(1, 1)})
                     }));
         }
