@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
@@ -17,27 +18,14 @@ namespace KafkaClient.Tests.Unit
     public class RouterTests
     {
         private const string TestTopic = BrokerRouterProxy.TestTopic;
-        private IConnection _connection;
-        private IConnectionFactory _connectionFactory;
-
-        [SetUp]
-        public void Setup()
-        {
-            //setup mock IConnection
-            _connection = Substitute.For<IConnection>();
-            _connectionFactory = Substitute.For<IConnectionFactory>();
-            _connectionFactory
-                .Create(Arg.Is<Endpoint>(e => e.Value.Port == 1), Arg.Any<IConnectionConfiguration>(), Arg.Any<ILog>())
-                .Returns(_ => _connection);
-            _connectionFactory
-                .ResolveAsync(Arg.Any<Uri>(), Arg.Any<ILog>())
-                .Returns(_ => Task.FromResult(new Endpoint(new IPEndPoint(IPAddress.Loopback, _.Arg<Uri>().Port), _.Arg<Uri>().DnsSafeHost)));
-        }
 
         [Test]
         public void BrokerRouterCanConstruct()
         {
-            var result = new Router(new Endpoint(new IPEndPoint(IPAddress.Loopback, 1)), _connectionFactory);
+            var connections = CreateConnections(1);
+            var factory = CreateFactory(connections);
+
+            var result = new Router(new Endpoint(new IPEndPoint(IPAddress.Loopback, 1)), factory);
 
             Assert.That(result, Is.Not.Null);
         }
@@ -54,32 +42,68 @@ namespace KafkaClient.Tests.Unit
             var result = await Router.CreateAsync(new [] { new Uri("http://noaddress:1"), new Uri("http://localhost:1") });
         }
 
+        private IList<IConnection> CreateConnections(int count)
+        {
+            var connections = new List<IConnection>();
+            for (var index = 0; index < count; index++) {
+                var connection = Substitute.For<IConnection>();
+                connection.Endpoint.Returns(new Endpoint(new IPEndPoint(IPAddress.Loopback, index), $"http://127.0.0.1:{index}"));
+                connections.Add(connection);
+            }
+            return connections;
+        }
+
+        private IConnectionFactory CreateFactory(IEnumerable<IConnection> connections)
+        {
+            var factory = Substitute.For<IConnectionFactory>();
+            factory
+                .Create(Arg.Any<Endpoint>(), Arg.Any<IConnectionConfiguration>(), Arg.Any<ILog>())
+                .Returns(_ => connections.SingleOrDefault(connection => connection.Endpoint == _.Arg<Endpoint>()));
+            return factory;
+        }
+
         [Test]
         public async Task BrokerRouterUsesFactoryToAddNewBrokers()
         {
-            var router = new Router(new Endpoint(new IPEndPoint(IPAddress.Loopback, 1)), _connectionFactory);
+            // Arrange
+            var connections = CreateConnections(2);
+            foreach (var connection in connections) {
+                connection
+                    .SendAsync(Arg.Any<IRequest<MetadataResponse>>(), Arg.Any<CancellationToken>(), Arg.Any<IRequestContext>())
+                    .Returns(_ => BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers());
+            }
+            var factory = CreateFactory(connections);
+            var router = new Router(new Endpoint(new IPEndPoint(IPAddress.Loopback, 1)), factory);
 
-            _connection
-                .SendAsync(Arg.Any<IRequest<MetadataResponse>>(), Arg.Any<CancellationToken>(), Arg.Any<IRequestContext>())
-                .Returns(_ => BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers());
+            // Act
             await router.GetTopicMetadataAsync(TestTopic, CancellationToken.None);
             var topics = router.GetTopicMetadata(TestTopic);
-            _connectionFactory.Received()
-                              .Create(Arg.Is<Endpoint>(e => e.Value.Port == 2), Arg.Any<IConnectionConfiguration>(), Arg.Any<ILog>());
+
+            // Assert
+            factory.Received()
+                   .Create(Arg.Is<Endpoint>(e => e.Value.Port == 2), Arg.Any<IConnectionConfiguration>(), Arg.Any<ILog>());
         }
 
         [Test]
         public async Task BrokerRouterUsesFactoryToAddNewBrokersFromGroups()
         {
-            var router = new Router(new Endpoint(new IPEndPoint(IPAddress.Loopback, 1)), _connectionFactory);
+            // Arrange
+            var connections = CreateConnections(2);
+            foreach (var connection in connections) {
+                connection
+                    .SendAsync(Arg.Any<GroupCoordinatorRequest>(), Arg.Any<CancellationToken>(), Arg.Any<IRequestContext>())
+                    .Returns(_ => BrokerRouterProxy.CreateGroupCoordinatorResponse(1));
+            }
+            var factory = CreateFactory(connections);
+            var router = new Router(new Endpoint(new IPEndPoint(IPAddress.Loopback, 1)), factory);
 
-            _connection
-                .SendAsync(Arg.Any<GroupCoordinatorRequest>(), Arg.Any<CancellationToken>(), Arg.Any<IRequestContext>())
-                .Returns(_ => BrokerRouterProxy.CreateGroupCoordinatorResponse(1));
+            // Act
             await router.GetGroupBrokerAsync(TestTopic, CancellationToken.None);
             var broker = router.GetGroupBroker(TestTopic);
-            _connectionFactory.Received()
-                              .Create(Arg.Is<Endpoint>(e => e.Value.Port == 2), Arg.Any<IConnectionConfiguration>(), Arg.Any<ILog>());
+
+            // Assert
+            factory.Received()
+                   .Create(Arg.Is<Endpoint>(e => e.Value.Port == 2), Arg.Any<IConnectionConfiguration>(), Arg.Any<ILog>());
         }
 
         #region Group Tests

@@ -32,12 +32,12 @@ namespace KafkaClient
         /// <summary>
         /// Get the number of messages sitting in the buffer waiting to be sent.
         /// </summary>
-        public int BufferedMessageCount => _sendingMessageCount - _batch.Count;
+        public int BufferedMessageCount => _sendingMessageCount - InFlightMessageCount;
 
         /// <summary>
         /// Get the number of messages staged for Async Request.
         /// </summary>
-        public int InFlightMessageCount => _batch.Count;
+        public int InFlightMessageCount => _batch.Sum(p => p.Messages.Count);
 
         /// <summary>
         /// Get the number of active async threads sending messages.
