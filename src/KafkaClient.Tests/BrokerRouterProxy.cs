@@ -64,10 +64,10 @@ namespace KafkaClient.Tests
 
             var kafkaConnectionFactory = Substitute.For<IConnectionFactory>();
             kafkaConnectionFactory
-                .Create(Arg.Is<Endpoint>(e => e.Value.Port == 1), Arg.Any<IConnectionConfiguration>(),Arg.Any<ILog>())
+                .Create(Arg.Is<Endpoint>(e => e.Ip.Port == 1), Arg.Any<IConnectionConfiguration>(),Arg.Any<ILog>())
                 .Returns(Connection1);
             kafkaConnectionFactory
-                .Create(Arg.Is<Endpoint>(e => e.Value.Port == 2), Arg.Any<IConnectionConfiguration>(),Arg.Any<ILog>())
+                .Create(Arg.Is<Endpoint>(e => e.Ip.Port == 2), Arg.Any<IConnectionConfiguration>(),Arg.Any<ILog>())
                 .Returns(Connection2);
             kafkaConnectionFactory
                 .ResolveAsync(Arg.Any<Uri>(), Arg.Any<ILog>())

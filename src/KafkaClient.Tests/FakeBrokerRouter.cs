@@ -59,8 +59,8 @@ namespace KafkaClient.Tests
 #pragma warning restore 1998
 
             _mockConnectionFactory = Substitute.For<IConnectionFactory>();
-            _mockConnectionFactory.Create(Arg.Is<Endpoint>(e => e.Value.Port == 1), Arg.Any<IConnectionConfiguration>(), Arg.Any<ILog>()).Returns(_fakeConn0);
-            _mockConnectionFactory.Create(Arg.Is<Endpoint>(e => e.Value.Port == 2), Arg.Any<IConnectionConfiguration>(), Arg.Any<ILog>()).Returns(_fakeConn1);
+            _mockConnectionFactory.Create(Arg.Is<Endpoint>(e => e.Ip.Port == 1), Arg.Any<IConnectionConfiguration>(), Arg.Any<ILog>()).Returns(_fakeConn0);
+            _mockConnectionFactory.Create(Arg.Is<Endpoint>(e => e.Ip.Port == 2), Arg.Any<IConnectionConfiguration>(), Arg.Any<ILog>()).Returns(_fakeConn1);
             _mockConnectionFactory.ResolveAsync(Arg.Any<Uri>(), Arg.Any<ILog>())
                                   .Returns(info => Task.FromResult(new Endpoint(new IPEndPoint(IPAddress.Loopback, ((Uri)info[0]).Port), ((Uri)info[0]).DnsSafeHost)));
         }

@@ -14,8 +14,8 @@ namespace KafkaClient.Tests.Unit
         {
             var expected = IPAddress.Parse("127.0.0.1");
             var endpoint = await new ConnectionFactory().ResolveAsync(new Uri("http://localhost:8888"), TestConfig.Log);
-            Assert.That(endpoint.Value.Address, Is.EqualTo(expected));
-            Assert.That(endpoint.Value.Port, Is.EqualTo(8888));
+            Assert.That(endpoint.Ip.Address, Is.EqualTo(expected));
+            Assert.That(endpoint.Ip.Port, Is.EqualTo(8888));
         }
 
         [Test]

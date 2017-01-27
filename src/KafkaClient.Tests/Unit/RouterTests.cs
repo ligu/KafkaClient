@@ -81,7 +81,7 @@ namespace KafkaClient.Tests.Unit
 
             // Assert
             factory.Received()
-                   .Create(Arg.Is<Endpoint>(e => e.Value.Port == 2), Arg.Any<IConnectionConfiguration>(), Arg.Any<ILog>());
+                   .Create(Arg.Is<Endpoint>(e => e.Ip.Port == 2), Arg.Any<IConnectionConfiguration>(), Arg.Any<ILog>());
         }
 
         [Test]
@@ -103,7 +103,7 @@ namespace KafkaClient.Tests.Unit
 
             // Assert
             factory.Received()
-                   .Create(Arg.Is<Endpoint>(e => e.Value.Port == 2), Arg.Any<IConnectionConfiguration>(), Arg.Any<ILog>());
+                   .Create(Arg.Is<Endpoint>(e => e.Ip.Port == 2), Arg.Any<IConnectionConfiguration>(), Arg.Any<ILog>());
         }
 
         #region Group Tests
