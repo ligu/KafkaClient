@@ -18,7 +18,7 @@ namespace KafkaClient.Tests.Integration
         [SetUp]
         public void Setup()
         {
-            var options = new KafkaOptions(TestConfig.IntegrationUri, new ConnectionConfiguration(versionSupport: VersionSupport.Kafka8.MakeDynamic()), log: TestConfig.Log);
+            var options = new KafkaOptions(TestConfig.IntegrationUri, new ConnectionConfiguration(versionSupport: VersionSupport.Kafka9.Dynamic()), log: TestConfig.Log);
             var endpoint = AsyncContext.Run(() => Endpoint.ResolveAsync(options.ServerUris.First(), options.Log));
 
             _conn =  new Connection(endpoint, options.ConnectionConfiguration, TestConfig.Log);

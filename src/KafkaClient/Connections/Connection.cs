@@ -29,7 +29,7 @@ namespace KafkaClient.Connections
         private readonly IConnectionConfiguration _configuration;
 
         private readonly CancellationTokenSource _disposeToken = new CancellationTokenSource();
-        private int _disposeCount = 0;
+        private int _disposeCount; // = 0
         private readonly TaskCompletionSource<bool> _disposePromise = new TaskCompletionSource<bool>();
         public bool IsDisposed => _disposeCount > 0;
 
@@ -40,7 +40,7 @@ namespace KafkaClient.Connections
         private readonly SemaphoreSlim _connectSemaphore = new SemaphoreSlim(1, 1);
         private readonly SemaphoreSlim _sendSemaphore = new SemaphoreSlim(1, 1);
         private readonly SemaphoreSlim _versionSupportSemaphore = new SemaphoreSlim(1, 1);
-        private IVersionSupport _versionSupport;
+        private IVersionSupport _versionSupport; // = null
 
         /// <summary>
         /// Initializes a new instance of the Connection class.
@@ -52,12 +52,9 @@ namespace KafkaClient.Connections
         {
             Endpoint = endpoint;
             _configuration = configuration ?? new ConnectionConfiguration();
-
             _log = log ?? TraceLog.Log;
-            _versionSupport = _configuration.VersionSupport.IsDynamic ? null : _configuration.VersionSupport;
 
-            // This thread will poll the receive stream for data, parse a message out
-            // and trigger an event with the message payload
+            // This thread will poll the receive stream for data, parse a message out and trigger an event with the message data
             _receiveTask = Task.Factory.StartNew(DedicatedReceiveAsync, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
         }
 
@@ -123,7 +120,8 @@ namespace KafkaClient.Connections
 
         private async Task<short> GetVersionAsync(ApiKeyRequestType requestType, CancellationToken cancellationToken)
         {
-            if (!_configuration.VersionSupport.IsDynamic) return _configuration.VersionSupport.GetVersion(requestType).GetValueOrDefault();
+            var configuredSupport = _configuration.VersionSupport as DynamicVersionSupport;
+            if (configuredSupport == null) return _configuration.VersionSupport.GetVersion(requestType).GetValueOrDefault(); 
 
             var versionSupport = _versionSupport;
             if (versionSupport != null) return versionSupport.GetVersion(requestType).GetValueOrDefault();
@@ -137,7 +135,7 @@ namespace KafkaClient.Connections
 
                         var supportedVersions = response.SupportedVersions.ToImmutableDictionary(
                                                         _ => _.ApiKey,
-                                                        _ => _.MaxVersion);
+                                                        _ => configuredSupport.UseMaxSupported ? _.MaxVersion : _.MinVersion);
                         _versionSupport = new VersionSupport(supportedVersions);
                         return new RetryAttempt<short>(_versionSupport.GetVersion(requestType).GetValueOrDefault());
                     },

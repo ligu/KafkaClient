@@ -91,28 +91,17 @@ namespace KafkaClient.Connections
                 {ApiKeyRequestType.DeleteTopics, 0}
             }.ToImmutableDictionary()));
 
-
         private readonly IImmutableDictionary<ApiKeyRequestType, short> _versionSupport;
 
         public VersionSupport(IImmutableDictionary<ApiKeyRequestType, short> versionSupport)
         {
             _versionSupport = versionSupport;
-            IsDynamic = false;
         }
 
-        public VersionSupport(VersionSupport versionSupport, bool isDynamic)
-        {
-            _versionSupport = versionSupport._versionSupport;
-            IsDynamic = isDynamic;
-        }
-
-        /// <inheritdoc />
-        public bool IsDynamic { get; }
-
-        public short? GetVersion(ApiKeyRequestType requestType)
+        public short? GetVersion(ApiKeyRequestType apiKey)
         {
             short version;
-            return _versionSupport.TryGetValue(requestType, out version) ? version : (short?)null;
+            return _versionSupport.TryGetValue(apiKey, out version) ? version : (short?)null;
         }
     }
 }
