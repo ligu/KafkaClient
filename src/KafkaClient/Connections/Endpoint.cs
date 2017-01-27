@@ -12,10 +12,11 @@ namespace KafkaClient.Connections
         public Endpoint(IPEndPoint ip, string host = null)
         {
             Ip = ip;
-            _host = host ?? ip.Address.ToString();
+            Host = host ?? ip.Address.ToString();
         }
 
-        private readonly string _host;
+
+        public string Host { get; }
         public IPEndPoint Ip { get; }
 
         public static implicit operator IPEndPoint(Endpoint endpoint)
@@ -55,7 +56,7 @@ namespace KafkaClient.Connections
 
         #endregion
 
-        public override string ToString() => $"http://{_host}:{Ip?.Port}";
+        public override string ToString() => $"http://{Host}:{Ip?.Port}";
 
         public static async Task<Endpoint> ResolveAsync(Uri uri, ILog log)
         {

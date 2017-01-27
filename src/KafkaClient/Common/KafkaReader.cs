@@ -110,7 +110,7 @@ namespace KafkaClient.Common
             return Crc32Provider.ComputeHash(segment);
         }
 
-        private static readonly ArraySegment<byte> EmptySegment = new ArraySegment<byte>();
+        private static readonly ArraySegment<byte> EmptySegment = new ArraySegment<byte>(new byte[0]);
 
         private ArraySegment<byte> ToSegment(int count, bool movePosition = true)
         {

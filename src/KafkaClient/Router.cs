@@ -646,26 +646,38 @@ namespace KafkaClient
 
         private async Task UpdateConnectionCacheAsync(IEnumerable<Protocol.Broker> brokers)
         {
-            var connections = new Dictionary<Endpoint, List<IConnection>>();
-            var borkerEndpoints = _brokerEndpoints;
+            var connections = _connections;
+            var brokerEndpoints = _brokerEndpoints;
             try {
+                var hasNewBrokers = false;
                 foreach (var server in brokers) {
+                    Endpoint existing;
+                    if (brokerEndpoints.TryGetValue(server.BrokerId, out existing) 
+                        && existing.Host == server.Host 
+                        && existing.Ip.Port == server.Port)
+                    {
+                        continue; // same as we already have
+                    }
+
                     var endpoint = await Endpoint.ResolveAsync(new Uri($"http://{server.Host}:{server.Port}"), Log);
-                    borkerEndpoints = borkerEndpoints.SetItem(server.BrokerId, endpoint);
+                    brokerEndpoints = brokerEndpoints.SetItem(server.BrokerId, endpoint);
+                    hasNewBrokers = true;
                 }
 
+                if (!hasNewBrokers) return;
+
                 // only keep if they're alive
-                connections = _connections.SelectMany(pair => pair.Value.Where(connection => !connection.IsDisposed))
-                                          .GroupBy(connection => connection.Endpoint)
-                                          .ToDictionary(group => group.Key, group => group.ToList());
-                foreach (var endpoint in borkerEndpoints.Values) {
+                connections = connections.SelectMany(pair => pair.Value.Where(connection => !connection.IsDisposed))
+                                         .GroupBy(connection => connection.Endpoint)
+                                         .ToImmutableDictionary(group => group.Key, group => (IImmutableList<IConnection>)group.ToImmutableList());
+                foreach (var endpoint in brokerEndpoints.Values) {
                     if (!connections.ContainsKey(endpoint)) {
-                        connections[endpoint] = new List<IConnection> { _connectionFactory.Create(endpoint, ConnectionConfiguration, Log) };
+                        connections = connections.SetItem(endpoint, ImmutableList<IConnection>.Empty.Add(_connectionFactory.Create(endpoint, ConnectionConfiguration, Log)));
                     }
                 }
             } finally {
                 _connections = connections.ToImmutableDictionary(pair => pair.Key, pair => (IImmutableList<IConnection>)pair.Value.ToImmutableList());
-                _brokerEndpoints = borkerEndpoints;
+                _brokerEndpoints = brokerEndpoints;
             }
         }
 

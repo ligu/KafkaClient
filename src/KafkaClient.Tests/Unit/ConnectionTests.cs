@@ -648,8 +648,8 @@ namespace KafkaClient.Tests.Unit
                 {
                     server.OnConnected = () => TestConfig.Log.Info(() => LogEvent.Create("Client connected..."));
                     server.OnBytesReceived = b => {
-                        var request = KafkaDecoder.DecodeHeader(b.Skip(KafkaEncoder.IntegerByteSize));
-                        AsyncContext.Run(async () => await server.SendDataAsync(MessageHelper.CreateMetadataResponse(request.CorrelationId, "Test")));
+                        var requestContext = KafkaDecoder.DecodeHeader(b.Skip(KafkaEncoder.IntegerByteSize));
+                        AsyncContext.Run(async () => await server.SendDataAsync(MessageHelper.CreateMetadataResponse(requestContext, "Test")));
                     };
 
                     await Task.WhenAny(taskResult, Task.Delay(TimeSpan.FromSeconds(5)));

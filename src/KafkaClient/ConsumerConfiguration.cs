@@ -22,7 +22,7 @@ namespace KafkaClient
             MaxFetchServerWait = maxServerWait;
             MinFetchBytes = minFetchBytes;
             MaxFetchBytes = maxFetchBytes;
-            FetchByteMultiplier = fetchByteMultiplier;
+            FetchByteMultiplier = fetchByteMultiplier.GetValueOrDefault(Defaults.FetchByteMultiplier);
             MaxPartitionFetchBytes = maxPartitionFetchBytes;
             GroupHeartbeat = heartbeatTimeout ?? TimeSpan.FromSeconds(Defaults.HeartbeatSeconds);
             GroupRebalanceTimeout = rebalanceTimeout ?? heartbeatTimeout ?? TimeSpan.FromSeconds(Defaults.RebalanceTimeoutSeconds);
@@ -38,7 +38,7 @@ namespace KafkaClient
         /// <inheritdoc/>
         public int? MinFetchBytes { get; }
         /// <inheritdoc/>
-        public int? FetchByteMultiplier { get; }
+        public int FetchByteMultiplier { get; }
         /// <inheritdoc/>
         public TimeSpan? MaxFetchServerWait { get; }
 
@@ -79,6 +79,11 @@ namespace KafkaClient
             /// The default <see cref="ConsumerConfiguration.BatchSize"/>
             /// </summary>
             public const int BatchSize = 100;
+
+            /// <summary>
+            /// The default <see cref="ConsumerConfiguration.FetchByteMultiplier"/>
+            /// </summary>
+            public const int FetchByteMultiplier = 2;
 
             public static IRetry CoordinationRetry(TimeSpan? timeout = null)
             {

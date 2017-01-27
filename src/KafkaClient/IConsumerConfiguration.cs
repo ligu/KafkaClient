@@ -28,7 +28,7 @@ namespace KafkaClient
         /// <summary>
         /// Multiplier to use when encountering a <see cref="KafkaClient.Protocol.BufferUnderRunException"/> on Fetching messages.
         /// </summary>
-        int? FetchByteMultiplier { get; }
+        int FetchByteMultiplier { get; }
 
         /// <summary>
         /// The expected size of a batch for fetches, if none specified.

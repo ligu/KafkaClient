@@ -228,7 +228,7 @@ namespace KafkaClient.Tests.Unit
             var memberId = Guid.NewGuid().ToString("N");
             var response = new JoinGroupResponse(ErrorCode.None, 1, protocol.Name, "other" + memberId, memberId, new []{ new JoinGroupResponse.Member(memberId, new ConsumerProtocolMetadata("mine")) });
 
-            using (new ConsumerMember(consumer, request, response, log: TestConfig.Log)) {
+            using (new ConsumerMember(consumer, request, response, TestConfig.Log)) {
                 await Task.Delay(300);
             }
 
@@ -248,8 +248,8 @@ namespace KafkaClient.Tests.Unit
             var protocol = new JoinGroupRequest.GroupProtocol(new ConsumerProtocolMetadata("mine"));
             var router = Substitute.For<IRouter>();
             var conn = Substitute.For<IConnection>();
-            router.GetGroupBrokerAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-                  .Returns(_ => Task.FromResult(new GroupBroker(_.Arg<string>(), 0, conn)));            
+            router.GetConnectionAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+                  .Returns(_ => Task.FromResult(conn));
             router.SyncGroupAsync(Arg.Any<SyncGroupRequest>(), Arg.Any<IRequestContext>(), Arg.Any<IRetry>(), Arg.Any<CancellationToken>())
                 .Returns(_ => Task.FromResult(new SyncGroupResponse(ErrorCode.None, new ConsumerMemberAssignment(new [] { new TopicPartition("name", 0) }))));
             conn.SendAsync(Arg.Any<HeartbeatRequest>(), Arg.Any<CancellationToken>(), Arg.Any<IRequestContext>())
@@ -260,10 +260,9 @@ namespace KafkaClient.Tests.Unit
             var memberId = Guid.NewGuid().ToString("N");
             var response = new JoinGroupResponse(ErrorCode.None, 1, protocol.Name, memberId, memberId, new []{ new JoinGroupResponse.Member(memberId, new ConsumerProtocolMetadata("mine")) });
 
-            using (new ConsumerMember(consumer, request, response, log: TestConfig.Log)) {
+            using (new ConsumerMember(consumer, request, response, TestConfig.Log)) {
                 await Task.Delay(totalMilliseconds);
             }
-
 
             Assert.That(conn.ReceivedCalls()
                             .Count(c => {
@@ -299,7 +298,7 @@ namespace KafkaClient.Tests.Unit
             var response = new JoinGroupResponse(ErrorCode.None, 1, protocol.Name, memberId, memberId, new []{ new JoinGroupResponse.Member(memberId, new ConsumerProtocolMetadata("mine")) });
             lastHeartbeat = DateTimeOffset.UtcNow;
 
-            using (new ConsumerMember(consumer, request, response, log: TestConfig.Log)) {
+            using (new ConsumerMember(consumer, request, response, TestConfig.Log)) {
                 await Task.Delay(totalMilliseconds);
             }
 
@@ -316,8 +315,8 @@ namespace KafkaClient.Tests.Unit
             var protocol = new JoinGroupRequest.GroupProtocol(new ConsumerProtocolMetadata("mine"));
             var router = Substitute.For<IRouter>();
             var conn = Substitute.For<IConnection>();
-            router.GetGroupBrokerAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-                  .Returns(_ => Task.FromResult(new GroupBroker(_.Arg<string>(), 0, conn)));
+            router.GetConnectionAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+                  .Returns(_ => Task.FromResult(conn));
             router.SyncGroupAsync(Arg.Any<SyncGroupRequest>(), Arg.Any<IRequestContext>(), Arg.Any<IRetry>(), Arg.Any<CancellationToken>())
                 .Returns(_ => Task.FromResult(new SyncGroupResponse(ErrorCode.None, new ConsumerMemberAssignment(new [] { new TopicPartition("name", 0) }))));
             conn.SendAsync(Arg.Any<HeartbeatRequest>(), Arg.Any<CancellationToken>(), Arg.Any<IRequestContext>())

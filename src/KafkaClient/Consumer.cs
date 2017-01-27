@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -101,9 +100,9 @@ namespace KafkaClient
                 try {
                     response = await Router.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
                 } catch (BufferUnderRunException ex) {
-                    if (!Configuration.FetchByteMultiplier.HasValue || Configuration.FetchByteMultiplier.GetValueOrDefault() <= 1) throw;
-                    var maxBytes = topic.MaxBytes * Configuration.FetchByteMultiplier.Value;
-                    Router.Log.Warn(() => LogEvent.Create(ex, $"Retrying Fetch Request with multiplier {Math.Pow(Configuration.FetchByteMultiplier.Value, attempt)}, {topic.MaxBytes} -> {maxBytes}"));
+                    if (Configuration.FetchByteMultiplier <= 1) throw;
+                    var maxBytes = topic.MaxBytes * Configuration.FetchByteMultiplier;
+                    Router.Log.Warn(() => LogEvent.Create(ex, $"Retrying Fetch Request with multiplier {Math.Pow(Configuration.FetchByteMultiplier, attempt)}, {topic.MaxBytes} -> {maxBytes}"));
                     topic = new FetchRequest.Topic(topic.TopicName, topic.PartitionId, topic.Offset, maxBytes);
                 }
             }

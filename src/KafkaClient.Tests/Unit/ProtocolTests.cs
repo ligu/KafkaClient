@@ -1,5 +1,4 @@
-﻿using System;
-using KafkaClient.Assignment;
+﻿using KafkaClient.Assignment;
 using KafkaClient.Common;
 using KafkaClient.Protocol;
 using NUnit.Framework;
@@ -12,7 +11,7 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public void MetadataResponseShouldDecode()
         {
-            var response = KafkaEncoder.Decode<MetadataResponse>(new RequestContext(1), ApiKey.Metadata, MessageHelper.CreateMetadataResponse(1, "Test").Skip(KafkaEncoder.ResponseHeaderSize));
+            var response = KafkaEncoder.Decode<MetadataResponse>(new RequestContext(1), ApiKey.Metadata, MessageHelper.CreateMetadataResponse(new RequestContext(1), "Test").Skip(KafkaEncoder.ResponseHeaderSize));
 
             Assert.That(response.Topics[0].TopicName, Is.EqualTo("Test"));
         }

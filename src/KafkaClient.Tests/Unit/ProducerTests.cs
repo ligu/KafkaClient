@@ -268,7 +268,8 @@ namespace KafkaClient.Tests.Unit
                 TestConfig.Log.Info(() => LogEvent.Create("Finished test send task"));
 
                 Assert.That(senderTask.IsCompleted);
-                Assert.That(producer.InFlightMessageCount + producer.BufferedMessageCount, Is.EqualTo(1000));
+                await TaskTest.WaitFor(() => producer.InFlightMessageCount + producer.BufferedMessageCount >= count);
+                Assert.That(producer.InFlightMessageCount + producer.BufferedMessageCount, Is.EqualTo(count));
             }
         }
 

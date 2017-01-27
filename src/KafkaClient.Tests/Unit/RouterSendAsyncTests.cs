@@ -118,15 +118,14 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public async Task ShouldRecoverUpdateMetadataForNewTopic()
         {
-            var routerProxy = new BrokerRouterProxy();
-            routerProxy.CacheExpiration = TimeSpan.FromMilliseconds(10);
+            var routerProxy = new BrokerRouterProxy { CacheExpiration = TimeSpan.FromMilliseconds(100) };
             var router = routerProxy.Create();
 
             var fetchRequest = new FetchRequest();
 
             routerProxy.Connection1.Add(ApiKey.Fetch, ShouldReturnValidMessage);
             routerProxy.Connection1.Add(ApiKey.Metadata, async _ => await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers());
-            int numberOfCall = 1000;
+            int numberOfCall = 100;
             Task[] tasks = new Task[numberOfCall];
             for (int i = 0; i < numberOfCall / 2; i++)
             {

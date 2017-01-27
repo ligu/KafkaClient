@@ -28,7 +28,7 @@ namespace KafkaClient.Assignment
     {
         public override string ToString() => $"{{Version:{Version},Subscriptions:[{Subscriptions.ToStrings()}],UserData:{UserData.Count}}}";
 
-        private static readonly ArraySegment<byte> EmptySegment = new ArraySegment<byte>();
+        private static readonly ArraySegment<byte> EmptySegment = new ArraySegment<byte>(new byte[0]);
 
         public ConsumerProtocolMetadata(string topicName, string assignmentStrategy = SimpleAssignor.Strategy, short version = 0)
             : this(new []{ topicName }, assignmentStrategy, EmptySegment, version)
