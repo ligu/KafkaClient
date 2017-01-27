@@ -37,7 +37,7 @@ namespace KafkaClient.Protocol
         }
 
         public OffsetRequest(IEnumerable<Topic> offsets) 
-            : base(ApiKeyRequestType.Offset)
+            : base(Protocol.ApiKey.Offset)
         {
             Topics = ImmutableList<Topic>.Empty.AddNotNullRange(offsets);
         }

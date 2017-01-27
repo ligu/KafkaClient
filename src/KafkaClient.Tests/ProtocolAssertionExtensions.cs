@@ -50,25 +50,25 @@ namespace KafkaClient.Tests
             }
         }
 
-        public static ApiKeyRequestType GetType<T>() where T : class, IResponse
+        public static ApiKey GetType<T>() where T : class, IResponse
         {
-            if (typeof(T) == typeof(ProduceResponse)) return ApiKeyRequestType.Produce;
-            if (typeof(T) == typeof(FetchResponse)) return ApiKeyRequestType.Fetch;
-            if (typeof(T) == typeof(OffsetResponse)) return ApiKeyRequestType.Offset;
-            if (typeof(T) == typeof(MetadataResponse)) return ApiKeyRequestType.Metadata;
-            if (typeof(T) == typeof(OffsetCommitResponse)) return ApiKeyRequestType.OffsetCommit;
-            if (typeof(T) == typeof(OffsetFetchResponse)) return ApiKeyRequestType.OffsetFetch;
-            if (typeof(T) == typeof(GroupCoordinatorResponse)) return ApiKeyRequestType.GroupCoordinator;
-            if (typeof(T) == typeof(JoinGroupResponse)) return ApiKeyRequestType.JoinGroup;
-            if (typeof(T) == typeof(HeartbeatResponse)) return ApiKeyRequestType.Heartbeat;
-            if (typeof(T) == typeof(LeaveGroupResponse)) return ApiKeyRequestType.LeaveGroup;
-            if (typeof(T) == typeof(SyncGroupResponse)) return ApiKeyRequestType.SyncGroup;
-            if (typeof(T) == typeof(DescribeGroupsResponse)) return ApiKeyRequestType.DescribeGroups;
-            if (typeof(T) == typeof(ListGroupsResponse)) return ApiKeyRequestType.ListGroups;
-            if (typeof(T) == typeof(SaslHandshakeResponse)) return ApiKeyRequestType.SaslHandshake;
-            if (typeof(T) == typeof(ApiVersionsResponse)) return ApiKeyRequestType.ApiVersions;
-            if (typeof(T) == typeof(CreateTopicsResponse)) return ApiKeyRequestType.CreateTopics;
-            if (typeof(T) == typeof(DeleteTopicsResponse)) return ApiKeyRequestType.DeleteTopics;
+            if (typeof(T) == typeof(ProduceResponse)) return ApiKey.Produce;
+            if (typeof(T) == typeof(FetchResponse)) return ApiKey.Fetch;
+            if (typeof(T) == typeof(OffsetResponse)) return ApiKey.Offset;
+            if (typeof(T) == typeof(MetadataResponse)) return ApiKey.Metadata;
+            if (typeof(T) == typeof(OffsetCommitResponse)) return ApiKey.OffsetCommit;
+            if (typeof(T) == typeof(OffsetFetchResponse)) return ApiKey.OffsetFetch;
+            if (typeof(T) == typeof(GroupCoordinatorResponse)) return ApiKey.GroupCoordinator;
+            if (typeof(T) == typeof(JoinGroupResponse)) return ApiKey.JoinGroup;
+            if (typeof(T) == typeof(HeartbeatResponse)) return ApiKey.Heartbeat;
+            if (typeof(T) == typeof(LeaveGroupResponse)) return ApiKey.LeaveGroup;
+            if (typeof(T) == typeof(SyncGroupResponse)) return ApiKey.SyncGroup;
+            if (typeof(T) == typeof(DescribeGroupsResponse)) return ApiKey.DescribeGroups;
+            if (typeof(T) == typeof(ListGroupsResponse)) return ApiKey.ListGroups;
+            if (typeof(T) == typeof(SaslHandshakeResponse)) return ApiKey.SaslHandshake;
+            if (typeof(T) == typeof(ApiVersionsResponse)) return ApiKey.ApiVersions;
+            if (typeof(T) == typeof(CreateTopicsResponse)) return ApiKey.CreateTopics;
+            if (typeof(T) == typeof(DeleteTopicsResponse)) return ApiKey.DeleteTopics;
             throw new InvalidOperationException();
         }
 

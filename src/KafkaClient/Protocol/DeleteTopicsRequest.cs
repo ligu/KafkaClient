@@ -22,7 +22,7 @@ namespace KafkaClient.Protocol
         }
 
         public DeleteTopicsRequest(IEnumerable<string> topics, TimeSpan? timeout = null)
-            : base(ApiKeyRequestType.DeleteTopics)
+            : base(ApiKey.DeleteTopics)
         {
             Topics = ImmutableList<string>.Empty.AddNotNullRange(topics);
             Timeout = timeout ?? TimeSpan.Zero;

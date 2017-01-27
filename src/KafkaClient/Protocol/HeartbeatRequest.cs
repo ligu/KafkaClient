@@ -19,7 +19,7 @@ namespace KafkaClient.Protocol
 
         /// <inheritdoc />
         public HeartbeatRequest(string groupId, int generationId, string memberId) 
-            : base(ApiKeyRequestType.Heartbeat, groupId, memberId, generationId)
+            : base(ApiKey.Heartbeat, groupId, memberId, generationId)
         {
         }
     }

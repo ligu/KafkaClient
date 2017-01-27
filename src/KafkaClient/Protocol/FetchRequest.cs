@@ -48,7 +48,7 @@ namespace KafkaClient.Protocol
         }
 
         public FetchRequest(IEnumerable<Topic> fetches = null, TimeSpan? maxWaitTime = null, int? minBytes = null, int? maxBytes = null) 
-            : base(ApiKeyRequestType.Fetch)
+            : base(ApiKey.Fetch)
         {
             MaxWaitTime = maxWaitTime ?? TimeSpan.FromMilliseconds(DefaultMaxBlockingWaitTime);
             MinBytes = minBytes.GetValueOrDefault(DefaultMinBlockingByteBufferSize);

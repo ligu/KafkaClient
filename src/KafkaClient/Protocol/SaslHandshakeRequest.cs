@@ -11,7 +11,7 @@ namespace KafkaClient.Protocol
         public override string ToString() => $"{{Api:{ApiKey},Mechanism:{Mechanism}}}";
 
         public SaslHandshakeRequest(string mechanism)
-            : base(ApiKeyRequestType.SaslHandshake)
+            : base(ApiKey.SaslHandshake)
         {
             Mechanism = mechanism;
         }

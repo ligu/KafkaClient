@@ -11,7 +11,7 @@ namespace KafkaClient.Protocol
         public override string ToString() => $"{{Api:{ApiKey}}}";
 
         public ApiVersionsRequest() 
-            : base(ApiKeyRequestType.ApiVersions)
+            : base(ApiKey.ApiVersions)
         {
         }
     }

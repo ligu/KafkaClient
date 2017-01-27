@@ -26,7 +26,7 @@ namespace KafkaClient.Protocol
         }
 
         public DescribeGroupsRequest(IEnumerable<string> groupIds) 
-            : base(ApiKeyRequestType.DescribeGroups)
+            : base(ApiKey.DescribeGroups)
         {
             GroupIds = ImmutableList<string>.Empty.AddNotNullRange(groupIds);
         }

@@ -10,34 +10,34 @@ namespace KafkaClient.Telemetry
         public ApiStatistics(DateTimeOffset startedAt, TimeSpan duration)
             : base(startedAt, duration)
         {
-            RequestsAttempted = new ConcurrentDictionary<ApiKeyRequestType, int>();
-            Requests = new ConcurrentDictionary<ApiKeyRequestType, int>();
-            RequestsFailed = new ConcurrentDictionary<ApiKeyRequestType, int>();
+            RequestsAttempted = new ConcurrentDictionary<ApiKey, int>();
+            Requests = new ConcurrentDictionary<ApiKey, int>();
+            RequestsFailed = new ConcurrentDictionary<ApiKey, int>();
         }
 
-        public ConcurrentDictionary<ApiKeyRequestType, int> RequestsAttempted { get; }
+        public ConcurrentDictionary<ApiKey, int> RequestsAttempted { get; }
 
-        public void Attempt(ApiKeyRequestType type)
+        public void Attempt(ApiKey apiKey)
         {
-            RequestsAttempted.AddOrUpdate(type, 1, (key, old) => old + 1);
+            RequestsAttempted.AddOrUpdate(apiKey, 1, (key, old) => old + 1);
         }
 
-        public ConcurrentDictionary<ApiKeyRequestType, int> Requests { get; }
+        public ConcurrentDictionary<ApiKey, int> Requests { get; }
 
         private long _duration;
         public TimeSpan Duration => TimeSpan.FromTicks(_duration);
 
-        public void Success(ApiKeyRequestType type, TimeSpan duration)
+        public void Success(ApiKey apiKey, TimeSpan duration)
         {
-            Requests.AddOrUpdate(type, 1, (key, old) => old + 1);
+            Requests.AddOrUpdate(apiKey, 1, (key, old) => old + 1);
             Interlocked.Add(ref _duration, duration.Ticks);
         }
 
-        public ConcurrentDictionary<ApiKeyRequestType, int> RequestsFailed { get; }
+        public ConcurrentDictionary<ApiKey, int> RequestsFailed { get; }
 
-        public void Failure(ApiKeyRequestType type, TimeSpan duration)
+        public void Failure(ApiKey apiKey, TimeSpan duration)
         {
-            RequestsFailed.AddOrUpdate(type, 1, (key, old) => old + 1);
+            RequestsFailed.AddOrUpdate(apiKey, 1, (key, old) => old + 1);
             Interlocked.Add(ref _duration, duration.Ticks);
         }
 

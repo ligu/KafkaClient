@@ -11,14 +11,14 @@ namespace KafkaClient.Connections
         /// 0.8.2 &lt;= Version &lt; 0.9
         /// </summary>
         public static VersionSupport Kafka8 => _kafka8 ?? (_kafka8 = new VersionSupport(
-            new Dictionary<ApiKeyRequestType, short> {
-                {ApiKeyRequestType.Produce, 0},
-                {ApiKeyRequestType.Fetch, 0},
-                {ApiKeyRequestType.Offset, 0},
-                {ApiKeyRequestType.Metadata, 0},
-                {ApiKeyRequestType.OffsetCommit, 1},
-                {ApiKeyRequestType.OffsetFetch, 1},
-                {ApiKeyRequestType.GroupCoordinator, 0}
+            new Dictionary<ApiKey, short> {
+                {ApiKey.Produce, 0},
+                {ApiKey.Fetch, 0},
+                {ApiKey.Offset, 0},
+                {ApiKey.Metadata, 0},
+                {ApiKey.OffsetCommit, 1},
+                {ApiKey.OffsetFetch, 1},
+                {ApiKey.GroupCoordinator, 0}
             }.ToImmutableDictionary()));
 
         private static VersionSupport _kafka9;
@@ -26,21 +26,21 @@ namespace KafkaClient.Connections
         /// 0.9 &lt;= Version &lt; 0.10
         /// </summary>
         public static VersionSupport Kafka9 => _kafka9 ?? (_kafka9 = new VersionSupport(
-            new Dictionary<ApiKeyRequestType, short> {
-                {ApiKeyRequestType.Produce, 1},
-                {ApiKeyRequestType.Fetch, 1},
-                {ApiKeyRequestType.Offset, 0},
-                {ApiKeyRequestType.Metadata, 0},
-                {ApiKeyRequestType.OffsetCommit, 2},
-                {ApiKeyRequestType.OffsetFetch, 1},
-                {ApiKeyRequestType.GroupCoordinator, 0},
-                {ApiKeyRequestType.JoinGroup, 0},
-                {ApiKeyRequestType.Heartbeat, 0},
-                {ApiKeyRequestType.LeaveGroup, 0},
-                {ApiKeyRequestType.SyncGroup, 0},
-                {ApiKeyRequestType.DescribeGroups, 0},
-                {ApiKeyRequestType.ListGroups, 0},
-                {ApiKeyRequestType.SaslHandshake, 0}
+            new Dictionary<ApiKey, short> {
+                {ApiKey.Produce, 1},
+                {ApiKey.Fetch, 1},
+                {ApiKey.Offset, 0},
+                {ApiKey.Metadata, 0},
+                {ApiKey.OffsetCommit, 2},
+                {ApiKey.OffsetFetch, 1},
+                {ApiKey.GroupCoordinator, 0},
+                {ApiKey.JoinGroup, 0},
+                {ApiKey.Heartbeat, 0},
+                {ApiKey.LeaveGroup, 0},
+                {ApiKey.SyncGroup, 0},
+                {ApiKey.DescribeGroups, 0},
+                {ApiKey.ListGroups, 0},
+                {ApiKey.SaslHandshake, 0}
             }.ToImmutableDictionary()));
 
         private static VersionSupport _kafka10;
@@ -48,22 +48,22 @@ namespace KafkaClient.Connections
         /// 0.10 &lt;= Version 
         /// </summary>
         public static VersionSupport Kafka10 => _kafka10 ?? (_kafka10 = new VersionSupport(
-            new Dictionary<ApiKeyRequestType, short> {
-                {ApiKeyRequestType.Produce, 2},
-                {ApiKeyRequestType.Fetch, 2},
-                {ApiKeyRequestType.Offset, 0},
-                {ApiKeyRequestType.Metadata, 1},
-                {ApiKeyRequestType.OffsetCommit, 2},
-                {ApiKeyRequestType.OffsetFetch, 1},
-                {ApiKeyRequestType.GroupCoordinator, 0},
-                {ApiKeyRequestType.JoinGroup, 0},
-                {ApiKeyRequestType.Heartbeat, 0},
-                {ApiKeyRequestType.LeaveGroup, 0},
-                {ApiKeyRequestType.SyncGroup, 0},
-                {ApiKeyRequestType.DescribeGroups, 0},
-                {ApiKeyRequestType.ListGroups, 0},
-                {ApiKeyRequestType.SaslHandshake, 0},
-                {ApiKeyRequestType.ApiVersions, 0}
+            new Dictionary<ApiKey, short> {
+                {ApiKey.Produce, 2},
+                {ApiKey.Fetch, 2},
+                {ApiKey.Offset, 0},
+                {ApiKey.Metadata, 1},
+                {ApiKey.OffsetCommit, 2},
+                {ApiKey.OffsetFetch, 1},
+                {ApiKey.GroupCoordinator, 0},
+                {ApiKey.JoinGroup, 0},
+                {ApiKey.Heartbeat, 0},
+                {ApiKey.LeaveGroup, 0},
+                {ApiKey.SyncGroup, 0},
+                {ApiKey.DescribeGroups, 0},
+                {ApiKey.ListGroups, 0},
+                {ApiKey.SaslHandshake, 0},
+                {ApiKey.ApiVersions, 0}
             }.ToImmutableDictionary()));
 
         private static VersionSupport _kafka10_1;
@@ -71,34 +71,34 @@ namespace KafkaClient.Connections
         /// 0.10 &lt;= Version 
         /// </summary>
         public static VersionSupport Kafka10_1 => _kafka10_1 ?? (_kafka10_1 = new VersionSupport(
-            new Dictionary<ApiKeyRequestType, short> {
-                {ApiKeyRequestType.Produce, 2},
-                {ApiKeyRequestType.Fetch, 3},
-                {ApiKeyRequestType.Offset, 1},
-                {ApiKeyRequestType.Metadata, 2},
-                {ApiKeyRequestType.OffsetCommit, 2},
-                {ApiKeyRequestType.OffsetFetch, 1},
-                {ApiKeyRequestType.GroupCoordinator, 0},
-                {ApiKeyRequestType.JoinGroup, 1},
-                {ApiKeyRequestType.Heartbeat, 0},
-                {ApiKeyRequestType.LeaveGroup, 0},
-                {ApiKeyRequestType.SyncGroup, 0},
-                {ApiKeyRequestType.DescribeGroups, 0},
-                {ApiKeyRequestType.ListGroups, 0},
-                {ApiKeyRequestType.SaslHandshake, 0},
-                {ApiKeyRequestType.ApiVersions, 0},
-                {ApiKeyRequestType.CreateTopics, 0},
-                {ApiKeyRequestType.DeleteTopics, 0}
+            new Dictionary<ApiKey, short> {
+                {ApiKey.Produce, 2},
+                {ApiKey.Fetch, 3},
+                {ApiKey.Offset, 1},
+                {ApiKey.Metadata, 2},
+                {ApiKey.OffsetCommit, 2},
+                {ApiKey.OffsetFetch, 1},
+                {ApiKey.GroupCoordinator, 0},
+                {ApiKey.JoinGroup, 1},
+                {ApiKey.Heartbeat, 0},
+                {ApiKey.LeaveGroup, 0},
+                {ApiKey.SyncGroup, 0},
+                {ApiKey.DescribeGroups, 0},
+                {ApiKey.ListGroups, 0},
+                {ApiKey.SaslHandshake, 0},
+                {ApiKey.ApiVersions, 0},
+                {ApiKey.CreateTopics, 0},
+                {ApiKey.DeleteTopics, 0}
             }.ToImmutableDictionary()));
 
-        private readonly IImmutableDictionary<ApiKeyRequestType, short> _versionSupport;
+        private readonly IImmutableDictionary<ApiKey, short> _versionSupport;
 
-        public VersionSupport(IImmutableDictionary<ApiKeyRequestType, short> versionSupport)
+        public VersionSupport(IImmutableDictionary<ApiKey, short> versionSupport)
         {
             _versionSupport = versionSupport;
         }
 
-        public short? GetVersion(ApiKeyRequestType apiKey)
+        public short? GetVersion(ApiKey apiKey)
         {
             short version;
             return _versionSupport.TryGetValue(apiKey, out version) ? version : (short?)null;

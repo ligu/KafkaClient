@@ -13,6 +13,6 @@ namespace KafkaClient.Connections
 
         public bool UseMaxSupported { get; set; }
 
-        public short? GetVersion(ApiKeyRequestType apiKey) => _defaultSupport.GetVersion(apiKey);
+        public short? GetVersion(ApiKey apiKey) => _defaultSupport.GetVersion(apiKey);
     }
 }

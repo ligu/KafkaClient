@@ -32,7 +32,7 @@ namespace KafkaClient.Protocol
         }
 
         public CreateTopicsRequest(IEnumerable<Topic> topics = null, TimeSpan? timeout = null)
-            : base(ApiKeyRequestType.CreateTopics)
+            : base(ApiKey.CreateTopics)
         {
             Topics = ImmutableList<Topic>.Empty.AddNotNullRange(topics);
             Timeout = timeout ?? TimeSpan.Zero;

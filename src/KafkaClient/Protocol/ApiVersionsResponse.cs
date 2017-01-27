@@ -77,7 +77,7 @@ namespace KafkaClient.Protocol
         {
             public override string ToString() => $"{{ApiKey:{ApiKey},MinVersion:{MinVersion},MaxVersion:{MaxVersion}}}";
 
-            public VersionSupport(ApiKeyRequestType apiKey, short minVersion, short maxVersion)
+            public VersionSupport(ApiKey apiKey, short minVersion, short maxVersion)
             {
                 ApiKey = apiKey;
                 MinVersion = minVersion;
@@ -87,7 +87,7 @@ namespace KafkaClient.Protocol
             /// <summary>
             /// API key.
             /// </summary>
-            public ApiKeyRequestType ApiKey { get; } 
+            public ApiKey ApiKey { get; } 
 
             /// <summary>
             /// Minimum supported version.

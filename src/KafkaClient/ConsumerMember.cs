@@ -31,7 +31,7 @@ namespace KafkaClient
             // TODO: should this be something like Math.Min(request.SessionTimeout, request.RebalanceTimeout) instead?
             _heartbeatDelay = TimeSpan.FromMilliseconds(request.SessionTimeout.TotalMilliseconds / 2);
             _heartbeatTask = Task.Factory.StartNew(DedicatedHeartbeatAsync, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
-            _stateChangeQueue = new AsyncProducerConsumerQueue<ApiKeyRequestType>();
+            _stateChangeQueue = new AsyncProducerConsumerQueue<ApiKey>();
             _stateChangeTask = Task.Factory.StartNew(DedicatedStateChangeAsync, _disposeToken.Token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
         }
 
@@ -46,7 +46,7 @@ namespace KafkaClient
 
         private int _activeStateChangeCount;
         private readonly Task _stateChangeTask;
-        private readonly AsyncProducerConsumerQueue<ApiKeyRequestType> _stateChangeQueue;
+        private readonly AsyncProducerConsumerQueue<ApiKey> _stateChangeQueue;
 
         private readonly SemaphoreSlim _joinSemaphore = new SemaphoreSlim(1, 1);
         private readonly SemaphoreSlim _syncSemaphore = new SemaphoreSlim(1, 1);
@@ -174,7 +174,7 @@ namespace KafkaClient
 
             try {
                 Log.Info(() => LogEvent.Create($"Starting state change for {{GroupId:{GroupId},MemberId:{MemberId}}}"));
-                ApiKeyRequestType? nextRequest = ApiKeyRequestType.SyncGroup;
+                ApiKey? nextRequest = ApiKey.SyncGroup;
                 var failures = 0;
                 while (!_disposeToken.IsCancellationRequested) {
                     try {
@@ -185,18 +185,18 @@ namespace KafkaClient
                             failures = 0;
                         }
 
-                        var requestType = nextRequest.Value;
-                        switch (requestType) {
-                            case ApiKeyRequestType.JoinGroup:
+                        var apiKey = nextRequest.Value;
+                        switch (apiKey) {
+                            case ApiKey.JoinGroup:
                                 await JoinGroupAsync(_disposeToken.Token).ConfigureAwait(false);
                                 break;
 
-                            case ApiKeyRequestType.SyncGroup:
+                            case ApiKey.SyncGroup:
                                 await SyncGroupAsync(_disposeToken.Token).ConfigureAwait(false);
                                 break;
 
                             default:
-                                Log.Warn(() => LogEvent.Create($"Ignoring unknown {requestType} for {{GroupId:{GroupId},MemberId:{MemberId}}}"));
+                                Log.Warn(() => LogEvent.Create($"Ignoring unknown state change {apiKey} for {{GroupId:{GroupId},MemberId:{MemberId}}}"));
                                 break;
                         }
                         nextRequest = null;
@@ -230,7 +230,7 @@ namespace KafkaClient
         public void TriggerRejoin()
         {
             try {
-                _stateChangeQueue.Enqueue(ApiKeyRequestType.JoinGroup, _disposeToken.Token);
+                _stateChangeQueue.Enqueue(ApiKey.JoinGroup, _disposeToken.Token);
             } catch (Exception ex) {
                 if (_disposeCount == 0) {
                     Log.Warn(() => LogEvent.Create(ex));
@@ -247,7 +247,7 @@ namespace KafkaClient
                 var request = new JoinGroupRequest(GroupId, Configuration.GroupHeartbeat, MemberId, ProtocolType, protocols, Configuration.GroupRebalanceTimeout);
                 var response = await Router.SendAsync(request, GroupId, cancellationToken, new RequestContext(protocolType: ProtocolType), Configuration.GroupCoordinationRetry).ConfigureAwait(false);
                 OnJoinGroup(response);
-                await _stateChangeQueue.EnqueueAsync(ApiKeyRequestType.SyncGroup, _disposeToken.Token);
+                await _stateChangeQueue.EnqueueAsync(ApiKey.SyncGroup, _disposeToken.Token);
             } catch (RequestException ex) {
                 switch (ex.ErrorCode) {
                     case ErrorResponseCode.IllegalGeneration:

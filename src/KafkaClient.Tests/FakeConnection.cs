@@ -10,36 +10,36 @@ using Nito.AsyncEx;
 
 namespace KafkaClient.Tests
 {
-    public class FakeConnection : IConnection, IEnumerable<KeyValuePair<ApiKeyRequestType, Func<IRequestContext, Task<IResponse>>>>, IEnumerable<KeyValuePair<ApiKeyRequestType, Func<IRequest, IRequestContext, Task<IResponse>>>>
+    public class FakeConnection : IConnection, IEnumerable<KeyValuePair<ApiKey, Func<IRequestContext, Task<IResponse>>>>, IEnumerable<KeyValuePair<ApiKey, Func<IRequest, IRequestContext, Task<IResponse>>>>
     {
         public FakeConnection(Uri address)
         {
             Endpoint = AsyncContext.Run(() => Endpoint.ResolveAsync(address, TestConfig.Log));
         }
 
-        public long this[ApiKeyRequestType requestType]
+        public long this[ApiKey apiKey]
         {
             get {
                 long count;
-                return _requestCounts.TryGetValue(requestType, out count) ? count : 0L;
+                return _requestCounts.TryGetValue(apiKey, out count) ? count : 0L;
             }
             set {
-                _requestCounts.AddOrUpdate(requestType, value, (k, v) => value);
+                _requestCounts.AddOrUpdate(apiKey, value, (k, v) => value);
             }
         }
-        private readonly ConcurrentDictionary<ApiKeyRequestType, long> _requestCounts = new ConcurrentDictionary<ApiKeyRequestType, long>();
+        private readonly ConcurrentDictionary<ApiKey, long> _requestCounts = new ConcurrentDictionary<ApiKey, long>();
 
-        public void Add(ApiKeyRequestType requestType, Func<IRequestContext, Task<IResponse>> responseFunc)
+        public void Add(ApiKey apiKey, Func<IRequestContext, Task<IResponse>> responseFunc)
         {
-            _contextFunctions.AddOrUpdate(requestType, responseFunc, (k, v) => responseFunc);
+            _contextFunctions.AddOrUpdate(apiKey, responseFunc, (k, v) => responseFunc);
         }
-        private readonly ConcurrentDictionary<ApiKeyRequestType, Func<IRequestContext, Task<IResponse>>> _contextFunctions = new ConcurrentDictionary<ApiKeyRequestType, Func<IRequestContext, Task<IResponse>>>();
+        private readonly ConcurrentDictionary<ApiKey, Func<IRequestContext, Task<IResponse>>> _contextFunctions = new ConcurrentDictionary<ApiKey, Func<IRequestContext, Task<IResponse>>>();
 
-        public void Add(ApiKeyRequestType requestType, Func<IRequest, IRequestContext, Task<IResponse>> responseFunc)
+        public void Add(ApiKey apiKey, Func<IRequest, IRequestContext, Task<IResponse>> responseFunc)
         {
-            _requestFunctions.AddOrUpdate(requestType, responseFunc, (k, v) => responseFunc);
+            _requestFunctions.AddOrUpdate(apiKey, responseFunc, (k, v) => responseFunc);
         }
-        private readonly ConcurrentDictionary<ApiKeyRequestType, Func<IRequest, IRequestContext, Task<IResponse>>> _requestFunctions = new ConcurrentDictionary<ApiKeyRequestType, Func<IRequest, IRequestContext, Task<IResponse>>>();
+        private readonly ConcurrentDictionary<ApiKey, Func<IRequest, IRequestContext, Task<IResponse>>> _requestFunctions = new ConcurrentDictionary<ApiKey, Func<IRequest, IRequestContext, Task<IResponse>>>();
 
         public Endpoint Endpoint { get; }
 
@@ -71,12 +71,12 @@ namespace KafkaClient.Tests
             throw new NotImplementedException();
         }
 
-        IEnumerator<KeyValuePair<ApiKeyRequestType, Func<IRequestContext, Task<IResponse>>>> IEnumerable<KeyValuePair<ApiKeyRequestType, Func<IRequestContext, Task<IResponse>>>>.GetEnumerator()
+        IEnumerator<KeyValuePair<ApiKey, Func<IRequestContext, Task<IResponse>>>> IEnumerable<KeyValuePair<ApiKey, Func<IRequestContext, Task<IResponse>>>>.GetEnumerator()
         {
             throw new NotImplementedException();
         }
 
-        IEnumerator<KeyValuePair<ApiKeyRequestType, Func<IRequest, IRequestContext, Task<IResponse>>>> IEnumerable<KeyValuePair<ApiKeyRequestType, Func<IRequest, IRequestContext, Task<IResponse>>>>.GetEnumerator()
+        IEnumerator<KeyValuePair<ApiKey, Func<IRequest, IRequestContext, Task<IResponse>>>> IEnumerable<KeyValuePair<ApiKey, Func<IRequest, IRequestContext, Task<IResponse>>>>.GetEnumerator()
         {
             throw new NotImplementedException();
         }

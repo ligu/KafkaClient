@@ -37,7 +37,7 @@ namespace KafkaClient.Protocol
         }
 
         public ProduceRequest(IEnumerable<Topic> payload, TimeSpan? timeout = null, short acks = 1) 
-            : base(ApiKeyRequestType.Produce, acks != 0)
+            : base(Protocol.ApiKey.Produce, acks != 0)
         {
             Timeout = timeout.GetValueOrDefault(TimeSpan.FromSeconds(1));
             Acks = acks;

@@ -28,7 +28,7 @@ namespace KafkaClient.Protocol
         }
 
         public OffsetFetchRequest(string groupId, IEnumerable<TopicPartition> topics) 
-            : base(ApiKeyRequestType.OffsetFetch)
+            : base(Protocol.ApiKey.OffsetFetch)
         {
             if (string.IsNullOrEmpty(groupId)) throw new ArgumentNullException(nameof(groupId));
 

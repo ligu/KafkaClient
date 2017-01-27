@@ -47,7 +47,7 @@ namespace KafkaClient.Protocol
         public override string ShortString() => $"{ApiKey} {GroupId} {MemberId}";
 
         public JoinGroupRequest(string groupId, TimeSpan sessionTimeout, string memberId, string protocolType, IEnumerable<GroupProtocol> groupProtocols, TimeSpan? rebalanceTimeout = null) 
-            : base(ApiKeyRequestType.JoinGroup)
+            : base(ApiKey.JoinGroup)
         {
             GroupId = groupId;
             SessionTimeout = sessionTimeout;

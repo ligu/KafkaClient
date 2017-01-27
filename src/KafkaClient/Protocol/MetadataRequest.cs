@@ -23,7 +23,7 @@ namespace KafkaClient.Protocol
         }
 
         public MetadataRequest(IEnumerable<string> topics = null) 
-            : base(ApiKeyRequestType.Metadata)
+            : base(Protocol.ApiKey.Metadata)
         {
             Topics = ImmutableList<string>.Empty.AddNotNullRange(topics);
         }

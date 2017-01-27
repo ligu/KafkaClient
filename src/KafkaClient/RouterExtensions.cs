@@ -311,7 +311,7 @@ namespace KafkaClient
                 if (IsValid.GetValueOrDefault(true)) return null;
 
                 if (_errorCode == ErrorResponseCode.None) return new ConnectionException(Message);
-                return new RequestException(ApiKeyRequestType.Metadata, _errorCode, Message);
+                return new RequestException(ApiKey.Metadata, _errorCode, Message);
             }
 
             public MetadataResult(ErrorResponseCode errorCode = ErrorResponseCode.None, bool? isValid = null, string message = null)

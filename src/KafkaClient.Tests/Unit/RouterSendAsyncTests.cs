@@ -27,13 +27,13 @@ namespace KafkaClient.Tests.Unit
             routerProxy.CacheExpiration = new TimeSpan(10);
             var router = routerProxy.Create();
 
-            routerProxy.Connection1.Add(ApiKeyRequestType.Fetch, FailedInFirstMessageError(code, routerProxy.CacheExpiration));
-            routerProxy.Connection1.Add(ApiKeyRequestType.Metadata, async _ => await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers());
+            routerProxy.Connection1.Add(ApiKey.Fetch, FailedInFirstMessageError(code, routerProxy.CacheExpiration));
+            routerProxy.Connection1.Add(ApiKey.Metadata, async _ => await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers());
 
             await router.SendAsync(new FetchRequest(), BrokerRouterProxy.TestTopic, PartitionId, CancellationToken.None);
 
-            Assert.That(routerProxy.Connection1[ApiKeyRequestType.Metadata], Is.EqualTo(2));
-            Assert.That(routerProxy.Connection1[ApiKeyRequestType.Fetch], Is.EqualTo(2));
+            Assert.That(routerProxy.Connection1[ApiKey.Metadata], Is.EqualTo(2));
+            Assert.That(routerProxy.Connection1[ApiKey.Fetch], Is.EqualTo(2));
         }
 
         [Test]
@@ -46,13 +46,13 @@ namespace KafkaClient.Tests.Unit
             routerProxy.CacheExpiration = TimeSpan.FromMilliseconds(10);
             var router = routerProxy.Create();
 
-            routerProxy.Connection1.Add(ApiKeyRequestType.Fetch, FailedInFirstMessageException(exceptionType, routerProxy.CacheExpiration));
-            routerProxy.Connection1.Add(ApiKeyRequestType.Metadata, async _ => await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers());
+            routerProxy.Connection1.Add(ApiKey.Fetch, FailedInFirstMessageException(exceptionType, routerProxy.CacheExpiration));
+            routerProxy.Connection1.Add(ApiKey.Metadata, async _ => await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers());
 
             await router.SendAsync(new FetchRequest(), BrokerRouterProxy.TestTopic, PartitionId, CancellationToken.None);
 
-            Assert.That(routerProxy.Connection1[ApiKeyRequestType.Metadata], Is.EqualTo(2));
-            Assert.That(routerProxy.Connection1[ApiKeyRequestType.Fetch], Is.EqualTo(2));
+            Assert.That(routerProxy.Connection1[ApiKey.Metadata], Is.EqualTo(2));
+            Assert.That(routerProxy.Connection1[ApiKey.Fetch], Is.EqualTo(2));
         }
 
         [TestCase(typeof(Exception))]
@@ -63,8 +63,8 @@ namespace KafkaClient.Tests.Unit
             routerProxy.CacheExpiration = TimeSpan.FromMilliseconds(10);
             var router = routerProxy.Create();
 
-            routerProxy.Connection1.Add(ApiKeyRequestType.Fetch, FailedInFirstMessageException(exceptionType, routerProxy.CacheExpiration));
-            routerProxy.Connection1.Add(ApiKeyRequestType.Metadata, async _ => await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers());
+            routerProxy.Connection1.Add(ApiKey.Fetch, FailedInFirstMessageException(exceptionType, routerProxy.CacheExpiration));
+            routerProxy.Connection1.Add(ApiKey.Metadata, async _ => await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers());
             Assert.ThrowsAsync(exceptionType, async () => await router.SendAsync(new FetchRequest(), BrokerRouterProxy.TestTopic, PartitionId, CancellationToken.None));
         }
 
@@ -83,8 +83,8 @@ namespace KafkaClient.Tests.Unit
             routerProxy.CacheExpiration = TimeSpan.FromMilliseconds(10);
             var router = routerProxy.Create();
 
-            routerProxy.Connection1.Add(ApiKeyRequestType.Fetch, FailedInFirstMessageError(code, routerProxy.CacheExpiration));
-            routerProxy.Connection1.Add(ApiKeyRequestType.Metadata, async _ => await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers());
+            routerProxy.Connection1.Add(ApiKey.Fetch, FailedInFirstMessageError(code, routerProxy.CacheExpiration));
+            routerProxy.Connection1.Add(ApiKey.Metadata, async _ => await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers());
             Assert.ThrowsAsync<RequestException>(async () => await router.SendAsync(new FetchRequest(), BrokerRouterProxy.TestTopic, PartitionId, CancellationToken.None));
         }
 
@@ -95,8 +95,8 @@ namespace KafkaClient.Tests.Unit
             routerProxy.CacheExpiration = TimeSpan.FromMilliseconds(10);
             var router = routerProxy.Create();
 
-            routerProxy.Connection1.Add(ApiKeyRequestType.Fetch, ShouldReturnValidMessage);
-            routerProxy.Connection1.Add(ApiKeyRequestType.Metadata, async _ => await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers());
+            routerProxy.Connection1.Add(ApiKey.Fetch, ShouldReturnValidMessage);
+            routerProxy.Connection1.Add(ApiKey.Metadata, async _ => await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers());
             int numberOfCall = 1000;
             Task[] tasks = new Task[numberOfCall];
             for (int i = 0; i < numberOfCall / 2; i++)
@@ -111,8 +111,8 @@ namespace KafkaClient.Tests.Unit
             }
 
             await Task.WhenAll(tasks);
-            Assert.That(routerProxy.Connection1[ApiKeyRequestType.Fetch], Is.EqualTo(numberOfCall));
-            Assert.That(routerProxy.Connection1[ApiKeyRequestType.Metadata], Is.EqualTo(1));
+            Assert.That(routerProxy.Connection1[ApiKey.Fetch], Is.EqualTo(numberOfCall));
+            Assert.That(routerProxy.Connection1[ApiKey.Metadata], Is.EqualTo(1));
         }
 
         [Test]
@@ -124,8 +124,8 @@ namespace KafkaClient.Tests.Unit
 
             var fetchRequest = new FetchRequest();
 
-            routerProxy.Connection1.Add(ApiKeyRequestType.Fetch, ShouldReturnValidMessage);
-            routerProxy.Connection1.Add(ApiKeyRequestType.Metadata, async _ => await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers());
+            routerProxy.Connection1.Add(ApiKey.Fetch, ShouldReturnValidMessage);
+            routerProxy.Connection1.Add(ApiKey.Metadata, async _ => await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers());
             int numberOfCall = 1000;
             Task[] tasks = new Task[numberOfCall];
             for (int i = 0; i < numberOfCall / 2; i++)
@@ -133,7 +133,7 @@ namespace KafkaClient.Tests.Unit
                 tasks[i] = router.SendAsync(fetchRequest, BrokerRouterProxy.TestTopic, PartitionId, CancellationToken.None);
             }
 
-            routerProxy.Connection1.Add(ApiKeyRequestType.Metadata, async _ => {
+            routerProxy.Connection1.Add(ApiKey.Metadata, async _ => {
                 var response = await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers();
                 return new MetadataResponse(response.Brokers, response.Topics.Select(t => new MetadataResponse.Topic("test2", t.ErrorCode, t.Partitions)));
             });
@@ -144,8 +144,8 @@ namespace KafkaClient.Tests.Unit
             }
 
             await Task.WhenAll(tasks);
-            Assert.That(routerProxy.Connection1[ApiKeyRequestType.Fetch], Is.EqualTo(numberOfCall));
-            Assert.That(routerProxy.Connection1[ApiKeyRequestType.Metadata], Is.EqualTo(2));
+            Assert.That(routerProxy.Connection1[ApiKey.Fetch], Is.EqualTo(numberOfCall));
+            Assert.That(routerProxy.Connection1[ApiKey.Metadata], Is.EqualTo(2));
         }
 
         [Test]
@@ -184,8 +184,8 @@ namespace KafkaClient.Tests.Unit
                 return new FetchResponse();
             };
 
-            routerProxy.Connection1.Add(ApiKeyRequestType.Fetch, ShouldReturnNotLeaderForPartitionAndThenNoError);
-            routerProxy.Connection1.Add(ApiKeyRequestType.Metadata, async _ => await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers());
+            routerProxy.Connection1.Add(ApiKey.Fetch, ShouldReturnNotLeaderForPartitionAndThenNoError);
+            routerProxy.Connection1.Add(ApiKey.Metadata, async _ => await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers());
 
             Task[] tasks = new Task[numberOfCall];
 
@@ -196,9 +196,9 @@ namespace KafkaClient.Tests.Unit
 
             await Task.WhenAll(tasks);
             Assert.That(numberOfErrorSend, Is.GreaterThan(1), "numberOfErrorSend");
-            Assert.That(routerProxy.Connection1[ApiKeyRequestType.Fetch], Is.EqualTo(numberOfCall + numberOfErrorSend),
-                "RequestCallCount(ApiKeyRequestType.Fetch)");
-            Assert.That(routerProxy.Connection1[ApiKeyRequestType.Metadata], Is.EqualTo(2), "RequestCallCount(ApiKeyRequestType.Metadata)");
+            Assert.That(routerProxy.Connection1[ApiKey.Fetch], Is.EqualTo(numberOfCall + numberOfErrorSend),
+                "RequestCallCount(ApiKey.Fetch)");
+            Assert.That(routerProxy.Connection1[ApiKey.Metadata], Is.EqualTo(2), "RequestCallCount(ApiKey.Metadata)");
         }
 
         [Test]
@@ -231,29 +231,29 @@ namespace KafkaClient.Tests.Unit
             //Send Successful Message
             await router.SendAsync(fetchRequest, BrokerRouterProxy.TestTopic, partitionId, CancellationToken.None);
 
-            Assert.That(routerProxy.Connection1[ApiKeyRequestType.Fetch], Is.EqualTo(1), "RequestCallCount(ApiKeyRequestType.Fetch)");
-            Assert.That(routerProxy.Connection1[ApiKeyRequestType.Metadata], Is.EqualTo(1), "RequestCallCount(ApiKeyRequestType.Metadata)");
-            Assert.That(routerProxy.Connection2[ApiKeyRequestType.Metadata], Is.EqualTo(0), "RequestCallCount(ApiKeyRequestType.Metadata)");
+            Assert.That(routerProxy.Connection1[ApiKey.Fetch], Is.EqualTo(1), "RequestCallCount(ApiKey.Fetch)");
+            Assert.That(routerProxy.Connection1[ApiKey.Metadata], Is.EqualTo(1), "RequestCallCount(ApiKey.Metadata)");
+            Assert.That(routerProxy.Connection2[ApiKey.Metadata], Is.EqualTo(0), "RequestCallCount(ApiKey.Metadata)");
 
-            routerProxy.Connection1.Add(ApiKeyRequestType.Fetch, fetchResponse);
+            routerProxy.Connection1.Add(ApiKey.Fetch, fetchResponse);
             //triger to update metadata
-            routerProxy.Connection1.Add(ApiKeyRequestType.Metadata, async _ => await BrokerRouterProxy.CreateMetaResponseWithException());
-            routerProxy.Connection2.Add(ApiKeyRequestType.Metadata, async _ => await BrokerRouterProxy.CreateMetadataResponseWithSingleBroker());
+            routerProxy.Connection1.Add(ApiKey.Metadata, async _ => await BrokerRouterProxy.CreateMetaResponseWithException());
+            routerProxy.Connection2.Add(ApiKey.Metadata, async _ => await BrokerRouterProxy.CreateMetadataResponseWithSingleBroker());
 
             //Reset variables
-            routerProxy.Connection1[ApiKeyRequestType.Fetch] = 0;
-            routerProxy.Connection2[ApiKeyRequestType.Fetch] = 0;
-            routerProxy.Connection1[ApiKeyRequestType.Metadata] = 0;
-            routerProxy.Connection2[ApiKeyRequestType.Metadata] = 0;
+            routerProxy.Connection1[ApiKey.Fetch] = 0;
+            routerProxy.Connection2[ApiKey.Fetch] = 0;
+            routerProxy.Connection1[ApiKey.Metadata] = 0;
+            routerProxy.Connection2[ApiKey.Metadata] = 0;
 
             //Send Successful Message that was recover from exception
             await router.SendAsync(fetchRequest, BrokerRouterProxy.TestTopic, partitionId, CancellationToken.None);
 
-            Assert.That(routerProxy.Connection1[ApiKeyRequestType.Fetch], Is.EqualTo(1), "RequestCallCount(ApiKeyRequestType.Fetch)");
-            Assert.That(routerProxy.Connection1[ApiKeyRequestType.Metadata], Is.EqualTo(1), "RequestCallCount(ApiKeyRequestType.Metadata)");
+            Assert.That(routerProxy.Connection1[ApiKey.Fetch], Is.EqualTo(1), "RequestCallCount(ApiKey.Fetch)");
+            Assert.That(routerProxy.Connection1[ApiKey.Metadata], Is.EqualTo(1), "RequestCallCount(ApiKey.Metadata)");
 
-            Assert.That(routerProxy.Connection2[ApiKeyRequestType.Fetch], Is.EqualTo(1), "RequestCallCount(ApiKeyRequestType.Fetch)");
-            Assert.That(routerProxy.Connection2[ApiKeyRequestType.Metadata], Is.EqualTo(1), "RequestCallCount(ApiKeyRequestType.Metadata)");
+            Assert.That(routerProxy.Connection2[ApiKey.Fetch], Is.EqualTo(1), "RequestCallCount(ApiKey.Fetch)");
+            Assert.That(routerProxy.Connection2[ApiKey.Metadata], Is.EqualTo(1), "RequestCallCount(ApiKey.Metadata)");
         }
 
 
@@ -289,10 +289,10 @@ namespace KafkaClient.Tests.Unit
 
         private void CreateSuccessfulSendMock(BrokerRouterProxy routerProxy)
         {
-            routerProxy.Connection1.Add(ApiKeyRequestType.Fetch, ShouldReturnValidMessage);
-            routerProxy.Connection1.Add(ApiKeyRequestType.Metadata, async _ => await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers());
-            routerProxy.Connection2.Add(ApiKeyRequestType.Fetch, ShouldReturnValidMessage);
-            routerProxy.Connection2.Add(ApiKeyRequestType.Metadata, async _ => await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers());
+            routerProxy.Connection1.Add(ApiKey.Fetch, ShouldReturnValidMessage);
+            routerProxy.Connection1.Add(ApiKey.Metadata, async _ => await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers());
+            routerProxy.Connection2.Add(ApiKey.Fetch, ShouldReturnValidMessage);
+            routerProxy.Connection2.Add(ApiKey.Metadata, async _ => await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers());
         }
 
         private Task<IResponse> ShouldReturnValidMessage(IRequestContext context)

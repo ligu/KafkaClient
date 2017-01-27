@@ -5,7 +5,7 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class MemberRequestException : RequestException
     {
-        public MemberRequestException(IGroupMember member, ApiKeyRequestType apiKey, ErrorResponseCode errorCode)
+        public MemberRequestException(IGroupMember member, ApiKey apiKey, ErrorResponseCode errorCode)
             : base(apiKey, errorCode, member != null ? $"{{GroupId:{member.GroupId},MemberId:{member.MemberId}}}" : null)
         {
             Member = member;
