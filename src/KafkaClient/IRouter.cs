@@ -217,14 +217,20 @@ namespace KafkaClient
         Task RefreshTopicMetadataAsync(CancellationToken cancellationToken);
 
         /// <summary>
-        /// Sync Groups, to populate the cache with Group Member Assignments
+        /// Sync Groups, to populate the cache with Group Member Assignments.
         /// </summary>
+        /// <exception cref="RequestException">Unless the response is successful</exception>
         Task<SyncGroupResponse> SyncGroupAsync(SyncGroupRequest request, IRequestContext context, IRetry retryPolicy, CancellationToken cancellationToken);
 
         /// <summary>
         /// Log for the router
         /// </summary>
         ILog Log { get; }
+
+        /// <summary>
+        /// The configuration for the connections
+        /// </summary>
+        IConnectionConfiguration ConnectionConfiguration { get; }
 
         /// <summary>
         /// The configuration for cache expiry and refresh
@@ -238,6 +244,16 @@ namespace KafkaClient
         /// Not all results are necessarily live, although they would need to have been at some point.
         /// </remarks>
         IEnumerable<IConnection> Connections { get; }
+
+        /// <summary>
+        /// Most group membership rebalancing need to happen on distinct connections. This acts to get a new connection for a given member.
+        /// </summary>
+        Task<IConnection> GetConnectionAsync(string groupid, string memberId, CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Returns the connection back to the router, to be reused by other members as needed
+        /// </summary>
+        void ReturnConnection(IConnection connection);
 
         /// <summary>
         /// Attempt to restore or recreate the connection.

@@ -26,7 +26,7 @@ namespace KafkaClient.Tests.Integration
         public ConsumerTests()
         {
             _config = new ConnectionConfiguration(ConnectionConfiguration.Defaults.ConnectionRetry(TimeSpan.FromSeconds(10)), requestTimeout: TimeSpan.FromSeconds(1));
-            _consumerConfig = new ConsumerConfiguration(TimeSpan.FromMilliseconds(50), maxPartitionFetchBytes: DefaultMaxMessageSetSize);
+            _consumerConfig = new ConsumerConfiguration(TimeSpan.FromMilliseconds(50), maxPartitionFetchBytes: DefaultMaxMessageSetSize, heartbeatTimeout: TimeSpan.FromSeconds(5));
             _options = new KafkaOptions(TestConfig.IntegrationUri, new ConnectionConfiguration(ConnectionConfiguration.Defaults.ConnectionRetry(TimeSpan.FromSeconds(10)), requestTimeout: TimeSpan.FromSeconds(10)), log: TestConfig.Log, consumerConfiguration: _consumerConfig);
         }
 
@@ -879,11 +879,10 @@ namespace KafkaClient.Tests.Integration
         {
             int members = 2;
             var cancellation = new CancellationTokenSource();
-            var cancellationToken = cancellation.Token;
-            var totalMessages = 100;
-            var connectionConfig = new ConnectionConfiguration(TestConfig.Options.ConnectionConfiguration.ConnectionRetry, new VersionSupport(VersionSupport.Kafka10_1, true));
-            using (var router = await Router.CreateAsync(TestConfig.IntegrationUri, connectionConfiguration: connectionConfig, log: TestConfig.Log)) {
-                await router.TemporaryTopicAsync(async topicName => {
+            var totalMessages = 10000;
+            using (var router = await TestConfig.Options.CreateRouterAsync()) {
+                await router.TemporaryTopicAsync(async topicName =>
+                {
                     var groupId = TestConfig.GroupId();
 
                     await ProduceMessages(router, topicName, groupId, totalMessages, Enumerable.Range(0, members));
@@ -893,26 +892,27 @@ namespace KafkaClient.Tests.Integration
                     var tasks = new List<Task>();
                     for (var index = 0; index < members; index++) {
                         tasks.Add(Task.Run(async () => {
-                            var member = await consumer.JoinConsumerGroupAsync(groupId, new ConsumerProtocolMetadata(topicName), cancellationToken);
+                            var member = await consumer.JoinConsumerGroupAsync(groupId, new ConsumerProtocolMetadata(topicName), cancellation.Token);
                             await member.UsingAsync(async () => {
                                 await member.FetchUntilDisposedAsync(async (batch, token) => {
                                     router.Log.Info(() => LogEvent.Create($"Member {member.MemberId} starting batch of {batch.Messages.Count}"));
                                     foreach (var message in batch.Messages) {
+                                        await Task.Delay(1); // do the work...
                                         batch.MarkSuccessful(message);
-                                        await Task.Delay(1);
                                         if (Interlocked.Increment(ref fetched) >= totalMessages) {
                                             cancellation.Cancel();
                                             break;
                                         }
                                     }
                                     router.Log.Info(() => LogEvent.Create($"Member {member.MemberId} finished batch size {batch.Messages.Count} ({fetched} of {totalMessages})"));
-                                }, cancellationToken, 10);
+                                }, cancellation.Token, 100);
                             });
                         }, CancellationToken.None));
                     }
-                    await Task.WhenAny(Task.WhenAll(tasks), Task.Delay(TimeSpan.FromMinutes(1)));
+//                    await Task.WhenAny(Task.WhenAll(tasks), Task.Delay(TimeSpan.FromMinutes(1)));
+                    await Task.WhenAll(tasks);
                     Assert.That(fetched, Is.AtLeast(totalMessages));
-                }, 5);
+                }, 10);
             }
         }
 

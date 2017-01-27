@@ -30,13 +30,15 @@ namespace KafkaClient.Common
                 delayMilliseconds = _delay.TotalMilliseconds / 2d * (Math.Pow(2d, attempt + 1) - 1d);
             }
 
-            if (_maxDelay.HasValue) {
-                delayMilliseconds = Math.Min(delayMilliseconds, _maxDelay.Value.TotalMilliseconds);
+            if (_maxDelay.HasValue && delayMilliseconds > _maxDelay.Value.TotalMilliseconds) {
+                delayMilliseconds = _maxDelay.Value.TotalMilliseconds;
             }
 
-            if (Timeout.HasValue) {
-                delayMilliseconds = Math.Min(delayMilliseconds, Timeout.Value.TotalMilliseconds - timeTaken.TotalMilliseconds);
+            var remainingMilliseconds = Timeout?.TotalMilliseconds - timeTaken.TotalMilliseconds ?? double.MaxValue;
+            if (delayMilliseconds > remainingMilliseconds) {
+                delayMilliseconds = remainingMilliseconds;
             }
+
             return TimeSpan.FromMilliseconds(delayMilliseconds);
         }
     }

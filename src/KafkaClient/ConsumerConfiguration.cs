@@ -71,16 +71,6 @@ namespace KafkaClient
             public const int RebalanceTimeoutSeconds = ConnectionConfiguration.Defaults.RequestTimeoutSeconds / 2;
 
             /// <summary>
-            /// The default <see cref="GroupCoordinationRetry"/> timeout
-            /// </summary>
-            public const int CoordinationTimeoutMinutes = 1;
-
-            /// <summary>
-            /// The default max retries for <see cref="GroupCoordinationRetry"/>
-            /// </summary>
-            public const int MaxCoordinationAttempts = 6;
-
-            /// <summary>
             /// The default <see cref="GroupCoordinationRetry"/> backoff delay
             /// </summary>
             public const int GroupCoordinationRetryMilliseconds = 100;
@@ -93,9 +83,8 @@ namespace KafkaClient
             public static IRetry CoordinationRetry(TimeSpan? timeout = null)
             {
                 return new BackoffRetry(
-                    timeout ?? TimeSpan.FromMinutes(CoordinationTimeoutMinutes),
-                    TimeSpan.FromMilliseconds(GroupCoordinationRetryMilliseconds), 
-                    MaxCoordinationAttempts);
+                    timeout ?? TimeSpan.FromSeconds(HeartbeatSeconds),
+                    TimeSpan.FromMilliseconds(GroupCoordinationRetryMilliseconds));
             }
         }
     }

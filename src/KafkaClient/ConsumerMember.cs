@@ -124,20 +124,28 @@ namespace KafkaClient
                 while (!_disposeToken.IsCancellationRequested) {
                     try {
                         await Task.Delay(delay, _disposeToken.Token).ConfigureAwait(false);
-                        var request = new HeartbeatRequest(GroupId, GenerationId, MemberId);
-                        var response = await Router.SendAsync(request, GroupId, _disposeToken.Token, retryPolicy: Configuration.GroupCoordinationRetry).ConfigureAwait(false);
-
-                        if (!TriggerStateChange(response.ErrorCode)) {
-                            delay = response.ErrorCode.IsRetryable() 
-                                ? TimeSpan.FromMilliseconds(Math.Max(delay.TotalMilliseconds / 2, 1000)) 
-                                : _heartbeatDelay;
-                        }
+                        await Router.SendAsync(new HeartbeatRequest(GroupId, GenerationId, MemberId), GroupId, _disposeToken.Token, retryPolicy: Configuration.GroupCoordinationRetry).ConfigureAwait(false);
+                        delay = _heartbeatDelay;
                     } catch (OperationCanceledException) { // cancellation token fired while attempting to get tasks: normal behavior
                     } catch (RequestException ex) {
                         Log.Info(() => LogEvent.Create(ex));
-                        if (!TriggerStateChange(ex.ErrorCode) && ex.ErrorCode.IsRetryable()) {
-                            // reduce the timeout for retryable issues
-                            delay = TimeSpan.FromMilliseconds(Math.Max(delay.TotalMilliseconds / 2, 1000));
+                        switch (ex.ErrorCode) {
+                            case ErrorResponseCode.RebalanceInProgress:
+                                TriggerRejoin();
+                                delay = _heartbeatDelay;
+                                break;
+
+                            case ErrorResponseCode.GroupAuthorizationFailed:
+                            case ErrorResponseCode.UnknownMemberId:
+                                _leaveOnDispose = false; // no point in attempting to leave the group since it will fail
+                                _disposeToken.Cancel();
+                                break;
+
+                            default:
+                                if (ex.ErrorCode.IsRetryable()) {
+                                    delay = TimeSpan.FromMilliseconds(Math.Max(delay.TotalMilliseconds / 2, 1000));
+                                }
+                                break;
                         }
                     } catch (Exception ex) {
                         Log.Warn(() => LogEvent.Create(ex));
@@ -154,38 +162,6 @@ namespace KafkaClient
             }
         }
 
-        private void HandleDispose(ObjectDisposedException exception)
-        {
-            if (exception?.ObjectName == nameof(Router)) {
-                _leaveOnDispose = false; // no point in attempting to leave the group since it will fail
-                _disposeToken.Cancel();
-            }
-        }
-
-        private bool TriggerStateChange(ErrorResponseCode errorCode)
-        {
-            switch (errorCode) {
-                // need to rejoin: SyncGroup/Heartbeat
-                case ErrorResponseCode.RebalanceInProgress:
-                    _stateChangeQueue.Enqueue(ApiKeyRequestType.JoinGroup, _disposeToken.Token);
-                    return true;
-
-                // not recoverable: JoinGroup/SyncGroup/Heartbeat
-                case ErrorResponseCode.GroupAuthorizationFailed:
-                case ErrorResponseCode.IllegalGeneration:
-                case ErrorResponseCode.UnknownMemberId:
-                // not recoverable: JoinGroup
-                case ErrorResponseCode.InconsistentGroupProtocol:
-                case ErrorResponseCode.InvalidSessionTimeout:
-                    _leaveOnDispose = false; // no point in attempting to leave the group since it will fail
-                    _disposeToken.Cancel();
-                    return true;
-
-                default:
-                    return false;
-            }
-        }
-
         /// <summary>
         /// See https://cwiki.apache.org/confluence/display/KAFKA/Kafka+Client-side+Assignment+Proposal for details
         /// </summary>
@@ -195,45 +171,37 @@ namespace KafkaClient
             if (Interlocked.Increment(ref _activeStateChangeCount) != 1) return;
 
             try {
+                Log.Info(() => LogEvent.Create($"Starting state change for {{GroupId:{GroupId},MemberId:{MemberId}}}"));
                 ApiKeyRequestType? nextRequest = ApiKeyRequestType.SyncGroup;
+                var failures = 0;
                 while (!_disposeToken.IsCancellationRequested) {
                     try {
                         if (!nextRequest.HasValue) {
                             var next = await _stateChangeQueue.DequeueAsync(_disposeToken.Token);
                             Log.Info(() => LogEvent.Create($"Triggered {next} for {{GroupId:{GroupId},MemberId:{MemberId}}}"));
                             nextRequest = next;
+                            failures = 0;
                         }
-                        var requestType = nextRequest;
-                        var response = ErrorResponseCode.None;
+
+                        var requestType = nextRequest.Value;
                         switch (requestType) {
                             case ApiKeyRequestType.JoinGroup:
-                                response = await JoinGroupAsync(_disposeToken.Token).ConfigureAwait(false);
-                                if (response.IsSuccess()) {
-                                    nextRequest = ApiKeyRequestType.SyncGroup;
-                                    continue;
-                                }
+                                await JoinGroupAsync(_disposeToken.Token).ConfigureAwait(false);
                                 break;
 
                             case ApiKeyRequestType.SyncGroup:
-                                response = await SyncGroupAsync(_disposeToken.Token).ConfigureAwait(false);
+                                await SyncGroupAsync(_disposeToken.Token).ConfigureAwait(false);
                                 break;
 
                             default:
                                 Log.Warn(() => LogEvent.Create($"Ignoring unknown {requestType} for {{GroupId:{GroupId},MemberId:{MemberId}}}"));
                                 break;
                         }
-
-                        if (!TriggerStateChange(response) && response.IsRetryable()) {
-                            await Task.Delay(25); // avoid spamming, but do retry same request
-                        } else {
-                            nextRequest = null;
-                        }
+                        nextRequest = null;
                     } catch (OperationCanceledException) { // cancellation token fired while attempting to get tasks: normal behavior
                     } catch (RequestException ex) {
                         Log.Info(() => LogEvent.Create(ex));
-                        if (!TriggerStateChange(ex.ErrorCode) && ex.ErrorCode.IsRetryable()) {
-                            await Task.Delay(25); // avoid spamming, but do retry same request
-                        }
+                        await Task.Delay(Configuration.GroupCoordinationRetry.RetryDelay(failures++, TimeSpan.Zero) ?? TimeSpan.FromSeconds(1)); // avoid spamming, but do retry same request
                     } catch (Exception ex) {
                         Log.Warn(() => LogEvent.Create(ex));
                         HandleDispose(ex as ObjectDisposedException);
@@ -249,18 +217,48 @@ namespace KafkaClient
             }
         }
 
-        private async Task<ErrorResponseCode> JoinGroupAsync(CancellationToken cancellationToken)
+        private void HandleDispose(ObjectDisposedException exception)
+        {
+            if (exception?.ObjectName == nameof(Router)) {
+                _leaveOnDispose = false; // no point in attempting to leave the group since it will fail
+                _disposeToken.Cancel();
+            }
+        }
+
+        public void TriggerRejoin()
+        {
+            try {
+                _stateChangeQueue.Enqueue(ApiKeyRequestType.JoinGroup, _disposeToken.Token);
+            } catch (Exception ex) {
+                if (_disposeCount == 0) {
+                    Log.Warn(() => LogEvent.Create(ex));
+                }
+            }
+        }
+
+        private async Task JoinGroupAsync(CancellationToken cancellationToken)
         {
             if (_disposeCount > 0) throw new ObjectDisposedException($"Consumer {{GroupId:{GroupId},MemberId:{MemberId}}} is no longer valid");
 
-            var protocols = _joinSemaphore.Lock(() => IsLeader ? _memberMetadata?.Values.Select(m => new JoinGroupRequest.GroupProtocol(m)) : null, cancellationToken);
-
-            var request = new JoinGroupRequest(GroupId, Configuration.GroupHeartbeat, MemberId, ProtocolType, protocols, Configuration.GroupRebalanceTimeout);
-            var response = await Router.SendAsync(request, GroupId, cancellationToken, retryPolicy: Configuration.GroupCoordinationRetry, context: new RequestContext(protocolType: ProtocolType)).ConfigureAwait(false);
-            if (response.ErrorCode.IsSuccess()) {
+            try {
+                var protocols = _joinSemaphore.Lock(() => IsLeader ? _memberMetadata?.Values.Select(m => new JoinGroupRequest.GroupProtocol(m)) : null, cancellationToken);
+                var request = new JoinGroupRequest(GroupId, Configuration.GroupHeartbeat, MemberId, ProtocolType, protocols, Configuration.GroupRebalanceTimeout);
+                var response = await Router.SendAsync(request, GroupId, cancellationToken, new RequestContext(protocolType: ProtocolType), Configuration.GroupCoordinationRetry).ConfigureAwait(false);
                 OnJoinGroup(response);
+                await _stateChangeQueue.EnqueueAsync(ApiKeyRequestType.SyncGroup, _disposeToken.Token);
+            } catch (RequestException ex) {
+                switch (ex.ErrorCode) {
+                    case ErrorResponseCode.IllegalGeneration:
+                    case ErrorResponseCode.GroupAuthorizationFailed:
+                    case ErrorResponseCode.UnknownMemberId:
+                    case ErrorResponseCode.InconsistentGroupProtocol:
+                    case ErrorResponseCode.InvalidSessionTimeout:
+                        _leaveOnDispose = false; // no point in attempting to leave the group since it will fail
+                        _disposeToken.Cancel();
+                        break;
+                }
+                throw;
             }
-            return response.ErrorCode;
         }
 
         public void OnJoinGroup(JoinGroupResponse response)
@@ -274,20 +272,13 @@ namespace KafkaClient
                     GenerationId = response.GenerationId;
                     _groupProtocol = response.GroupProtocol;
                     _memberMetadata = response.Members.ToImmutableDictionary(member => member.MemberId, member => member.Metadata);
-                    Log.Info(() => LogEvent.Create(GenerationId == 0 
-                        ? $"Consumer {MemberId} Joined {GroupId}"
-                        : $"Consumer {MemberId} Rejoined {GroupId} Generation{GenerationId}"));
+                    Log.Info(() => LogEvent.Create(GenerationId > 1 
+                        ? $"Consumer {MemberId} Rejoined {GroupId} Generation{GenerationId}"
+                        : $"Consumer {MemberId} Joined {GroupId}"));
                 }, _disposeToken.Token);
         }
 
-        public async Task<ErrorResponseCode> SendHeartbeatAsync(CancellationToken cancellationToken)
-        {
-            var request = new HeartbeatRequest(GroupId, GenerationId, MemberId);
-            var response = await Router.SendAsync(request, GroupId, cancellationToken, retryPolicy: Configuration.GroupCoordinationRetry).ConfigureAwait(false);
-            return response.ErrorCode;
-        }
-
-        public async Task<ErrorResponseCode> SyncGroupAsync(CancellationToken cancellationToken)
+        public async Task SyncGroupAsync(CancellationToken cancellationToken)
         {
             if (_disposeCount > 0) throw new ObjectDisposedException($"Consumer {{GroupId:{GroupId},MemberId:{MemberId}}} is no longer valid");
 
@@ -303,24 +294,38 @@ namespace KafkaClient
                 }, _disposeToken.Token).ConfigureAwait(false);
             await Task.WhenAll(_batches.Values.Select(b => b.CommitMarkedIgnoringDisposedAsync(cancellationToken))).ConfigureAwait(false);
 
-            var request = new SyncGroupRequest(GroupId, GenerationId, MemberId, groupAssignments);
-            var response = await Router.SyncGroupAsync(request, new RequestContext(protocolType: ProtocolType), Router.Configuration.SendRetry, cancellationToken).ConfigureAwait(false);
-            if (!response.ErrorCode.IsSuccess()) return response.ErrorCode;
+            SyncGroupResponse response;
+            try {
+                var request = new SyncGroupRequest(GroupId, GenerationId, MemberId, groupAssignments);
+                response = await Router.SyncGroupAsync(request, new RequestContext(protocolType: ProtocolType), Configuration.GroupCoordinationRetry, cancellationToken).ConfigureAwait(false);
+            } catch (RequestException ex) {
+                switch (ex.ErrorCode) {
+                    case ErrorResponseCode.RebalanceInProgress:
+                        TriggerRejoin();
+                        break;
 
-            _syncSemaphore.Lock(
-                () => {
-                    _assignment = response.MemberAssignment;
-                    var validPartitions = response.MemberAssignment.PartitionAssignments.ToImmutableHashSet();
-                    var invalidPartitions = _batches.Where(pair => !validPartitions.Contains(pair.Key)).ToList();
-                    foreach (var invalidPartition in invalidPartitions) {
-                        invalidPartition.Value.Dispose();
-                    }
-                    _batches = _batches.RemoveRange(invalidPartitions.Select(pair => pair.Key));
-                }, _disposeToken.Token);
+                    case ErrorResponseCode.GroupAuthorizationFailed:
+                    case ErrorResponseCode.UnknownMemberId:
+                        _leaveOnDispose = false; // no point in attempting to leave the group since it will fail
+                        _disposeToken.Cancel();
+                        break;
+                }
+                throw;
+            }
+
+            _syncSemaphore.Lock(() => {
+                _assignment = response.MemberAssignment;
+                var validPartitions = response.MemberAssignment.PartitionAssignments.ToImmutableHashSet();
+                var invalidPartitions = _batches.Where(pair => !validPartitions.Contains(pair.Key)).ToList();
+                foreach (var invalidPartition in invalidPartitions) {
+                    invalidPartition.Value.Dispose();
+                }
+                _batches = _batches.RemoveRange(invalidPartitions.Select(pair => pair.Key));
+            }, _disposeToken.Token);
+
             if (Interlocked.Increment(ref _syncCount) == 1) {
                 _fetchSemaphore.Release();
             }
-            return ErrorResponseCode.None;
         }
 
         public async Task DisposeAsync()

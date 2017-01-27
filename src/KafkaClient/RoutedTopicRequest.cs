@@ -1,6 +1,7 @@
 ﻿using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Common;
+using KafkaClient.Connections;
 using KafkaClient.Protocol;
 
 namespace KafkaClient
@@ -18,9 +19,10 @@ namespace KafkaClient
         private readonly string _topicName;
         private readonly int _partitionId;
 
-        protected override async Task<Broker> GetBrokerAsync(IRouter router, CancellationToken cancellationToken)
+        protected override async Task<IConnection> GetConnectionAsync(IRouter router, CancellationToken cancellationToken)
         {
-            return await router.GetTopicBrokerAsync(_topicName, _partitionId, cancellationToken).ConfigureAwait(false);
+            var broker = await router.GetTopicBrokerAsync(_topicName, _partitionId, cancellationToken).ConfigureAwait(false);
+            return broker?.Connection;
         }
     }
 }

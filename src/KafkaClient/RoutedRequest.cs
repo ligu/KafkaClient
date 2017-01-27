@@ -26,15 +26,24 @@ namespace KafkaClient
 
         public async Task SendAsync(IRouter router, CancellationToken cancellationToken, IRequestContext context = null)
         {
-            _response = null;
-            _router = router;
-            _cancellationToken = cancellationToken;
-            var route = await GetBrokerAsync(router, cancellationToken).ConfigureAwait(false);
-            _connection = route?.Connection;
-            _response = _connection == null ? null : await _connection.SendAsync(_request, cancellationToken, context).ConfigureAwait(false);
+            try {
+                _response = null;
+                _router = router;
+                _cancellationToken = cancellationToken;
+                _connection = await GetConnectionAsync(router, cancellationToken).ConfigureAwait(false);
+                _response = _connection == null
+                    ? null
+                    : await _connection.SendAsync(_request, cancellationToken, context).ConfigureAwait(false);
+            } finally {
+                ReturnConnection(router, _connection);
+            }
         }
 
-        protected abstract Task<Broker> GetBrokerAsync(IRouter router, CancellationToken cancellationToken);
+        protected abstract Task<IConnection> GetConnectionAsync(IRouter router, CancellationToken cancellationToken);
+
+        protected virtual void ReturnConnection(IRouter router, IConnection connection)
+        {
+        }
 
         public RetryAttempt<T> MetadataRetryResponse(int attempt, out bool? metadataInvalid)
         {

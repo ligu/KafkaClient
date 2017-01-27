@@ -29,9 +29,12 @@ namespace KafkaClient
 
         private ImmutableDictionary<Endpoint, IConnection> _allConnections = ImmutableDictionary<Endpoint, IConnection>.Empty;
         private ImmutableDictionary<int, IConnection> _brokerConnections = ImmutableDictionary<int, IConnection>.Empty;
+
+        private ImmutableDictionary<int, Endpoint> _brokerEndpoints = ImmutableDictionary<int, Endpoint>.Empty;
         private ImmutableDictionary<string, Tuple<MetadataResponse.Topic, DateTimeOffset>> _topicCache = ImmutableDictionary<string, Tuple<MetadataResponse.Topic, DateTimeOffset>>.Empty;
         private ImmutableDictionary<string, Tuple<int, DateTimeOffset>> _groupBrokerCache = ImmutableDictionary<string, Tuple<int, DateTimeOffset>>.Empty;
         private ImmutableDictionary<string, Tuple<DescribeGroupsResponse.Group, DateTimeOffset>> _groupCache = ImmutableDictionary<string, Tuple<DescribeGroupsResponse.Group, DateTimeOffset>>.Empty;
+
         private readonly ConcurrentDictionary<string, Tuple<IImmutableList<SyncGroupRequest.GroupAssignment>, int>> _memberAssignmentCache = new ConcurrentDictionary<string, Tuple<IImmutableList<SyncGroupRequest.GroupAssignment>, int>>();
 
         private readonly SemaphoreSlim _connectionSemaphore = new SemaphoreSlim(1, 1);
@@ -95,33 +98,6 @@ namespace KafkaClient
         public IConnectionConfiguration ConnectionConfiguration { get; }
         public IRouterConfiguration Configuration { get; }
 
-        /// <inheritdoc />
-        public IEnumerable<IConnection> Connections => _allConnections.Values;
-
-        public bool TryRestore(IConnection connection, CancellationToken cancellationToken)
-        {
-            if (_disposeCount > 0) throw new ObjectDisposedException(nameof(Router));
-            if (connection == null) return false;
-
-            var endpoint = connection.Endpoint;
-            IConnection ownedConnection;
-            // false if the endpoint isn't part of the router
-            // true if the one in the router is already restore (or will by itself)
-            if (!_allConnections.TryGetValue(endpoint, out ownedConnection)) return false;
-            if (!ownedConnection.IsDisposed) return true;
-
-            // actually restore the connection ...
-            return _connectionSemaphore.Lock(
-                () => {
-                    // test again (same logic as above) -- to avoid race conditions
-                    if (!_allConnections.TryGetValue(endpoint, out ownedConnection)) return false;
-                    if (!ownedConnection.IsDisposed) return true;
-
-                    _allConnections = _allConnections.SetItem(endpoint, _connectionFactory.Create(connection.Endpoint, ConnectionConfiguration, Log));
-                    return true;
-                }, cancellationToken);
-        }
-
         #region Topic Brokers
 
         /// <inheritdoc />
@@ -150,9 +126,10 @@ namespace KafkaClient
 
         private TopicBroker GetCachedTopicBroker(string topicName, MetadataResponse.Partition partition)
         {
-            IConnection conn;
-            if (_brokerConnections.TryGetValue(partition.LeaderId, out conn)) {
-                return new TopicBroker(topicName, partition.PartitionId, partition.LeaderId, conn);
+            Endpoint endpoint;
+            IConnection connection;
+            if (_brokerEndpoints.TryGetValue(partition.LeaderId, out endpoint) && _allConnections.TryGetValue(endpoint, out connection)) {
+                return new TopicBroker(topicName, partition.PartitionId, partition.LeaderId, connection);
             }
 
             throw new CachedMetadataException($"Lead broker cannot be found for partition/{partition.PartitionId}, leader {partition.LeaderId}") {
@@ -344,9 +321,10 @@ namespace KafkaClient
 
         private GroupBroker GetCachedGroupBroker(string groupId, int brokerId)
         {
-            IConnection conn;
-            if (_brokerConnections.TryGetValue(brokerId, out conn)) {
-                return new GroupBroker(groupId, brokerId, conn);
+            Endpoint endpoint;
+            IConnection connection;
+            if (_brokerEndpoints.TryGetValue(brokerId, out endpoint) && _allConnections.TryGetValue(endpoint, out connection)) {
+                return new GroupBroker(groupId, brokerId, connection);
             }
 
             throw new CachedMetadataException($"Broker cannot be found for group/{groupId}, broker {brokerId}");
@@ -578,41 +556,67 @@ namespace KafkaClient
             }
         }
 
+        #region Connections
+
+        /// <inheritdoc />
+        public IEnumerable<IConnection> Connections => _allConnections.Values;
+
+        /// <inheritdoc />
+        public async Task<IConnection> GetConnectionAsync(string groupid, string memberId, CancellationToken cancellationToken)
+        {
+            
+        }
+
+        /// <inheritdoc />
+        public void ReturnConnection(IConnection connection)
+        {
+            
+        }
+
+        public bool TryRestore(IConnection connection, CancellationToken cancellationToken)
+        {
+            if (_disposeCount > 0) throw new ObjectDisposedException(nameof(Router));
+            if (connection == null) return false;
+
+            var endpoint = connection.Endpoint;
+            IConnection ownedConnection;
+            // false if the endpoint isn't part of the router
+            // true if the one in the router is already restore (or will by itself)
+            if (!_allConnections.TryGetValue(endpoint, out ownedConnection)) return false;
+            if (!ownedConnection.IsDisposed) return true;
+
+            // actually restore the connection ...
+            return _connectionSemaphore.Lock(
+                () => {
+                    // test again (same logic as above) -- to avoid race conditions
+                    if (!_allConnections.TryGetValue(endpoint, out ownedConnection)) return false;
+                    if (!ownedConnection.IsDisposed) return true;
+
+                    _allConnections = _allConnections.SetItem(endpoint, _connectionFactory.Create(connection.Endpoint, ConnectionConfiguration, Log));
+                    return true;
+                }, cancellationToken);
+        }
+
         private async Task UpdateConnectionCacheAsync(IEnumerable<Protocol.Broker> brokers)
         {
             var allConnections = _allConnections;
-            var brokerConnections = _brokerConnections;
-            var connectionsToDispose = ImmutableList<IConnection>.Empty;
+            var brokerEndpoints = _brokerEndpoints;
             try {
                 foreach (var broker in brokers) {
                     var endpoint = await _connectionFactory.ResolveAsync(new Uri($"http://{broker.Host}:{broker.Port}"), Log);
+                    brokerEndpoints = brokerEndpoints.SetItem(broker.BrokerId, endpoint);
+                }
 
-                    IConnection connection;
-                    if (brokerConnections.TryGetValue(broker.BrokerId, out connection)) {
-                        if (connection.Endpoint.Equals(endpoint)) {
-                            // existing connection, nothing to change
-                        } else {
-                            // ReSharper disable once AccessToModifiedClosure
-                            Log.Warn(() => LogEvent.Create($"Broker {broker.BrokerId} Uri changed from {connection.Endpoint} to {endpoint}"));
-
-                            // A connection changed for a broker, so close the old connection and create a new one
-                            connectionsToDispose = connectionsToDispose.Add(connection);
-                            connection = _connectionFactory.Create(endpoint, ConnectionConfiguration, Log);
-                            // important that we create it here rather than set to null or we'll get it again from allConnections
-                        }
+                // ensure that at least one live connection exists to each broker
+                allConnections = allConnections.Where(pair => !pair.Value.IsDisposed).ToImmutableDictionary();
+                foreach (var endpoint in brokerEndpoints.Values) {
+                    if (!allConnections.ContainsKey(endpoint)) {
+                        allConnections = allConnections.SetItem(endpoint, _connectionFactory.Create(endpoint, ConnectionConfiguration, Log));
                     }
-
-                    if (connection == null && !allConnections.TryGetValue(endpoint, out connection)) {
-                        connection = _connectionFactory.Create(endpoint, ConnectionConfiguration, Log);
-                    }
-
-                    allConnections = allConnections.SetItem(endpoint, connection);
-                    brokerConnections = brokerConnections.SetItem(broker.BrokerId, connection);
                 }
             } finally {
                 _allConnections = allConnections;
-                _brokerConnections = brokerConnections;
-                await DisposeConnectionsAsync(connectionsToDispose);
+                _brokerEndpoints = brokerEndpoints;
             }
         }
 
@@ -620,6 +624,8 @@ namespace KafkaClient
         {
             await Task.WhenAll(connections.Select(_ => _.DisposeAsync()));
         }
+
+        #endregion
 
         private int _disposeCount = 0;
         private readonly TaskCompletionSource<bool> _disposePromise = new TaskCompletionSource<bool>();
