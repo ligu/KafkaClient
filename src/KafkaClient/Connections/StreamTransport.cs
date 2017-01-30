@@ -39,13 +39,21 @@ namespace KafkaClient.Connections
             if (_endpoint.Ip == null) throw new ConnectionException(_endpoint);
             if (_disposeToken.IsCancellationRequested) throw new ObjectDisposedException($"Connection to {_endpoint}");
 
-            return new Socket(_endpoint.Ip.AddressFamily, SocketType.Stream, ProtocolType.Tcp)
+            var socket = new Socket(_endpoint.Ip.AddressFamily, SocketType.Stream, ProtocolType.Tcp)
             {
                 Blocking = false,
                 SendTimeout = (int)_configuration.RequestTimeout.TotalMilliseconds,
                 SendBufferSize = _configuration.WriteBufferSize,
-                ReceiveBufferSize = _configuration.ReadBufferSize
+                ReceiveBufferSize = _configuration.ReadBufferSize,
+                
             };
+
+            if (_configuration.IsTcpKeepalive)
+            {
+                socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
+            }
+
+            return socket;
         }
 
 

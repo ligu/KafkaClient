@@ -37,6 +37,11 @@ namespace KafkaClient.Connections
         int WriteBufferSize { get; }
 
         /// <summary>
+        /// TCP keepalive option
+        /// </summary>
+        bool IsTcpKeepalive { get; }
+
+        /// <summary>
         /// Custom Encoding support for different protocol types
         /// </summary>
         IImmutableDictionary<string, IMembershipEncoder> Encoders { get; }

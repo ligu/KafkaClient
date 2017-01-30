@@ -30,6 +30,7 @@ namespace KafkaClient.Connections
         /// <param name="requestTimeout">The maximum time to wait for requests.</param>
         /// <param name="readBufferSize">The buffer size to use for the socket, when receiving bytes.</param>
         /// <param name="writeBufferSize">The buffer size to use for the socket, when sending bytes.</param>
+        /// <param name="isTcpKeepalive">TCP keepalive option.</param>
         /// <param name="encoders">Custom Encoding support for different protocol types</param>
         /// <param name="sslConfiguration">Configuration for SSL encrypted communication</param>
         public ConnectionConfiguration(
@@ -38,11 +39,12 @@ namespace KafkaClient.Connections
             IVersionSupport versionSupport = null, 
             TimeSpan? requestTimeout = null, 
             int? readBufferSize = null, 
-            int? writeBufferSize = null, 
+            int? writeBufferSize = null,
+            bool? isTcpKeepalive = null,
             IEnumerable<IMembershipEncoder> encoders = null,
             ISslConfiguration sslConfiguration = null
         ) : this(
-            connectionRetry, versionSupport, requestTimeout, readBufferSize, writeBufferSize, encoders, sslConfiguration,
+            connectionRetry, versionSupport, requestTimeout, readBufferSize, writeBufferSize, isTcpKeepalive, encoders, sslConfiguration,
             tracker != null ? (ConnectError)tracker.Disconnected : null, 
             tracker != null ? (Connecting)tracker.Connecting : null, 
             tracker != null ? (Connecting)tracker.Connected : null, 
@@ -68,6 +70,7 @@ namespace KafkaClient.Connections
         /// <param name="requestTimeout">The maximum time to wait for requests.</param>
         /// <param name="readBufferSize">The buffer size to use for the socket, when receiving bytes.</param>
         /// <param name="writeBufferSize">The buffer size to use for the socket, when sending bytes.</param>
+        /// <param name="isTcpKeepalive">TCP keepalive option.</param>
         /// <param name="encoders">Custom Encoding support for different protocol types</param>
         /// <param name="sslConfiguration">Configuration for SSL encrypted communication</param>
         /// <param name="onDisconnected">Triggered when the tcp socket is disconnected.</param>
@@ -90,6 +93,7 @@ namespace KafkaClient.Connections
             TimeSpan? requestTimeout = null,
             int? readBufferSize = null, 
             int? writeBufferSize = null,
+            bool? isTcpKeepalive = null,
             IEnumerable<IMembershipEncoder> encoders = null,
             ISslConfiguration sslConfiguration = null,
             ConnectError onDisconnected = null, 
@@ -113,6 +117,7 @@ namespace KafkaClient.Connections
             RequestTimeout = requestTimeout ?? TimeSpan.FromSeconds(Defaults.RequestTimeoutSeconds);
             ReadBufferSize = readBufferSize.GetValueOrDefault(Defaults.BufferSize);
             WriteBufferSize = writeBufferSize.GetValueOrDefault(Defaults.BufferSize);
+            IsTcpKeepalive = isTcpKeepalive ?? Defaults.IsTcpKeepalive;
             Encoders = Defaults.Encoders(encoders);
             SslConfiguration = sslConfiguration;
             OnDisconnected = onDisconnected;
@@ -145,6 +150,9 @@ namespace KafkaClient.Connections
 
         /// <inheritdoc />
         public int WriteBufferSize { get; }
+
+        /// <inheritdoc />
+        public bool IsTcpKeepalive { get; }
 
         /// <inheritdoc />
         public IImmutableDictionary<string, IMembershipEncoder> Encoders { get; }
@@ -210,6 +218,11 @@ namespace KafkaClient.Connections
             /// The default size for <see cref="ConnectionConfiguration.ReadBufferSize"/> and <see cref="ConnectionConfiguration.WriteBufferSize"/>
             /// </summary>
             public const int BufferSize = 8192;
+
+            /// <summary>
+            /// The default value for <see cref="ConnectionConfiguration.IsTcpKeepalive"/> and <see cref="ConnectionConfiguration.IsTcpKeepalive"/>
+            /// </summary>
+            public const bool IsTcpKeepalive = false;
 
             /// <summary>
             /// The default max retries for <see cref="ConnectionConfiguration.ConnectionRetry"/>
