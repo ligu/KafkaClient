@@ -466,15 +466,15 @@ namespace KafkaClient.Tests.Unit
                     var bytes = Encoding.UTF8.GetBytes(secondMessage);
 
                     var payload = new KafkaWriter()
-                        .Write(firstMessage)
-                        .Write(new ArraySegment<byte>(bytes), false);
+                        .Write(firstMessage);
 
                     //send the combined payload
                     var send = server.SendDataAsync(payload.ToSegment(false));
 
                     var socket = await conn.ConnectAsync(CancellationToken.None);
                     var buffer = new byte[48];
-                    await conn.ReadBytesAsync(socket, buffer, 4, _ => { }, CancellationToken.None);
+                    var read = await conn.ReadBytesAsync(socket, buffer, 4, _ => { }, CancellationToken.None);
+                    Assert.That(read, Is.EqualTo(4));
                     Assert.That(buffer.ToInt32(), Is.EqualTo(firstMessage));
 
                     // Sending second message to receive...
