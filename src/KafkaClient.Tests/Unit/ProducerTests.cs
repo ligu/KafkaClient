@@ -128,30 +128,6 @@ namespace KafkaClient.Tests.Unit
             }
         }
 
-        [Test]
-        [Ignore("is there a way to communicate back which client failed and which succeeded.")]
-        public async Task ConnectionExceptionOnOneShouldCommunicateBackWhichMessagesFailed()
-        {
-            //TODO is there a way to communicate back which client failed and which succeeded.
-            var routerProxy = new FakeBrokerRouter();
-            routerProxy.BrokerConn1.Add(ApiKey.Produce, _ => { throw new Exception("some exception"); });
-
-            var router = routerProxy.Create();
-            using (var producer = new Producer(router))
-            {
-                var messages = new List<Message>
-                {
-                    new Message("1"), new Message("2")
-                };
-
-                //this will produce an exception, but message 1 succeeded and message 2 did not.
-                //should we return a ProduceResponse with an error and no error for the other messages?
-                //at this point though the client does not know which message is routed to which server.
-                //the whole batch of messages would need to be returned.
-                var test = await producer.SendMessagesAsync(messages, "UnitTest", CancellationToken.None);
-            }
-        }
-
         #endregion SendMessagesAsync Tests...
 
         #region Nagle Tests...
@@ -301,39 +277,6 @@ namespace KafkaClient.Tests.Unit
 
                 Assert.That(senderTask.IsCompleted);
                 Assert.That(producer.BufferedMessageCount, Is.EqualTo(1), "One message should be left in the buffer.");
-            }
-        }
-
-        [Test]
-        [Ignore("Removed the max message limit.  Caused performance problems.  Will find a better way.")]
-        public void ProducerShouldBlockEvenOnMessagesInTransit()
-        {
-            //with max buffer set below the batch size, this should cause the producer to block until batch delay time.
-            var routerProxy = new FakeBrokerRouter();
-            var semaphore = new SemaphoreSlim(0);
-            routerProxy.BrokerConn0.Add(ApiKey.Produce,
-                async _ => {
-                    semaphore.Wait();
-                    return new ProduceResponse();
-                });
-            routerProxy.BrokerConn1.Add(ApiKey.Produce,
-                async _ => {
-                    semaphore.Wait();
-                    return new ProduceResponse();
-                });
-
-            var producer = new Producer(routerProxy.Create(), new ProducerConfiguration(1, 1, TimeSpan.FromMilliseconds(500)));
-            using (producer)
-            {
-                var sendTasks = Enumerable.Range(0, 5)
-                    .Select(x => producer.SendMessageAsync(new Message(x.ToString()), FakeBrokerRouter.TestTopic, CancellationToken.None))
-                    .ToList();
-
-                var wait = TaskTest.WaitFor(() => producer.ActiveSenders > 0);
-                Assert.That(sendTasks.Any(x => x.IsCompleted) == false, "All the async tasks should be blocking or in transit.");
-                Assert.That(producer.BufferedMessageCount, Is.EqualTo(5), "We sent 5 unfinished messages, they should be counted towards the buffer.");
-
-                semaphore.Release(2);
             }
         }
 

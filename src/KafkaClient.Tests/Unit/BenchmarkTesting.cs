@@ -11,8 +11,8 @@ using NUnit.Framework;
 
 namespace KafkaClient.Tests.Unit
 {
-    [Ignore("Used for benchmarking")]
     [TestFixture]
+    [Category("Benchmark")]
     internal class BenchmarkTesting
     {
         [Test]
