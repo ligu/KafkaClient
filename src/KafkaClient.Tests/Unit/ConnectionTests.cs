@@ -360,20 +360,18 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public async Task ReadShouldBlockUntilAllBytesRequestedAreReceived()
         {
-            var sendCompleted = 0;
+            var readCompleted = 0;
             var bytesReceived = 0;
             var config = new ConnectionConfiguration(
-                onReadBytes: (e, attempted, actual, elapsed) => Interlocked.Add(ref bytesReceived, actual));
+                onReadBytes: (e, attempted, actual, elapsed) => Interlocked.Add(ref bytesReceived, actual),
+                onRead: (e, read, elapsed) => Interlocked.Increment(ref readCompleted));
             var endpoint = await Endpoint.ResolveAsync(TestConfig.ServerUri(), TestConfig.Log);
             using (var server = new TcpServer(endpoint.Ip.Port, TestConfig.Log)) {
                 var conn = new ExplicitlyReadingConnection(endpoint, config, TestConfig.Log);
                 await conn.UsingAsync(async () => {
                     var socket = await conn.ConnectAsync(CancellationToken.None);
                     var buffer = new byte[4];
-                    var taskResult = conn.ReadBytesAsync(socket, buffer, 4, _ => { }, CancellationToken.None).ContinueWith(t =>
-                        {
-                            Interlocked.Increment(ref sendCompleted);
-                        });
+                    var readTask = conn.ReadBytesAsync(socket, buffer, 4, _ => { }, CancellationToken.None);
 
                     // Sending first 3 bytes...
                     await Task.WhenAny(server.ClientConnected, Task.Delay(TimeSpan.FromSeconds(3)));
@@ -381,19 +379,19 @@ namespace KafkaClient.Tests.Unit
 
                     // Ensuring task blocks...
                     await TaskTest.WaitFor(() => bytesReceived > 0);
-                    Assert.That(taskResult.IsCompleted, Is.False, "Task should still be running, blocking.");
-                    Assert.That(sendCompleted, Is.EqualTo(0), "Should still block even though bytes have been received.");
+                    Assert.That(readTask.IsCompleted, Is.False, "Task should still be running, blocking.");
+                    Assert.That(readCompleted, Is.EqualTo(0), "Should still block even though bytes have been received.");
                     Assert.That(bytesReceived, Is.EqualTo(3), "Three bytes should have been received and we are waiting on the last byte.");
 
                     // Sending last byte...
-                    var sendLastByte = server.SendDataAsync(new ArraySegment<byte>(new byte[] { 0 })).Wait(TimeSpan.FromSeconds(10));
+                    var sendLastByte = await server.SendDataAsync(new ArraySegment<byte>(new byte[] { 0 }));
                     Assert.That(sendLastByte, Is.True, "Last byte should have sent.");
 
                     // Ensuring task unblocks...
-                    await TaskTest.WaitFor(() => taskResult.IsCompleted);
+                    await TaskTest.WaitFor(() => readTask.IsCompleted);
                     Assert.That(bytesReceived, Is.EqualTo(4), "Should have received 4 bytes.");
-                    Assert.That(taskResult.IsCompleted, Is.True, "Task should have completed.");
-                    Assert.That(sendCompleted, Is.EqualTo(1), "Task ContinueWith should have executed.");
+                    Assert.That(readTask.IsCompleted, Is.True, "Task should have completed.");
+                    Assert.That(readCompleted, Is.EqualTo(1), "Task ContinueWith should have executed.");
                 });
             }
         }
@@ -598,9 +596,7 @@ namespace KafkaClient.Tests.Unit
                         }).ToArray();
 
                     var send = server.SendDataAsync(payload.ToSegment());
-
-                    Task.WaitAll(tasks);
-
+                    await Task.WhenAll(tasks);
                     foreach (var task in tasks) {
                         Assert.That(task.Result, Is.EqualTo(expectedLength));
                     }
@@ -621,12 +617,11 @@ namespace KafkaClient.Tests.Unit
             {
                 await Task.WhenAny(server.ClientConnected, Task.Delay(TimeSpan.FromSeconds(3)));
 
-                var taskResult = conn.SendAsync(new MetadataRequest(), CancellationToken.None);
+                var sendTask = conn.SendAsync(new MetadataRequest(), CancellationToken.None);
+                await Task.WhenAny(sendTask, Task.Delay(100));
 
-                taskResult.ContinueWith(t => taskResult = t).Wait(TimeSpan.FromMilliseconds(100));
-
-                Assert.That(taskResult.IsFaulted, Is.True, "Task should have reported an exception.");
-                Assert.That(taskResult.Exception.InnerException, Is.TypeOf<TimeoutException>());
+                Assert.That(sendTask.IsFaulted, Is.True, "Task should have reported an exception.");
+                Assert.That(sendTask.Exception.InnerException, Is.TypeOf<TimeoutException>());
             }
         }
 

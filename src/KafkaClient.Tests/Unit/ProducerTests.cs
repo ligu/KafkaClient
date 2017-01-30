@@ -80,8 +80,7 @@ namespace KafkaClient.Tests.Unit
                 Assert.That(producer.ActiveSenders, Is.EqualTo(1), "One async operation should be sending.");
 
                 semaphore.Release();
-                sendTask.Wait(TimeSpan.FromMilliseconds(500));
-                await Task.Delay(2);
+                await Task.WhenAny(sendTask, Task.Delay(2500));
                 Assert.That(sendTask.IsCompleted, Is.True, "Send task should be marked as completed.");
                 Assert.That(producer.ActiveSenders, Is.EqualTo(0), "Async should now show zero count.");
             }
@@ -131,7 +130,7 @@ namespace KafkaClient.Tests.Unit
 
         [Test]
         [Ignore("is there a way to communicate back which client failed and which succeeded.")]
-        public void ConnectionExceptionOnOneShouldCommunicateBackWhichMessagesFailed()
+        public async Task ConnectionExceptionOnOneShouldCommunicateBackWhichMessagesFailed()
         {
             //TODO is there a way to communicate back which client failed and which succeeded.
             var routerProxy = new FakeBrokerRouter();
@@ -149,7 +148,7 @@ namespace KafkaClient.Tests.Unit
                 //should we return a ProduceResponse with an error and no error for the other messages?
                 //at this point though the client does not know which message is routed to which server.
                 //the whole batch of messages would need to be returned.
-                var test = producer.SendMessagesAsync(messages, "UnitTest", CancellationToken.None).Result;
+                var test = await producer.SendMessagesAsync(messages, "UnitTest", CancellationToken.None);
             }
         }
 
@@ -298,7 +297,7 @@ namespace KafkaClient.Tests.Unit
                 Assert.That(producer.BufferedMessageCount, Is.EqualTo(1));
 
                 TestConfig.Log.Info(() => LogEvent.Create("Waiting for the rest..."));
-                senderTask.Wait(TimeSpan.FromSeconds(5));
+                await Task.WhenAny(senderTask, Task.Delay(5000));
 
                 Assert.That(senderTask.IsCompleted);
                 Assert.That(producer.BufferedMessageCount, Is.EqualTo(1), "One message should be left in the buffer.");
