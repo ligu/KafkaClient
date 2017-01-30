@@ -110,7 +110,7 @@ namespace KafkaClient.Protocol
                 && Attribute == other.Attribute 
                 && Key.HasEqualElementsInOrder(other.Key)
                 && Value.HasEqualElementsInOrder(other.Value) 
-                && Timestamp.ToUnixTimeMilliseconds() == other.Timestamp.ToUnixTimeMilliseconds();
+                && Timestamp?.ToUnixTimeMilliseconds() == other.Timestamp?.ToUnixTimeMilliseconds();
         }
 
         /// <inheritdoc />

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace KafkaClient.Common
+namespace KafkaClient.Protocol
 {
     public interface IKafkaReader : IDisposable
     {

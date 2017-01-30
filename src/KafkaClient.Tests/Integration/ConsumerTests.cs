@@ -823,7 +823,7 @@ namespace KafkaClient.Tests.Integration
             }
         }
         
-        [Test, Ignore("Disable until I figure out why the requests are timing out for different groups -- likely the same shared connection issue?")]
+        [Test]
         [TestCase(2, 2)]
         [TestCase(3, 5)]
         [TestCase(5, 5)]

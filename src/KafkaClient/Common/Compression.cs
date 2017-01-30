@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.IO.Compression;
+using KafkaClient.Protocol;
 
 namespace KafkaClient.Common
 {
@@ -11,7 +12,7 @@ namespace KafkaClient.Common
     {
         public static CompressionLevel ZipLevel { get; set; } = CompressionLevel.Fastest;
 
-        public static void Zip(ArraySegment<byte> bytes, IKafkaWriter writer)
+        public static void WriteZipped(this IKafkaWriter writer, ArraySegment<byte> bytes)
         {
             using (var gzip = new GZipStream(writer.Stream, ZipLevel, true)) {
                 gzip.Write(bytes.Array, bytes.Offset, bytes.Count);

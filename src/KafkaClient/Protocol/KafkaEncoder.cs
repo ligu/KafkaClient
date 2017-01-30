@@ -212,7 +212,7 @@ namespace KafkaClient.Protocol
                                           .Write(-1); // key  -- null, so -1 length
                                     using (writer.MarkForLength()) { // value
                                         var initialPosition = writer.Position;
-                                        Compression.Zip(messageSet, writer);
+                                        writer.WriteZipped(messageSet);
                                         var compressedMessageLength = writer.Position - initialPosition;
                                         return messageSet.Count - compressedMessageLength;
                                     }

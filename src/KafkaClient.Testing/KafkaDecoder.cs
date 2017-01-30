@@ -441,7 +441,7 @@ namespace KafkaClient.Testing
                         .Write(partition.ErrorCode)
                         .Write(partition.Offset);
                     if (context.ApiVersion >= 2) {
-                        writer.Write(partition.Timestamp.ToUnixTimeMilliseconds() ?? -1L);
+                        writer.Write(partition.Timestamp?.ToUnixTimeMilliseconds() ?? -1L);
                     }
                 }
             }
@@ -502,7 +502,7 @@ namespace KafkaClient.Testing
                         writer.Write(1)
                               .Write(partition.Offset);
                     } else {
-                        writer.Write(partition.Timestamp.ToUnixTimeMilliseconds() ?? 0L)
+                        writer.Write(partition.Timestamp?.ToUnixTimeMilliseconds() ?? 0L)
                             .Write(partition.Offset);
                     }
                 }

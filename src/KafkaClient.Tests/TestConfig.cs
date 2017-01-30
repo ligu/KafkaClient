@@ -20,7 +20,7 @@ namespace KafkaClient.Tests
         }
 
         // turned down to reduce log noise -- turn up Level if necessary
-        public static ILog Log = new ConsoleLog();
+        public static ILog Log = new ConsoleLog(LogLevel.Debug);
 
         public static Uri ServerUri()
         {
