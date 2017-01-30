@@ -7,7 +7,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Assignment;
 using KafkaClient.Common;
-using KafkaClient.Connections;
 using KafkaClient.Protocol;
 using NUnit.Framework;
 
@@ -18,18 +17,6 @@ namespace KafkaClient.Tests.Integration
     [TestFixture]
     public class ConsumerTests
     {
-        private readonly KafkaOptions _options;
-        private readonly IConnectionConfiguration _config;
-        private readonly IConsumerConfiguration _consumerConfig;
-        private const int DefaultMaxMessageSetSize = 4096 * 8;
-
-        public ConsumerTests()
-        {
-            _config = new ConnectionConfiguration(ConnectionConfiguration.Defaults.ConnectionRetry(TimeSpan.FromSeconds(10)), requestTimeout: TimeSpan.FromSeconds(1));
-            _consumerConfig = new ConsumerConfiguration(TimeSpan.FromMilliseconds(50), maxPartitionFetchBytes: DefaultMaxMessageSetSize);
-            _options = new KafkaOptions(TestConfig.IntegrationUri, new ConnectionConfiguration(ConnectionConfiguration.Defaults.ConnectionRetry(TimeSpan.FromSeconds(10)), requestTimeout: TimeSpan.FromSeconds(10)), log: TestConfig.Log, consumerConfiguration: _consumerConfig);
-        }
-
         [Test]
         public async Task CanFetch()
         {
@@ -55,10 +42,10 @@ namespace KafkaClient.Tests.Integration
         [Test]
         public async Task FetchMessagesSimpleTest()
         {
-            using (var router = await _options.CreateRouterAsync()) {
+            using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     using (var producer = new Producer(router)) {
-                        using (var consumer = new Consumer(router, _consumerConfig)) {
+                        using (var consumer = new Consumer(router, TestConfig.Options.ConsumerConfiguration)) {
                             var offset = await router.GetTopicOffsetAsync(topicName, 0, CancellationToken.None);
 
                             // Produce 5 messages
@@ -77,10 +64,10 @@ namespace KafkaClient.Tests.Integration
         [Test]
         public async Task FetchMessagesCacheContainsAllRequestTest()
         {
-            using (var router = await _options.CreateRouterAsync()) {
+            using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     using (var producer = new Producer(router)) {
-                        using (var consumer = new Consumer(router, _consumerConfig)) {
+                        using (var consumer = new Consumer(router, TestConfig.Options.ConsumerConfiguration)) {
                             var offset = await router.GetTopicOffsetAsync(topicName, 0, CancellationToken.None);
 
                             // Produce 5 messages
@@ -103,10 +90,10 @@ namespace KafkaClient.Tests.Integration
         [Test]
         public async Task FetchMessagesCacheContainsNoneOfRequestTest()
         {
-            using (var router = await _options.CreateRouterAsync()) {
+            using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     using (var producer = new Producer(router)) {
-                        using (var consumer = new Consumer(router, _consumerConfig)) {
+                        using (var consumer = new Consumer(router, TestConfig.Options.ConsumerConfiguration)) {
                             var offset = await router.GetTopicOffsetAsync(topicName, 0, CancellationToken.None);
 
                             // Produce messages
@@ -129,10 +116,10 @@ namespace KafkaClient.Tests.Integration
         [Test]
         public async Task FetchMessagesCacheContainsPartOfRequestTest()
         {
-            using (var router = await _options.CreateRouterAsync()) {
+            using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     using (var producer = new Producer(router)) {
-                        using (var consumer = new Consumer(router, _consumerConfig)) {
+                        using (var consumer = new Consumer(router, TestConfig.Options.ConsumerConfiguration)) {
                             var offset = await router.GetTopicOffsetAsync(topicName, 0, CancellationToken.None);
 
                             // Produce messages
@@ -155,9 +142,9 @@ namespace KafkaClient.Tests.Integration
         [Test]
         public async Task FetchMessagesNoNewMessagesInQueueTest()
         {
-            using (var router = await _options.CreateRouterAsync()) {
+            using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
-                    using (var consumer = new Consumer(router, _consumerConfig)) {
+                    using (var consumer = new Consumer(router, TestConfig.Options.ConsumerConfiguration)) {
                         var offset = await router.GetTopicOffsetAsync(TestConfig.TopicName(), 0, CancellationToken.None);
 
                         // Now let's consume
@@ -171,9 +158,9 @@ namespace KafkaClient.Tests.Integration
         [Test]
         public async Task FetchMessagesOffsetBiggerThanLastOffsetInQueueTest()
         {
-            using (var router = await _options.CreateRouterAsync()) {
+            using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
-                    using (var consumer = new Consumer(router, _consumerConfig)) {
+                    using (var consumer = new Consumer(router, TestConfig.Options.ConsumerConfiguration)) {
                         var offset = await router.GetTopicOffsetAsync(TestConfig.TopicName(), 0, CancellationToken.None);
 
                         try {
@@ -191,9 +178,9 @@ namespace KafkaClient.Tests.Integration
         [Test]
         public async Task FetchMessagesInvalidOffsetTest()
         {
-            using (var router = await _options.CreateRouterAsync()) {
+            using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
-                    using (var consumer = new Consumer(router, _consumerConfig)) {
+                    using (var consumer = new Consumer(router, TestConfig.Options.ConsumerConfiguration)) {
                         var offset = -1;
 
                         // Now let's consume
@@ -206,10 +193,10 @@ namespace KafkaClient.Tests.Integration
         [Test]
         public async Task FetchMessagesTopicDoesntExist()
         {
-            using (var router = await _options.CreateRouterAsync()) {
+            using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 var topicName = TestConfig.TopicName();
                 await router.DeleteTopicAsync();
-                using (var consumer = new Consumer(router, new ConsumerConfiguration(maxPartitionFetchBytes: DefaultMaxMessageSetSize * 2))) {
+                using (var consumer = new Consumer(router, new ConsumerConfiguration(maxPartitionFetchBytes: TestConfig.Options.ConsumerConfiguration.MaxFetchBytes * 2))) {
                     var offset = 0;
 
                     // Now let's consume
@@ -226,9 +213,9 @@ namespace KafkaClient.Tests.Integration
         [Test]
         public async Task FetchMessagesPartitionDoesntExist()
         {
-            using (var router = await _options.CreateRouterAsync()) {
+            using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
-                    using (var consumer = new Consumer(router, new ConsumerConfiguration(maxPartitionFetchBytes: DefaultMaxMessageSetSize * 2))) {
+                    using (var consumer = new Consumer(router, new ConsumerConfiguration(maxPartitionFetchBytes: TestConfig.Options.ConsumerConfiguration.MaxFetchBytes * 2))) {
                         var offset = 0;
                         var partitionId = 100;
 
@@ -246,12 +233,12 @@ namespace KafkaClient.Tests.Integration
         [Test]
         public async Task FetchMessagesBufferUnderRunNoMultiplier()
         {
-            using (var router = await _options.CreateRouterAsync()) {
+            using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     var smallMessageSet = 4096 / 2;
 
                     using (var producer = new Producer(router)) {
-                        using (var consumer = new Consumer(router, new ConsumerConfiguration(maxPartitionFetchBytes: smallMessageSet))) {
+                        using (var consumer = new Consumer(router, new ConsumerConfiguration(maxPartitionFetchBytes: smallMessageSet, fetchByteMultiplier: 1))) {
                             var offset = await router.GetTopicOffsetAsync(topicName, 0, CancellationToken.None);
 
                             // Creating 5 messages
@@ -277,7 +264,7 @@ namespace KafkaClient.Tests.Integration
         [Test]
         public async Task FetchMessagesBufferUnderRunWithMultiplier()
         {
-            using (var router = await _options.CreateRouterAsync()) {
+            using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     var smallMessageSet = 4096 / 3;
 
@@ -303,7 +290,7 @@ namespace KafkaClient.Tests.Integration
         [Test]
         public async Task FetchOffsetConsumerGroupDoesntExistTest()
         {
-            using (var router = await _options.CreateRouterAsync()) {
+            using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     var partitionId = 0;
                     var groupId = Guid.NewGuid().ToString();
@@ -316,7 +303,7 @@ namespace KafkaClient.Tests.Integration
         [Test]
         public async Task FetchOffsetPartitionDoesntExistTest()
         {
-            using (var router = await _options.CreateRouterAsync()) {
+            using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     var partitionId = 100;
                     var groupId = TestConfig.GroupId();
@@ -334,7 +321,7 @@ namespace KafkaClient.Tests.Integration
         [Test]
         public async Task FetchOffsetTopicDoesntExistTest()
         {
-            using (var router = await _options.CreateRouterAsync()) {
+            using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 var topicName = TestConfig.TopicName();
                 await router.DeleteTopicAsync();
 
@@ -351,7 +338,7 @@ namespace KafkaClient.Tests.Integration
         [Test]
         public async Task FetchOffsetConsumerGroupExistsTest()
         {
-            using (var router = await _options.CreateRouterAsync()) {
+            using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     var partitionId = 0;
                     var groupId = TestConfig.GroupId();
@@ -369,7 +356,7 @@ namespace KafkaClient.Tests.Integration
         [Test]
         public async Task FetchOffsetConsumerGroupArgumentNull([Values(null, "")] string group)
         {
-            using (var router = await _options.CreateRouterAsync()) {
+            using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     var partitionId = 0;
                     var groupId = TestConfig.GroupId();
@@ -385,7 +372,7 @@ namespace KafkaClient.Tests.Integration
         [Test]
         public async Task UpdateOrCreateOffsetConsumerGroupExistsTest()
         {
-            using (var router = await _options.CreateRouterAsync()) {
+            using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     var partitionId = 0;
                     var groupId = TestConfig.GroupId();
@@ -409,7 +396,7 @@ namespace KafkaClient.Tests.Integration
         [Test]
         public async Task UpdateOrCreateOffsetPartitionDoesntExistTest()
         {
-            using (var router = await _options.CreateRouterAsync()) {
+            using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     var partitionId = 100;
                     var groupId = Guid.NewGuid().ToString();
@@ -428,7 +415,7 @@ namespace KafkaClient.Tests.Integration
         [Test]
         public async Task UpdateOrCreateOffsetTopicDoesntExistTest()
         {
-            using (var router = await _options.CreateRouterAsync()) {
+            using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 var topicName = TestConfig.TopicName();
                 await router.DeleteTopicAsync();
 
@@ -448,7 +435,7 @@ namespace KafkaClient.Tests.Integration
         [Test]
         public async Task UpdateOrCreateOffsetConsumerGroupArgumentNull([Values(null, "")] string group)
         {
-            using (var router = await _options.CreateRouterAsync()) {
+            using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     var partitionId = 0;
 
@@ -462,7 +449,7 @@ namespace KafkaClient.Tests.Integration
         [Test]
         public async Task UpdateOrCreateOffsetNegativeOffsetTest()
         {
-            using (var router = await _options.CreateRouterAsync()) {
+            using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     var partitionId = 0;
                     var groupId = TestConfig.GroupId();
@@ -477,7 +464,7 @@ namespace KafkaClient.Tests.Integration
         [Test]
         public async Task FetchLastOffsetSimpleTest()
         {
-            using (var router = await _options.CreateRouterAsync()) {
+            using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     var offset = await router.GetTopicOffsetAsync(topicName, 0, CancellationToken.None);
 
@@ -489,7 +476,7 @@ namespace KafkaClient.Tests.Integration
         [Test]
         public async Task FetchLastOffsetPartitionDoesntExistTest()
         {
-            using (var router = await _options.CreateRouterAsync()) {
+            using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     var partitionId = 100;
 
@@ -506,7 +493,7 @@ namespace KafkaClient.Tests.Integration
         [Test]
         public async Task FetchLastOffsetTopicDoesntExistTest()
         {
-            using (var router = await _options.CreateRouterAsync()) {
+            using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 var topicName = TestConfig.TopicName();
                 await router.DeleteTopicAsync();
 
@@ -738,11 +725,11 @@ namespace KafkaClient.Tests.Integration
         [Test]
         public async Task JoiningConsumerGroupOnMissingTopicFails()
         {
-            using (var router = await _options.CreateRouterAsync()) {
+            using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     var groupId = TestConfig.GroupId();
 
-                    using (var consumer = new Consumer(router, _consumerConfig, _config.Encoders)) {
+                    using (var consumer = new Consumer(router, TestConfig.Options.ConsumerConfiguration, TestConfig.Options.ConnectionConfiguration.Encoders)) {
                         using (var member = await consumer.JoinConsumerGroupAsync(groupId, new ConsumerProtocolMetadata(topicName), CancellationToken.None)) {
                             Assert.That(member.GroupId, Is.EqualTo(groupId));
                         }
@@ -754,63 +741,15 @@ namespace KafkaClient.Tests.Integration
         [Test]
         public async Task ConsumerCanJoinConsumerGroup()
         {
-            using (var router = await _options.CreateRouterAsync()) {
+            using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
-                    using (var consumer = new Consumer(router, _consumerConfig, _config.Encoders)) {
+                    using (var consumer = new Consumer(router, TestConfig.Options.ConsumerConfiguration, TestConfig.Options.ConnectionConfiguration.Encoders)) {
                         var groupId = TestConfig.GroupId();
                         using (var member = await consumer.JoinConsumerGroupAsync(groupId, new ConsumerProtocolMetadata(TestConfig.TopicName()), CancellationToken.None)) {
                             Assert.That(member.GroupId, Is.EqualTo(groupId));
                             Assert.That(member.IsLeader, Is.True);
                         }
                     }
-                });
-            }
-        }
-
-        [Test]
-        [TestCase(1000, 100)]
-        [TestCase(1000, 500)]
-        public async Task CanConsumeFromGroup(int totalMessages, int count)
-        {
-            using (var router = await TestConfig.Options.CreateRouterAsync()) {
-                await router.TemporaryTopicAsync(async topicName => {
-                    var groupId = TestConfig.GroupId();
-
-                    await ProduceMessages(router, topicName, groupId, totalMessages);
-
-                    var fetched = 0;
-                    using (var consumer = new Consumer(router, _consumerConfig, _config.Encoders)) {
-                        using (var member = await consumer.JoinConsumerGroupAsync(groupId, new ConsumerProtocolMetadata(topicName), CancellationToken.None)) {
-                            while (fetched < totalMessages) {
-                                var fetchTasks = new List<Task>();
-                                for (var batch = await member.FetchBatchAsync(CancellationToken.None, count); !batch.IsEmpty(); batch = await member.FetchBatchAsync(CancellationToken.None, count)) {
-                                    var currentBatch = batch;
-                                    fetchTasks.Add(Task.Run(
-                                        async () =>
-                                        {
-                                            router.Log.Info(() => LogEvent.Create($"Starting batch of {currentBatch.Messages.Count}"));
-                                            foreach (var message in currentBatch.Messages) {
-                                                currentBatch.MarkSuccessful(message);
-                                                Interlocked.Increment(ref fetched);
-                                            }
-                                            router.Log.Info(() => LogEvent.Create($"Finished batch of {currentBatch.Messages.Count}"));
-                                            while (fetched < totalMessages) {
-                                                currentBatch = await currentBatch.FetchNextAsync(CancellationToken.None);
-                                                router.Log.Info(() => LogEvent.Create($"Starting batch of {currentBatch.Messages.Count}"));
-                                                if (currentBatch.IsEmpty()) break;
-                                                foreach (var message in currentBatch.Messages) {
-                                                    currentBatch.MarkSuccessful(message);
-                                                    Interlocked.Increment(ref fetched);
-                                                }
-                                                router.Log.Info(() => LogEvent.Create($"Finished batch of {currentBatch.Messages.Count}"));
-                                            }
-                                        }));
-                                }
-                                await Task.WhenAll(fetchTasks);
-                            }
-                        }
-                    }
-                    Assert.That(fetched, Is.EqualTo(totalMessages));
                 });
             }
         }
@@ -840,79 +779,97 @@ namespace KafkaClient.Tests.Integration
         }
 
         [Test]
-        [TestCase(1000, 100)]
-        [TestCase(1000, 500)]
-        public async Task CanConsumeFromGroupWithHelper(int totalMessages, int count)
+        [TestCase(1, 100)]
+        [TestCase(2, 100)]
+        [TestCase(5, 500)]
+        [TestCase(10, 500)]
+        public async Task CanConsumeFromGroup(int members, int batchSize)
         {
             var cancellation = new CancellationTokenSource();
-            var cancellationToken = cancellation.Token;
+            var totalMessages = 1000;
             using (var router = await TestConfig.Options.CreateRouterAsync()) {
-                await router.TemporaryTopicAsync(async topicName => {
-                    var groupId = TestConfig.GroupId();
-
-                    await ProduceMessages(router, topicName, groupId, totalMessages);
-
-                    var fetched = 0;
-                    using (var consumer = new Consumer(router, _consumerConfig, _config.Encoders)) {
-                        using (var member = await consumer.JoinConsumerGroupAsync(groupId, new ConsumerProtocolMetadata(topicName), cancellationToken)) {
-                            await member.FetchUntilDisposedAsync(async (batch, token) => {
-                                router.Log.Info(() => LogEvent.Create($"Member {member.MemberId} starting batch of {batch.Messages.Count}"));
-                                foreach (var message in batch.Messages) {
-                                    batch.MarkSuccessful(message);
-                                    if (Interlocked.Increment(ref fetched) >= totalMessages) {
-                                        cancellation.Cancel();
-                                        break;
-                                    }
-                                }
-                                router.Log.Info(() => LogEvent.Create($"Member {member.MemberId} finished batch size {batch.Messages.Count} ({fetched} of {totalMessages})"));
-                            }, cancellationToken, count);
-                        }
-                    }
-                    Assert.That(fetched, Is.EqualTo(totalMessages));
-                });
-            }
-        }
-
-        [Test]
-        [Ignore("disable for CI until this is working locally")]
-        public async Task CanConsumeFromMultipleGroups()
-        {
-            int members = 2;
-            var cancellation = new CancellationTokenSource();
-            var cancellationToken = cancellation.Token;
-            var totalMessages = 100;
-            var connectionConfig = new ConnectionConfiguration(TestConfig.Options.ConnectionConfiguration.ConnectionRetry, new VersionSupport(VersionSupport.Kafka10_1, true));
-            using (var router = await Router.CreateAsync(TestConfig.IntegrationUri, connectionConfiguration: connectionConfig, log: TestConfig.Log)) {
-                await router.TemporaryTopicAsync(async topicName => {
+                await router.TemporaryTopicAsync(async topicName =>
+                {
                     var groupId = TestConfig.GroupId();
 
                     await ProduceMessages(router, topicName, groupId, totalMessages, Enumerable.Range(0, members));
 
                     var fetched = 0;
-                    var consumer = new Consumer(router, _consumerConfig, _config.Encoders);
+                    var consumer = new Consumer(router, TestConfig.Options.ConsumerConfiguration, TestConfig.Options.ConnectionConfiguration.Encoders);
                     var tasks = new List<Task>();
                     for (var index = 0; index < members; index++) {
                         tasks.Add(Task.Run(async () => {
-                            var member = await consumer.JoinConsumerGroupAsync(groupId, new ConsumerProtocolMetadata(topicName), cancellationToken);
+                            var member = await consumer.JoinConsumerGroupAsync(groupId, new ConsumerProtocolMetadata(topicName), cancellation.Token);
                             await member.UsingAsync(async () => {
                                 await member.FetchUntilDisposedAsync(async (batch, token) => {
                                     router.Log.Info(() => LogEvent.Create($"Member {member.MemberId} starting batch of {batch.Messages.Count}"));
                                     foreach (var message in batch.Messages) {
+                                        await Task.Delay(1); // do the work...
                                         batch.MarkSuccessful(message);
-                                        await Task.Delay(1);
                                         if (Interlocked.Increment(ref fetched) >= totalMessages) {
                                             cancellation.Cancel();
                                             break;
                                         }
                                     }
                                     router.Log.Info(() => LogEvent.Create($"Member {member.MemberId} finished batch size {batch.Messages.Count} ({fetched} of {totalMessages})"));
-                                }, cancellationToken, 10);
+                                }, cancellation.Token, batchSize);
                             });
                         }, CancellationToken.None));
                     }
-                    await Task.WhenAny(Task.WhenAll(tasks), Task.Delay(TimeSpan.FromMinutes(1)));
+//                    await Task.WhenAny(Task.WhenAll(tasks), Task.Delay(TimeSpan.FromMinutes(1)));
+                    await Task.WhenAll(tasks);
                     Assert.That(fetched, Is.AtLeast(totalMessages));
-                }, 5);
+                }, 10);
+            }
+        }
+        
+        [Test]
+        [TestCase(1, 1)]
+        [TestCase(2, 1)]
+        [TestCase(5, 3)]
+        [TestCase(10, 10)]
+        public async Task CanConsumeFromMultipleGroups(int groups, int members)
+        {
+            var cancellation = new CancellationTokenSource();
+            var batchSize = 50;
+            var totalMessages = 200;
+            using (var router = await TestConfig.Options.CreateRouterAsync()) {
+                await router.TemporaryTopicAsync(async topicName =>
+                {
+                    var allFetched = 0;
+                    var tasks = new List<Task>();
+                    for (var group = 0; group < groups; group++) {
+                        var groupId = TestConfig.GroupId();
+
+                        var groupFetched = 0;
+                        await ProduceMessages(router, topicName, groupId, totalMessages, Enumerable.Range(0, members));
+
+                        var consumer = new Consumer(router, TestConfig.Options.ConsumerConfiguration, TestConfig.Options.ConnectionConfiguration.Encoders);
+                        for (var index = 0; index < members; index++) {
+                            tasks.Add(Task.Run(async () => {
+                                var member = await consumer.JoinConsumerGroupAsync(groupId, new ConsumerProtocolMetadata(topicName), cancellation.Token);
+                                await member.UsingAsync(async () => {
+                                    await member.FetchUntilDisposedAsync(async (batch, token) => {
+                                        router.Log.Info(() => LogEvent.Create($"Member {member.MemberId} starting batch of {batch.Messages.Count}"));
+                                        foreach (var message in batch.Messages) {
+                                            await Task.Delay(1); // do the work...
+                                            batch.MarkSuccessful(message);
+                                            Interlocked.Increment(ref allFetched);
+                                            if (Interlocked.Increment(ref groupFetched) >= totalMessages) {
+                                                cancellation.Cancel();
+                                                break;
+                                            }
+                                        }
+                                        router.Log.Info(() => LogEvent.Create($"Member {member.MemberId} finished batch size {batch.Messages.Count} ({groupFetched} of {totalMessages})"));
+                                    }, cancellation.Token, batchSize);
+                                });
+                            }, CancellationToken.None));
+                        }
+                    }
+                    await Task.WhenAll(tasks);
+                    Assert.That(allFetched, Is.AtLeast(totalMessages * groups));
+//                    await Task.WhenAny(Task.WhenAll(tasks), Task.Delay(TimeSpan.FromMinutes(1)));
+                }, 10);
             }
         }
 
@@ -928,20 +885,17 @@ namespace KafkaClient.Tests.Integration
             }
         }
 
-        private List<Message> CreateTestMessages(int amount, int messageSize)
+        private List<Message> CreateTestMessages(int count, int messageSize)
         {
             var messages = new List<Message>();
 
-            for (var i = 1; i <= amount; i++)
-            {
-                var payload = new List<byte>(messageSize);
-
-                for (var j = 0; j < messageSize; j++)
-                {
-                    payload.Add(Convert.ToByte(1));
+            for (var i = 0; i < count; i++) {
+                var value = new byte[messageSize];
+                for (var j = 0; j < messageSize; j++) {
+                    value[j] = 1;
                 }
 
-                messages.Add(new Message(new ArraySegment<byte>(payload.ToArray()), new ArraySegment<byte>(), 0));
+                messages.Add(new Message(new ArraySegment<byte>(value), new ArraySegment<byte>(new byte[0]), 0));
             }
 
             return messages;

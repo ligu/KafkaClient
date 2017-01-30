@@ -4,7 +4,7 @@ namespace KafkaClient.Protocol
 {
     public class TopicResponse : TopicPartition, IEquatable<TopicResponse>
     {
-        public TopicResponse(string topicName, int partitionId, ErrorResponseCode errorCode)
+        public TopicResponse(string topicName, int partitionId, ErrorCode errorCode)
             : base(topicName, partitionId)
         {
             ErrorCode = errorCode;
@@ -13,7 +13,7 @@ namespace KafkaClient.Protocol
         /// <summary>
         /// Error response code.
         /// </summary>
-        public ErrorResponseCode ErrorCode { get; }
+        public ErrorCode ErrorCode { get; }
 
         #region Equality
 

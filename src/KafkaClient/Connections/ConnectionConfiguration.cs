@@ -109,7 +109,7 @@ namespace KafkaClient.Connections
             )
         {
             ConnectionRetry = connectionRetry ?? Defaults.ConnectionRetry();
-            VersionSupport = versionSupport ?? Connections.VersionSupport.Kafka8;
+            VersionSupport = versionSupport ?? Connections.VersionSupport.Kafka10;
             RequestTimeout = requestTimeout ?? TimeSpan.FromSeconds(Defaults.RequestTimeoutSeconds);
             ReadBufferSize = readBufferSize.GetValueOrDefault(Defaults.BufferSize);
             WriteBufferSize = writeBufferSize.GetValueOrDefault(Defaults.BufferSize);

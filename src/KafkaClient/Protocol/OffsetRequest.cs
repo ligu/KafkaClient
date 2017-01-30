@@ -29,13 +29,15 @@ namespace KafkaClient.Protocol
     {
         public override string ToString() => $"{{Api:{ApiKey},Topics:[{Topics.ToStrings()}]}}";
 
+        public override string ShortString() => Topics.Count == 1 ? $"{ApiKey} {Topics[0].TopicName}" : ApiKey.ToString();
+
         public OffsetRequest(params Topic[] topics)
             : this((IEnumerable<Topic>)topics)
         {
         }
 
         public OffsetRequest(IEnumerable<Topic> offsets) 
-            : base(ApiKeyRequestType.Offset)
+            : base(Protocol.ApiKey.Offset)
         {
             Topics = ImmutableList<Topic>.Empty.AddNotNullRange(offsets);
         }

@@ -31,10 +31,10 @@ namespace KafkaClient.Protocol
         public DescribeGroupsResponse(IEnumerable<Group> groups)
         {
             Groups = ImmutableList<Group>.Empty.AddNotNullRange(groups);
-            Errors = ImmutableList<ErrorResponseCode>.Empty.AddRange(Groups.Select(g => g.ErrorCode));
+            Errors = ImmutableList<ErrorCode>.Empty.AddRange(Groups.Select(g => g.ErrorCode));
         }
 
-        public IImmutableList<ErrorResponseCode> Errors { get; }
+        public IImmutableList<ErrorCode> Errors { get; }
 
         public IImmutableList<Group> Groups { get; }
 
@@ -78,7 +78,7 @@ namespace KafkaClient.Protocol
         {
             public override string ToString() => $"{{ErrorCode:{ErrorCode},GroupId:{GroupId},State:{State},ProtocolType:{ProtocolType},Protocol:{Protocol},Members:[{Members.ToStrings()}]}}";
 
-            public Group(ErrorResponseCode errorCode, string groupId, string state, string protocolType, string protocol, IEnumerable<Member> members)
+            public Group(ErrorCode errorCode, string groupId, string state, string protocolType, string protocol, IEnumerable<Member> members)
             {
                 ErrorCode = errorCode;
                 GroupId = groupId;
@@ -88,7 +88,7 @@ namespace KafkaClient.Protocol
                 Members = ImmutableList<Member>.Empty.AddNotNullRange(members);
             }
 
-            public ErrorResponseCode ErrorCode { get; }
+            public ErrorCode ErrorCode { get; }
             public string GroupId { get; }
 
             /// <summary>

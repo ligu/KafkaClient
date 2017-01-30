@@ -29,15 +29,16 @@ namespace KafkaClient.Connections
         private readonly IConnectionConfiguration _configuration;
 
         private readonly CancellationTokenSource _disposeToken = new CancellationTokenSource();
-        private int _disposeCount = 0;
+        private int _disposeCount; // = 0
         private readonly TaskCompletionSource<bool> _disposePromise = new TaskCompletionSource<bool>();
+        public bool IsDisposed => _disposeCount > 0;
 
         private readonly Task _receiveTask;
         protected int ActiveReaderCount;
         private static int _correlationIdSeed;
 
         private readonly SemaphoreSlim _versionSupportSemaphore = new SemaphoreSlim(1, 1);
-        private IVersionSupport _versionSupport;
+        private IVersionSupport _versionSupport; // = null
 
         /// <summary>
         /// Initializes a new instance of the Connection class.
@@ -49,9 +50,7 @@ namespace KafkaClient.Connections
         {
             Endpoint = endpoint;
             _configuration = configuration ?? new ConnectionConfiguration();
-
             _log = log ?? TraceLog.Log;
-            _versionSupport = _configuration.VersionSupport.IsDynamic ? null : _configuration.VersionSupport;
 
             _transport = new StreamTransport(_log, _configuration, _disposeToken, endpoint);
 
@@ -63,7 +62,7 @@ namespace KafkaClient.Connections
         /// <summary>
         /// Indicates a thread is polling the stream for data to read.
         /// </summary>
-        public bool IsReaderAlive => ActiveReaderCount >= 1;
+        internal bool IsReaderAlive => ActiveReaderCount >= 1;
 
         /// <inheritdoc />
         public Endpoint Endpoint { get; }
@@ -95,7 +94,7 @@ namespace KafkaClient.Connections
                     try {
                         await _transport.ConnectAsync(cancellation.Token).ConfigureAwait(false);
                         var item = asyncItem;
-                        _log.Info(() => LogEvent.Create($"Sending {request.ApiKey} (id {context.CorrelationId}, v{version.GetValueOrDefault()}, {item.RequestBytes.Count} bytes) to {Endpoint}"));
+                        _log.Info(() => LogEvent.Create($"Sending {request.ShortString()} (id {context.CorrelationId}, {item.RequestBytes.Count} bytes) to {Endpoint}"));
                         _log.Debug(() => LogEvent.Create($"{request.ApiKey} -----> {Endpoint} {{Context:{context},\nRequest:{request}}}"));
                         _configuration.OnWriting?.Invoke(Endpoint, request.ApiKey);
                         timer.Start();
@@ -120,12 +119,13 @@ namespace KafkaClient.Connections
             return response;
         }
 
-        private async Task<short> GetVersionAsync(ApiKeyRequestType requestType, CancellationToken cancellationToken)
+        private async Task<short> GetVersionAsync(ApiKey apiKey, CancellationToken cancellationToken)
         {
-            if (!_configuration.VersionSupport.IsDynamic) return _configuration.VersionSupport.GetVersion(requestType).GetValueOrDefault();
+            var configuredSupport = _configuration.VersionSupport as DynamicVersionSupport;
+            if (configuredSupport == null) return _configuration.VersionSupport.GetVersion(apiKey).GetValueOrDefault(); 
 
             var versionSupport = _versionSupport;
-            if (versionSupport != null) return versionSupport.GetVersion(requestType).GetValueOrDefault();
+            if (versionSupport != null) return versionSupport.GetVersion(apiKey).GetValueOrDefault();
 
             return await _versionSupportSemaphore.LockAsync(
                 () => _configuration.ConnectionRetry.AttemptAsync(
@@ -136,9 +136,9 @@ namespace KafkaClient.Connections
 
                         var supportedVersions = response.SupportedVersions.ToImmutableDictionary(
                                                         _ => _.ApiKey,
-                                                        _ => _.MaxVersion);
+                                                        _ => configuredSupport.UseMaxSupported ? _.MaxVersion : _.MinVersion);
                         _versionSupport = new VersionSupport(supportedVersions);
-                        return new RetryAttempt<short>(_versionSupport.GetVersion(requestType).GetValueOrDefault());
+                        return new RetryAttempt<short>(_versionSupport.GetVersion(apiKey).GetValueOrDefault());
                     },
                     (attempt, timer) => _log.Debug(() => LogEvent.Create($"Retrying {nameof(GetVersionAsync)} attempt {attempt}")),
                     attempt => _versionSupport = _configuration.VersionSupport,
@@ -147,27 +147,6 @@ namespace KafkaClient.Connections
                 cancellationToken
             ).ConfigureAwait(false);
         }
-
-        #region Equals
-
-        public override bool Equals(object obj)
-        {
-            return Equals(obj as Connection);
-        }
-
-        protected bool Equals(Connection other)
-        {
-            if (ReferenceEquals(null, other)) return false;
-            if (ReferenceEquals(this, other)) return true;
-            return Equals(Endpoint, other.Endpoint);
-        }
-
-        public override int GetHashCode()
-        {
-            return Endpoint?.GetHashCode() ?? 0;
-        }
-
-        #endregion Equals
 
         private async Task DedicatedReceiveAsync()
         {
@@ -249,7 +228,7 @@ namespace KafkaClient.Connections
         {
             AsyncItem asyncItem;
             if (_requestsByCorrelation.TryRemove(correlationId, out asyncItem) || _timedOutRequestsByCorrelation.TryRemove(correlationId, out asyncItem)) {
-                _log.Info(() => LogEvent.Create($"Matched {asyncItem.RequestType} response (id {correlationId}, v{asyncItem.Context.ApiVersion.GetValueOrDefault()}, {expectedBytes}? bytes) from {Endpoint}"));
+                _log.Debug(() => LogEvent.Create($"Matched {asyncItem.ApiKey} response (id {correlationId}, {expectedBytes}? bytes) from {Endpoint}"));
                 return asyncItem;
             }
 
@@ -284,7 +263,7 @@ namespace KafkaClient.Connections
             var correlationId = asyncItem.Context.CorrelationId;
             AsyncItem request;
             if (_requestsByCorrelation.TryRemove(correlationId, out request)) {
-                _log.Info(() => LogEvent.Create($"Removed request {request.RequestType} (id {correlationId}) from request queue (timed out)."));
+                _log.Info(() => LogEvent.Create($"Removed request {request.ApiKey} (id {correlationId}): timed out or otherwise errored in client."));
                 if (_timedOutRequestsByCorrelation.Count > 100) {
                     _timedOutRequestsByCorrelation.Clear();
                 }
@@ -335,7 +314,8 @@ namespace KafkaClient.Connections
         private class UnknownRequest : IRequest
         {
             public bool ExpectResponse => true;
-            public ApiKeyRequestType ApiKey => ApiKeyRequestType.ApiVersions;
+            public ApiKey ApiKey => ApiKey.ApiVersions;
+            public string ShortString() => "Unknown";
         }
 
         private class AsyncItem : IDisposable
@@ -348,13 +328,13 @@ namespace KafkaClient.Connections
                 Context = context;
                 Request = request;
                 RequestBytes = request is UnknownRequest ? new ArraySegment<byte>() : KafkaEncoder.Encode(context, request);
-                RequestType = request.ApiKey;
+                ApiKey = request.ApiKey;
                 ReceiveTask = new TaskCompletionSource<ArraySegment<byte>>();
             }
 
             public IRequestContext Context { get; }
             private IRequest Request { get; } // for debugging
-            public ApiKeyRequestType RequestType { get; }
+            public ApiKey ApiKey { get; }
             public ArraySegment<byte> RequestBytes { get; }
             public TaskCompletionSource<ArraySegment<byte>> ReceiveTask { get; }
             public MemoryStream ResponseStream { get; set; }
@@ -368,12 +348,12 @@ namespace KafkaClient.Connections
                     log.Debug(() => LogEvent.Create($"Received {ResponseStream.Length + KafkaEncoder.CorrelationSize} bytes (id {Context.CorrelationId})"));
                     return;
                 }
-                log.Debug(() => LogEvent.Create($"Received {RequestType} response (id {Context.CorrelationId}, v{Context.ApiVersion.GetValueOrDefault()}, {ResponseStream.Length + KafkaEncoder.CorrelationSize} bytes)"));
+                log.Info(() => LogEvent.Create($"Received {ApiKey} response (id {Context.CorrelationId}, {ResponseStream.Length + KafkaEncoder.CorrelationSize} bytes)"));
                 if (!ReceiveTask.TrySetResult(bytes)) {
                     log.Debug(
                         () => {
-                            var result = KafkaEncoder.Decode<IResponse>(Context, RequestType, bytes);
-                            return LogEvent.Create($"Timed out -----> (timed out or otherwise errored in client) {{Context:{Context},\n{RequestType}Response:{result}}}");
+                            var result = KafkaEncoder.Decode<IResponse>(Context, ApiKey, bytes);
+                            return LogEvent.Create($"Timed out -----> (timed out or otherwise errored in client) {{Context:{Context},\n{ApiKey}Response:{result}}}");
                         });
                 }
             }

@@ -6,7 +6,7 @@ namespace KafkaClient.Protocol
 {
     public class RequestContext : IRequestContext
     {
-        public static string DefaultClientId = "Net";
+        public static string DefaultClientId = "KC"; // This gets sent on every request, so may as well shorten "KafkaClient" to "KC"
 
         public static RequestContext Copy(IRequestContext original, int correlationId, short? version = null, string clientId = null, IImmutableDictionary<string, IMembershipEncoder> encoders = null, string protocolType = null, ProduceRequestMessages onProduceRequestMessages = null)
         {

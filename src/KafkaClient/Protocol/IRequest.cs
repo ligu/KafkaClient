@@ -15,6 +15,11 @@ namespace KafkaClient.Protocol
         /// <summary>
         /// Enum identifying the specific type of request message being represented.
         /// </summary>
-        ApiKeyRequestType ApiKey { get; }
+        ApiKey ApiKey { get; }
+
+        /// <summary>
+        /// Short version of ToString, for writing only the most relevant information to the logs
+        /// </summary>
+        string ShortString();
     }
 }

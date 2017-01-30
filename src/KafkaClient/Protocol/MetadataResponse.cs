@@ -47,10 +47,10 @@ namespace KafkaClient.Protocol
             Topics = ImmutableList<Topic>.Empty.AddNotNullRange(topics);
             ControllerId = controllerId;
             ClusterId = clusterId;
-            Errors = ImmutableList<ErrorResponseCode>.Empty.AddRange(Topics.Select(t => t.ErrorCode));
+            Errors = ImmutableList<ErrorCode>.Empty.AddRange(Topics.Select(t => t.ErrorCode));
         }
 
-        public IImmutableList<ErrorResponseCode> Errors { get; }
+        public IImmutableList<ErrorCode> Errors { get; }
 
         public IImmutableList<Broker> Brokers { get; }
         public int? ControllerId { get; }
@@ -106,7 +106,7 @@ namespace KafkaClient.Protocol
         {
             public override string ToString() => $"{{TopicName:{TopicName},ErrorCode:{ErrorCode},Partitions:[{Partitions.ToStrings()}],IsInternal:{IsInternal}}}";
 
-            public Topic(string topicName, ErrorResponseCode errorCode = ErrorResponseCode.None, IEnumerable<Partition> partitions = null, bool? isInternal = null)
+            public Topic(string topicName, ErrorCode errorCode = ErrorCode.None, IEnumerable<Partition> partitions = null, bool? isInternal = null)
             {
                 ErrorCode = errorCode;
                 TopicName = topicName;
@@ -114,7 +114,7 @@ namespace KafkaClient.Protocol
                 Partitions = ImmutableList<Partition>.Empty.AddNotNullRange(partitions);
             }
 
-            public ErrorResponseCode ErrorCode { get; }
+            public ErrorCode ErrorCode { get; }
 
             public string TopicName { get; }
             public bool? IsInternal { get; }
@@ -171,7 +171,7 @@ namespace KafkaClient.Protocol
         {
             public override string ToString() => $"{{PartitionId:{PartitionId},ErrorCode:{ErrorCode},LeaderId:{LeaderId},Replicas:[{Replicas.ToStrings()}],Isr:[{Isrs.ToStrings()}]}}";
 
-            public Partition(int partitionId, int leaderId, ErrorResponseCode errorCode = ErrorResponseCode.None, IEnumerable<int> replicas = null, IEnumerable<int> isrs = null)
+            public Partition(int partitionId, int leaderId, ErrorCode errorCode = ErrorCode.None, IEnumerable<int> replicas = null, IEnumerable<int> isrs = null)
             {
                 ErrorCode = errorCode;
                 PartitionId = partitionId;
@@ -183,7 +183,7 @@ namespace KafkaClient.Protocol
             /// <summary>
             /// Error code.
             /// </summary>
-            public ErrorResponseCode ErrorCode { get; }
+            public ErrorCode ErrorCode { get; }
 
             /// <summary>
             /// The Id of the partition that this metadata describes.

@@ -15,17 +15,17 @@ namespace KafkaClient.Protocol
     {
         public override string ToString() => $"{{ErrorCode:{ErrorCode},MemberAssignment:{MemberAssignment}}}";
 
-        public SyncGroupResponse(ErrorResponseCode errorCode, IMemberAssignment memberAssignment)
+        public SyncGroupResponse(ErrorCode errorCode, IMemberAssignment memberAssignment)
         {
             ErrorCode = errorCode;
-            Errors = ImmutableList<ErrorResponseCode>.Empty.Add(ErrorCode);
+            Errors = ImmutableList<ErrorCode>.Empty.Add(ErrorCode);
             MemberAssignment = memberAssignment;
         }
 
         /// <inheritdoc />
-        public IImmutableList<ErrorResponseCode> Errors { get; }
+        public IImmutableList<ErrorCode> Errors { get; }
 
-        public ErrorResponseCode ErrorCode { get; }
+        public ErrorCode ErrorCode { get; }
         public IMemberAssignment MemberAssignment { get; }
 
         #region Equality

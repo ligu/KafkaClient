@@ -13,16 +13,16 @@ namespace KafkaClient.Protocol
     {
         public override string ToString() => $"{{ErrorCode:{ErrorCode}}}";
 
-        public LeaveGroupResponse(ErrorResponseCode errorCode)
+        public LeaveGroupResponse(ErrorCode errorCode)
         {
             ErrorCode = errorCode;
-            Errors = ImmutableList<ErrorResponseCode>.Empty.Add(ErrorCode);
+            Errors = ImmutableList<ErrorCode>.Empty.Add(ErrorCode);
         }
 
         /// <inheritdoc />
-        public IImmutableList<ErrorResponseCode> Errors { get; }
+        public IImmutableList<ErrorCode> Errors { get; }
 
-        public ErrorResponseCode ErrorCode { get; }
+        public ErrorCode ErrorCode { get; }
 
         #region Equality
 

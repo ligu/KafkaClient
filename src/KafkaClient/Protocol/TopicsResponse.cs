@@ -13,11 +13,11 @@ namespace KafkaClient.Protocol
         protected TopicsResponse(IEnumerable<Topic> topics = null)
         {
             Topics = ImmutableList<Topic>.Empty.AddNotNullRange(topics);
-            Errors = ImmutableList<ErrorResponseCode>.Empty.AddRange(Topics.Select(t => t.ErrorCode));
+            Errors = ImmutableList<ErrorCode>.Empty.AddRange(Topics.Select(t => t.ErrorCode));
         }
 
         public IImmutableList<Topic> Topics { get; } 
-        public IImmutableList<ErrorResponseCode> Errors { get; }
+        public IImmutableList<ErrorCode> Errors { get; }
 
         #region Equality
 
@@ -54,14 +54,14 @@ namespace KafkaClient.Protocol
         {
             public override string ToString() => $"{{TopicName:{TopicName},ErrorCode:{ErrorCode}}}";
 
-            public Topic(string topicName, ErrorResponseCode errorCode)
+            public Topic(string topicName, ErrorCode errorCode)
             {
                 TopicName = topicName;
                 ErrorCode = errorCode;
             }
 
             public string TopicName { get; }
-            public ErrorResponseCode ErrorCode { get; }
+            public ErrorCode ErrorCode { get; }
 
             #region Equality
 

@@ -5,11 +5,6 @@ namespace KafkaClient.Common
     public interface IRetry
     {
         /// <summary>
-        /// The maximum time to wait across all attempts.
-        /// </summary>
-        TimeSpan? Timeout { get; }
-
-        /// <summary>
         /// How much to delay before the next attempt.
         /// </summary>
         /// <param name="attempt">The attempt number.</param>

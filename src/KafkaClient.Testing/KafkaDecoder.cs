@@ -407,7 +407,7 @@ namespace KafkaClient.Testing
             var reader = new KafkaReader(data);
             try {
                 // ReSharper disable once UnusedVariable
-                var apiKey = (ApiKeyRequestType) reader.ReadInt16();
+                var apiKey = (ApiKey) reader.ReadInt16();
                 var version = reader.ReadInt16();
                 var correlationId = reader.ReadInt32();
                 var clientId = reader.ReadString();

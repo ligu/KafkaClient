@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -101,9 +100,9 @@ namespace KafkaClient
                 try {
                     response = await Router.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
                 } catch (BufferUnderRunException ex) {
-                    if (!Configuration.FetchByteMultiplier.HasValue || Configuration.FetchByteMultiplier.GetValueOrDefault() <= 1) throw;
-                    var maxBytes = topic.MaxBytes * Configuration.FetchByteMultiplier.Value;
-                    Router.Log.Warn(() => LogEvent.Create(ex, $"Retrying Fetch Request with multiplier {Math.Pow(Configuration.FetchByteMultiplier.Value, attempt)}, {topic.MaxBytes} -> {maxBytes}"));
+                    if (Configuration.FetchByteMultiplier <= 1) throw;
+                    var maxBytes = topic.MaxBytes * Configuration.FetchByteMultiplier;
+                    Router.Log.Warn(() => LogEvent.Create(ex, $"Retrying Fetch Request with multiplier {Math.Pow(Configuration.FetchByteMultiplier, attempt)}, {topic.MaxBytes} -> {maxBytes}"));
                     topic = new FetchRequest.Topic(topic.TopicName, topic.PartitionId, topic.Offset, maxBytes);
                 }
             }
@@ -210,16 +209,13 @@ namespace KafkaClient
             if (!Encoders.ContainsKey(protocolType ?? "")) throw new ArgumentOutOfRangeException(nameof(metadata), $"ProtocolType {protocolType} is unknown");
 
             var protocols = metadata?.Select(m => new JoinGroupRequest.GroupProtocol(m));
-            var request = new JoinGroupRequest(groupId, Configuration.GroupHeartbeat, "", protocolType, protocols, Configuration.GroupRebalanceTimeout);
-            var timer = new Stopwatch();
-            timer.Start();
-            var response = await Router.SendAsync(request, groupId, cancellationToken, retryPolicy: Configuration.GroupCoordinationRetry, context: new RequestContext(protocolType: protocolType)).ConfigureAwait(false);
-            timer.Stop();
+            var request = new JoinGroupRequest(groupId, Configuration.GroupHeartbeat, null, protocolType, protocols, Configuration.GroupRebalanceTimeout);
+            var response = await Router.SendAsync(request, groupId, cancellationToken, new RequestContext(protocolType: protocolType), Configuration.GroupCoordinationRetry).ConfigureAwait(false);
             if (!response.ErrorCode.IsSuccess()) {
                 throw request.ExtractExceptions(response);
             }
 
-            return new ConsumerMember(this, request, response, timer.Elapsed);
+            return new ConsumerMember(this, request, response);
         }
     }
 }

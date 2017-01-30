@@ -13,7 +13,7 @@ namespace KafkaClient.Protocol
         public override string ToString() => $"{{Api:{ApiKey}}}";
 
         public ListGroupsRequest() 
-            : base(ApiKeyRequestType.ListGroups)
+            : base(Protocol.ApiKey.ListGroups)
         {
         }
     }

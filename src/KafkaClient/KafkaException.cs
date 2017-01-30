@@ -16,6 +16,5 @@ namespace KafkaClient
             : base(message, innerException)
         {
         }
-
     }
 }

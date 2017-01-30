@@ -7,9 +7,9 @@ namespace KafkaClient.Telemetry
     public delegate void ProduceRequestMessages(int messages, int requestBytes, int compressionDiffBytes);
     public delegate void ConnectError(Endpoint endpoint, Exception exception);
     public delegate void Connecting(Endpoint endpoint, int attempt, TimeSpan elapsed);
-    public delegate void Writing(Endpoint endpoint, ApiKeyRequestType type);
-    public delegate void WriteSuccess(Endpoint endpoint, ApiKeyRequestType type, int bytesWritten, TimeSpan elapsed);
-    public delegate void WriteError(Endpoint endpoint, ApiKeyRequestType type, TimeSpan elapsed, Exception exception);
+    public delegate void Writing(Endpoint endpoint, ApiKey apiKey);
+    public delegate void WriteSuccess(Endpoint endpoint, ApiKey apiKey, int bytesWritten, TimeSpan elapsed);
+    public delegate void WriteError(Endpoint endpoint, ApiKey apiKey, TimeSpan elapsed, Exception exception);
     public delegate void Reading(Endpoint endpoint, int bytesAvailable);
     public delegate void ReadSuccess(Endpoint endpoint, int bytesRead, TimeSpan elapsed);
     public delegate void ReadError(Endpoint endpoint, int bytesAvailable, TimeSpan elapsed, Exception exception);

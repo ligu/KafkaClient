@@ -30,13 +30,13 @@ namespace KafkaClient.Tests
 
 #pragma warning disable 1998
             _fakeConn0 = new FakeConnection(new Uri("http://localhost:1")) {
-                { ApiKeyRequestType.Produce, async _ => new ProduceResponse(new ProduceResponse.Topic(TestTopic, 0, ErrorResponseCode.None, _offset0++)) },
-                { ApiKeyRequestType.Metadata, _ => MetadataResponse() },
-                { ApiKeyRequestType.Offset, async _ => new OffsetResponse(new [] {
-                    new OffsetResponse.Topic(TestTopic, 0, ErrorResponseCode.None, 0L),
-                    new OffsetResponse.Topic(TestTopic, 0, ErrorResponseCode.None, 99L)
+                { ApiKey.Produce, async _ => new ProduceResponse(new ProduceResponse.Topic(TestTopic, 0, ErrorCode.None, _offset0++)) },
+                { ApiKey.Metadata, _ => MetadataResponse() },
+                { ApiKey.Offset, async _ => new OffsetResponse(new [] {
+                    new OffsetResponse.Topic(TestTopic, 0, ErrorCode.None, 0L),
+                    new OffsetResponse.Topic(TestTopic, 0, ErrorCode.None, 99L)
                 }) },
-                { ApiKeyRequestType.Fetch, async _ => {
+                { ApiKey.Fetch, async _ => {
                         await Task.Delay(500);
                         return null;
                     }
@@ -44,13 +44,13 @@ namespace KafkaClient.Tests
             };
 
             _fakeConn1 = new FakeConnection(new Uri("http://localhost:2")) {
-                { ApiKeyRequestType.Produce, async _ => new ProduceResponse(new ProduceResponse.Topic(TestTopic, 1, ErrorResponseCode.None, _offset1++)) },
-                { ApiKeyRequestType.Metadata, _ => MetadataResponse() },
-                { ApiKeyRequestType.Offset, async _ => new OffsetResponse(new [] {
-                    new OffsetResponse.Topic(TestTopic, 0, ErrorResponseCode.None, 0L),
-                    new OffsetResponse.Topic(TestTopic, 0, ErrorResponseCode.None, 100L)
+                { ApiKey.Produce, async _ => new ProduceResponse(new ProduceResponse.Topic(TestTopic, 1, ErrorCode.None, _offset1++)) },
+                { ApiKey.Metadata, _ => MetadataResponse() },
+                { ApiKey.Offset, async _ => new OffsetResponse(new [] {
+                    new OffsetResponse.Topic(TestTopic, 0, ErrorCode.None, 0L),
+                    new OffsetResponse.Topic(TestTopic, 0, ErrorCode.None, 100L)
                 }) },
-                { ApiKeyRequestType.Fetch, async _ => {
+                { ApiKey.Fetch, async _ => {
                         await Task.Delay(500);
                         return null;
                     }
@@ -59,8 +59,8 @@ namespace KafkaClient.Tests
 #pragma warning restore 1998
 
             _mockConnectionFactory = Substitute.For<IConnectionFactory>();
-            _mockConnectionFactory.Create(Arg.Is<Endpoint>(e => e.Value.Port == 1), Arg.Any<IConnectionConfiguration>(), Arg.Any<ILog>()).Returns(_fakeConn0);
-            _mockConnectionFactory.Create(Arg.Is<Endpoint>(e => e.Value.Port == 2), Arg.Any<IConnectionConfiguration>(), Arg.Any<ILog>()).Returns(_fakeConn1);
+            _mockConnectionFactory.Create(Arg.Is<Endpoint>(e => e.Ip.Port == 1), Arg.Any<IConnectionConfiguration>(), Arg.Any<ILog>()).Returns(_fakeConn0);
+            _mockConnectionFactory.Create(Arg.Is<Endpoint>(e => e.Ip.Port == 2), Arg.Any<IConnectionConfiguration>(), Arg.Any<ILog>()).Returns(_fakeConn1);
             _mockConnectionFactory.ResolveAsync(Arg.Any<Uri>(), Arg.Any<ILog>())
                                   .Returns(info => Task.FromResult(new Endpoint(new IPEndPoint(IPAddress.Loopback, ((Uri)info[0]).Port), ((Uri)info[0]).DnsSafeHost)));
         }
@@ -83,9 +83,9 @@ namespace KafkaClient.Tests
                 },
                 new [] {
                     new MetadataResponse.Topic(TestTopic, 
-                        ErrorResponseCode.None, new [] {
-                                          new MetadataResponse.Partition(0, 0, ErrorResponseCode.None, new [] { 1 }, new []{ 1 }),
-                                          new MetadataResponse.Partition(1, 1, ErrorResponseCode.None, new [] { 1 }, new []{ 1 }),
+                        ErrorCode.None, new [] {
+                                          new MetadataResponse.Partition(0, 0, ErrorCode.None, new [] { 1 }, new []{ 1 }),
+                                          new MetadataResponse.Partition(1, 1, ErrorCode.None, new [] { 1 }, new []{ 1 }),
                                       })
                 });
         }

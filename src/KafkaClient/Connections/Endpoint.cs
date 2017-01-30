@@ -11,16 +11,17 @@ namespace KafkaClient.Connections
     {
         public Endpoint(IPEndPoint ip, string host = null)
         {
-            Value = ip;
+            Ip = ip;
             Host = host ?? ip.Address.ToString();
         }
 
+
         public string Host { get; }
-        public IPEndPoint Value { get; }
+        public IPEndPoint Ip { get; }
 
         public static implicit operator IPEndPoint(Endpoint endpoint)
         {
-            return endpoint.Value;
+            return endpoint.Ip;
         }
 
         #region Equality
@@ -34,13 +35,13 @@ namespace KafkaClient.Connections
         {
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
-            return Equals(Value, other.Value);
+            return Equals(Ip, other.Ip);
         }
 
         public override int GetHashCode()
         {
             // calculated like this to ensure ports on same address sort in descending order
-            return Value?.Address.GetHashCode() + Value?.Port ?? 0;
+            return Ip?.Address.GetHashCode() + Ip?.Port ?? 0;
         }
 
         public static bool operator ==(Endpoint left, Endpoint right)
@@ -55,7 +56,7 @@ namespace KafkaClient.Connections
 
         #endregion
 
-        public override string ToString() => $"{Host}:{Value?.Port}";
+        public override string ToString() => $"{Host}:{Ip?.Port}";
 
         public static async Task<Endpoint> ResolveAsync(Uri uri, ILog log)
         {

@@ -15,42 +15,42 @@ namespace KafkaClient.Protocol
         public const int CorrelationSize = IntegerByteSize;
         public const int ResponseHeaderSize = IntegerByteSize + CorrelationSize;
 
-        public static T Decode<T>(IRequestContext context, ApiKeyRequestType requstType, ArraySegment<byte> bytes) where T : class, IResponse
+        public static T Decode<T>(IRequestContext context, ApiKey requstType, ArraySegment<byte> bytes) where T : class, IResponse
         {
             switch (requstType) {
-                case ApiKeyRequestType.Produce:
+                case ApiKey.Produce:
                     return (T)ProduceResponse(context, bytes);
-                case ApiKeyRequestType.Fetch:
+                case ApiKey.Fetch:
                     return (T)FetchResponse(context, bytes);
-                case ApiKeyRequestType.Offset:
+                case ApiKey.Offset:
                     return (T)OffsetResponse(context, bytes);
-                case ApiKeyRequestType.Metadata:
+                case ApiKey.Metadata:
                     return (T)MetadataResponse(context, bytes);
-                case ApiKeyRequestType.OffsetCommit:
+                case ApiKey.OffsetCommit:
                     return (T)OffsetCommitResponse(context, bytes);
-                case ApiKeyRequestType.OffsetFetch:
+                case ApiKey.OffsetFetch:
                     return (T)OffsetFetchResponse(context, bytes);
-                case ApiKeyRequestType.GroupCoordinator:
+                case ApiKey.GroupCoordinator:
                     return (T)GroupCoordinatorResponse(context, bytes);
-                case ApiKeyRequestType.JoinGroup:
+                case ApiKey.JoinGroup:
                     return (T)JoinGroupResponse(context, bytes);
-                case ApiKeyRequestType.Heartbeat:
+                case ApiKey.Heartbeat:
                     return (T)HeartbeatResponse(context, bytes);
-                case ApiKeyRequestType.LeaveGroup:
+                case ApiKey.LeaveGroup:
                     return (T)LeaveGroupResponse(context, bytes);
-                case ApiKeyRequestType.SyncGroup:
+                case ApiKey.SyncGroup:
                     return (T)SyncGroupResponse(context, bytes);
-                case ApiKeyRequestType.DescribeGroups:
+                case ApiKey.DescribeGroups:
                     return (T)DescribeGroupsResponse(context, bytes);
-                case ApiKeyRequestType.ListGroups:
+                case ApiKey.ListGroups:
                     return (T)ListGroupsResponse(context, bytes);
-                case ApiKeyRequestType.SaslHandshake:
+                case ApiKey.SaslHandshake:
                     return (T)SaslHandshakeResponse(context, bytes);
-                case ApiKeyRequestType.ApiVersions:
+                case ApiKey.ApiVersions:
                     return (T)ApiVersionsResponse(context, bytes);
-                case ApiKeyRequestType.CreateTopics:
+                case ApiKey.CreateTopics:
                     return (T)CreateTopicsResponse(context, bytes);
-                case ApiKeyRequestType.DeleteTopics:
+                case ApiKey.DeleteTopics:
                     return (T)DeleteTopicsResponse(context, bytes);
                 default:
                     return default (T);
@@ -62,39 +62,39 @@ namespace KafkaClient.Protocol
         public static ArraySegment<byte> Encode(IRequestContext context, IRequest request)
         {
             switch (request.ApiKey) {
-                case ApiKeyRequestType.Produce:
+                case ApiKey.Produce:
                     return EncodeRequest(context, (ProduceRequest) request);
-                case ApiKeyRequestType.Fetch:
+                case ApiKey.Fetch:
                     return EncodeRequest(context, (FetchRequest) request);
-                case ApiKeyRequestType.Offset:
+                case ApiKey.Offset:
                     return EncodeRequest(context, (OffsetRequest) request);
-                case ApiKeyRequestType.Metadata:
+                case ApiKey.Metadata:
                     return EncodeRequest(context, (MetadataRequest) request);
-                case ApiKeyRequestType.OffsetCommit:
+                case ApiKey.OffsetCommit:
                     return EncodeRequest(context, (OffsetCommitRequest) request);
-                case ApiKeyRequestType.OffsetFetch:
+                case ApiKey.OffsetFetch:
                     return EncodeRequest(context, (OffsetFetchRequest) request);
-                case ApiKeyRequestType.GroupCoordinator:
+                case ApiKey.GroupCoordinator:
                     return EncodeRequest(context, (GroupCoordinatorRequest) request);
-                case ApiKeyRequestType.JoinGroup:
+                case ApiKey.JoinGroup:
                     return EncodeRequest(context, (JoinGroupRequest) request);
-                case ApiKeyRequestType.Heartbeat:
+                case ApiKey.Heartbeat:
                     return EncodeRequest(context, (HeartbeatRequest) request);
-                case ApiKeyRequestType.LeaveGroup:
+                case ApiKey.LeaveGroup:
                     return EncodeRequest(context, (LeaveGroupRequest) request);
-                case ApiKeyRequestType.SyncGroup:
+                case ApiKey.SyncGroup:
                     return EncodeRequest(context, (SyncGroupRequest) request);
-                case ApiKeyRequestType.DescribeGroups:
+                case ApiKey.DescribeGroups:
                     return EncodeRequest(context, (DescribeGroupsRequest) request);
-                case ApiKeyRequestType.ListGroups:
+                case ApiKey.ListGroups:
                     return EncodeRequest(context, (ListGroupsRequest) request);
-                case ApiKeyRequestType.SaslHandshake:
+                case ApiKey.SaslHandshake:
                     return EncodeRequest(context, (SaslHandshakeRequest) request);
-                case ApiKeyRequestType.ApiVersions:
+                case ApiKey.ApiVersions:
                     return EncodeRequest(context, (ApiVersionsRequest) request);
-                case ApiKeyRequestType.CreateTopics:
+                case ApiKey.CreateTopics:
                     return EncodeRequest(context, (CreateTopicsRequest) request);
-                case ApiKeyRequestType.DeleteTopics:
+                case ApiKey.DeleteTopics:
                     return EncodeRequest(context, (DeleteTopicsRequest) request);
 
                 default:
@@ -610,7 +610,7 @@ namespace KafkaClient.Protocol
                     var partitionCount = reader.ReadInt32();
                     for (var j = 0; j < partitionCount; j++) {
                         var partitionId = reader.ReadInt32();
-                        var errorCode = (ErrorResponseCode) reader.ReadInt16();
+                        var errorCode = (ErrorCode) reader.ReadInt16();
                         var offset = reader.ReadInt64();
                         DateTimeOffset? timestamp = null;
 
@@ -649,7 +649,7 @@ namespace KafkaClient.Protocol
                     var partitionCount = reader.ReadInt32();
                     for (var p = 0; p < partitionCount; p++) {
                         var partitionId = reader.ReadInt32();
-                        var errorCode = (ErrorResponseCode) reader.ReadInt16();
+                        var errorCode = (ErrorCode) reader.ReadInt16();
                         var highWaterMarkOffset = reader.ReadInt64();
                         var messages = reader.ReadMessages();
 
@@ -671,7 +671,7 @@ namespace KafkaClient.Protocol
                     var partitionCount = reader.ReadInt32();
                     for (var p = 0; p < partitionCount; p++) {
                         var partitionId = reader.ReadInt32();
-                        var errorCode = (ErrorResponseCode) reader.ReadInt16();
+                        var errorCode = (ErrorCode) reader.ReadInt16();
 
                         if (context.ApiVersion == 0) {
                             var offsetsCount = reader.ReadInt32();
@@ -718,7 +718,7 @@ namespace KafkaClient.Protocol
 
                 var topics = new MetadataResponse.Topic[reader.ReadInt32()];
                 for (var t = 0; t < topics.Length; t++) {
-                    var topicError = (ErrorResponseCode) reader.ReadInt16();
+                    var topicError = (ErrorCode) reader.ReadInt16();
                     var topicName = reader.ReadString();
                     bool? isInternal = null;
                     if (context.ApiVersion >= 1) {
@@ -727,7 +727,7 @@ namespace KafkaClient.Protocol
 
                     var partitions = new MetadataResponse.Partition[reader.ReadInt32()];
                     for (var p = 0; p < partitions.Length; p++) {
-                        var partitionError = (ErrorResponseCode) reader.ReadInt16();
+                        var partitionError = (ErrorCode) reader.ReadInt16();
                         var partitionId = reader.ReadInt32();
                         var leaderId = reader.ReadInt32();
 
@@ -758,7 +758,7 @@ namespace KafkaClient.Protocol
                     var partitionCount = reader.ReadInt32();
                     for (var p = 0; p < partitionCount; p++) {
                         var partitionId = reader.ReadInt32();
-                        var errorCode = (ErrorResponseCode) reader.ReadInt16();
+                        var errorCode = (ErrorCode) reader.ReadInt16();
 
                         topics.Add(new TopicResponse(topicName, partitionId, errorCode));
                     }
@@ -781,7 +781,7 @@ namespace KafkaClient.Protocol
                         var partitionId = reader.ReadInt32();
                         var offset = reader.ReadInt64();
                         var metadata = reader.ReadString();
-                        var errorCode = (ErrorResponseCode) reader.ReadInt16();
+                        var errorCode = (ErrorCode) reader.ReadInt16();
 
                         topics.Add(new OffsetFetchResponse.Topic(topicName, partitionId, errorCode, offset, metadata));
                     }
@@ -794,7 +794,7 @@ namespace KafkaClient.Protocol
         private static IResponse GroupCoordinatorResponse(IRequestContext context, ArraySegment<byte> payload)
         {
             using (var reader = new KafkaReader(payload)) {
-                var errorCode = (ErrorResponseCode)reader.ReadInt16();
+                var errorCode = (ErrorCode)reader.ReadInt16();
                 var coordinatorId = reader.ReadInt32();
                 var coordinatorHost = reader.ReadString();
                 var coordinatorPort = reader.ReadInt32();
@@ -806,7 +806,7 @@ namespace KafkaClient.Protocol
         private static IResponse JoinGroupResponse(IRequestContext context, ArraySegment<byte> payload)
         {
             using (var reader = new KafkaReader(payload)) {
-                var errorCode = (ErrorResponseCode)reader.ReadInt16();
+                var errorCode = (ErrorCode)reader.ReadInt16();
                 var generationId = reader.ReadInt32();
                 var groupProtocol = reader.ReadString();
                 var leaderId = reader.ReadString();
@@ -827,7 +827,7 @@ namespace KafkaClient.Protocol
         private static IResponse HeartbeatResponse(IRequestContext context, ArraySegment<byte> payload)
         {
             using (var reader = new KafkaReader(payload)) {
-                var errorCode = (ErrorResponseCode)reader.ReadInt16();
+                var errorCode = (ErrorCode)reader.ReadInt16();
 
                 return new HeartbeatResponse(errorCode);
             }
@@ -836,7 +836,7 @@ namespace KafkaClient.Protocol
         private static IResponse LeaveGroupResponse(IRequestContext context, ArraySegment<byte> payload)
         {
             using (var reader = new KafkaReader(payload)) {
-                var errorCode = (ErrorResponseCode)reader.ReadInt16();
+                var errorCode = (ErrorCode)reader.ReadInt16();
 
                 return new LeaveGroupResponse(errorCode);
             }
@@ -845,7 +845,7 @@ namespace KafkaClient.Protocol
         private static IResponse SyncGroupResponse(IRequestContext context, ArraySegment<byte> payload)
         {
             using (var reader = new KafkaReader(payload)) {
-                var errorCode = (ErrorResponseCode)reader.ReadInt16();
+                var errorCode = (ErrorCode)reader.ReadInt16();
 
                 var encoder = context.GetEncoder();
                 var memberAssignment = encoder.DecodeAssignment(reader);
@@ -858,7 +858,7 @@ namespace KafkaClient.Protocol
             using (var reader = new KafkaReader(payload)) {
                 var groups = new DescribeGroupsResponse.Group[reader.ReadInt32()];
                 for (var g = 0; g < groups.Length; g++) {
-                    var errorCode = (ErrorResponseCode)reader.ReadInt16();
+                    var errorCode = (ErrorCode)reader.ReadInt16();
                     var groupId = reader.ReadString();
                     var state = reader.ReadString();
                     var protocolType = reader.ReadString();
@@ -885,7 +885,7 @@ namespace KafkaClient.Protocol
         private static IResponse ListGroupsResponse(IRequestContext context, ArraySegment<byte> payload)
         {
             using (var reader = new KafkaReader(payload)) {
-                var errorCode = (ErrorResponseCode)reader.ReadInt16();
+                var errorCode = (ErrorCode)reader.ReadInt16();
                 var groups = new ListGroupsResponse.Group[reader.ReadInt32()];
                 for (var g = 0; g < groups.Length; g++) {
                     var groupId = reader.ReadString();
@@ -900,7 +900,7 @@ namespace KafkaClient.Protocol
         private static IResponse SaslHandshakeResponse(IRequestContext context, ArraySegment<byte> payload)
         {
             using (var reader = new KafkaReader(payload)) {
-                var errorCode = (ErrorResponseCode)reader.ReadInt16();
+                var errorCode = (ErrorCode)reader.ReadInt16();
                 var enabledMechanisms = new string[reader.ReadInt32()];
                 for (var m = 0; m < enabledMechanisms.Length; m++) {
                     enabledMechanisms[m] = reader.ReadString();
@@ -913,11 +913,11 @@ namespace KafkaClient.Protocol
         private static IResponse ApiVersionsResponse(IRequestContext context, ArraySegment<byte> payload)
         {
             using (var reader = new KafkaReader(payload)) {
-                var errorCode = (ErrorResponseCode)reader.ReadInt16();
+                var errorCode = (ErrorCode)reader.ReadInt16();
 
                 var apiKeys = new ApiVersionsResponse.VersionSupport[reader.ReadInt32()];
                 for (var i = 0; i < apiKeys.Length; i++) {
-                    var apiKey = (ApiKeyRequestType)reader.ReadInt16();
+                    var apiKey = (ApiKey)reader.ReadInt16();
                     var minVersion = reader.ReadInt16();
                     var maxVersion = reader.ReadInt16();
                     apiKeys[i] = new ApiVersionsResponse.VersionSupport(apiKey, minVersion, maxVersion);

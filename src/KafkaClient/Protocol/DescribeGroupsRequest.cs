@@ -18,13 +18,15 @@ namespace KafkaClient.Protocol
     {
         public override string ToString() => $"{{Api:{ApiKey},GroupIds:[{GroupIds.ToStrings()}]}}";
 
+        public override string ShortString() => GroupIds.Count == 1 ? $"{ApiKey} {GroupIds[0]}" : ApiKey.ToString();
+
         public DescribeGroupsRequest(params string[] groupIds) 
             : this((IEnumerable<string>) groupIds)
         {
         }
 
         public DescribeGroupsRequest(IEnumerable<string> groupIds) 
-            : base(ApiKeyRequestType.DescribeGroups)
+            : base(ApiKey.DescribeGroups)
         {
             GroupIds = ImmutableList<string>.Empty.AddNotNullRange(groupIds);
         }

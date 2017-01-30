@@ -32,8 +32,10 @@ namespace KafkaClient.Protocol
     {
         public override string ToString() => $"{{Api:{ApiKey},GroupId:{GroupId},MemberId:{MemberId},GenerationId:{GenerationId},Topics:[{Topics.ToStrings()}],RetentionTime:{OffsetRetention}}}";
 
+        public override string ShortString() => $"{ApiKey} {GroupId} {MemberId}";
+
         public OffsetCommitRequest(string groupId, IEnumerable<Topic> offsetCommits, string memberId = null, int generationId = -1, TimeSpan? offsetRetention = null) 
-            : base(ApiKeyRequestType.OffsetCommit, groupId, memberId ?? "", generationId)
+            : base(Protocol.ApiKey.OffsetCommit, groupId, memberId ?? "", generationId)
         {
             OffsetRetention = offsetRetention;
             Topics = ImmutableList<Topic>.Empty.AddNotNullRange(offsetCommits);

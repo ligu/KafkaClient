@@ -28,10 +28,10 @@ namespace KafkaClient.Tests.Unit
         }
 
         [Test]
-        [TestCase(ErrorResponseCode.LeaderNotAvailable)]
-        [TestCase(ErrorResponseCode.GroupLoadInProgress)]
-        [TestCase(ErrorResponseCode.GroupCoordinatorNotAvailable)]
-        public async Task ShouldRetryWhenReceiveAnRetryErrorCode(ErrorResponseCode errorCode)
+        [TestCase(ErrorCode.LeaderNotAvailable)]
+        [TestCase(ErrorCode.GroupLoadInProgress)]
+        [TestCase(ErrorCode.GroupCoordinatorNotAvailable)]
+        public async Task ShouldRetryWhenReceiveAnRetryErrorCode(ErrorCode errorCode)
         {
             var conn = Substitute.For<IConnection>();
 
@@ -61,7 +61,7 @@ namespace KafkaClient.Tests.Unit
             var conn = Substitute.For<IConnection>();
 
             conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), Arg.Any<CancellationToken>(), Arg.Any<IRequestContext>())
-                .Returns(x => CreateMetadataResponse(-1, "123", 1), x => CreateMetadataResponse(ErrorResponseCode.None));
+                .Returns(x => CreateMetadataResponse(-1, "123", 1), x => CreateMetadataResponse(ErrorCode.None));
 
             _brokerRouter.Connections.ReturnsForAnyArgs(new List<IConnection> {conn});
             var response = await _brokerRouter.GetMetadataAsync(new MetadataRequest("Test"), CancellationToken.None);
@@ -83,7 +83,7 @@ namespace KafkaClient.Tests.Unit
             var conn = Substitute.For<IConnection>();
 
             conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), Arg.Any<CancellationToken>())
-                .Returns(x => CreateMetadataResponse(ErrorResponseCode.None));
+                .Returns(x => CreateMetadataResponse(ErrorCode.None));
 
             _brokerRouter.Connections.ReturnsForAnyArgs(new List<IConnection> {conn});
             var source = new CancellationTokenSource();
@@ -99,7 +99,7 @@ namespace KafkaClient.Tests.Unit
             var conn = Substitute.For<IConnection>();
 
             conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), Arg.Any<CancellationToken>())
-                .Returns(x => CreateMetadataResponse(ErrorResponseCode.None));
+                .Returns(x => CreateMetadataResponse(ErrorCode.None));
 
             _brokerRouter.Connections.ReturnsForAnyArgs(new List<IConnection> {conn});
             var source = new CancellationTokenSource();
@@ -110,10 +110,10 @@ namespace KafkaClient.Tests.Unit
         }
 
         [Test]
-        [TestCase(ErrorResponseCode.Unknown)]
-        [TestCase(ErrorResponseCode.InvalidTopic)]
-        [TestCase(ErrorResponseCode.InvalidRequiredAcks)]
-        public async Task ShouldThrowExceptionWhenNotARetriableErrorCode(ErrorResponseCode errorCode)
+        [TestCase(ErrorCode.Unknown)]
+        [TestCase(ErrorCode.InvalidTopic)]
+        [TestCase(ErrorCode.InvalidRequiredAcks)]
+        public async Task ShouldThrowExceptionWhenNotARetriableErrorCode(ErrorCode errorCode)
         {
             var conn = Substitute.For<IConnection>();
 
@@ -157,7 +157,7 @@ namespace KafkaClient.Tests.Unit
             return tcs.Task;
         }
 
-        private async Task<MetadataResponse> CreateMetadataResponse(ErrorResponseCode errorCode)
+        private async Task<MetadataResponse> CreateMetadataResponse(ErrorCode errorCode)
         {
             return new MetadataResponse(new KafkaClient.Protocol.Broker[] {}, new [] { new MetadataResponse.Topic("Test", errorCode, new MetadataResponse.Partition[] {})});
         }

@@ -32,11 +32,11 @@ namespace KafkaClient.Protocol
         public FetchResponse(IEnumerable<Topic> topics = null, TimeSpan? throttleTime = null)
         {
             Topics = ImmutableList<Topic>.Empty.AddNotNullRange(topics);
-            Errors = ImmutableList<ErrorResponseCode>.Empty.AddRange(Topics.Select(t => t.ErrorCode));
+            Errors = ImmutableList<ErrorCode>.Empty.AddRange(Topics.Select(t => t.ErrorCode));
             ThrottleTime = throttleTime;
         }
 
-        public IImmutableList<ErrorResponseCode> Errors { get; }
+        public IImmutableList<ErrorCode> Errors { get; }
 
         public IImmutableList<Topic> Topics { get; }
 
@@ -89,7 +89,7 @@ namespace KafkaClient.Protocol
         {
             public override string ToString() => $"{{TopicName:{TopicName},PartitionId:{PartitionId},ErrorCode:{ErrorCode},HighwaterMarkOffset:{HighWaterMark},Messages:{Messages.Count}}}";
 
-            public Topic(string topic, int partitionId, long highWaterMark, ErrorResponseCode errorCode = ErrorResponseCode.None, IEnumerable<Message> messages = null)
+            public Topic(string topic, int partitionId, long highWaterMark, ErrorCode errorCode = ErrorCode.None, IEnumerable<Message> messages = null)
                 : base(topic, partitionId, errorCode)
             {
                 HighWaterMark = highWaterMark;

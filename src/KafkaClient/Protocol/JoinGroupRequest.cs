@@ -44,13 +44,15 @@ namespace KafkaClient.Protocol
     {
         public override string ToString() => $"{{Api:{ApiKey},GroupId:{GroupId},MemberId:{MemberId},SessionTimeout:{SessionTimeout},RebalanceTimeout:{RebalanceTimeout},ProtocolType:{ProtocolType},GroupProtocols:[{GroupProtocols.ToStrings()}]}}";
 
+        public override string ShortString() => $"{ApiKey} {GroupId} {MemberId}";
+
         public JoinGroupRequest(string groupId, TimeSpan sessionTimeout, string memberId, string protocolType, IEnumerable<GroupProtocol> groupProtocols, TimeSpan? rebalanceTimeout = null) 
-            : base(ApiKeyRequestType.JoinGroup)
+            : base(ApiKey.JoinGroup)
         {
             GroupId = groupId;
             SessionTimeout = sessionTimeout;
             RebalanceTimeout = rebalanceTimeout ?? SessionTimeout;
-            MemberId = memberId;
+            MemberId = memberId ?? "";
             ProtocolType = protocolType;
             GroupProtocols = ImmutableList<GroupProtocol>.Empty.AddNotNullRange(groupProtocols);
         }

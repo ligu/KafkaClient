@@ -26,12 +26,16 @@ namespace KafkaClient
     public class Router : IRouter
     {
         private readonly IConnectionFactory _connectionFactory;
+        private readonly Random _selector = new Random();
 
-        private ImmutableDictionary<Endpoint, IConnection> _allConnections = ImmutableDictionary<Endpoint, IConnection>.Empty;
-        private ImmutableDictionary<int, IConnection> _brokerConnections = ImmutableDictionary<int, IConnection>.Empty;
+        private ImmutableDictionary<Endpoint, IImmutableList<IConnection>> _connections;
+        private ImmutableDictionary<int, Endpoint> _brokerEndpoints = ImmutableDictionary<int, Endpoint>.Empty;
         private ImmutableDictionary<string, Tuple<MetadataResponse.Topic, DateTimeOffset>> _topicCache = ImmutableDictionary<string, Tuple<MetadataResponse.Topic, DateTimeOffset>>.Empty;
         private ImmutableDictionary<string, Tuple<int, DateTimeOffset>> _groupBrokerCache = ImmutableDictionary<string, Tuple<int, DateTimeOffset>>.Empty;
         private ImmutableDictionary<string, Tuple<DescribeGroupsResponse.Group, DateTimeOffset>> _groupCache = ImmutableDictionary<string, Tuple<DescribeGroupsResponse.Group, DateTimeOffset>>.Empty;
+
+        private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, IConnection>> _memberConnectionAssignment = new ConcurrentDictionary<string, ConcurrentDictionary<string, IConnection>>();
+
         private readonly ConcurrentDictionary<string, Tuple<IImmutableList<SyncGroupRequest.GroupAssignment>, int>> _memberAssignmentCache = new ConcurrentDictionary<string, Tuple<IImmutableList<SyncGroupRequest.GroupAssignment>, int>>();
 
         private readonly SemaphoreSlim _connectionSemaphore = new SemaphoreSlim(1, 1);
@@ -55,7 +59,7 @@ namespace KafkaClient
             connectionFactory = connectionFactory ?? new ConnectionFactory();
             foreach (var uri in serverUris) {
                 try {
-                    endpoints.Add(await connectionFactory.ResolveAsync(uri, log));
+                    endpoints.Add(await Endpoint.ResolveAsync(uri, log));
                 } catch (ConnectionException ex) {
                     log.Warn(() => LogEvent.Create(ex, $"Ignoring uri that could not be resolved: {uri}"));
                 }
@@ -78,25 +82,24 @@ namespace KafkaClient
             ConnectionConfiguration = connectionConfiguration ?? new ConnectionConfiguration();
             _connectionFactory = connectionFactory ?? new ConnectionFactory();
 
+            var connections = new Dictionary<Endpoint, IImmutableList<IConnection>>();
             foreach (var endpoint in endpoints) {
                 try {
                     var connection = _connectionFactory.Create(endpoint, ConnectionConfiguration, Log);
-                    _allConnections = _allConnections.SetItem(endpoint, connection);
+                    connections[endpoint] = ImmutableList<IConnection>.Empty.Add(connection);
                 } catch (ConnectionException ex) {
                     Log.Warn(() => LogEvent.Create(ex, $"Ignoring uri that could not be connected to: {endpoint}"));
                 }
             }
 
-            if (_allConnections.IsEmpty) throw new ConnectionException("None of the provided Kafka servers are resolvable.");
+            _connections = connections.ToImmutableDictionary();
+            if (_connections.IsEmpty) throw new ConnectionException("None of the provided Kafka servers are resolvable.");
 
             Configuration = routerConfiguration ?? new RouterConfiguration();
         }
 
         public IConnectionConfiguration ConnectionConfiguration { get; }
         public IRouterConfiguration Configuration { get; }
-
-        /// <inheritdoc />
-        public IEnumerable<IConnection> Connections => _allConnections.Values;
 
         #region Topic Brokers
 
@@ -126,9 +129,11 @@ namespace KafkaClient
 
         private TopicBroker GetCachedTopicBroker(string topicName, MetadataResponse.Partition partition)
         {
-            IConnection conn;
-            if (_brokerConnections.TryGetValue(partition.LeaderId, out conn)) {
-                return new TopicBroker(topicName, partition.PartitionId, partition.LeaderId, conn);
+            Endpoint endpoint;
+            IImmutableList<IConnection> connections;
+            if (_brokerEndpoints.TryGetValue(partition.LeaderId, out endpoint) && _connections.TryGetValue(endpoint, out connections)) {
+                var index = _selector.Next(0, connections.Count - 1);
+                return new TopicBroker(topicName, partition.PartitionId, partition.LeaderId, connections[index]);
             }
 
             throw new CachedMetadataException($"Lead broker cannot be found for partition/{partition.PartitionId}, leader {partition.LeaderId}") {
@@ -320,9 +325,11 @@ namespace KafkaClient
 
         private GroupBroker GetCachedGroupBroker(string groupId, int brokerId)
         {
-            IConnection conn;
-            if (_brokerConnections.TryGetValue(brokerId, out conn)) {
-                return new GroupBroker(groupId, brokerId, conn);
+            Endpoint endpoint;
+            IImmutableList<IConnection> connections;
+            if (_brokerEndpoints.TryGetValue(brokerId, out endpoint) && _connections.TryGetValue(endpoint, out connections)) {
+                var index = _selector.Next(0, connections.Count - 1);
+                return new GroupBroker(groupId, brokerId, connections[index]);
             }
 
             throw new CachedMetadataException($"Broker cannot be found for group/{groupId}, broker {brokerId}");
@@ -497,7 +504,6 @@ namespace KafkaClient
                 _memberAssignmentCache.AddOrUpdate(request.GroupId, value, (key, old) => value);
             }
 
-            Log.Info(() => LogEvent.Create($"Syncing {{GroupId:{request.GroupId},MemberId:{request.MemberId}}}"));
             return this.SendAsync(request, request.GroupId, cancellationToken, context, retryPolicy); 
         }
 
@@ -555,41 +561,123 @@ namespace KafkaClient
             }
         }
 
+        #region Connections
+
+        /// <inheritdoc />
+        public IEnumerable<IConnection> Connections => _connections.Values.Select(connections => connections[0]);
+
+        /// <inheritdoc />
+        public async Task<IConnection> GetConnectionAsync(string groupId, string memberId, CancellationToken cancellationToken)
+        {
+            var memberConnections = _memberConnectionAssignment.GetOrAdd(groupId, key => new ConcurrentDictionary<string, IConnection>());
+            IConnection connection;
+            // check if already assigned
+            if (memberConnections.TryGetValue(memberId, out connection)) return connection;
+
+            var brokerId = await GetGroupBrokerIdAsync(groupId, cancellationToken);
+            Endpoint endpoint;
+            if (!_brokerEndpoints.TryGetValue(brokerId, out endpoint)) {
+                throw new CachedMetadataException($"Expected to resolve endpoint for broker id {brokerId}");
+            }
+
+            return _connectionSemaphore.Lock(() => {
+                // try again to avoid race conditions while waiting on lock
+                if (memberConnections.TryGetValue(memberId, out connection)) return connection;
+
+                IImmutableList<IConnection> connections;
+                if (!_connections.TryGetValue(endpoint, out connections)) {
+                    connections = ImmutableList<IConnection>.Empty;
+                }
+                var assignedConnections = memberConnections.Values.ToList();
+                connection = connections.Except(assignedConnections).FirstOrDefault();
+                if (connection == null) {
+                    connection = _connectionFactory.Create(endpoint, ConnectionConfiguration, Log);
+                    _connections = _connections.SetItem(endpoint, connections.Add(connection));
+                }
+
+                memberConnections[memberId] = connection;
+                return connection;
+            }, cancellationToken);
+        }
+
+        /// <inheritdoc />
+        public void ReturnConnection(string groupId, string memberId, IConnection connection)
+        {
+            ConcurrentDictionary<string, IConnection> memberConnections;
+            if (!_memberConnectionAssignment.TryGetValue(groupId, out memberConnections)) {
+                Log.Warn(() => LogEvent.Create($"Router could not find connections assigned to {groupId}"));
+                return;
+            }
+            IConnection removed;
+            if (!memberConnections.TryRemove(memberId, out removed)) {
+                Log.Warn(() => LogEvent.Create($"Router could not find and remove connection assigned to {groupId} {memberId}"));
+            } else if (!ReferenceEquals(connection, removed)) {
+                Log.Warn(() => LogEvent.Create($"Router remove different connection than assigned to {{GroupId:{groupId},MemberId:{memberId}}}"));
+            }
+        }
+
+        public bool TryRestore(IConnection connection, CancellationToken cancellationToken)
+        {
+            if (_disposeCount > 0) throw new ObjectDisposedException(nameof(Router));
+            if (connection == null) return false;
+
+            var endpoint = connection.Endpoint;
+            IImmutableList<IConnection> ownedConnections;
+            // false if the endpoint isn't part of the router
+            // true if the one in the router is already restore (or will by itself)
+            if (!_connections.TryGetValue(endpoint, out ownedConnections)) return false;
+            var ownedConnection = ownedConnections.SingleOrDefault(owned => ReferenceEquals(owned, connection));
+            if (ownedConnection == null) return false;
+            if (!ownedConnection.IsDisposed) return true;
+
+            // actually restore the connection
+            return _connectionSemaphore.Lock(
+                () => {
+                    // test again (same logic as above) -- to avoid race conditions
+                    if (!_connections.TryGetValue(endpoint, out ownedConnections)) return false;
+                    ownedConnection = ownedConnections.SingleOrDefault(owned => ReferenceEquals(owned, connection));
+                    if (ownedConnection == null) return false;
+
+                    ownedConnections = ownedConnections.Replace(ownedConnection, _connectionFactory.Create(endpoint, ConnectionConfiguration, Log));
+                    _connections = _connections.SetItem(endpoint, ownedConnections);
+                    return true;
+                }, cancellationToken);
+        }
+
         private async Task UpdateConnectionCacheAsync(IEnumerable<Protocol.Broker> brokers)
         {
-            var allConnections = _allConnections;
-            var brokerConnections = _brokerConnections;
-            var connectionsToDispose = ImmutableList<IConnection>.Empty;
+            var connections = _connections;
+            var brokerEndpoints = _brokerEndpoints;
             try {
-                foreach (var broker in brokers) {
-                    var endpoint = await _connectionFactory.ResolveAsync(new Uri($"http://{broker.Host}:{broker.Port}"), Log);
-
-                    IConnection connection;
-                    if (brokerConnections.TryGetValue(broker.BrokerId, out connection)) {
-                        if (connection.Endpoint.Equals(endpoint)) {
-                            // existing connection, nothing to change
-                        } else {
-                            // ReSharper disable once AccessToModifiedClosure
-                            Log.Warn(() => LogEvent.Create($"Broker {broker.BrokerId} Uri changed from {connection.Endpoint} to {endpoint}"));
-
-                            // A connection changed for a broker, so close the old connection and create a new one
-                            connectionsToDispose = connectionsToDispose.Add(connection);
-                            connection = _connectionFactory.Create(endpoint, ConnectionConfiguration, Log);
-                            // important that we create it here rather than set to null or we'll get it again from allConnections
-                        }
+                var hasNewBrokers = false;
+                foreach (var server in brokers) {
+                    Endpoint existing;
+                    if (brokerEndpoints.TryGetValue(server.BrokerId, out existing) 
+                        && existing.Host == server.Host 
+                        && existing.Ip.Port == server.Port)
+                    {
+                        continue; // same as we already have
                     }
 
-                    if (connection == null && !allConnections.TryGetValue(endpoint, out connection)) {
-                        connection = _connectionFactory.Create(endpoint, ConnectionConfiguration, Log);
-                    }
+                    var endpoint = await Endpoint.ResolveAsync(new Uri($"http://{server.Host}:{server.Port}"), Log);
+                    brokerEndpoints = brokerEndpoints.SetItem(server.BrokerId, endpoint);
+                    hasNewBrokers = true;
+                }
 
-                    allConnections = allConnections.SetItem(endpoint, connection);
-                    brokerConnections = brokerConnections.SetItem(broker.BrokerId, connection);
+                if (!hasNewBrokers) return;
+
+                // only keep if they're alive
+                connections = connections.SelectMany(pair => pair.Value.Where(connection => !connection.IsDisposed))
+                                         .GroupBy(connection => connection.Endpoint)
+                                         .ToImmutableDictionary(group => group.Key, group => (IImmutableList<IConnection>)group.ToImmutableList());
+                foreach (var endpoint in brokerEndpoints.Values) {
+                    if (!connections.ContainsKey(endpoint)) {
+                        connections = connections.SetItem(endpoint, ImmutableList<IConnection>.Empty.Add(_connectionFactory.Create(endpoint, ConnectionConfiguration, Log)));
+                    }
                 }
             } finally {
-                _allConnections = allConnections;
-                _brokerConnections = brokerConnections;
-                await DisposeConnectionsAsync(connectionsToDispose);
+                _connections = connections.ToImmutableDictionary(pair => pair.Key, pair => (IImmutableList<IConnection>)pair.Value.ToImmutableList());
+                _brokerEndpoints = brokerEndpoints;
             }
         }
 
@@ -597,6 +685,8 @@ namespace KafkaClient
         {
             await Task.WhenAll(connections.Select(_ => _.DisposeAsync()));
         }
+
+        #endregion
 
         private int _disposeCount = 0;
         private readonly TaskCompletionSource<bool> _disposePromise = new TaskCompletionSource<bool>();
@@ -609,14 +699,14 @@ namespace KafkaClient
             }
 
             try {
-                await DisposeConnectionsAsync(_allConnections.Values);
+                Log.Debug(() => LogEvent.Create("Disposing Router"));
+                await DisposeConnectionsAsync(_connections.SelectMany(pair => pair.Value));
                 _connectionSemaphore.Dispose();
                 _groupSemaphore.Dispose();
             } finally {
                 _disposePromise.TrySetResult(true);
             }
         }
-
 
         /// <inheritdoc />
         public void Dispose()

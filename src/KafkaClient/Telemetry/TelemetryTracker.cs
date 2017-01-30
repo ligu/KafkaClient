@@ -71,10 +71,10 @@ namespace KafkaClient.Telemetry
             GetTcpConnect().Success(elapsed);
         }
 
-        public void Writing(Endpoint endpoint, ApiKeyRequestType type)
+        public void Writing(Endpoint endpoint, ApiKey apiKey)
         {
             GetTcpWrite().Attempt();
-            GetApiRequests().Attempt(type);
+            GetApiRequests().Attempt(apiKey);
         }
 
         public void WritingBytes(Endpoint endpoint, int bytesAvailable)
@@ -87,15 +87,15 @@ namespace KafkaClient.Telemetry
             GetTcpWrite().Partial(bytesAttempted);
         }
 
-        public void Written(Endpoint endpoint, ApiKeyRequestType type, int bytesWritten, TimeSpan elapsed)
+        public void Written(Endpoint endpoint, ApiKey apiKey, int bytesWritten, TimeSpan elapsed)
         {
             GetTcpWrite().Success(elapsed, bytesWritten);
-            GetApiRequests().Success(type, elapsed);
+            GetApiRequests().Success(apiKey, elapsed);
         }
 
-        public void WriteFailed(Endpoint endpoint, ApiKeyRequestType type, TimeSpan elapsed, Exception exception)
+        public void WriteFailed(Endpoint endpoint, ApiKey apiKey, TimeSpan elapsed, Exception exception)
         {
-            GetApiRequests().Failure(type, elapsed);
+            GetApiRequests().Failure(apiKey, elapsed);
         }
 
         public void Reading(Endpoint endpoint, int bytesAvailable)

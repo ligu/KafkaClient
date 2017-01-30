@@ -4,7 +4,7 @@ namespace KafkaClient.Protocol
 {
     public abstract class Request : IRequest, IEquatable<Request>
     {
-        protected Request(ApiKeyRequestType apiKey, bool expectResponse = true)
+        protected Request(ApiKey apiKey, bool expectResponse = true)
         {
             ApiKey = apiKey;
             ExpectResponse = expectResponse;
@@ -13,7 +13,7 @@ namespace KafkaClient.Protocol
         /// <summary>
         /// Enum identifying the specific type of request message being represented.
         /// </summary>
-        public ApiKeyRequestType ApiKey { get; }
+        public ApiKey ApiKey { get; }
 
         /// <summary>
         /// Flag which tells the broker call to expect a response for this request.
@@ -21,6 +21,8 @@ namespace KafkaClient.Protocol
         public bool ExpectResponse { get; }
 
         public override string ToString() => $"{{Api:{ApiKey}}}";
+
+        public virtual string ShortString() => ApiKey.ToString();
 
         #region Equals
 

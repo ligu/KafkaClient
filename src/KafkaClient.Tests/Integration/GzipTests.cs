@@ -20,7 +20,7 @@ namespace KafkaClient.Tests.Integration
             using (var router = await _options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     TestConfig.Log.Info(() => LogEvent.Create(">> Start EnsureGzipCompressedMessageCanSend"));
-                    var endpoint = await _options.ConnectionFactory.ResolveAsync(_options.ServerUris.First(), _options.Log);
+                    var endpoint = await Endpoint.ResolveAsync(_options.ServerUris.First(), _options.Log);
                     using (var conn1 = _options.CreateConnection(endpoint)) {
                         await conn1.SendAsync(new MetadataRequest(topicName), CancellationToken.None);
                     }
@@ -38,7 +38,7 @@ namespace KafkaClient.Tests.Integration
                     TestConfig.Log.Info(() => LogEvent.Create(">> start SendAsync"));
                     var response = await conn.Connection.SendAsync(request, CancellationToken.None);
                     TestConfig.Log.Info(() => LogEvent.Create("end SendAsync"));
-                    Assert.That(response.Errors.Any(e => e != ErrorResponseCode.None), Is.False);
+                    Assert.That(response.Errors.Any(e => e != ErrorCode.None), Is.False);
                     TestConfig.Log.Info(() => LogEvent.Create("start dispose"));
                     TestConfig.Log.Info(() => LogEvent.Create(">> End EnsureGzipCompressedMessageCanSend"));
                 });

@@ -9,11 +9,11 @@ namespace KafkaClient.Telemetry
         void Disconnected(Endpoint endpoint, Exception exception);
         void Connecting(Endpoint endpoint, int attempt, TimeSpan elapsed);
         void Connected(Endpoint endpoint, int attempt, TimeSpan elapsed);
-        void Writing(Endpoint endpoint, ApiKeyRequestType type);
+        void Writing(Endpoint endpoint, ApiKey apiKey);
         void WritingBytes(Endpoint endpoint, int bytesAvailable);
         void WroteBytes(Endpoint endpoint, int bytesAttempted, int bytesWritten, TimeSpan elapsed);
-        void Written(Endpoint endpoint, ApiKeyRequestType type, int bytesWritten, TimeSpan elapsed);
-        void WriteFailed(Endpoint endpoint, ApiKeyRequestType type, TimeSpan elapsed, Exception exception);
+        void Written(Endpoint endpoint, ApiKey apiKey, int bytesWritten, TimeSpan elapsed);
+        void WriteFailed(Endpoint endpoint, ApiKey apiKey, TimeSpan elapsed, Exception exception);
         void Reading(Endpoint endpoint, int bytesAvailable);
         void ReadingBytes(Endpoint endpoint, int bytesAvailable);
         void ReadBytes(Endpoint endpoint, int bytesAttempted, int bytesRead, TimeSpan elapsed);

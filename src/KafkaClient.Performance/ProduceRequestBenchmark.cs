@@ -51,11 +51,11 @@ namespace KafkaClient.Performance
                                         .Select(i => new Message(GenerateMessageBytes(), new ArraySegment<byte>(), (byte) Codec, version: MessageVersion)), 
                               Codec)));
 
-            var response = new ProduceResponse(new ProduceResponse.Topic("topic", 1, ErrorResponseCode.None, 0));
+            var response = new ProduceResponse(new ProduceResponse.Topic("topic", 1, ErrorCode.None, 0));
 
             var port = 10000;
             var endpoint = new Endpoint(new IPEndPoint(IPAddress.Loopback, port), "localhost");
-            _server = new TcpServer(endpoint.Value.Port) {
+            _server = new TcpServer(endpoint.Ip.Port) {
                 OnBytesReceived = b =>
                 {
                     var header = KafkaDecoder.DecodeHeader(b.Skip(4));

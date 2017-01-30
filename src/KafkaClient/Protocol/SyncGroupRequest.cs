@@ -21,9 +21,11 @@ namespace KafkaClient.Protocol
     {
         public override string ToString() => $"{{Api:{ApiKey},GroupId:{GroupId},MemberId:{MemberId},GenerationId:{GenerationId},GroupAssignments:[{GroupAssignments.ToStrings()}]}}";
 
+        public override string ShortString() => $"{ApiKey} {GroupId} {MemberId}";
+
         /// <inheritdoc />
         public SyncGroupRequest(string groupId, int generationId, string memberId, IEnumerable<GroupAssignment> groupAssignments = null) 
-            : base(ApiKeyRequestType.SyncGroup, groupId, memberId, generationId)
+            : base(ApiKey.SyncGroup, groupId, memberId, generationId)
         {
             GroupAssignments = ImmutableList<GroupAssignment>.Empty.AddNotNullRange(groupAssignments);
         }

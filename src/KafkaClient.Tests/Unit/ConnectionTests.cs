@@ -12,7 +12,6 @@ using KafkaClient.Protocol;
 using KafkaClient.Testing;
 using Nito.AsyncEx;
 using NUnit.Framework;
-using NUnit.Framework.Internal;
 
 namespace KafkaClient.Tests.Unit
 {
@@ -94,7 +93,7 @@ namespace KafkaClient.Tests.Unit
         public async Task ShouldDisposeWithoutExceptionThrown()
         {
             var endpoint = await Endpoint.ResolveAsync(TestConfig.ServerUri(), TestConfig.Log);
-            using (var server = new TcpServer(endpoint.Value.Port, TestConfig.Log))
+            using (var server = new TcpServer(endpoint.Ip.Port, TestConfig.Log))
             {
                 var conn = new Connection(endpoint, log: TestConfig.Log);
                 await Task.WhenAny(server.ClientConnected, Task.Delay(TimeSpan.FromSeconds(3)));
@@ -140,7 +139,7 @@ namespace KafkaClient.Tests.Unit
             int readSize = 0;
             var config = new ConnectionConfiguration(onReading: (e, size) => readSize = size);
             var endpoint = await Endpoint.ResolveAsync(TestConfig.ServerUri(), TestConfig.Log);
-            using (new TcpServer(endpoint.Value.Port, TestConfig.Log)) {
+            using (new TcpServer(endpoint.Ip.Port, TestConfig.Log)) {
                 var conn = new ExplicitlyReadingConnection(endpoint, config, TestConfig.Log);
                 await conn.UsingAsync(async () => {
                     var socket = await conn.ConnectAsync(CancellationToken.None);
@@ -180,7 +179,7 @@ namespace KafkaClient.Tests.Unit
                 });
 
             var endpoint = await Endpoint.ResolveAsync(TestConfig.ServerUri(), TestConfig.Log);
-            using (var server = new TcpServer(endpoint.Value.Port, TestConfig.Log) {
+            using (var server = new TcpServer(endpoint.Ip.Port, TestConfig.Log) {
                 OnConnected = () => Interlocked.Increment(ref serverConnected)
             })
             using (new Connection(endpoint, config, log: mockLog))
@@ -214,7 +213,7 @@ namespace KafkaClient.Tests.Unit
             var config = new ConnectionConfiguration(onReadBytes: (e, attempted, actual, elapsed) => Interlocked.Add(ref bytesRead, actual));
 
             var endpoint = await Endpoint.ResolveAsync(TestConfig.ServerUri(), TestConfig.Log);
-            using (var server = new TcpServer(endpoint.Value.Port, TestConfig.Log))
+            using (var server = new TcpServer(endpoint.Ip.Port, TestConfig.Log))
             using (new Connection(endpoint, config, mockLog))
             {
                 // send size
@@ -234,7 +233,7 @@ namespace KafkaClient.Tests.Unit
                 await TaskTest.WaitFor(() => bytesRead == firstBytes.Length);
 
                 Assert.That(mockLog.LogEvents.Count(e => e.Item1 == LogLevel.Warn && e.Item2.Message.StartsWith($"Unexpected response (id {correlationId}, {size}? bytes) from")), Is.EqualTo(1));
-                Assert.That(mockLog.LogEvents.Count(e => e.Item1 == LogLevel.Verbose && e.Item2.Message.StartsWith($"Received {size} bytes (id {correlationId})")), Is.EqualTo(0));
+                Assert.That(mockLog.LogEvents.Count(e => e.Item1 == LogLevel.Debug && e.Item2.Message.StartsWith($"Received {size} bytes (id {correlationId})")), Is.EqualTo(0));
 
                 server.DropConnection();
 
@@ -245,7 +244,7 @@ namespace KafkaClient.Tests.Unit
                     // repeat until the connection is all up and working ...
                 }
                 await TaskTest.WaitFor(() => bytesRead >= size);
-                var received = await TaskTest.WaitFor(() => mockLog.LogEvents.Count(e => e.Item1 == LogLevel.Verbose && e.Item2.Message.StartsWith($"Received {size} bytes (id {correlationId})")) == 1);
+                var received = await TaskTest.WaitFor(() => mockLog.LogEvents.Count(e => e.Item1 == LogLevel.Debug && e.Item2.Message.StartsWith($"Received {size} bytes (id {correlationId})")) == 1);
                 Assert.True(received);
             }
         }
@@ -260,7 +259,7 @@ namespace KafkaClient.Tests.Unit
 
             var config = new ConnectionConfiguration(onRead: (e, buffer, elapsed) => receivedData = true);
             var endpoint = await Endpoint.ResolveAsync(TestConfig.ServerUri(), TestConfig.Log);
-            using (var server = new TcpServer(endpoint.Value.Port, TestConfig.Log))
+            using (var server = new TcpServer(endpoint.Ip.Port, TestConfig.Log))
             using (var conn = new Connection(endpoint, config, log: mockLog))
             {
                 //send correlation message
@@ -288,7 +287,7 @@ namespace KafkaClient.Tests.Unit
                 
             });
             var endpoint = await Endpoint.ResolveAsync(TestConfig.ServerUri(), TestConfig.Log);
-            using (var server = new TcpServer(endpoint.Value.Port, TestConfig.Log))
+            using (var server = new TcpServer(endpoint.Ip.Port, TestConfig.Log))
             using (var conn = new Connection(endpoint, config, log: TestConfig.Log))
             {
                 var token = new CancellationTokenSource();
@@ -366,7 +365,7 @@ namespace KafkaClient.Tests.Unit
             var config = new ConnectionConfiguration(
                 onReadBytes: (e, attempted, actual, elapsed) => Interlocked.Add(ref bytesReceived, actual));
             var endpoint = await Endpoint.ResolveAsync(TestConfig.ServerUri(), TestConfig.Log);
-            using (var server = new TcpServer(endpoint.Value.Port, TestConfig.Log)) {
+            using (var server = new TcpServer(endpoint.Ip.Port, TestConfig.Log)) {
                 var conn = new ExplicitlyReadingConnection(endpoint, config, TestConfig.Log);
                 await conn.UsingAsync(async () => {
                     var socket = await conn.ConnectAsync(CancellationToken.None);
@@ -403,7 +402,7 @@ namespace KafkaClient.Tests.Unit
         public async Task ReadShouldBeAbleToReceiveMoreThanOnce()
         {
             var endpoint = await Endpoint.ResolveAsync(TestConfig.ServerUri(), TestConfig.Log);
-            using (var server = new TcpServer(endpoint.Value.Port, TestConfig.Log)) {
+            using (var server = new TcpServer(endpoint.Ip.Port, TestConfig.Log)) {
                 var conn = new ExplicitlyReadingConnection(endpoint, log: TestConfig.Log);
                 await conn.UsingAsync(async () => {
                     const int firstMessage = 99;
@@ -430,7 +429,7 @@ namespace KafkaClient.Tests.Unit
         public async Task ReadShouldBeAbleToReceiveMoreThanOnceAsyncronously()
         {
             var endpoint = await Endpoint.ResolveAsync(TestConfig.ServerUri(), TestConfig.Log);
-            using (var server = new TcpServer(endpoint.Value.Port, TestConfig.Log)) {
+            using (var server = new TcpServer(endpoint.Ip.Port, TestConfig.Log)) {
                 var conn = new ExplicitlyReadingConnection(endpoint, log: TestConfig.Log);
                 await conn.UsingAsync(async () => {
                     const int firstMessage = 99;
@@ -459,7 +458,7 @@ namespace KafkaClient.Tests.Unit
         public async Task ReadShouldNotLoseDataFromStreamOverMultipleReads()
         {
             var endpoint = await Endpoint.ResolveAsync(TestConfig.ServerUri(), TestConfig.Log);
-            using (var server = new TcpServer(endpoint.Value.Port, TestConfig.Log)) {
+            using (var server = new TcpServer(endpoint.Ip.Port, TestConfig.Log)) {
                 var conn = new ExplicitlyReadingConnection(endpoint, log: TestConfig.Log);
                 await conn.UsingAsync(async () => {
                     const int firstMessage = 99;
@@ -492,7 +491,7 @@ namespace KafkaClient.Tests.Unit
         {
             var disconnectedCount = 0;
             var endpoint = await Endpoint.ResolveAsync(TestConfig.ServerUri(), TestConfig.Log);
-            using (var server = new TcpServer(endpoint.Value.Port, TestConfig.Log) {
+            using (var server = new TcpServer(endpoint.Ip.Port, TestConfig.Log) {
                 OnDisconnected = () => Interlocked.Increment(ref disconnectedCount)
             }) {
                 var conn = new ExplicitlyReadingConnection(endpoint, log: TestConfig.Log);
@@ -543,7 +542,7 @@ namespace KafkaClient.Tests.Unit
         {
             var log = TestConfig.Log;
             var endpoint = await Endpoint.ResolveAsync(TestConfig.ServerUri(), TestConfig.Log);
-            using (var server = new TcpServer(endpoint.Value.Port, TestConfig.Log)) {
+            using (var server = new TcpServer(endpoint.Ip.Port, TestConfig.Log)) {
                 var serverDisconnects = 0;
                 var serverConnects = 0;
                 var clientDisconnects = 0;
@@ -581,7 +580,7 @@ namespace KafkaClient.Tests.Unit
         public async Task ReadShouldStackReadRequestsAndReturnOneAtATime()
         {
             var endpoint = await Endpoint.ResolveAsync(TestConfig.ServerUri(), TestConfig.Log);
-            using (var server = new TcpServer(endpoint.Value.Port, TestConfig.Log))
+            using (var server = new TcpServer(endpoint.Ip.Port, TestConfig.Log))
             {
                 var messages = new[] { "test1", "test2", "test3", "test4" };
                 var expectedLength = "test1".Length;
@@ -617,7 +616,7 @@ namespace KafkaClient.Tests.Unit
         public async Task SendAsyncShouldTimeoutWhenSendAsyncTakesTooLong()
         {
             var endpoint = await Endpoint.ResolveAsync(TestConfig.ServerUri(), TestConfig.Log);
-            using (var server = new TcpServer(endpoint.Value.Port, TestConfig.Log))
+            using (var server = new TcpServer(endpoint.Ip.Port, TestConfig.Log))
             using (var conn = new Connection(endpoint, new ConnectionConfiguration(requestTimeout: TimeSpan.FromMilliseconds(1)), log: TestConfig.Log))
             {
                 await Task.WhenAny(server.ClientConnected, Task.Delay(TimeSpan.FromSeconds(3)));
@@ -645,12 +644,12 @@ namespace KafkaClient.Tests.Unit
                 Assert.That(taskResult.Status, Is.EqualTo(TaskStatus.WaitingForActivation));
 
                 // Starting server to establish connection
-                using (var server = new TcpServer(endpoint.Value.Port, TestConfig.Log))
+                using (var server = new TcpServer(endpoint.Ip.Port, TestConfig.Log))
                 {
                     server.OnConnected = () => TestConfig.Log.Info(() => LogEvent.Create("Client connected..."));
                     server.OnBytesReceived = b => {
-                        var request = KafkaDecoder.DecodeHeader(b.Skip(KafkaEncoder.IntegerByteSize));
-                        AsyncContext.Run(async () => await server.SendDataAsync(MessageHelper.CreateMetadataResponse(request.CorrelationId, "Test")));
+                        var requestContext = KafkaDecoder.DecodeHeader(b.Skip(KafkaEncoder.IntegerByteSize));
+                        AsyncContext.Run(async () => await server.SendDataAsync(MessageHelper.CreateMetadataResponse(requestContext, "Test")));
                     };
 
                     await Task.WhenAny(taskResult, Task.Delay(TimeSpan.FromSeconds(5)));
@@ -668,7 +667,7 @@ namespace KafkaClient.Tests.Unit
         {
             IRequestContext context = null;
             var endpoint = await Endpoint.ResolveAsync(TestConfig.ServerUri(), TestConfig.Log);
-            using (var server = new TcpServer(endpoint.Value.Port, TestConfig.Log))
+            using (var server = new TcpServer(endpoint.Ip.Port, TestConfig.Log))
             using (var conn = new Connection(endpoint, new ConnectionConfiguration(requestTimeout: TimeSpan.FromSeconds(1000), versionSupport: VersionSupport.Kafka10), log: TestConfig.Log))
             {
                 server.OnBytesReceived = data =>
@@ -688,7 +687,7 @@ namespace KafkaClient.Tests.Unit
         public async Task SendAsyncShouldTimeoutMultipleMessagesAtATime()
         {
             var endpoint = await Endpoint.ResolveAsync(TestConfig.ServerUri(), TestConfig.Log);
-            using (var server = new TcpServer(endpoint.Value.Port, TestConfig.Log))
+            using (var server = new TcpServer(endpoint.Ip.Port, TestConfig.Log))
             using (var conn = new Connection(endpoint, new ConnectionConfiguration(requestTimeout: TimeSpan.FromMilliseconds(100)), log: TestConfig.Log))
             {
                 await Task.WhenAny(server.ClientConnected, Task.Delay(TimeSpan.FromSeconds(3)));
@@ -712,7 +711,7 @@ namespace KafkaClient.Tests.Unit
         public async Task WriteAsyncShouldSendData()
         {
             var endpoint = await Endpoint.ResolveAsync(TestConfig.ServerUri(), TestConfig.Log);
-            using (var server = new TcpServer(endpoint.Value.Port, TestConfig.Log))
+            using (var server = new TcpServer(endpoint.Ip.Port, TestConfig.Log))
             using (var conn = new Connection(endpoint, new ConnectionConfiguration(requestTimeout: TimeSpan.FromSeconds(1000), versionSupport: VersionSupport.Kafka10), log: TestConfig.Log))
             {
                 const int testData = 99;
@@ -731,7 +730,7 @@ namespace KafkaClient.Tests.Unit
         public async Task WriteAsyncShouldAllowMoreThanOneWrite()
         {
             var endpoint = await Endpoint.ResolveAsync(TestConfig.ServerUri(), TestConfig.Log);
-            using (var server = new TcpServer(endpoint.Value.Port, TestConfig.Log))
+            using (var server = new TcpServer(endpoint.Ip.Port, TestConfig.Log))
             using (var conn = new Connection(endpoint, new ConnectionConfiguration(requestTimeout: TimeSpan.FromSeconds(1000), versionSupport: VersionSupport.Kafka10), log: TestConfig.Log))
             {
                 const int testData = 99;
@@ -755,7 +754,7 @@ namespace KafkaClient.Tests.Unit
             var readOnClient = new ConcurrentBag<int>();
 
             var endpoint = await Endpoint.ResolveAsync(TestConfig.ServerUri(), TestConfig.Log);
-            using (var server = new TcpServer(endpoint.Value.Port, TestConfig.Log)) {
+            using (var server = new TcpServer(endpoint.Ip.Port, TestConfig.Log)) {
                 var conn = new ExplicitlyReadingConnection(endpoint, new ConnectionConfiguration(requestTimeout: TimeSpan.FromSeconds(1000), versionSupport: VersionSupport.Kafka10), TestConfig.Log);
                 await conn.UsingAsync(async () => {
                     server.OnBytesReceived = data => {
@@ -799,7 +798,7 @@ namespace KafkaClient.Tests.Unit
         {
             var readOnServer = new ConcurrentBag<int>();
             var endpoint = await Endpoint.ResolveAsync(TestConfig.ServerUri(), TestConfig.Log);
-            using (var server = new TcpServer(endpoint.Value.Port, TestConfig.Log)) {
+            using (var server = new TcpServer(endpoint.Ip.Port, TestConfig.Log)) {
                 var conn = new ExplicitlyReadingConnection(endpoint, new ConnectionConfiguration(requestTimeout: TimeSpan.FromSeconds(1000), versionSupport: VersionSupport.Kafka10), TestConfig.Log);
                 await conn.UsingAsync(async () => {
                     server.OnBytesReceived = data =>
@@ -826,7 +825,7 @@ namespace KafkaClient.Tests.Unit
             var clientWriteAttempts = 0;
             var config = new ConnectionConfiguration(onWritingBytes: (e, payload) => Interlocked.Increment(ref clientWriteAttempts));
             var endpoint = await Endpoint.ResolveAsync(TestConfig.ServerUri(), TestConfig.Log);
-            using (var server = new TcpServer(endpoint.Value.Port, TestConfig.Log)) {
+            using (var server = new TcpServer(endpoint.Ip.Port, TestConfig.Log)) {
                 var conn = new ExplicitlyReadingConnection(endpoint, config, TestConfig.Log);
                 await conn.UsingAsync(async () => {
                     using (var token = new CancellationTokenSource())

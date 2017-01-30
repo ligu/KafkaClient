@@ -29,13 +29,15 @@ namespace KafkaClient.Protocol
     {
         public override string ToString() => $"{{Api:{ApiKey},RequiredAcks:{Acks},Timeout:{Timeout},Topics:[{Topics.ToStrings()}]}}";
 
+        public override string ShortString() => Topics.Count == 1 ? $"{ApiKey} {Topics[0].TopicName}" : ApiKey.ToString();
+
         public ProduceRequest(Topic topic, TimeSpan? timeout = null, short acks = 1)
             : this(new [] { topic }, timeout, acks)
         {
         }
 
         public ProduceRequest(IEnumerable<Topic> payload, TimeSpan? timeout = null, short acks = 1) 
-            : base(ApiKeyRequestType.Produce, acks != 0)
+            : base(Protocol.ApiKey.Produce, acks != 0)
         {
             Timeout = timeout.GetValueOrDefault(TimeSpan.FromSeconds(1));
             Acks = acks;

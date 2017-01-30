@@ -14,8 +14,10 @@ namespace KafkaClient.Protocol
     {
         public override string ToString() => $"{{Api:{ApiKey},GroupId:{GroupId}}}";
 
+        public override string ShortString() => $"{ApiKey} {GroupId}";
+
         public GroupCoordinatorRequest(string groupId) 
-            : base(ApiKeyRequestType.GroupCoordinator)
+            : base(ApiKey.GroupCoordinator)
         {
             if (string.IsNullOrEmpty(groupId)) throw new ArgumentNullException(nameof(groupId));
 

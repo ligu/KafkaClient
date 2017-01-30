@@ -304,17 +304,17 @@ namespace KafkaClient
         {
             public bool? IsValid { get; }
             public string Message { get; }
-            private readonly ErrorResponseCode _errorCode;
+            private readonly ErrorCode _errorCode;
 
             public Exception ToException()
             {
                 if (IsValid.GetValueOrDefault(true)) return null;
 
-                if (_errorCode == ErrorResponseCode.None) return new ConnectionException(Message);
-                return new RequestException(ApiKeyRequestType.Metadata, _errorCode, Message);
+                if (_errorCode == ErrorCode.None) return new ConnectionException(Message);
+                return new RequestException(ApiKey.Metadata, _errorCode, Message);
             }
 
-            public MetadataResult(ErrorResponseCode errorCode = ErrorResponseCode.None, bool? isValid = null, string message = null)
+            public MetadataResult(ErrorCode errorCode = ErrorCode.None, bool? isValid = null, string message = null)
             {
                 Message = message ?? "";
                 _errorCode = errorCode;
@@ -324,16 +324,16 @@ namespace KafkaClient
 
         private static MetadataResult ValidateBroker(Protocol.Broker broker)
         {
-            if (broker.BrokerId == -1)             return new MetadataResult(ErrorResponseCode.Unknown);
-            if (string.IsNullOrEmpty(broker.Host)) return new MetadataResult(ErrorResponseCode.None, false, "Broker missing host information.");
-            if (broker.Port <= 0)                  return new MetadataResult(ErrorResponseCode.None, false, "Broker missing port information.");
+            if (broker.BrokerId == -1)             return new MetadataResult(ErrorCode.Unknown);
+            if (string.IsNullOrEmpty(broker.Host)) return new MetadataResult(ErrorCode.None, false, "Broker missing host information.");
+            if (broker.Port <= 0)                  return new MetadataResult(ErrorCode.None, false, "Broker missing port information.");
             return new MetadataResult(isValid: true);
         }
 
         private static MetadataResult ValidateTopic(MetadataResponse.Topic topic)
         {
             var errorCode = topic.ErrorCode;
-            if (errorCode == ErrorResponseCode.None) return new MetadataResult(isValid: true);
+            if (errorCode == ErrorCode.None) return new MetadataResult(isValid: true);
             if (errorCode.IsRetryable()) return new MetadataResult(errorCode, null, $"topic/{topic.TopicName} returned error code of {errorCode}: Retrying");
             return new MetadataResult(errorCode, false, $"topic/{topic.TopicName} returned an error of {errorCode}");
         }

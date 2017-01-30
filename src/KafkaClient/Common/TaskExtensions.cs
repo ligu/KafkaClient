@@ -42,23 +42,5 @@ namespace KafkaClient.Common
             }
             return false;
         }
-
-        public static async Task UsingAsync(this IAsyncDisposable disposable, Action action)
-        {
-            try {
-                action();
-            } finally {
-                await disposable.DisposeAsync().ConfigureAwait(false);
-            }
-        }
-
-        public static async Task UsingAsync(this IAsyncDisposable disposable, Func<Task> asyncAction)
-        {
-            try {
-                await asyncAction().ConfigureAwait(false);
-            } finally {
-                await disposable.DisposeAsync().ConfigureAwait(false);
-            }
-        }
     }
 }

@@ -33,10 +33,10 @@ namespace KafkaClient.Protocol
     {
         public override string ToString() => $"{{ErrorCode:{ErrorCode},GenerationId:{GenerationId},GroupProtocol:{GroupProtocol},LeaderId:{LeaderId},MemberId:{MemberId},Members:[{Members.ToStrings()}]}}";
 
-        public JoinGroupResponse(ErrorResponseCode errorCode, int generationId, string groupProtocol, string leaderId, string memberId, IEnumerable<Member> members)
+        public JoinGroupResponse(ErrorCode errorCode, int generationId, string groupProtocol, string leaderId, string memberId, IEnumerable<Member> members)
         {
             ErrorCode = errorCode;
-            Errors = ImmutableList<ErrorResponseCode>.Empty.Add(ErrorCode);
+            Errors = ImmutableList<ErrorCode>.Empty.Add(ErrorCode);
             GenerationId = generationId;
             GroupProtocol = groupProtocol;
             LeaderId = leaderId;
@@ -45,9 +45,9 @@ namespace KafkaClient.Protocol
         }
 
         /// <inheritdoc />
-        public IImmutableList<ErrorResponseCode> Errors { get; }
+        public IImmutableList<ErrorCode> Errors { get; }
 
-        public ErrorResponseCode ErrorCode { get; }
+        public ErrorCode ErrorCode { get; }
 
         /// <summary>
         /// The generation counter for completion of the join group phase.

@@ -32,12 +32,12 @@ namespace KafkaClient
         /// <summary>
         /// Get the number of messages sitting in the buffer waiting to be sent.
         /// </summary>
-        public int BufferedMessageCount => _sendingMessageCount - _batch.Count;
+        public int BufferedMessageCount => _sendingMessageCount - InFlightMessageCount;
 
         /// <summary>
         /// Get the number of messages staged for Async Request.
         /// </summary>
-        public int InFlightMessageCount => _batch.Count;
+        public int InFlightMessageCount => _batch.Sum(p => p.Messages.Count);
 
         /// <summary>
         /// Get the number of active async threads sending messages.
@@ -228,7 +228,7 @@ namespace KafkaClient
                     if (batch.Acks == 0 && batchResult == null) {
                         foreach (var topic in batch.ProduceTasksByTopic.Keys) {
                             foreach (var produceTask in batch.ProduceTasksByTopic[topic]) {
-                                produceTask.Tcs.SetResult(new ProduceResponse.Topic(topic.TopicName, topic.PartitionId, ErrorResponseCode.None, -1));
+                                produceTask.Tcs.SetResult(new ProduceResponse.Topic(topic.TopicName, topic.PartitionId, ErrorCode.None, -1));
                             }
                         }
                         return;
@@ -254,7 +254,7 @@ namespace KafkaClient
                         var messageCount = produceTasks.Sum(t => t.Messages.Count);
                         foreach (var produceTask in produceTasks) {
                             produceTask.Tcs.SetResult(batch.Acks == 0
-                                ? new ProduceResponse.Topic(topic.TopicName, topic.PartitionId, ErrorResponseCode.None, -1)
+                                ? new ProduceResponse.Topic(topic.TopicName, topic.PartitionId, ErrorCode.None, -1)
                                 : new ProduceResponse.Topic(topic.TopicName, topic.PartitionId, topic.ErrorCode, topic.Offset + messageCount - 1, topic.Timestamp));
                         }
                     }

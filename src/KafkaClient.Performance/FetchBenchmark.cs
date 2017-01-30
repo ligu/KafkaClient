@@ -40,7 +40,7 @@ namespace KafkaClient.Performance
                               "topic", 
                               partitionId, 
                               500,
-                              ErrorResponseCode.None,
+                              ErrorCode.None,
                               Enumerable.Range(1, Messages)
                                         .Select(i => new Message(GenerateMessageBytes(), new ArraySegment<byte>(), (byte) Codec, version: MessageVersion))
                           )));
@@ -57,7 +57,7 @@ namespace KafkaClient.Performance
         [Benchmark]
         public FetchResponse Decode()
         {
-            return KafkaEncoder.Decode<FetchResponse>(new RequestContext(1, Version), ApiKeyRequestType.Fetch, _bytes.Skip(KafkaEncoder.ResponseHeaderSize));
+            return KafkaEncoder.Decode<FetchResponse>(new RequestContext(1, Version), ApiKey.Fetch, _bytes.Skip(KafkaEncoder.ResponseHeaderSize));
         }
     }
 }

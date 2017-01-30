@@ -31,8 +31,8 @@ namespace KafkaClient.Tests.Unit
 
                 var response = await producer.SendMessagesAsync(messages, "UnitTest", CancellationToken.None);
 
-                Assert.That(routerProxy.BrokerConn0[ApiKeyRequestType.Produce], Is.EqualTo(1));
-                Assert.That(routerProxy.BrokerConn1[ApiKeyRequestType.Produce], Is.EqualTo(1));
+                Assert.That(routerProxy.BrokerConn0[ApiKey.Produce], Is.EqualTo(1));
+                Assert.That(routerProxy.BrokerConn1[ApiKey.Produce], Is.EqualTo(1));
             }
         }
 
@@ -40,7 +40,7 @@ namespace KafkaClient.Tests.Unit
         public void ShouldSendAsyncToAllConnectionsEvenWhenExceptionOccursOnOne()
         {
             var routerProxy = new FakeBrokerRouter();
-            routerProxy.BrokerConn1.Add(ApiKeyRequestType.Produce, _ => { throw new RequestException("some exception"); });
+            routerProxy.BrokerConn1.Add(ApiKey.Produce, _ => { throw new RequestException("some exception"); });
             var router = routerProxy.Create();
 
             using (var producer = new Producer(router))
@@ -50,8 +50,8 @@ namespace KafkaClient.Tests.Unit
                 var sendTask = producer.SendMessagesAsync(messages, "UnitTest", CancellationToken.None).ConfigureAwait(false);
                 Assert.ThrowsAsync<RequestException>(async () => await sendTask);
 
-                Assert.That(routerProxy.BrokerConn0[ApiKeyRequestType.Produce], Is.EqualTo(1));
-                Assert.That(routerProxy.BrokerConn1[ApiKeyRequestType.Produce], Is.EqualTo(1));
+                Assert.That(routerProxy.BrokerConn0[ApiKey.Produce], Is.EqualTo(1));
+                Assert.That(routerProxy.BrokerConn1[ApiKey.Produce], Is.EqualTo(1));
             }
         }
 
@@ -61,7 +61,7 @@ namespace KafkaClient.Tests.Unit
             var semaphore = new SemaphoreSlim(0);
             var routerProxy = new FakeBrokerRouter();
             //block the second call returning from send message async
-            routerProxy.BrokerConn0.Add(ApiKeyRequestType.Produce, async _ =>
+            routerProxy.BrokerConn0.Add(ApiKey.Produce, async _ =>
             {
                 await semaphore.WaitAsync();
                 return new ProduceResponse();
@@ -95,7 +95,7 @@ namespace KafkaClient.Tests.Unit
             var semaphore = new SemaphoreSlim(0);
             var routerProxy = new FakeBrokerRouter();
             //block the second call returning from send message async
-            routerProxy.BrokerConn0.Add(ApiKeyRequestType.Produce, 
+            routerProxy.BrokerConn0.Add(ApiKey.Produce, 
                 async _ => {
                     await semaphore.WaitAsync();
                     return new ProduceResponse();
@@ -135,7 +135,7 @@ namespace KafkaClient.Tests.Unit
         {
             //TODO is there a way to communicate back which client failed and which succeeded.
             var routerProxy = new FakeBrokerRouter();
-            routerProxy.BrokerConn1.Add(ApiKeyRequestType.Produce, _ => { throw new Exception("some exception"); });
+            routerProxy.BrokerConn1.Add(ApiKey.Produce, _ => { throw new Exception("some exception"); });
 
             var router = routerProxy.Create();
             using (var producer = new Producer(router))
@@ -172,8 +172,8 @@ namespace KafkaClient.Tests.Unit
 
                 await Task.WhenAll(calls);
 
-                Assert.That(routerProxy.BrokerConn0[ApiKeyRequestType.Produce], Is.EqualTo(1));
-                Assert.That(routerProxy.BrokerConn1[ApiKeyRequestType.Produce], Is.EqualTo(1));
+                Assert.That(routerProxy.BrokerConn0[ApiKey.Produce], Is.EqualTo(1));
+                Assert.That(routerProxy.BrokerConn1[ApiKey.Produce], Is.EqualTo(1));
             }
         }
 
@@ -198,8 +198,8 @@ namespace KafkaClient.Tests.Unit
 
                 await Task.WhenAll(calls);
 
-                Assert.That(routerProxy.BrokerConn0[ApiKeyRequestType.Produce], Is.EqualTo(2));
-                Assert.That(routerProxy.BrokerConn1[ApiKeyRequestType.Produce], Is.EqualTo(2));
+                Assert.That(routerProxy.BrokerConn0[ApiKey.Produce], Is.EqualTo(2));
+                Assert.That(routerProxy.BrokerConn1[ApiKey.Produce], Is.EqualTo(2));
             }
         }
 
@@ -221,8 +221,8 @@ namespace KafkaClient.Tests.Unit
 
                 await Task.WhenAll(calls);
 
-                Assert.That(routerProxy.BrokerConn0[ApiKeyRequestType.Produce], Is.EqualTo(expected));
-                Assert.That(routerProxy.BrokerConn1[ApiKeyRequestType.Produce], Is.EqualTo(expected));
+                Assert.That(routerProxy.BrokerConn0[ApiKey.Produce], Is.EqualTo(expected));
+                Assert.That(routerProxy.BrokerConn1[ApiKey.Produce], Is.EqualTo(expected));
             }
         }
 
@@ -244,8 +244,8 @@ namespace KafkaClient.Tests.Unit
 
                 await Task.WhenAll(calls);
 
-                Assert.That(routerProxy.BrokerConn0[ApiKeyRequestType.Produce], Is.EqualTo(expected));
-                Assert.That(routerProxy.BrokerConn1[ApiKeyRequestType.Produce], Is.EqualTo(expected));
+                Assert.That(routerProxy.BrokerConn0[ApiKey.Produce], Is.EqualTo(expected));
+                Assert.That(routerProxy.BrokerConn1[ApiKey.Produce], Is.EqualTo(expected));
             }
         }
 
@@ -268,7 +268,8 @@ namespace KafkaClient.Tests.Unit
                 TestConfig.Log.Info(() => LogEvent.Create("Finished test send task"));
 
                 Assert.That(senderTask.IsCompleted);
-                Assert.That(producer.InFlightMessageCount + producer.BufferedMessageCount, Is.EqualTo(1000));
+                await TaskTest.WaitFor(() => producer.InFlightMessageCount + producer.BufferedMessageCount >= count);
+                Assert.That(producer.InFlightMessageCount + producer.BufferedMessageCount, Is.EqualTo(count));
             }
         }
 
@@ -279,7 +280,7 @@ namespace KafkaClient.Tests.Unit
             int count = 0;
             //with max buffer set below the batch size, this should cause the producer to block until batch delay time.
             var routerProxy = new FakeBrokerRouter();
-            routerProxy.BrokerConn0.Add(ApiKeyRequestType.Produce, async _ => {
+            routerProxy.BrokerConn0.Add(ApiKey.Produce, async _ => {
                 await Task.Delay(200);
                 return new ProduceResponse();
             });
@@ -311,12 +312,12 @@ namespace KafkaClient.Tests.Unit
             //with max buffer set below the batch size, this should cause the producer to block until batch delay time.
             var routerProxy = new FakeBrokerRouter();
             var semaphore = new SemaphoreSlim(0);
-            routerProxy.BrokerConn0.Add(ApiKeyRequestType.Produce,
+            routerProxy.BrokerConn0.Add(ApiKey.Produce,
                 async _ => {
                     semaphore.Wait();
                     return new ProduceResponse();
                 });
-            routerProxy.BrokerConn1.Add(ApiKeyRequestType.Produce,
+            routerProxy.BrokerConn1.Add(ApiKey.Produce,
                 async _ => {
                     semaphore.Wait();
                     return new ProduceResponse();

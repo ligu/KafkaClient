@@ -22,7 +22,7 @@ namespace KafkaClient.Assignment
     {
         public override string ToString() => $"{{Version:{Version},Assignments:[{PartitionAssignments.ToStrings()}],UserData:{UserData.Count}}}";
 
-        private static readonly ArraySegment<byte> EmptySegment = new ArraySegment<byte>();
+        private static readonly ArraySegment<byte> EmptySegment = new ArraySegment<byte>(new byte[0]);
 
         public ConsumerMemberAssignment(IEnumerable<TopicPartition> partitionAssignments = null, short version = 0)
             : this(partitionAssignments, EmptySegment, version)

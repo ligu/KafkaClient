@@ -15,13 +15,15 @@ namespace KafkaClient.Protocol
     {
         public override string ToString() => $"{{Api:{ApiKey},TopicNames:[{Topics.ToStrings()}]}}";
 
+        public override string ShortString() => Topics.Count == 1 ? $"{ApiKey} {Topics[0]}" : ApiKey.ToString();
+
         public MetadataRequest(string topic)
             : this (new []{topic})
         {
         }
 
         public MetadataRequest(IEnumerable<string> topics = null) 
-            : base(ApiKeyRequestType.Metadata)
+            : base(Protocol.ApiKey.Metadata)
         {
             Topics = ImmutableList<string>.Empty.AddNotNullRange(topics);
         }

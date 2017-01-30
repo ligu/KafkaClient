@@ -18,19 +18,19 @@ namespace KafkaClient.Protocol
     {
         public override string ToString() => $"{{ErrorCode:{ErrorCode},Groups:[{Groups.ToStrings()}]}}";
 
-        public ListGroupsResponse(ErrorResponseCode errorCode = ErrorResponseCode.None, IEnumerable<Group> groups = null)
+        public ListGroupsResponse(ErrorCode errorCode = ErrorCode.None, IEnumerable<Group> groups = null)
         {
             ErrorCode = errorCode;
-            Errors = ImmutableList<ErrorResponseCode>.Empty.Add(ErrorCode);
+            Errors = ImmutableList<ErrorCode>.Empty.Add(ErrorCode);
             Groups = ImmutableList<Group>.Empty.AddNotNullRange(groups);
         }
 
-        public IImmutableList<ErrorResponseCode> Errors { get; }
+        public IImmutableList<ErrorCode> Errors { get; }
 
         /// <summary>
         /// The error code.
         /// </summary>
-        public ErrorResponseCode ErrorCode { get; }
+        public ErrorCode ErrorCode { get; }
 
         public IImmutableList<Group> Groups { get; }
 

@@ -36,10 +36,10 @@ namespace KafkaClient.Connections
 
         private Socket CreateSocket()
         {
-            if (_endpoint.Value == null) throw new ConnectionException(_endpoint);
+            if (_endpoint.Ip == null) throw new ConnectionException(_endpoint);
             if (_disposeToken.IsCancellationRequested) throw new ObjectDisposedException($"Connection to {_endpoint}");
 
-            return new Socket(_endpoint.Value.AddressFamily, SocketType.Stream, ProtocolType.Tcp)
+            return new Socket(_endpoint.Ip.AddressFamily, SocketType.Stream, ProtocolType.Tcp)
             {
                 Blocking = false,
                 SendTimeout = (int)_configuration.RequestTimeout.TotalMilliseconds,
@@ -67,7 +67,7 @@ namespace KafkaClient.Connections
                             _log.Info(() => LogEvent.Create($"Connecting to {_endpoint}"));
                             _configuration.OnConnecting?.Invoke(_endpoint, attempt, timer.Elapsed);
 
-                            var connectTask = socket.ConnectAsync(_endpoint.Value.Address, _endpoint.Value.Port);
+                            var connectTask = socket.ConnectAsync(_endpoint.Ip.Address, _endpoint.Ip.Port);
                             if (await connectTask.IsCancelled(_disposeToken.Token).ConfigureAwait(false))
                             {
                                 throw new ObjectDisposedException($"Object is disposing (TcpSocket for endpoint {_endpoint})");

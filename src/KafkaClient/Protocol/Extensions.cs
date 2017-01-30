@@ -17,16 +17,16 @@ namespace KafkaClient.Protocol
         {
             var exceptions = new List<Exception>();
             if (response != null) {
-                foreach (var errorCode in response.Errors.Where(e => e != ErrorResponseCode.None)) {
+                foreach (var errorCode in response.Errors.Where(e => e != ErrorCode.None)) {
                     exceptions.Add(ExtractException(request, errorCode, endpoint));
                 }
             }
-            if (exceptions.Count == 0) return new RequestException(request.ApiKey, ErrorResponseCode.None) { Endpoint = endpoint };
+            if (exceptions.Count == 0) return new RequestException(request.ApiKey, ErrorCode.None) { Endpoint = endpoint };
             if (exceptions.Count == 1) return exceptions[0];
             return new AggregateException(exceptions);
         }
 
-        public static Exception ExtractException(this IRequest request, ErrorResponseCode errorCode, Endpoint endpoint) 
+        public static Exception ExtractException(this IRequest request, ErrorCode errorCode, Endpoint endpoint) 
         {
             var exception = ExtractFetchException(request as FetchRequest, errorCode) ??
                             ExtractMemberException(request, errorCode)??
@@ -35,22 +35,22 @@ namespace KafkaClient.Protocol
             return exception;
         }
 
-        private static MemberRequestException ExtractMemberException(IRequest request, ErrorResponseCode errorCode)
+        private static MemberRequestException ExtractMemberException(IRequest request, ErrorCode errorCode)
         {
             var member = request as IGroupMember;
             if (member != null && 
-                (errorCode == ErrorResponseCode.UnknownMemberId ||
-                errorCode == ErrorResponseCode.IllegalGeneration || 
-                errorCode == ErrorResponseCode.InconsistentGroupProtocol))
+                (errorCode == ErrorCode.UnknownMemberId ||
+                errorCode == ErrorCode.IllegalGeneration || 
+                errorCode == ErrorCode.InconsistentGroupProtocol))
             {
                 return new MemberRequestException(member, request.ApiKey, errorCode);
             }
             return null;
         } 
 
-        private static FetchOutOfRangeException ExtractFetchException(FetchRequest request, ErrorResponseCode errorCode)
+        private static FetchOutOfRangeException ExtractFetchException(FetchRequest request, ErrorCode errorCode)
         {
-            if (errorCode == ErrorResponseCode.OffsetOutOfRange && request?.Topics?.Count == 1) {
+            if (errorCode == ErrorCode.OffsetOutOfRange && request?.Topics?.Count == 1) {
                 var fetch = request.Topics.First();
                 return new FetchOutOfRangeException(fetch, request.ApiKey, errorCode);
             }
@@ -62,38 +62,38 @@ namespace KafkaClient.Protocol
             return pointInTime?.ToUnixTimeMilliseconds();
         }
 
-        public static bool IsSuccess(this ErrorResponseCode code)
+        public static bool IsSuccess(this ErrorCode code)
         {
-            return code == ErrorResponseCode.None;
+            return code == ErrorCode.None;
         }
 
         /// <summary>
         /// See http://kafka.apache.org/protocol.html#protocol_error_codes for details
         /// </summary>
-        public static bool IsRetryable(this ErrorResponseCode code)
+        public static bool IsRetryable(this ErrorCode code)
         {
-            return code == ErrorResponseCode.CorruptMessage
-                || code == ErrorResponseCode.UnknownTopicOrPartition
-                || code == ErrorResponseCode.LeaderNotAvailable
-                || code == ErrorResponseCode.NotLeaderForPartition
-                || code == ErrorResponseCode.RequestTimedOut
-                || code == ErrorResponseCode.NetworkException
-                || code == ErrorResponseCode.GroupLoadInProgress
-                || code == ErrorResponseCode.GroupCoordinatorNotAvailable
-                || code == ErrorResponseCode.NotCoordinatorForGroup
-                || code == ErrorResponseCode.NotEnoughReplicas
-                || code == ErrorResponseCode.NotEnoughReplicasAfterAppend
-                || code == ErrorResponseCode.NotController;
+            return code == ErrorCode.CorruptMessage
+                || code == ErrorCode.UnknownTopicOrPartition
+                || code == ErrorCode.LeaderNotAvailable
+                || code == ErrorCode.NotLeaderForPartition
+                || code == ErrorCode.RequestTimedOut
+                || code == ErrorCode.NetworkException
+                || code == ErrorCode.GroupLoadInProgress
+                || code == ErrorCode.GroupCoordinatorNotAvailable
+                || code == ErrorCode.NotCoordinatorForGroup
+                || code == ErrorCode.NotEnoughReplicas
+                || code == ErrorCode.NotEnoughReplicasAfterAppend
+                || code == ErrorCode.NotController;
         }
 
-        public static bool IsFromStaleMetadata(this ErrorResponseCode code)
+        public static bool IsFromStaleMetadata(this ErrorCode code)
         {
-            return code == ErrorResponseCode.UnknownTopicOrPartition
-                || code == ErrorResponseCode.LeaderNotAvailable
-                || code == ErrorResponseCode.NotLeaderForPartition
-                || code == ErrorResponseCode.GroupLoadInProgress
-                || code == ErrorResponseCode.GroupCoordinatorNotAvailable
-                || code == ErrorResponseCode.NotCoordinatorForGroup;
+            return code == ErrorCode.UnknownTopicOrPartition
+                || code == ErrorCode.LeaderNotAvailable
+                || code == ErrorCode.NotLeaderForPartition
+                || code == ErrorCode.GroupLoadInProgress
+                || code == ErrorCode.GroupCoordinatorNotAvailable
+                || code == ErrorCode.NotCoordinatorForGroup;
         }
 
         public static IMembershipEncoder GetEncoder(this IRequestContext context, string protocolType = null)
@@ -126,14 +126,14 @@ namespace KafkaClient.Protocol
             return writer;
         }
 
-        public static IKafkaWriter Write(this IKafkaWriter writer, ErrorResponseCode errorCode)
+        public static IKafkaWriter Write(this IKafkaWriter writer, ErrorCode errorCode)
         {
             return writer.Write((short)errorCode);
         }
 
-        public static ErrorResponseCode ReadErrorCode(this IKafkaReader reader)
+        public static ErrorCode ReadErrorCode(this IKafkaReader reader)
         {
-            return (ErrorResponseCode) reader.ReadInt16();
+            return (ErrorCode) reader.ReadInt16();
         }
     }
 }
