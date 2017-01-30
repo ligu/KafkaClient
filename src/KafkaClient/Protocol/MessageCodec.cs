@@ -5,8 +5,8 @@
     /// </summary>
     public enum MessageCodec : byte
     {
-        CodecNone = 0x00,
-        CodecGzip = 0x01,
-        CodecSnappy = 0x02
+        None = 0x00,
+        Gzip = 0x01,
+        Snappy = 0x02
     }
 }

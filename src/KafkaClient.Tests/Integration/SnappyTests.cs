@@ -10,12 +10,12 @@ using NUnit.Framework;
 namespace KafkaClient.Tests.Integration
 {
     [TestFixture]
-    public class GzipTests
+    public class SnappyTests
     {
         private readonly KafkaOptions _options = new KafkaOptions(TestConfig.IntegrationUri, log: TestConfig.Log);
 
         [Test]
-        public async Task EnsureGzipCompressedMessageCanSend()
+        public async Task EnsureSnappyCompressedMessageCanSend()
         {
             using (var router = await _options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
@@ -34,7 +34,7 @@ namespace KafkaClient.Tests.Integration
                                         new Message("0", "1"),
                                         new Message("1", "1"),
                                         new Message("2", "1")
-                                    }, MessageCodec.Gzip));
+                                    }, MessageCodec.Snappy));
                     TestConfig.Log.Info(() => LogEvent.Create(">> start SendAsync"));
                     var response = await conn.Connection.SendAsync(request, CancellationToken.None);
                     TestConfig.Log.Info(() => LogEvent.Create("end SendAsync"));
@@ -46,7 +46,7 @@ namespace KafkaClient.Tests.Integration
         }
 
         [Test]
-        public async Task EnsureGzipCanDecompressMessageFromKafka()
+        public async Task EnsureSnappyCanDecompressMessageFromKafka()
         {
             const int numberOfMessages = 3;
             const int partitionId = 0;
@@ -62,7 +62,7 @@ namespace KafkaClient.Tests.Integration
                             messages.Add(new Message(i.ToString()));
                         }
                         TestConfig.Log.Info(() => LogEvent.Create(">> Start Produce"));
-                        await producer.SendMessagesAsync(messages, topicName, partitionId, new SendMessageConfiguration(codec: MessageCodec.Gzip), CancellationToken.None);
+                        await producer.SendMessagesAsync(messages, topicName, partitionId, new SendMessageConfiguration(codec: MessageCodec.Snappy), CancellationToken.None);
                         TestConfig.Log.Info(() => LogEvent.Create(">> End Produce"));
                     }
                     TestConfig.Log.Info(() => LogEvent.Create(">> Start Consume"));

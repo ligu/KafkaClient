@@ -23,10 +23,10 @@ namespace KafkaClient.Tests.Unit
             byte messageVersion = 0;
             
             var results = new List<object>();
-            foreach (var codec in new[] { MessageCodec.CodecNone, MessageCodec.CodecGzip }) {
+            foreach (var codec in new[] { MessageCodec.None, MessageCodec.Gzip, MessageCodec.Snappy }) {
                 foreach (var messages in new[] { 100, 10000 }) {
                     foreach (var messageSize in new[] { 1, 1000 }) {
-                        foreach (var level in new[] { CompressionLevel.Fastest, CompressionLevel.Optimal }) {
+                        foreach (var level in new[] { CompressionLevel.Fastest }) {
                             Compression.ZipLevel = level;
                             var response = new FetchResponse(
                                 Enumerable.Range(1, partitions)
@@ -43,7 +43,7 @@ namespace KafkaClient.Tests.Unit
                             Assert.That(decoded.Topics.Sum(t => t.Messages.Count), Is.EqualTo(response.Topics.Sum(t => t.Messages.Count)));
                             var result = new {
                                 Codec = codec.ToString(),
-                                Level = codec == MessageCodec.CodecNone ? "-" : level.ToString(),
+                                Level = codec == MessageCodec.None ? "-" : level.ToString(),
                                 Messages = messages,
                                 MessageSize = messageSize,
                                 Bytes = bytes.Count
@@ -65,10 +65,10 @@ namespace KafkaClient.Tests.Unit
             byte messageVersion = 0;
 
             var results = new List<object>();
-            foreach (var codec in new[] { MessageCodec.CodecNone, MessageCodec.CodecGzip }) {
+            foreach (var codec in new[] { MessageCodec.None, MessageCodec.Gzip, MessageCodec.Snappy }) {
                 foreach (var messages in new[] { 100, 10000 }) {
                     foreach (var messageSize in new[] { 1, 1000 }) {
-                        foreach (var level in new[] { CompressionLevel.Fastest, CompressionLevel.Optimal }) {
+                        foreach (var level in new[] { CompressionLevel.Fastest }) {
                             Compression.ZipLevel = level;
                             var request = new ProduceRequest(
                                         Enumerable.Range(1, partitions)
@@ -81,7 +81,7 @@ namespace KafkaClient.Tests.Unit
 
                             var result = new {
                                 Codec = codec.ToString(),
-                                Level = codec == MessageCodec.CodecNone ? "-" : level.ToString(),
+                                Level = codec == MessageCodec.None ? "-" : level.ToString(),
                                 Messages = messages,
                                 MessageSize = messageSize,
                                 Bytes = KafkaEncoder.Encode(new RequestContext(1, version), request).Count

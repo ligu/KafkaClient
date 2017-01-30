@@ -45,18 +45,20 @@ namespace KafkaClient.Tests.Integration
         }
 
         [Test]
-        [TestCase(1, 1, MessageCodec.CodecNone)]
-        [TestCase(1, 1, MessageCodec.CodecGzip)]
-        [TestCase(1000, 50, MessageCodec.CodecNone)]
-        [TestCase(1000, 50, MessageCodec.CodecGzip)]
-        [TestCase(10000, 100, MessageCodec.CodecNone)]
-        [TestCase(10000, 100, MessageCodec.CodecGzip)]
-        [TestCase(100000, 1000, MessageCodec.CodecNone)]
-        [TestCase(100000, 1000, MessageCodec.CodecGzip)]
-        [TestCase(1000000, 5000, MessageCodec.CodecNone)]
-        [TestCase(1000000, 5000, MessageCodec.CodecGzip)]
-        [TestCase(5000000, 5000, MessageCodec.CodecNone)]
-        [TestCase(5000000, 5000, MessageCodec.CodecGzip)]
+        [TestCase(1, 1, MessageCodec.None)]
+        [TestCase(1, 1, MessageCodec.Gzip)]
+        [TestCase(1000, 50, MessageCodec.None)]
+        [TestCase(1000, 50, MessageCodec.Gzip)]
+        [TestCase(10000, 100, MessageCodec.None)]
+        [TestCase(10000, 100, MessageCodec.Gzip)]
+        [TestCase(10000, 100, MessageCodec.Snappy)]
+        [TestCase(100000, 1000, MessageCodec.None)]
+        [TestCase(100000, 1000, MessageCodec.Gzip)]
+        [TestCase(1000000, 5000, MessageCodec.None)]
+        [TestCase(1000000, 5000, MessageCodec.Gzip)]
+        [TestCase(5000000, 5000, MessageCodec.None)]
+        [TestCase(5000000, 5000, MessageCodec.Gzip)]
+        [TestCase(5000000, 5000, MessageCodec.Snappy)]
         public async Task ProducerSpeed(int totalMessages, int batchSize, MessageCodec codec)
         {
             int timeoutInMs = Math.Max(100, totalMessages / 20);
@@ -110,7 +112,7 @@ namespace KafkaClient.Tests.Integration
                             stopwatch.Start();
                             var sendList = new List<Task>(missingMessages/batchSize);
                             for (var i = 0; i < missingMessages; i+=batchSize) {
-                                var sendTask = producer.SendMessagesAsync(batchSize.Repeat(x => new Message(x.ToString())), offset.TopicName, offset.PartitionId, new SendMessageConfiguration(codec: MessageCodec.CodecGzip), CancellationToken.None);
+                                var sendTask = producer.SendMessagesAsync(batchSize.Repeat(x => new Message(x.ToString())), offset.TopicName, offset.PartitionId, new SendMessageConfiguration(codec: MessageCodec.Gzip), CancellationToken.None);
                                 sendList.Add(sendTask);
                             }
                             var doneSend = Task.WhenAll(sendList.ToArray());

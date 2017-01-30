@@ -842,6 +842,18 @@
           "lib/netstandard1.0/_._": {}
         }
       },
+      "Snappy.Standard/0.2.0": {
+        "type": "package",
+        "dependencies": {
+          "NETStandard.Library": "1.6.0"
+        },
+        "compile": {
+          "lib/netstandard1.6/Snappy.Standard.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard1.6/Snappy.Standard.dll": {}
+        }
+      },
       "System.AppContext/4.1.0": {
         "type": "package",
         "dependencies": {
@@ -2673,9 +2685,10 @@
       },
       "KafkaClient/0.2.0": {
         "type": "project",
-        "framework": ".NETStandard,Version=v1.3",
+        "framework": ".NETStandard,Version=v1.6",
         "dependencies": {
           "Nito.AsyncEx.Coordination": "1.0.2",
+          "Snappy.Standard": "0.2.0",
           "System.Collections.Concurrent": "4.3.0",
           "System.Collections.Immutable": "1.2.0",
           "System.Diagnostics.TraceSource": "4.0.0",
@@ -2686,26 +2699,27 @@
           "System.Threading.Thread": "4.0.0"
         },
         "compile": {
-          "netstandard1.3/KafkaClient.dll": {}
+          "netstandard1.6/KafkaClient.dll": {}
         },
         "runtime": {
-          "netstandard1.3/KafkaClient.dll": {}
+          "netstandard1.6/KafkaClient.dll": {}
         }
       },
       "KafkaClient.Testing/1.0.0": {
         "type": "project",
-        "framework": ".NETStandard,Version=v1.3",
+        "framework": ".NETStandard,Version=v1.6",
         "dependencies": {
           "KafkaClient": "1.0.0",
           "Nito.AsyncEx.Coordination": "1.0.2",
+          "Snappy.Standard": "0.2.0",
           "System.Collections.Immutable": "1.2.0",
           "System.Net.Sockets": "4.3.0"
         },
         "compile": {
-          "netstandard1.3/KafkaClient.Testing.dll": {}
+          "netstandard1.6/KafkaClient.Testing.dll": {}
         },
         "runtime": {
-          "netstandard1.3/KafkaClient.Testing.dll": {}
+          "netstandard1.6/KafkaClient.Testing.dll": {}
         }
       }
     }
@@ -3485,6 +3499,16 @@
         "lib/netstandard1.0/_._",
         "runtime.native.System.Security.Cryptography.4.0.0.nupkg.sha512",
         "runtime.native.System.Security.Cryptography.nuspec"
+      ]
+    },
+    "Snappy.Standard/0.2.0": {
+      "sha512": "gDFlZXIen38HepJGwUlB3kZXt7sjptlnKeLIo+sqyeqKnkxtosO41HgDy4XRGIFDwEgZPob4Zcqisckv+XnZ8w==",
+      "type": "package",
+      "path": "Snappy.Standard/0.2.0",
+      "files": [
+        "Snappy.Standard.0.2.0.nupkg.sha512",
+        "Snappy.Standard.nuspec",
+        "lib/netstandard1.6/Snappy.Standard.dll"
       ]
     },
     "System.AppContext/4.1.0": {

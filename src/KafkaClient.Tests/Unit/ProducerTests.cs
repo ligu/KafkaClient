@@ -201,9 +201,9 @@ namespace KafkaClient.Tests.Unit
         }
 
         [Test]
-        [TestCase(MessageCodec.CodecGzip, MessageCodec.CodecNone, 2)]
-        [TestCase(MessageCodec.CodecGzip, MessageCodec.CodecGzip, 1)]
-        [TestCase(MessageCodec.CodecNone, MessageCodec.CodecNone, 1)]
+        [TestCase(MessageCodec.Gzip, MessageCodec.None, 2)]
+        [TestCase(MessageCodec.Gzip, MessageCodec.Gzip, 1)]
+        [TestCase(MessageCodec.None, MessageCodec.None, 1)]
         public async Task ProducesShouldSendExpectedProduceRequestForEachCodecCombination(MessageCodec codec1, MessageCodec codec2, int expected)
         {
             var routerProxy = new FakeBrokerRouter();

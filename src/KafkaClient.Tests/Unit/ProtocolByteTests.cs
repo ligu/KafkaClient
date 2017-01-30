@@ -55,12 +55,13 @@ namespace KafkaClient.Tests.Unit
             [Values("testTopic")] string topic, 
             [Values(1, 10)] int topicsPerRequest, 
             [Values(1, 5)] int totalPartitions, 
-            [Values(3)] int messagesPerSet)
+            [Values(3)] int messagesPerSet,
+            [Values(MessageCodec.None, MessageCodec.Gzip, MessageCodec.Snappy)] MessageCodec codec)
         {
             var payloads = new List<ProduceRequest.Topic>();
             for (var t = 0; t < topicsPerRequest; t++) {
                 var partition = 1 + t%totalPartitions;
-                payloads.Add(new ProduceRequest.Topic(topic + t, partition, GenerateMessages(messagesPerSet, (byte) (version >= 2 ? 1 : 0))));
+                payloads.Add(new ProduceRequest.Topic(topic + t, partition, GenerateMessages(messagesPerSet, (byte) (version >= 2 ? 1 : 0), codec), codec));
             }
             var request = new ProduceRequest(payloads, TimeSpan.FromMilliseconds(timeoutMilliseconds), acks);
 
@@ -114,7 +115,7 @@ namespace KafkaClient.Tests.Unit
             [Values("testTopic")] string topicName, 
             [Values(1, 10)] int topicsPerRequest, 
             [Values(1, 5)] int totalPartitions, 
-            [Values(MessageCodec.CodecNone, MessageCodec.CodecGzip)] MessageCodec codec, 
+            [Values(MessageCodec.None, MessageCodec.Gzip, MessageCodec.Snappy)] MessageCodec codec, 
             [Values(
                 ErrorCode.None,
                 ErrorCode.OffsetOutOfRange
@@ -838,7 +839,7 @@ namespace KafkaClient.Tests.Unit
             response.AssertCanEncodeDecodeResponse(0);
         }
 
-        private IEnumerable<Message> GenerateMessages(int count, byte version, MessageCodec codec = MessageCodec.CodecNone)
+        private IEnumerable<Message> GenerateMessages(int count, byte version, MessageCodec codec = MessageCodec.None)
         {
             var random = new Random(42);
             var messages = new List<Message>();

@@ -128,7 +128,7 @@ namespace KafkaClient
                                 break;
                             }
                         } else {
-                            foreach (var codec in new[] {MessageCodec.CodecNone, MessageCodec.CodecGzip}) {
+                            foreach (var codec in new[] {MessageCodec.None, MessageCodec.Gzip, MessageCodec.Snappy}) {
                                 var filteredBatch = _batch.Where(_ => _.Codec == codec).ToImmutableList();
                                 if (filteredBatch.IsEmpty) continue;
 

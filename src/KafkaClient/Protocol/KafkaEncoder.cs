@@ -192,13 +192,14 @@ namespace KafkaClient.Protocol
         public static int Write(this IKafkaWriter writer, IEnumerable<Message> messages, MessageCodec codec)
         {
             switch (codec) {
-                case MessageCodec.CodecNone:
+                case MessageCodec.None:
                     using (writer.MarkForLength()) {
                         writer.Write(messages);
                     }
                     return 0;
 
-                case MessageCodec.CodecGzip:
+                case MessageCodec.Gzip:
+                case MessageCodec.Snappy:
                     using (var messageWriter = new KafkaWriter()) {
                         messageWriter.Write(messages);
                         var messageSet = messageWriter.ToSegment(false);
@@ -208,11 +209,15 @@ namespace KafkaClient.Protocol
                             using (writer.MarkForLength()) { // message
                                 using (writer.MarkForCrc()) {
                                     writer.Write((byte)0) // message version
-                                          .Write((byte)MessageCodec.CodecGzip) // attribute
+                                          .Write((byte)MessageCodec.Gzip) // attribute
                                           .Write(-1); // key  -- null, so -1 length
                                     using (writer.MarkForLength()) { // value
                                         var initialPosition = writer.Position;
-                                        writer.WriteZipped(messageSet);
+                                        if (codec == MessageCodec.Gzip) {
+                                            writer.WriteGzip(messageSet);
+                                        } else {
+                                            writer.WriteSnappy(messageSet);
+                                        }
                                         var compressedMessageLength = writer.Position - initialPosition;
                                         return messageSet.Count - compressedMessageLength;
                                     }
@@ -525,7 +530,7 @@ namespace KafkaClient.Protocol
         /// <param name="reader">The reader</param>
         /// <param name="codec">The codec of the containing messageset, if any</param>
         /// <returns>Enumerable representing stream of messages decoded from byte[]</returns>
-        public static IImmutableList<Message> ReadMessages(this IKafkaReader reader, MessageCodec codec = MessageCodec.CodecNone)
+        public static IImmutableList<Message> ReadMessages(this IKafkaReader reader, MessageCodec codec = MessageCodec.None)
         {
             var expectedLength = reader.ReadInt32();
             if (!reader.HasBytes(expectedLength)) throw new BufferUnderRunException($"Message set size of {expectedLength} is not fully available (codec {codec}).");
@@ -579,15 +584,16 @@ namespace KafkaClient.Protocol
             var codec = (MessageCodec)(Message.AttributeMask & attribute);
             switch (codec)
             {
-                case MessageCodec.CodecNone: {
+                case MessageCodec.None: {
                     var value = reader.ReadBytes();
                     return ImmutableList<Message>.Empty.Add(new Message(value, key, attribute, offset, messageVersion, timestamp));
                 }
 
-                case MessageCodec.CodecGzip: {
-                    var zippedBytes = reader.ReadBytes();
-                    var unzippedBytes = zippedBytes.Unzip();
-                    using (var messageSetReader = new KafkaReader(unzippedBytes)) {
+                case MessageCodec.Gzip:
+                case MessageCodec.Snappy: {
+                    var compressed = reader.ReadBytes();
+                    var uncompressedBytes = (codec == MessageCodec.Gzip ? compressed.ReadGzip() : compressed.ReadSnappy());
+                    using (var messageSetReader = new KafkaReader(uncompressedBytes)) {
                         return messageSetReader.ReadMessages(codec);
                     }
                 }
