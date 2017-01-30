@@ -41,7 +41,7 @@ namespace KafkaClient.Connections
 
             var socket = new Socket(_endpoint.Ip.AddressFamily, SocketType.Stream, ProtocolType.Tcp)
             {
-                Blocking = false,
+                Blocking = true,
                 SendTimeout = (int)_configuration.RequestTimeout.TotalMilliseconds,
                 SendBufferSize = _configuration.WriteBufferSize,
                 ReceiveBufferSize = _configuration.ReadBufferSize,
@@ -220,7 +220,7 @@ namespace KafkaClient.Connections
                 _configuration.OnWroteBytes?.Invoke(_endpoint, bytesRemaining, bytesRemaining, timer.Elapsed);
                 _log.Verbose(() => LogEvent.Create($"Wrote {bytesRemaining} bytes (id {correlationId}) to {_endpoint}"));
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 if (_disposeToken.IsCancellationRequested) throw new ObjectDisposedException(nameof(StreamTransport));
                 throw;
