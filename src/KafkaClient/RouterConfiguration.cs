@@ -9,7 +9,7 @@ namespace KafkaClient
         {
             RefreshRetry = refreshRetry ?? Defaults.RefreshRetry();
             CacheExpiration = cacheExpiration ?? TimeSpan.FromMilliseconds(Defaults.CacheExpirationMilliseconds);
-            SendRetry = sendRetry ?? new Retry(null, Defaults.MaxSendRetryAttempts);
+            SendRetry = sendRetry ?? Retry.AtMost(Defaults.MaxSendRetryAttempts);
         }
 
         /// <inheritdoc />
@@ -50,11 +50,10 @@ namespace KafkaClient
 
             public static IRetry RefreshRetry(TimeSpan? timeout = null)
             {
-                return new BackoffRetry(
-                    timeout ?? TimeSpan.FromSeconds(RefreshTimeoutSeconds), 
-                    TimeSpan.FromMilliseconds(RefreshDelayMilliseconds), 
+                return Retry.WithBackoff(
                     MaxRefreshAttempts,
-                    true);
+                    timeout ?? TimeSpan.FromSeconds(RefreshTimeoutSeconds), 
+                    TimeSpan.FromMilliseconds(RefreshDelayMilliseconds));
             }
         }
     }

@@ -316,7 +316,7 @@ namespace KafkaClient.Common
                     if (response.IsSuccessful) return response.Value;
 
                     var retryDelay = policy.RetryDelay(attempt, timer.Elapsed);
-                    if (retryDelay.HasValue) {
+                    if (response.ShouldRetry && retryDelay.HasValue) {
                         onRetry?.Invoke(attempt, retryDelay.Value);
                         await Task.Delay(retryDelay.Value, cancellationToken).ConfigureAwait(false);
                     } else {
@@ -349,7 +349,7 @@ namespace KafkaClient.Common
                     if (response.IsSuccessful) return response.Value;
 
                     var retryDelay = policy.RetryDelay(attempt, timer.Elapsed);
-                    if (retryDelay.HasValue) {
+                    if (response.ShouldRetry && retryDelay.HasValue) {
                         onRetry?.Invoke(attempt, retryDelay.Value);
                         await Task.Delay(retryDelay.Value, cancellationToken).ConfigureAwait(false);
                     } else {

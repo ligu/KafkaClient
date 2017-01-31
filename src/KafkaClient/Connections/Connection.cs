@@ -157,7 +157,7 @@ namespace KafkaClient.Connections
                 var header = new byte[KafkaEncoder.ResponseHeaderSize];
                 AsyncItem asyncItem = null;
                 // use backoff so we don't take over the CPU when there's a failure
-                await new BackoffRetry(null, TimeSpan.FromMilliseconds(5), maxDelay: TimeSpan.FromSeconds(5)).TryAsync(
+                await Retry.Until(TimeSpan.FromSeconds(5), TimeSpan.FromMilliseconds(5)).TryAsync(
                     async attempt => {
                         var socket = await ConnectAsync(_disposeToken.Token).ConfigureAwait(false);
 
