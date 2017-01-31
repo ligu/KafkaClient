@@ -64,8 +64,22 @@ namespace KafkaClient.Tests.Unit
                 payloads.Add(new ProduceRequest.Topic(topic + t, partition, GenerateMessages(messagesPerSet, (byte) (version >= 2 ? 1 : 0), codec), codec));
             }
             var request = new ProduceRequest(payloads, TimeSpan.FromMilliseconds(timeoutMilliseconds), acks);
+            var requestWithUpdatedAttribute = new ProduceRequest(request.Topics.Select(t => new ProduceRequest.Topic(t.TopicName, t.PartitionId,
+                t.Messages.Select(m => m.Attribute == 0 ? m : new Message(m.Value, m.Key, 0, m.Offset, m.MessageVersion, m.Timestamp)))),
+                request.Timeout, request.Acks);
 
-            request.AssertCanEncodeDecodeRequest(version);
+            var context = new RequestContext(16, version, "Test-Response");
+            var data = KafkaEncoder.Encode(context, request);
+            var decoded = KafkaDecoder.Decode<ProduceRequest>(data.Skip(4), context);
+
+            // special case the comparison in the case of gzip because of the server semantics
+            if (!requestWithUpdatedAttribute.Equals(decoded)) {
+                var original = requestWithUpdatedAttribute.ToString();
+                var final = decoded.ToString();
+                Console.WriteLine($"Original\n{original}\nFinal\n{final}");
+                Assert.That(final, Is.EqualTo(original));
+                Assert.Fail("Not equal, although strings suggest they are?");
+            }
         }
 
         [Test]

@@ -472,8 +472,8 @@ namespace KafkaClient.Testing
 
                     if (partition.Messages.Count > 0) {
                         // assume all are the same codec
-                        var codec = (MessageCodec) (partition.Messages[0].Attribute & Message.AttributeMask);
-                        writer.Write(partition.Messages.Select(m => new Message(m.Value, m.Key, (byte)MessageCodec.None, m.Offset, m.MessageVersion, m.Timestamp)), codec);
+                        var codec = (MessageCodec) (partition.Messages[0].Attribute & Message.CodecMask);
+                        writer.Write(partition.Messages, codec);
                     } else {
                         using (writer.MarkForLength()) {
                             writer.Write(partition.Messages);

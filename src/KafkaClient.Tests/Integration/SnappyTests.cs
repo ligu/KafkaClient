@@ -46,6 +46,7 @@ namespace KafkaClient.Tests.Integration
         }
 
         [Test]
+        [Ignore("Current Snappy lib has issues -- ignored until they are solved or alternative is found")]
         public async Task EnsureSnappyCanDecompressMessageFromKafka()
         {
             const int numberOfMessages = 3;

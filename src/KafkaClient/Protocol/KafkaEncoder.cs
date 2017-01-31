@@ -136,7 +136,7 @@ namespace KafkaClient.Protocol
         {
             using (writer.MarkForCrc()) {
                 writer.Write(message.MessageVersion)
-                      .Write(message.Attribute);
+                      .Write((byte)0);
                 if (message.MessageVersion >= 1) {
                     writer.Write(message.Timestamp.GetValueOrDefault(DateTimeOffset.UtcNow).ToUnixTimeMilliseconds());
                 }
@@ -191,43 +191,32 @@ namespace KafkaClient.Protocol
 
         public static int Write(this IKafkaWriter writer, IEnumerable<Message> messages, MessageCodec codec)
         {
-            switch (codec) {
-                case MessageCodec.None:
-                    using (writer.MarkForLength()) {
-                        writer.Write(messages);
-                    }
-                    return 0;
+            if (codec == MessageCodec.None) {
+                using (writer.MarkForLength()) {
+                    writer.Write(messages);
+                }
+                return 0;
+            }
+            using (var messageWriter = new KafkaWriter()) {
+                messageWriter.Write(messages);
+                var messageSet = messageWriter.ToSegment(false);
 
-                case MessageCodec.Gzip:
-                case MessageCodec.Snappy:
-                    using (var messageWriter = new KafkaWriter()) {
-                        messageWriter.Write(messages);
-                        var messageSet = messageWriter.ToSegment(false);
-
-                        using (writer.MarkForLength()) { // messageset
-                            writer.Write(0L); // offset
-                            using (writer.MarkForLength()) { // message
-                                using (writer.MarkForCrc()) {
-                                    writer.Write((byte)0) // message version
-                                          .Write((byte)MessageCodec.Gzip) // attribute
-                                          .Write(-1); // key  -- null, so -1 length
-                                    using (writer.MarkForLength()) { // value
-                                        var initialPosition = writer.Position;
-                                        if (codec == MessageCodec.Gzip) {
-                                            writer.WriteGzip(messageSet);
-                                        } else {
-                                            writer.WriteSnappy(messageSet);
-                                        }
-                                        var compressedMessageLength = writer.Position - initialPosition;
-                                        return messageSet.Count - compressedMessageLength;
-                                    }
-                                }
+                using (writer.MarkForLength()) { // messageset
+                    writer.Write(0L); // offset
+                    using (writer.MarkForLength()) { // message
+                        using (writer.MarkForCrc()) {
+                            writer.Write((byte)0) // message version
+                                    .Write((byte)codec) // attribute
+                                    .Write(-1); // key  -- null, so -1 length
+                            using (writer.MarkForLength()) { // value
+                                var initialPosition = writer.Position;
+                                writer.WriteCompressed(messageSet, codec);
+                                var compressedMessageLength = writer.Position - initialPosition;
+                                return messageSet.Count - compressedMessageLength;
                             }
                         }
                     }
-
-                default:
-                    throw new NotSupportedException($"Codec type of {codec} is not supported.");
+                }
             }
         }
 
@@ -580,26 +569,15 @@ namespace KafkaClient.Protocol
                 }
             }
             var key = reader.ReadBytes();
+            var value = reader.ReadBytes();
 
-            var codec = (MessageCodec)(Message.AttributeMask & attribute);
-            switch (codec)
-            {
-                case MessageCodec.None: {
-                    var value = reader.ReadBytes();
-                    return ImmutableList<Message>.Empty.Add(new Message(value, key, attribute, offset, messageVersion, timestamp));
-                }
-
-                case MessageCodec.Gzip:
-                case MessageCodec.Snappy: {
-                    var compressed = reader.ReadBytes();
-                    var uncompressedBytes = (codec == MessageCodec.Gzip ? compressed.ReadGzip() : compressed.ReadSnappy());
-                    using (var messageSetReader = new KafkaReader(uncompressedBytes)) {
-                        return messageSetReader.ReadMessages(codec);
-                    }
-                }
-
-                default:
-                    throw new NotSupportedException($"Codec type of {codec} is not supported.");
+            var codec = (MessageCodec)(Message.CodecMask & attribute);
+            if (codec == MessageCodec.None) {
+                return ImmutableList<Message>.Empty.Add(new Message(value, key, attribute, offset, messageVersion, timestamp));
+            }
+            var uncompressedBytes = value.ToUncompressed(codec);
+            using (var messageSetReader = new KafkaReader(uncompressedBytes)) {
+                return messageSetReader.ReadMessages(codec);
             }
         }
 
