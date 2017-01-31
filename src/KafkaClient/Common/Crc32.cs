@@ -12,18 +12,18 @@ namespace KafkaClient.Common
     /// as the original code was not thread safe and did not match was was required of this driver. This
     /// class now provides a static lib which will do the simple CRC calculation required by Kafka servers.
     /// </summary>
-    public static class Crc32Provider
+    public static class Crc32
     {
         public const uint DefaultPolynomial = 0xedb88320u;
         public const uint DefaultSeed = 0xffffffffu;
         private static readonly uint[] PolynomialTable;
 
-        static Crc32Provider()
+        static Crc32()
         {
-            PolynomialTable = InitializeTable(DefaultPolynomial);
+            PolynomialTable = InitializeTable();
         }
 
-        public static uint ComputeHash(ArraySegment<byte> bytes)
+        public static uint Compute(ArraySegment<byte> bytes)
         {
             var crc = DefaultSeed;
             var max = bytes.Offset + bytes.Count;
@@ -33,22 +33,22 @@ namespace KafkaClient.Common
             return ~crc;
         }
 
-        private static uint[] InitializeTable(uint polynomial)
+        private static uint[] InitializeTable()
         {
-            var createTable = new uint[256];
+            var table = new uint[256];
             for (var i = 0; i < 256; i++) {
                 var entry = (uint)i;
                 for (var j = 0; j < 8; j++) {
                     if ((entry & 1) == 1) {
-                        entry = (entry >> 1) ^ polynomial;
+                        entry = (entry >> 1) ^ DefaultPolynomial;
                     } else {
                         entry = entry >> 1;
                     }
                 }
-                createTable[i] = entry;
+                table[i] = entry;
             }
 
-            return createTable;
+            return table;
         }
     }
 }

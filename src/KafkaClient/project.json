@@ -38,14 +38,18 @@
   "frameworks": {
     "net462": {
     },
-    "netstandard1.3": {
+    "netstandard1.6": {
+      "buildOptions": {
+        "define": [ "DOTNETSTANDARD" ]
+      },
       "dependencies": {
         "System.Diagnostics.TraceSource": "4.0.0",
         "System.Net.NameResolution": "4.0.0",
         "System.Threading.Thread": "4.0.0",
         "System.IO.Compression": "4.3.0",
         "System.Reflection.Extensions": "4.3.0",
-        "System.Collections.Concurrent": "4.3.0"
+        "System.Collections.Concurrent": "4.3.0",
+        "Snappy.Standard": "0.2.0"
       }
     }
   }

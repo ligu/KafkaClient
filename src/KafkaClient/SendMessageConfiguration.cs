@@ -5,7 +5,7 @@ namespace KafkaClient
 {
     public class SendMessageConfiguration : ISendMessageConfiguration
     {
-        public SendMessageConfiguration(short acks = Defaults.Acks, TimeSpan? ackTimeout = null, MessageCodec codec = MessageCodec.CodecNone)
+        public SendMessageConfiguration(short acks = Defaults.Acks, TimeSpan? ackTimeout = null, MessageCodec codec = MessageCodec.None)
         {
             AckTimeout = ackTimeout ?? TimeSpan.FromSeconds(Defaults.ServerAckTimeoutSeconds);
             Acks = acks;

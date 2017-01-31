@@ -441,7 +441,7 @@ namespace KafkaClient.Testing
                         .Write(partition.ErrorCode)
                         .Write(partition.Offset);
                     if (context.ApiVersion >= 2) {
-                        writer.Write(partition.Timestamp.ToUnixTimeMilliseconds() ?? -1L);
+                        writer.Write(partition.Timestamp?.ToUnixTimeMilliseconds() ?? -1L);
                     }
                 }
             }
@@ -472,8 +472,8 @@ namespace KafkaClient.Testing
 
                     if (partition.Messages.Count > 0) {
                         // assume all are the same codec
-                        var codec = (MessageCodec) (partition.Messages[0].Attribute & Message.AttributeMask);
-                        writer.Write(partition.Messages.Select(m => new Message(m.Value, m.Key, (byte)MessageCodec.CodecNone, m.Offset, m.MessageVersion, m.Timestamp)), codec);
+                        var codec = (MessageCodec) (partition.Messages[0].Attribute & Message.CodecMask);
+                        writer.Write(partition.Messages, codec);
                     } else {
                         using (writer.MarkForLength()) {
                             writer.Write(partition.Messages);
@@ -502,7 +502,7 @@ namespace KafkaClient.Testing
                         writer.Write(1)
                               .Write(partition.Offset);
                     } else {
-                        writer.Write(partition.Timestamp.ToUnixTimeMilliseconds() ?? 0L)
+                        writer.Write(partition.Timestamp?.ToUnixTimeMilliseconds() ?? 0L)
                             .Write(partition.Offset);
                     }
                 }

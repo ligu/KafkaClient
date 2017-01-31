@@ -138,9 +138,9 @@ namespace KafkaClient.Tests.Unit
             var conn = Substitute.For<IConnection>();
             router.GetGroupBrokerAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
                   .Returns(_ => Task.FromResult(new GroupBroker(_.Arg<string>(), 0, conn)));
-            router.Configuration.Returns(new RouterConfiguration(refreshRetry: new Retry(TimeSpan.FromSeconds(2), 1)));
+            router.Configuration.Returns(new RouterConfiguration(refreshRetry: new Retry(1, TimeSpan.FromSeconds(2))));
 
-            var consumer = new Consumer(router, new ConsumerConfiguration(coordinationRetry: new Retry(null, 2)), encoders: ConnectionConfiguration.Defaults.Encoders());
+            var consumer = new Consumer(router, new ConsumerConfiguration(coordinationRetry: Retry.AtMost(2)), encoders: ConnectionConfiguration.Defaults.Encoders());
             using (consumer) {
                 try {
                     await consumer.JoinConsumerGroupAsync("group", ConsumerEncoder.Protocol, new ByteTypeMetadata("mine", new ArraySegment<byte>()), CancellationToken.None);

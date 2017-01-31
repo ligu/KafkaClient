@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 
-namespace KafkaClient.Common
+namespace KafkaClient.Protocol
 {
     public interface IKafkaWriter : IDisposable
     {

@@ -40,7 +40,7 @@ namespace KafkaClient.Tests
         public static KafkaOptions Options { get; } = new KafkaOptions(
             IntegrationUri,
             new ConnectionConfiguration(ConnectionConfiguration.Defaults.ConnectionRetry(TimeSpan.FromSeconds(10)), requestTimeout: TimeSpan.FromSeconds(10)),
-            new RouterConfiguration(new Retry(null, 2)),
+            new RouterConfiguration(Retry.AtMost(2)),
             producerConfiguration: new ProducerConfiguration(stopTimeout: TimeSpan.FromSeconds(1)),
             consumerConfiguration: new ConsumerConfiguration(TimeSpan.FromMilliseconds(50), maxPartitionFetchBytes: 4096 * 8, heartbeatTimeout: TimeSpan.FromSeconds(6)),
             log: Log);

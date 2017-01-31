@@ -23,7 +23,7 @@ namespace KafkaClient
                 return partitions[paritionIndex];
             } else {
                 // use key hash
-                partitionId = Crc32Provider.ComputeHash(key) % partitions.Count;
+                partitionId = Crc32.Compute(key) % partitions.Count;
                 var partition = partitions.FirstOrDefault(x => x.PartitionId == partitionId);
                 if (partition != null) return partition;
             }
