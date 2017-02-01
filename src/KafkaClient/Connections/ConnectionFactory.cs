@@ -1,6 +1,4 @@
-﻿using System;
-using System.Threading.Tasks;
-using KafkaClient.Common;
+﻿using KafkaClient.Common;
 
 namespace KafkaClient.Connections
 {
@@ -10,12 +8,6 @@ namespace KafkaClient.Connections
         public IConnection Create(Endpoint endpoint, IConnectionConfiguration configuration, ILog log = null)
         {
             return new Connection(endpoint, configuration, log);
-        }
-
-        /// <inheritdoc />
-        public Task<Endpoint> ResolveAsync(Uri uri, ILog log)
-        {
-            return Endpoint.ResolveAsync(uri, log);
         }
     }
 }

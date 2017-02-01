@@ -17,7 +17,7 @@ namespace KafkaClient.Tests.Unit
     [TestFixture]
     public class RouterTests
     {
-        private const string TestTopic = BrokerRouterProxy.TestTopic;
+        private const string TestTopic = FakeRouter.TestTopic;
 
         [Test]
         public void BrokerRouterCanConstruct()
@@ -70,7 +70,7 @@ namespace KafkaClient.Tests.Unit
             foreach (var connection in connections) {
                 connection
                     .SendAsync(Arg.Any<IRequest<MetadataResponse>>(), Arg.Any<CancellationToken>(), Arg.Any<IRequestContext>())
-                    .Returns(_ => BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers());
+                    .Returns(_ => FakeRouter.DefaultMetadataResponse());
             }
             var factory = CreateFactory(connections);
             var router = new Router(new Endpoint(new IPEndPoint(IPAddress.Loopback, 1)), factory);
@@ -92,7 +92,7 @@ namespace KafkaClient.Tests.Unit
             foreach (var connection in connections) {
                 connection
                     .SendAsync(Arg.Any<GroupCoordinatorRequest>(), Arg.Any<CancellationToken>(), Arg.Any<IRequestContext>())
-                    .Returns(_ => BrokerRouterProxy.CreateGroupCoordinatorResponse(1));
+                    .Returns(_ => FakeRouter.DefaultGroupCoordinatorResponse(1));
             }
             var factory = CreateFactory(connections);
             var router = new Router(new Endpoint(new IPEndPoint(IPAddress.Loopback, 1)), factory);
@@ -111,7 +111,7 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public async Task GetGroupShouldThrowWhenBrokerCollectionIsEmpty()
         {
-            var routerProxy = new BrokerRouterProxy();
+            var routerProxy = new FakeRouter();
             var routerProxy1 = routerProxy.Create();
             Assert.Throws<CachedMetadataException>(() => routerProxy1.GetGroupBroker("unknown"));
         }
@@ -119,7 +119,7 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public async Task BrokerRouteShouldCycleThroughEachBrokerUntilOneIsFoundForGroup()
         {
-            var routerProxy = new BrokerRouterProxy();
+            var routerProxy = new FakeRouter();
             routerProxy.Connection1.Add(ApiKey.GroupCoordinator, _ => { throw new Exception("some error"); });
             var router = routerProxy.Create();
             await router.GetGroupBrokerAsync(TestTopic, CancellationToken.None);
@@ -132,7 +132,7 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public async Task BrokerRouteShouldThrowIfCycleCouldNotConnectToAnyServerForGroup()
         {
-            var routerProxy = new BrokerRouterProxy();
+            var routerProxy = new FakeRouter();
             routerProxy.Connection1.Add(ApiKey.GroupCoordinator, _ => { throw new Exception("some error"); });
             routerProxy.Connection2.Add(ApiKey.GroupCoordinator, _ => { throw new Exception("some error"); });
             var router = routerProxy.Create();
@@ -146,7 +146,7 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public async Task BrokerRouteShouldReturnGroupFromCache()
         {
-            var routerProxy = new BrokerRouterProxy();
+            var routerProxy = new FakeRouter();
             var router = routerProxy.Create();
             await router.GetGroupBrokerAsync(TestTopic, CancellationToken.None);
             var result1 = router.GetGroupBroker(TestTopic);
@@ -160,7 +160,7 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public async Task RefreshGroupMetadataShouldIgnoreCacheAndAlwaysCauseRequestAfterExpirationDate()
         {
-            var routerProxy = new BrokerRouterProxy();
+            var routerProxy = new FakeRouter();
             var router = routerProxy.Create();
             TimeSpan cacheExpiration = TimeSpan.FromMilliseconds(100);
             await router.RefreshGroupBrokerAsync(TestTopic, true, CancellationToken.None);
@@ -174,26 +174,24 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public async Task SimultaneouslyRefreshGroupMetadataShouldNotGetDataFromCacheOnSameRequest()
         {
-            var routerProxy = new BrokerRouterProxy();
+            var routerProxy = new FakeRouter();
             var router = routerProxy.Create();
 
-            List<Task> x = new List<Task>();
-            x.Add(router.RefreshGroupBrokerAsync(TestTopic, true, CancellationToken.None));//do not debug
-            x.Add(router.RefreshGroupBrokerAsync(TestTopic, true, CancellationToken.None));//do not debug
-            await Task.WhenAll(x.ToArray());
+            await Task.WhenAll(
+                router.RefreshGroupBrokerAsync(TestTopic, true, CancellationToken.None),
+                router.RefreshGroupBrokerAsync(TestTopic, true, CancellationToken.None));
             Assert.That(routerProxy.Connection1[ApiKey.GroupCoordinator], Is.EqualTo(2));
         }
 
         [Test]
         public async Task SimultaneouslyGetGroupMetadataShouldGetDataFromCacheOnSameRequest()
         {
-            var routerProxy = new BrokerRouterProxy();
+            var routerProxy = new FakeRouter();
             var router = routerProxy.Create();
 
-            List<Task> x = new List<Task>();
-            x.Add(router.GetGroupBrokerAsync(TestTopic, CancellationToken.None));//do not debug
-            x.Add(router.GetGroupBrokerAsync(TestTopic, CancellationToken.None));//do not debug
-            await Task.WhenAll(x.ToArray());
+            await Task.WhenAll(
+                router.GetGroupBrokerAsync(TestTopic, CancellationToken.None), 
+                router.GetGroupBrokerAsync(TestTopic, CancellationToken.None));
             Assert.That(routerProxy.Connection1[ApiKey.GroupCoordinator], Is.EqualTo(1));
         }
 
@@ -204,7 +202,7 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public async Task BrokerRouteShouldCycleThroughEachBrokerUntilOneIsFound()
         {
-            var routerProxy = new BrokerRouterProxy();
+            var routerProxy = new FakeRouter();
             routerProxy.Connection1.Add(ApiKey.Metadata, _ => { throw new Exception("some error"); });
             var router = routerProxy.Create();
             await router.GetTopicMetadataAsync(TestTopic, CancellationToken.None);
@@ -217,7 +215,7 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public async Task BrokerRouteShouldThrowIfCycleCouldNotConnectToAnyServer()
         {
-            var routerProxy = new BrokerRouterProxy();
+            var routerProxy = new FakeRouter();
             routerProxy.Connection1.Add(ApiKey.Metadata, _ => { throw new Exception("some error"); });
             routerProxy.Connection2.Add(ApiKey.Metadata, _ => { throw new Exception("some error"); });
             var router = routerProxy.Create();
@@ -231,7 +229,7 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public async Task BrokerRouteShouldReturnTopicFromCache()
         {
-            var routerProxy = new BrokerRouterProxy();
+            var routerProxy = new FakeRouter();
             var router = routerProxy.Create();
             await router.GetTopicMetadataAsync(TestTopic, CancellationToken.None);
             var result1 = router.GetTopicMetadata(TestTopic);
@@ -246,8 +244,8 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public async Task BrokerRouteShouldThrowNoLeaderElectedForPartition()
         {
-            var routerProxy = new BrokerRouterProxy {
-                MetadataResponse = BrokerRouterProxy.CreateMetadataResponseWithNotEndToElectLeader
+            var routerProxy = new FakeRouter {
+                MetadataResponse = FakeRouter.MetadataResponseWithNotEndToElectLeader
             };
 
             var router = routerProxy.Create();
@@ -258,7 +256,7 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public async Task BrokerRouteShouldReturnAllTopicsFromCache()
         {
-            var routerProxy = new BrokerRouterProxy();
+            var routerProxy = new FakeRouter();
             var router = routerProxy.Create();
             await router.RefreshTopicMetadataAsync(CancellationToken.None);
             var result1 = router.GetTopicMetadata();
@@ -274,7 +272,7 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public async Task RefreshTopicMetadataShouldIgnoreCacheAndAlwaysCauseMetadataRequestAfterExpirationDate()
         {
-            var routerProxy = new BrokerRouterProxy();
+            var routerProxy = new FakeRouter();
             var router = routerProxy.Create();
             TimeSpan cacheExpiration = TimeSpan.FromMilliseconds(100);
             await router.RefreshTopicMetadataAsync(TestTopic, true, CancellationToken.None);
@@ -288,7 +286,7 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public async Task RefreshAllTopicMetadataShouldAlwaysDoRequest()
         {
-            var routerProxy = new BrokerRouterProxy();
+            var routerProxy = new FakeRouter();
             var router = routerProxy.Create();
             await router.RefreshTopicMetadataAsync(CancellationToken.None);
             Assert.That(routerProxy.Connection1[ApiKey.Metadata], Is.EqualTo(1));
@@ -299,11 +297,11 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public async Task SelectBrokerRouteShouldChange()
         {
-            var routerProxy = new BrokerRouterProxy();
+            var routerProxy = new FakeRouter();
 
             var router = routerProxy.Create();
 
-            routerProxy.MetadataResponse = BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers;
+            routerProxy.MetadataResponse = FakeRouter.DefaultMetadataResponse;
             await router.RefreshTopicMetadataAsync(TestTopic, true, CancellationToken.None);
 
             var router1 = router.GetTopicBroker(TestTopic, 0);
@@ -311,7 +309,7 @@ namespace KafkaClient.Tests.Unit
             Assert.That(routerProxy.Connection1[ApiKey.Metadata], Is.EqualTo(1));
             await Task.Delay(routerProxy.CacheExpiration);
             await Task.Delay(1);//After cache is expired
-            routerProxy.MetadataResponse = BrokerRouterProxy.CreateMetadataResponseWithSingleBroker;
+            routerProxy.MetadataResponse = FakeRouter.MetadataResponseWithSingleBroker;
             await router.RefreshTopicMetadataAsync(TestTopic, true, CancellationToken.None);
             var router2 = router.GetTopicBroker(TestTopic, 0);
 
@@ -324,7 +322,7 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public async Task SimultaneouslyRefreshTopicMetadataShouldNotGetDataFromCacheOnSameRequest()
         {
-            var routerProxy = new BrokerRouterProxy();
+            var routerProxy = new FakeRouter();
             var router = routerProxy.Create();
 
             await Task.WhenAll(
@@ -337,7 +335,7 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public async Task SimultaneouslyGetTopicMetadataShouldGetDataFromCacheOnSameRequest()
         {
-            var routerProxy = new BrokerRouterProxy();
+            var routerProxy = new FakeRouter();
             var router = routerProxy.Create();
 
             await Task.WhenAll(
@@ -354,7 +352,7 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public async Task SelectExactPartitionShouldReturnRequestedPartition()
         {
-            var routerProxy = new BrokerRouterProxy();
+            var routerProxy = new FakeRouter();
             var router = routerProxy.Create();
             await router.GetTopicMetadataAsync(TestTopic, CancellationToken.None);
             var p0 = router.GetTopicBroker(TestTopic, 0);
@@ -367,7 +365,7 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public async Task SelectExactPartitionShouldThrowWhenPartitionDoesNotExist()
         {
-            var routerProxy = new BrokerRouterProxy();
+            var routerProxy = new FakeRouter();
             var router = routerProxy.Create();
             await router.GetTopicMetadataAsync(TestTopic, CancellationToken.None);
             Assert.Throws<CachedMetadataException>(() => router.GetTopicBroker(TestTopic, 3));
@@ -376,10 +374,10 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public async Task SelectExactPartitionShouldThrowWhenTopicsCollectionIsEmpty()
         {
-            var metadataResponse = await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers();
+            var metadataResponse = await FakeRouter.DefaultMetadataResponse();
             metadataResponse.Topics.Clear();
 
-            var routerProxy = new BrokerRouterProxy();
+            var routerProxy = new FakeRouter();
 #pragma warning disable 1998
             routerProxy.Connection1.Add(ApiKey.Metadata, async _ => metadataResponse);
 #pragma warning restore 1998
@@ -390,10 +388,10 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public async Task SelectExactPartitionShouldThrowWhenBrokerCollectionIsEmpty()
         {
-            var metadataResponse = await BrokerRouterProxy.CreateMetadataResponseWithMultipleBrokers();
+            var metadataResponse = await FakeRouter.DefaultMetadataResponse();
             metadataResponse = new MetadataResponse(topics: metadataResponse.Topics);
 
-            var routerProxy = new BrokerRouterProxy();
+            var routerProxy = new FakeRouter();
 #pragma warning disable 1998
             routerProxy.Connection1.Add(ApiKey.Metadata, async _ => metadataResponse);
 #pragma warning restore 1998

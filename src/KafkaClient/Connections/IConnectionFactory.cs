@@ -1,6 +1,4 @@
-﻿using System;
-using System.Threading.Tasks;
-using KafkaClient.Common;
+﻿using KafkaClient.Common;
 
 namespace KafkaClient.Connections
 {
@@ -14,13 +12,5 @@ namespace KafkaClient.Connections
         /// <param name="log">Logging interface used to record any log messages created by the connection.</param>
         /// <returns>IConnection initialized to connecto to the given endpoint.</returns>
         IConnection Create(Endpoint endpoint, IConnectionConfiguration configuration, ILog log = null);
-
-        /// <summary>
-        /// Resolves a generic Uri into a uniquely identifiable Endpoint.
-        /// </summary>
-        /// <param name="uri">The address to the kafka server to resolve.</param>
-        /// <param name="log">Logging interface used to record any log messages created by the Resolving process.</param>
-        /// <returns>Endpoint with resolved IP and Address.</returns>
-        Task<Endpoint> ResolveAsync(Uri uri, ILog log);
     }
 }

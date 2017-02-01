@@ -8,7 +8,7 @@ using NSubstitute;
 
 namespace KafkaClient.Tests
 {
-    public class BrokerRouterProxy
+    public class FakeRouter
     {
         public const string TestTopic = "UnitTest";
 
@@ -22,14 +22,14 @@ namespace KafkaClient.Tests
 
         public IConnectionFactory KafkaConnectionFactory { get; }
 
-        public Func<Task<MetadataResponse>> MetadataResponse = CreateMetadataResponseWithMultipleBrokers;
-        public Func<Task<GroupCoordinatorResponse>> GroupCoordinatorResponse = () => CreateGroupCoordinatorResponse(0);
+        public Func<Task<MetadataResponse>> MetadataResponse = DefaultMetadataResponse;
+        public Func<Task<GroupCoordinatorResponse>> GroupCoordinatorResponse = () => DefaultGroupCoordinatorResponse(0);
 
-        public BrokerRouterProxy()
+        public FakeRouter()
         {
             //setup mock IConnection
 #pragma warning disable 1998
-            Connection1 = new FakeConnection(new Uri("http://localhost:1")) {
+            Connection1 = new FakeConnection(new Endpoint(new IPEndPoint(IPAddress.Loopback, 1))) {
                 { ApiKey.Produce, async _ => new ProduceResponse(new ProduceResponse.Topic(TestTopic, 0, ErrorCode.None, _offset1++)) },
                 { ApiKey.Metadata, async _ => await MetadataResponse() },
                 { ApiKey.GroupCoordinator, async _ => await GroupCoordinatorResponse() },
@@ -45,7 +45,7 @@ namespace KafkaClient.Tests
                 }
             };
 
-            Connection2 = new FakeConnection(new Uri("http://localhost:2")) {
+            Connection2 = new FakeConnection(new Endpoint(new IPEndPoint(IPAddress.Loopback, 2))) {
                 { ApiKey.Produce, async _ => new ProduceResponse(new ProduceResponse.Topic(TestTopic, 1, ErrorCode.None, _offset2++)) },
                 { ApiKey.Metadata, async _ => await MetadataResponse() },
                 { ApiKey.GroupCoordinator, async _ => await GroupCoordinatorResponse() },
@@ -69,9 +69,6 @@ namespace KafkaClient.Tests
             kafkaConnectionFactory
                 .Create(Arg.Is<Endpoint>(e => e.Ip.Port == 2), Arg.Any<IConnectionConfiguration>(),Arg.Any<ILog>())
                 .Returns(Connection2);
-            kafkaConnectionFactory
-                .ResolveAsync(Arg.Any<Uri>(), Arg.Any<ILog>())
-                .Returns(_ => Task.FromResult(new Endpoint(new IPEndPoint(IPAddress.Parse("127.0.0.1"), _.Arg<Uri>().Port), _.Arg<Uri>().DnsSafeHost)));
             KafkaConnectionFactory = kafkaConnectionFactory;
         }
 
@@ -84,12 +81,12 @@ namespace KafkaClient.Tests
         }
 
 #pragma warning disable 1998
-        public static async Task<MetadataResponse> CreateMetadataResponseWithMultipleBrokers()
+        public static async Task<MetadataResponse> DefaultMetadataResponse()
         {
             return new MetadataResponse(
                 new [] {
-                    new KafkaClient.Protocol.Broker(0, "localhost", 1),
-                    new KafkaClient.Protocol.Broker(1, "localhost", 2)
+                    new Protocol.Broker(0, "localhost", 1),
+                    new Protocol.Broker(1, "localhost", 2)
                 },
                 new [] {
                     new MetadataResponse.Topic(TestTopic, 
@@ -100,16 +97,16 @@ namespace KafkaClient.Tests
                 });
         }
 
-        public static async Task<GroupCoordinatorResponse> CreateGroupCoordinatorResponse(int brokerId)
+        public static async Task<GroupCoordinatorResponse> DefaultGroupCoordinatorResponse(int brokerId)
         {
             return new GroupCoordinatorResponse(ErrorCode.None, 0, "localhost", brokerId + 1);
         }
 
-        public static async Task<MetadataResponse> CreateMetadataResponseWithSingleBroker()
+        public static async Task<MetadataResponse> MetadataResponseWithSingleBroker()
         {
             return new MetadataResponse(
                 new [] {
-                    new KafkaClient.Protocol.Broker(1, "localhost", 2)
+                    new Protocol.Broker(1, "localhost", 2)
                 },
                 new [] {
                     new MetadataResponse.Topic(TestTopic, 
@@ -120,11 +117,11 @@ namespace KafkaClient.Tests
                 });
         }
 
-        public static async Task<MetadataResponse> CreateMetadataResponseWithNotEndToElectLeader()
+        public static async Task<MetadataResponse> MetadataResponseWithNotEndToElectLeader()
         {
             return new MetadataResponse(
                 new [] {
-                    new KafkaClient.Protocol.Broker(1, "localhost", 2)
+                    new Protocol.Broker(1, "localhost", 2)
                 },
                 new [] {
                     new MetadataResponse.Topic(TestTopic, 
@@ -135,7 +132,7 @@ namespace KafkaClient.Tests
                 });
         }
 
-        public static async Task<MetadataResponse> CreateMetaResponseWithException()
+        public static async Task<MetadataResponse> MetaResponseWithException()
         {
             throw new Exception();
         }

@@ -6,15 +6,14 @@ using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Connections;
 using KafkaClient.Protocol;
-using Nito.AsyncEx;
 
 namespace KafkaClient.Tests
 {
     public class FakeConnection : IConnection, IEnumerable<KeyValuePair<ApiKey, Func<IRequestContext, Task<IResponse>>>>, IEnumerable<KeyValuePair<ApiKey, Func<IRequest, IRequestContext, Task<IResponse>>>>
     {
-        public FakeConnection(Uri address)
+        public FakeConnection(Endpoint endpoint)
         {
-            Endpoint = AsyncContext.Run(() => Endpoint.ResolveAsync(address, TestConfig.Log));
+            Endpoint = endpoint;
         }
 
         public long this[ApiKey apiKey]
