@@ -3,13 +3,14 @@ KafkaClient
 
 Native C# client for Apache Kafka with full async support.
 
-Kafka versions [0.8, 0.10.1]
+Kafka versions [0.9, 0.10.1]
 
 Status
 -----------
 
 | OS      | Status |
 |---------|--------|
+| Windows | ![Build status](https://awrobins.visualstudio.com/_apis/public/build/definitions/e49d1758-2507-4f2f-9aa1-2a659124ae7c/1/badge) |
 | Windows | [![Build status](https://ci.appveyor.com/api/projects/status/e7ej2g9q77if8mkf?svg=true)](https://ci.appveyor.com/project/AndrewRobinson/kafkanetclient) |
 | Linux   | [![Build status](https://api.travis-ci.org/awr/KafkaClient.svg?branch=master)](https://travis-ci.org/awr/KafkaClient) |
 
@@ -23,7 +24,7 @@ This library is a fork of [gigya]'s [KafkaNetClient], itself a fork of [jroland]
 
 The original .Net project is a port of the [Apache Kafka protocol]. The wire protocol portion is based on the [kafka-python] library writen by [David Arthur] and the general class layout attempts to follow a similar pattern as his project. To that end, this project builds up from the low level Connection object for handling async requests to/from the kafka server, all the way up to a higher level Producer/Consumer classes.
 
-A big thank you to [Nudge Software] for backing this project. Also thanks to [AppVeyor] for providing CI.
+A big thank you to [Nudge Software] for backing this project.
 
 Code Examples
 -----------
