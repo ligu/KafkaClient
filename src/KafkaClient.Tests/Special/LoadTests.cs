@@ -8,7 +8,7 @@ using KafkaClient.Common;
 using KafkaClient.Protocol;
 using NUnit.Framework;
 
-namespace KafkaClient.Tests.Integration
+namespace KafkaClient.Tests.Special
 {
     [TestFixture]
     [Category("Load")]

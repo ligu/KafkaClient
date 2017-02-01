@@ -9,7 +9,7 @@ using KafkaClient.Protocol;
 using KafkaClient.Testing;
 using NUnit.Framework;
 
-namespace KafkaClient.Tests.Unit
+namespace KafkaClient.Tests.Special
 {
     [TestFixture]
     [Category("Benchmark")]
