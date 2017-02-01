@@ -11,13 +11,9 @@ using KafkaClient.Protocol;
 namespace KafkaClient.Connections
 {
     /// <summary>
-    /// Connection represents the lowest level TCP stream connection to a Kafka broker.
-    /// The Send and Receive are separated into two disconnected paths and must be combined outside
-    /// this class by the correlation ID contained within the returned message.
-    ///
     /// The SendAsync function will return a Task and complete once the data has been sent to the outbound stream.
-    /// The Read response is handled by a single thread polling the stream for data and firing an OnResponseReceived
-    /// event when a response is received.
+    /// The Read response is handled by a single thread polling the stream for data and matching the sent requests by 
+    /// correlation id.
     /// </summary>
     public class Connection : IConnection
     {
