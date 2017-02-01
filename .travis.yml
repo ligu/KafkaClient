@@ -36,7 +36,7 @@ install:
   - dotnet restore -v Minimal
 
 script:
-  - dotnet build -c Release -f netstandard1.3 src/KafkaClient --no-dependencies --no-incremental --version-suffix $VERSION
+  - dotnet build -c Release -f netstandard1.6 src/KafkaClient --no-dependencies --no-incremental --version-suffix $VERSION
   - dotnet test -c Release src/KafkaClient.Tests --test=KafkaClient.Tests.Unit
 
 after_success:
