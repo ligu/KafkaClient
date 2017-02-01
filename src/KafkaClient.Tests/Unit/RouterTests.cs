@@ -161,12 +161,11 @@ namespace KafkaClient.Tests.Unit
         public async Task RefreshGroupMetadataShouldIgnoreCacheAndAlwaysCauseRequestAfterExpirationDate()
         {
             var routerProxy = new FakeRouter();
-            var router = routerProxy.Create();
-            TimeSpan cacheExpiration = TimeSpan.FromMilliseconds(100);
+            var cacheExpiration = TimeSpan.FromMilliseconds(100);
+            var router = routerProxy.Create(cacheExpiration);
             await router.RefreshGroupBrokerAsync(TestTopic, true, CancellationToken.None);
             Assert.That(routerProxy.Connection1[ApiKey.GroupCoordinator], Is.EqualTo(1));
-            await Task.Delay(routerProxy.CacheExpiration);
-            await Task.Delay(1);//After cache is expired
+            await Task.Delay(cacheExpiration.Add(TimeSpan.FromMilliseconds(1))); // After cache is expired
             await router.RefreshGroupBrokerAsync(TestTopic, true, CancellationToken.None);
             Assert.That(routerProxy.Connection1[ApiKey.GroupCoordinator], Is.EqualTo(2));
         }
@@ -187,7 +186,7 @@ namespace KafkaClient.Tests.Unit
         public async Task SimultaneouslyGetGroupMetadataShouldGetDataFromCacheOnSameRequest()
         {
             var routerProxy = new FakeRouter();
-            var router = routerProxy.Create();
+            var router = routerProxy.Create(TimeSpan.FromMinutes(1)); // long timeout to avoid race condition on lock lasting longer than cache timeout
 
             await Task.WhenAll(
                 router.GetGroupBrokerAsync(TestTopic, CancellationToken.None), 
@@ -273,12 +272,11 @@ namespace KafkaClient.Tests.Unit
         public async Task RefreshTopicMetadataShouldIgnoreCacheAndAlwaysCauseMetadataRequestAfterExpirationDate()
         {
             var routerProxy = new FakeRouter();
-            var router = routerProxy.Create();
-            TimeSpan cacheExpiration = TimeSpan.FromMilliseconds(100);
+            var cacheExpiration = TimeSpan.FromMilliseconds(100);
+            var router = routerProxy.Create(cacheExpiration);
             await router.RefreshTopicMetadataAsync(TestTopic, true, CancellationToken.None);
             Assert.That(routerProxy.Connection1[ApiKey.Metadata], Is.EqualTo(1));
-            await Task.Delay(routerProxy.CacheExpiration);
-            await Task.Delay(1);//After cache is expired
+            await Task.Delay(cacheExpiration.Add(TimeSpan.FromMilliseconds(1))); // After cache is expired
             await router.RefreshTopicMetadataAsync(TestTopic, true, CancellationToken.None);
             Assert.That(routerProxy.Connection1[ApiKey.Metadata], Is.EqualTo(2));
         }
@@ -299,7 +297,8 @@ namespace KafkaClient.Tests.Unit
         {
             var routerProxy = new FakeRouter();
 
-            var router = routerProxy.Create();
+            var cacheExpiry = TimeSpan.FromMilliseconds(1);
+            var router = routerProxy.Create(cacheExpiry);
 
             routerProxy.MetadataResponse = FakeRouter.DefaultMetadataResponse;
             await router.RefreshTopicMetadataAsync(TestTopic, true, CancellationToken.None);
@@ -307,8 +306,7 @@ namespace KafkaClient.Tests.Unit
             var router1 = router.GetTopicBroker(TestTopic, 0);
 
             Assert.That(routerProxy.Connection1[ApiKey.Metadata], Is.EqualTo(1));
-            await Task.Delay(routerProxy.CacheExpiration);
-            await Task.Delay(1);//After cache is expired
+            await Task.Delay(cacheExpiry.Add(TimeSpan.FromMilliseconds(1))); // After cache is expired
             routerProxy.MetadataResponse = FakeRouter.MetadataResponseWithSingleBroker;
             await router.RefreshTopicMetadataAsync(TestTopic, true, CancellationToken.None);
             var router2 = router.GetTopicBroker(TestTopic, 0);
@@ -336,12 +334,12 @@ namespace KafkaClient.Tests.Unit
         public async Task SimultaneouslyGetTopicMetadataShouldGetDataFromCacheOnSameRequest()
         {
             var routerProxy = new FakeRouter();
-            var router = routerProxy.Create();
+            var router = routerProxy.Create(TimeSpan.FromMinutes(1)); // long timeout to avoid race condition on lock lasting longer than cache timeout
 
             await Task.WhenAll(
                 router.GetTopicMetadataAsync(TestTopic, CancellationToken.None), 
                 router.GetTopicMetadataAsync(TestTopic, CancellationToken.None)
-                ); //do not debug
+                );
             Assert.That(routerProxy.Connection1[ApiKey.Metadata], Is.EqualTo(1));
         }
 

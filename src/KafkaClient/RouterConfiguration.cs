@@ -8,7 +8,7 @@ namespace KafkaClient
         public RouterConfiguration(IRetry refreshRetry = null, TimeSpan? cacheExpiration = null, IRetry sendRetry = null)
         {
             RefreshRetry = refreshRetry ?? Defaults.RefreshRetry();
-            CacheExpiration = cacheExpiration ?? TimeSpan.FromMilliseconds(Defaults.CacheExpirationMilliseconds);
+            CacheExpiration = cacheExpiration ?? TimeSpan.FromSeconds(Defaults.CacheExpirationSeconds);
             SendRetry = sendRetry ?? Retry.AtMost(Defaults.MaxSendRetryAttempts);
         }
 
@@ -41,7 +41,7 @@ namespace KafkaClient
             /// <summary>
             /// The default expiration length for <see cref="CacheExpiration"/>
             /// </summary>
-            public const int CacheExpirationMilliseconds = 1000;
+            public const int CacheExpirationSeconds = 1;
 
             /// <summary>
             /// The default attempts for <see cref="SendRetry"/>

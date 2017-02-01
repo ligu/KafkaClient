@@ -24,10 +24,10 @@ namespace KafkaClient.Tests.Unit
         public async Task ShouldTryToRefreshMataDataIfCanRecoverByRefreshMetadata(ErrorCode code)
         {
             var routerProxy = new FakeRouter();
-            routerProxy.CacheExpiration = new TimeSpan(10);
-            var router = routerProxy.Create();
+            var cacheExpiration = new TimeSpan(10);
+            var router = routerProxy.Create(cacheExpiration);
 
-            routerProxy.Connection1.Add(ApiKey.Fetch, FailedInFirstMessageError(code, routerProxy.CacheExpiration));
+            routerProxy.Connection1.Add(ApiKey.Fetch, FailedInFirstMessageError(code, cacheExpiration));
             routerProxy.Connection1.Add(ApiKey.Metadata, async _ => await FakeRouter.DefaultMetadataResponse());
 
             await router.SendAsync(new FetchRequest(), FakeRouter.TestTopic, PartitionId, CancellationToken.None);
@@ -43,10 +43,10 @@ namespace KafkaClient.Tests.Unit
         public async Task ShouldTryToRefreshMataDataIfOnExceptions(Type exceptionType)
         {
             var routerProxy = new FakeRouter();
-            routerProxy.CacheExpiration = TimeSpan.FromMilliseconds(10);
-            var router = routerProxy.Create();
+            var cacheExpiration = TimeSpan.FromMilliseconds(10);
+            var router = routerProxy.Create(cacheExpiration);
 
-            routerProxy.Connection1.Add(ApiKey.Fetch, FailedInFirstMessageException(exceptionType, routerProxy.CacheExpiration));
+            routerProxy.Connection1.Add(ApiKey.Fetch, FailedInFirstMessageException(exceptionType, cacheExpiration));
             routerProxy.Connection1.Add(ApiKey.Metadata, async _ => await FakeRouter.DefaultMetadataResponse());
 
             await router.SendAsync(new FetchRequest(), FakeRouter.TestTopic, PartitionId, CancellationToken.None);
@@ -60,10 +60,10 @@ namespace KafkaClient.Tests.Unit
         public async Task SendProtocolRequestShouldThrowException(Type exceptionType)
         {
             var routerProxy = new FakeRouter();
-            routerProxy.CacheExpiration = TimeSpan.FromMilliseconds(10);
-            var router = routerProxy.Create();
+            var cacheExpiration = TimeSpan.FromMilliseconds(10);
+            var router = routerProxy.Create(cacheExpiration);
 
-            routerProxy.Connection1.Add(ApiKey.Fetch, FailedInFirstMessageException(exceptionType, routerProxy.CacheExpiration));
+            routerProxy.Connection1.Add(ApiKey.Fetch, FailedInFirstMessageException(exceptionType, cacheExpiration));
             routerProxy.Connection1.Add(ApiKey.Metadata, async _ => await FakeRouter.DefaultMetadataResponse());
             Assert.ThrowsAsync(exceptionType, async () => await router.SendAsync(new FetchRequest(), FakeRouter.TestTopic, PartitionId, CancellationToken.None));
         }
@@ -80,10 +80,10 @@ namespace KafkaClient.Tests.Unit
             ErrorCode code)
         {
             var routerProxy = new FakeRouter();
-            routerProxy.CacheExpiration = TimeSpan.FromMilliseconds(10);
-            var router = routerProxy.Create();
+            var cacheExpiration = TimeSpan.FromMilliseconds(10);
+            var router = routerProxy.Create(cacheExpiration);
 
-            routerProxy.Connection1.Add(ApiKey.Fetch, FailedInFirstMessageError(code, routerProxy.CacheExpiration));
+            routerProxy.Connection1.Add(ApiKey.Fetch, FailedInFirstMessageError(code, cacheExpiration));
             routerProxy.Connection1.Add(ApiKey.Metadata, async _ => await FakeRouter.DefaultMetadataResponse());
             Assert.ThrowsAsync<RequestException>(async () => await router.SendAsync(new FetchRequest(), FakeRouter.TestTopic, PartitionId, CancellationToken.None));
         }
@@ -92,8 +92,8 @@ namespace KafkaClient.Tests.Unit
         public async Task ShouldUpdateMetadataOnce()
         {
             var routerProxy = new FakeRouter();
-            routerProxy.CacheExpiration = TimeSpan.FromMilliseconds(10);
-            var router = routerProxy.Create();
+            var cacheExpiration = TimeSpan.FromMilliseconds(10);
+            var router = routerProxy.Create(cacheExpiration);
 
             routerProxy.Connection1.Add(ApiKey.Fetch, ShouldReturnValidMessage);
             routerProxy.Connection1.Add(ApiKey.Metadata, async _ => await FakeRouter.DefaultMetadataResponse());
@@ -103,7 +103,7 @@ namespace KafkaClient.Tests.Unit
             {
                 tasks[i] = router.SendAsync(new FetchRequest(), FakeRouter.TestTopic, PartitionId, CancellationToken.None);
             }
-            await Task.Delay(routerProxy.CacheExpiration);
+            await Task.Delay(cacheExpiration);
             await Task.Delay(1);
             for (int i = 0; i < numberOfCall / 2; i++)
             {
@@ -118,8 +118,9 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public async Task ShouldRecoverUpdateMetadataForNewTopic()
         {
-            var routerProxy = new FakeRouter { CacheExpiration = TimeSpan.FromMilliseconds(100) };
-            var router = routerProxy.Create();
+            var routerProxy = new FakeRouter();
+            var cacheExpiration = TimeSpan.FromMilliseconds(100);
+            var router = routerProxy.Create(cacheExpiration);
 
             var fetchRequest = new FetchRequest();
 
@@ -151,8 +152,8 @@ namespace KafkaClient.Tests.Unit
         public async Task ShouldRecoverFromFailureByUpdateMetadataOnce() //Do not debug this test !!
         {
             var routerProxy = new FakeRouter();
-            routerProxy.CacheExpiration = TimeSpan.FromMilliseconds(1000);
-            var router = routerProxy.Create();
+            var cacheExpiration = TimeSpan.FromMilliseconds(1000);
+            var router = routerProxy.Create(cacheExpiration);
 
             int partitionId = 0;
             var fetchRequest = new FetchRequest();
@@ -168,7 +169,7 @@ namespace KafkaClient.Tests.Unit
                 {
                     if (Interlocked.Increment(ref numberOfErrorSend) == numberOfCall)
                     {
-                        await Task.Delay(routerProxy.CacheExpiration);
+                        await Task.Delay(cacheExpiration);
                         await Task.Delay(1);
                         x.TrySetResult(1);
                         log.Debug(() => LogEvent.Create("all is complete "));
@@ -220,8 +221,8 @@ namespace KafkaClient.Tests.Unit
         private async Task ShouldRecoverByUpdateMetadataOnceFullScenario(Func<IRequestContext, Task<IResponse>> fetchResponse) 
         {
             var routerProxy = new FakeRouter();
-            routerProxy.CacheExpiration = TimeSpan.FromMilliseconds(0);
-            var router = routerProxy.Create();
+            var cacheExpiration = TimeSpan.Zero;
+            var router = routerProxy.Create(cacheExpiration);
             int partitionId = 0;
             var fetchRequest = new FetchRequest();
 

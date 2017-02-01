@@ -12,8 +12,6 @@ namespace KafkaClient.Tests
     {
         public const string TestTopic = "UnitTest";
 
-        public TimeSpan CacheExpiration = TimeSpan.FromMilliseconds(1);
-
         private int _offset1;
         public FakeConnection Connection1 { get; }
 
@@ -64,20 +62,21 @@ namespace KafkaClient.Tests
 
             var kafkaConnectionFactory = Substitute.For<IConnectionFactory>();
             kafkaConnectionFactory
-                .Create(Arg.Is<Endpoint>(e => e.Ip.Port == 1), Arg.Any<IConnectionConfiguration>(),Arg.Any<ILog>())
+                .Create(Arg.Is<Endpoint>(e => e.Ip.Port == 1), Arg.Any<IConnectionConfiguration>(), Arg.Any<ILog>())
                 .Returns(Connection1);
             kafkaConnectionFactory
-                .Create(Arg.Is<Endpoint>(e => e.Ip.Port == 2), Arg.Any<IConnectionConfiguration>(),Arg.Any<ILog>())
+                .Create(Arg.Is<Endpoint>(e => e.Ip.Port == 2), Arg.Any<IConnectionConfiguration>(), Arg.Any<ILog>())
                 .Returns(Connection2);
             KafkaConnectionFactory = kafkaConnectionFactory;
         }
 
-        public IRouter Create()
+        public IRouter Create(TimeSpan? cacheExpiration = null)
         {
             return new Router(
                 new [] { new Endpoint(new IPEndPoint(IPAddress.Loopback, 1)), new Endpoint(new IPEndPoint(IPAddress.Loopback, 2)) },
                 KafkaConnectionFactory,
-                routerConfiguration: new RouterConfiguration(cacheExpiration: CacheExpiration));
+                routerConfiguration: new RouterConfiguration(cacheExpiration: cacheExpiration.GetValueOrDefault(TimeSpan.FromMilliseconds(1))),
+                log: TestConfig.Log);
         }
 
 #pragma warning disable 1998

@@ -388,6 +388,7 @@ namespace KafkaClient
             if (request == null || response == null) return;
 
             _groupBrokerCache = _groupBrokerCache.SetItem(request.GroupId, new Tuple<int, DateTimeOffset>(response.BrokerId, DateTimeOffset.UtcNow));
+            Log.Verbose(() => LogEvent.Create($"Router set broker for group {request.GroupId} to {response.BrokerId}"));
         }
 
         #endregion
@@ -533,7 +534,7 @@ namespace KafkaClient
 
         private static bool HasExpired<T>(Tuple<T, DateTimeOffset> cachedValue, TimeSpan? expiration = null)
         {
-            return expiration.HasValue && expiration.Value < DateTimeOffset.UtcNow - cachedValue.Item2;
+            return expiration.HasValue && cachedValue.Item2.Add(expiration.Value) < DateTimeOffset.UtcNow;
         }
 
         private class CachedResults<T>
