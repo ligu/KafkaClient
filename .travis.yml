@@ -9,6 +9,8 @@ addons:
     - libssl-dev
     - libunwind8
     - zlib1g
+    - libsnappy1 
+    - libsnappy-dev
   hosts:
     - kafka1: 40.112.218.47
 
@@ -19,18 +21,12 @@ env:
   - VERSION=beta
 
 before_install:
+  # set up the apt-get feed
+  - sudo sh -c 'echo "deb [arch=amd64] https://apt-mo.trafficmanager.net/repos/dotnet-release/ trusty main" > /etc/apt/sources.list.d/dotnetdev.list'
+  - sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 417A0893
+  - sudo apt-get update
   # Install .NET CLI
-  - export DOTNET_SDK_URL="https://go.microsoft.com/fwlink/?LinkID=809129";
-  - export DOTNET_INSTALL_DIR="$PWD/.dotnetcli"
-  - mkdir $DOTNET_INSTALL_DIR
-  - curl -L $DOTNET_SDK_URL -o dotnet_package
-  - tar -xvzf dotnet_package -C $DOTNET_INSTALL_DIR
-
-  # Add dotnet to PATH
-  - export PATH="$DOTNET_INSTALL_DIR:$PATH"
-
-  # Add snappy
-  - sudo apt-get install libsnappy1 libsnappy-dev
+  - sudo apt-get install dotnet-dev-1.0.0-preview2.1-003177
 
 install:
   - dotnet restore -v Minimal
