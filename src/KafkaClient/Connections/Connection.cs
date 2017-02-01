@@ -47,7 +47,9 @@ namespace KafkaClient.Connections
             _configuration = configuration ?? new ConnectionConfiguration();
             _log = log ?? TraceLog.Log;
 
-            _transport = new StreamTransport(_log, _configuration, _disposeToken, endpoint);
+            _transport = _configuration.SslConfiguration == null
+                ? (ITransport)new SocketTransport(endpoint, _configuration, _log) 
+                : new SslTransport(endpoint, _configuration, _log);
 
             // This thread will poll the receive stream for data, parse a message out
             // and trigger an event with the message payload
