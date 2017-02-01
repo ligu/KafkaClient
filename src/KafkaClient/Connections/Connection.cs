@@ -29,7 +29,7 @@ namespace KafkaClient.Connections
         public bool IsDisposed => _disposeCount > 0;
 
         private readonly Task _receiveTask;
-        protected int ActiveReaderCount;
+        private int _activeReaderCount;
         private static int _correlationIdSeed;
 
         private readonly SemaphoreSlim _versionSupportSemaphore = new SemaphoreSlim(1, 1);
@@ -59,7 +59,7 @@ namespace KafkaClient.Connections
         /// <summary>
         /// Indicates a thread is polling the stream for data to read.
         /// </summary>
-        internal bool IsReaderAlive => ActiveReaderCount >= 1;
+        internal bool IsReaderAlive => _activeReaderCount >= 1;
 
         /// <inheritdoc />
         public Endpoint Endpoint { get; }
@@ -148,11 +148,7 @@ namespace KafkaClient.Connections
         private async Task DedicatedReceiveAsync()
         {
             // only allow one reader to execute, dump out all other requests
-            if (Interlocked.Increment(ref ActiveReaderCount) > 1)
-            {
-                Interlocked.Decrement(ref ActiveReaderCount);
-                return;
-            }
+            if (Interlocked.Increment(ref _activeReaderCount) > 1) return;
 
             try {
                 var buffer = new byte[_configuration.ReadBufferSize];
@@ -212,7 +208,7 @@ namespace KafkaClient.Connections
                 _log.Debug(() => LogEvent.Create(ex));
             } finally {
                 await DisposeAsync().ConfigureAwait(false);
-                Interlocked.Decrement(ref ActiveReaderCount);
+                Interlocked.Decrement(ref _activeReaderCount);
                 _log.Info(() => LogEvent.Create($"Stopped receiving from {Endpoint}"));
             }
         }
