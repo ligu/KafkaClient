@@ -96,7 +96,11 @@ namespace KafkaClient.Testing
             _disposeToken?.Cancel();
 
             using (_disposeToken) {
-                _connectTask?.Wait(TimeSpan.FromSeconds(1));
+                try {
+                    _connectTask?.Wait(TimeSpan.FromSeconds(1));
+                } catch (Exception ex) {
+                    _log.Warn(() => LogEvent.Create(ex));
+                }
                 _listener.Stop();
             }
         }
