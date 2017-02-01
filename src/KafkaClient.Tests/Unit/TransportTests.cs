@@ -84,7 +84,7 @@ namespace KafkaClient.Tests.Unit
                     using (transport) { }
                     transport = null;
 
-                    await taskResult.ThrowIfCancellationRequested(new TimedCancellation(CancellationToken.None, TimeSpan.FromSeconds(3)));
+                    await taskResult.CancelAfter();
                     Assert.Fail("Expected ObjectDisposedException to be thrown");
                 } catch (ObjectDisposedException) {
                     // expected

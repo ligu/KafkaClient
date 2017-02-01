@@ -105,5 +105,19 @@ namespace KafkaClient.Tests
 
             return Encoding.UTF8.GetString(value.Array, value.Offset, value.Count);
         }
+
+        public static Task<T> CancelAfter<T>(this Task<T> task, int timeoutMilliseconds = 3000)
+        {
+            return CancelAfter(task, TimeSpan.FromMilliseconds(timeoutMilliseconds));
+        }
+
+        public static async Task<T> CancelAfter<T>(this Task<T> task, TimeSpan timeout)
+        {
+            var delay = Task.Delay(timeout);
+            if (task != await Task.WhenAny(task, delay).ConfigureAwait(false)) {
+                throw new OperationCanceledException();
+            }
+            return await task.ConfigureAwait(false);
+        }
     }
 }
