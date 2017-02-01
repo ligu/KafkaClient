@@ -1,8 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Threading;
@@ -68,7 +66,7 @@ namespace KafkaClient.Connections
                 async () => {
                     if (_socket?.Connected ?? cancellationToken.IsCancellationRequested) return;
                     var socket = _socket ?? CreateSocket();
-                    _socket = await _configuration.ConnectionRetry.AttemptAsync(
+                    _socket = await _configuration.ConnectionRetry.TryAsync(
                         //action
                         async (attempt, timer) =>
                         {

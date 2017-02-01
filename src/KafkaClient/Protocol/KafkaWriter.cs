@@ -1,9 +1,9 @@
 using System;
 using System.IO;
 using System.Text;
-using KafkaClient.Protocol;
+using KafkaClient.Common;
 
-namespace KafkaClient.Common
+namespace KafkaClient.Protocol
 {
     public class KafkaWriter : IKafkaWriter
     {
@@ -120,7 +120,7 @@ namespace KafkaClient.Common
                 throw new NotSupportedException();
             }
 
-            crc = Crc32Provider.ComputeHash(segment.Skip(computeFrom));
+            crc = Crc32.Compute(segment.Skip(computeFrom));
             _stream.Position = offset;
             Write(crc);            
         }

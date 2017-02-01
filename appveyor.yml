@@ -30,7 +30,7 @@ build_script:
   - cmd: dotnet pack -c Release src\KafkaClient --version-suffix beta -o artifacts 
 
 test_script:
-  - cmd: dotnet test -c Release src\KafkaClient.Tests --where "cat != Load && cat != Unit" --labels=Off --noheader --result=nunit3-results.xml;format=nunit3
+  - cmd: dotnet test -c Release src\KafkaClient.Tests --where "cat !~ .*" --noheader --result=nunit3-results.xml;format=nunit3
   - ps: $(New-Object 'System.Net.WebClient').UploadFile("https://ci.appveyor.com/api/testresults/nunit3/$($env:APPVEYOR_JOB_ID)", (Resolve-Path .\nunit3-results.xml))
 
 artifacts:

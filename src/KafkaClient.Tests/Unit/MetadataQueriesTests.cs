@@ -13,28 +13,29 @@ namespace KafkaClient.Tests.Unit
         #region GetTopicOffset Tests...
 
         [Test]
-        public void GetTopicOffsetShouldQueryEachBroker()
+        public async Task GetTopicOffsetShouldQueryEachBroker()
         {
             var routerProxy = new BrokerRouterProxy();
             var router = routerProxy.Create();
 
-            var result = router.GetTopicOffsetsAsync(BrokerRouterProxy.TestTopic, 2, -1, CancellationToken.None).Result;
+            await router.GetTopicOffsetsAsync(BrokerRouterProxy.TestTopic, 2, -1, CancellationToken.None);
             Assert.That(routerProxy.Connection1[ApiKey.Offset], Is.EqualTo(1));
             Assert.That(routerProxy.Connection2[ApiKey.Offset], Is.EqualTo(1));
         }
 
         [Test]
-        public void GetTopicOffsetShouldThrowAnyException()
+        public async Task GetTopicOffsetShouldThrowAnyException()
         {
             var routerProxy = new BrokerRouterProxy();
             routerProxy.Connection1.Add(ApiKey.Offset, _ => { throw new Exception("test 99"); });
             var router = routerProxy.Create();
 
-            router.GetTopicOffsetsAsync(BrokerRouterProxy.TestTopic, 2,  -1, CancellationToken.None).ContinueWith(t =>
-            {
-                Assert.That(t.IsFaulted, Is.True);
-                Assert.That(t.Exception.Flatten().ToString(), Does.Contain("test 99"));
-            }).Wait();
+            try {
+                await router.GetTopicOffsetsAsync(BrokerRouterProxy.TestTopic, 2,  -1, CancellationToken.None);
+                Assert.Fail("Should have thrown exception");
+            } catch (Exception ex) {
+                Assert.That(ex.Message, Does.Contain("test 99"));
+            }
         }
 
         #endregion GetTopicOffset Tests...

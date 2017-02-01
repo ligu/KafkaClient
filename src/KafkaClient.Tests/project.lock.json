@@ -2,7 +2,7 @@
   "locked": false,
   "version": 2,
   "targets": {
-    ".NETCoreApp,Version=v1.0": {
+    ".NETCoreApp,Version=v1.1": {
       "Castle.Core/4.0.0-beta001": {
         "type": "package",
         "dependencies": {
@@ -972,6 +972,18 @@
             "assetType": "native",
             "rid": "ubuntu.16.10-x64"
           }
+        }
+      },
+      "Snappy.Standard/0.2.0": {
+        "type": "package",
+        "dependencies": {
+          "NETStandard.Library": "1.6.0"
+        },
+        "compile": {
+          "lib/netstandard1.6/Snappy.Standard.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard1.6/Snappy.Standard.dll": {}
         }
       },
       "System.AppContext/4.1.0": {
@@ -2114,7 +2126,7 @@
           "System.Runtime.Handles": "4.3.0"
         },
         "compile": {
-          "ref/netstandard1.5/System.Runtime.InteropServices.dll": {}
+          "ref/netcoreapp1.1/System.Runtime.InteropServices.dll": {}
         }
       },
       "System.Runtime.InteropServices.RuntimeInformation/4.0.0": {
@@ -2810,9 +2822,10 @@
       },
       "KafkaClient/0.2.0": {
         "type": "project",
-        "framework": ".NETStandard,Version=v1.3",
+        "framework": ".NETStandard,Version=v1.6",
         "dependencies": {
           "Nito.AsyncEx.Coordination": "1.0.2",
+          "Snappy.Standard": "0.2.0",
           "System.Collections.Concurrent": "4.3.0",
           "System.Collections.Immutable": "1.2.0",
           "System.Diagnostics.TraceSource": "4.0.0",
@@ -2824,26 +2837,27 @@
           "System.Threading.Thread": "4.0.0"
         },
         "compile": {
-          "netstandard1.3/KafkaClient.dll": {}
+          "netstandard1.6/KafkaClient.dll": {}
         },
         "runtime": {
-          "netstandard1.3/KafkaClient.dll": {}
+          "netstandard1.6/KafkaClient.dll": {}
         }
       },
       "KafkaClient.Testing/1.0.0": {
         "type": "project",
-        "framework": ".NETStandard,Version=v1.3",
+        "framework": ".NETStandard,Version=v1.6",
         "dependencies": {
-          "KafkaClient": "1.0.0",
+          "KafkaClient": "(, )",
           "Nito.AsyncEx.Coordination": "1.0.2",
+          "Snappy.Standard": "0.2.0",
           "System.Collections.Immutable": "1.2.0",
           "System.Net.Sockets": "4.3.0"
         },
         "compile": {
-          "netstandard1.3/KafkaClient.Testing.dll": {}
+          "netstandard1.6/KafkaClient.Testing.dll": {}
         },
         "runtime": {
-          "netstandard1.3/KafkaClient.Testing.dll": {}
+          "netstandard1.6/KafkaClient.Testing.dll": {}
         }
       }
     }
@@ -3779,6 +3793,16 @@
         "runtime.ubuntu.16.10-x64.runtime.native.System.Security.Cryptography.OpenSsl.4.3.0.nupkg.sha512",
         "runtime.ubuntu.16.10-x64.runtime.native.System.Security.Cryptography.OpenSsl.nuspec",
         "runtimes/ubuntu.16.10-x64/native/System.Security.Cryptography.Native.OpenSsl.so"
+      ]
+    },
+    "Snappy.Standard/0.2.0": {
+      "sha512": "gDFlZXIen38HepJGwUlB3kZXt7sjptlnKeLIo+sqyeqKnkxtosO41HgDy4XRGIFDwEgZPob4Zcqisckv+XnZ8w==",
+      "type": "package",
+      "path": "Snappy.Standard/0.2.0",
+      "files": [
+        "Snappy.Standard.0.2.0.nupkg.sha512",
+        "Snappy.Standard.nuspec",
+        "lib/netstandard1.6/Snappy.Standard.dll"
       ]
     },
     "System.AppContext/4.1.0": {
@@ -8314,7 +8338,7 @@
       "System.Threading.Tasks.Parallel >= 4.0.1",
       "dotnet-test-nunit >= 3.4.0-beta-2"
     ],
-    ".NETCoreApp,Version=v1.0": [
+    ".NETCoreApp,Version=v1.1": [
       "Microsoft.NETCore.App >= 1.0.0-*",
       "System.Collections.Concurrent >= 4.3.0",
       "System.Diagnostics.TraceSource >= 4.0.0",

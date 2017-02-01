@@ -327,10 +327,10 @@ namespace KafkaClient.Tests.Unit
             var routerProxy = new BrokerRouterProxy();
             var router = routerProxy.Create();
 
-            List<Task> x = new List<Task>();
-            x.Add(router.RefreshTopicMetadataAsync(TestTopic, true, CancellationToken.None));//do not debug
-            x.Add(router.RefreshTopicMetadataAsync(TestTopic, true, CancellationToken.None));//do not debug
-            await Task.WhenAll(x.ToArray());
+            await Task.WhenAll(
+                router.RefreshTopicMetadataAsync(TestTopic, true, CancellationToken.None), 
+                router.RefreshTopicMetadataAsync(TestTopic, true, CancellationToken.None)
+                ); //do not debug
             Assert.That(routerProxy.Connection1[ApiKey.Metadata], Is.EqualTo(2));
         }
 
@@ -340,10 +340,10 @@ namespace KafkaClient.Tests.Unit
             var routerProxy = new BrokerRouterProxy();
             var router = routerProxy.Create();
 
-            List<Task> x = new List<Task>();
-            x.Add(router.GetTopicMetadataAsync(TestTopic, CancellationToken.None));//do not debug
-            x.Add(router.GetTopicMetadataAsync(TestTopic, CancellationToken.None));//do not debug
-            await Task.WhenAll(x.ToArray());
+            await Task.WhenAll(
+                router.GetTopicMetadataAsync(TestTopic, CancellationToken.None), 
+                router.GetTopicMetadataAsync(TestTopic, CancellationToken.None)
+                ); //do not debug
             Assert.That(routerProxy.Connection1[ApiKey.Metadata], Is.EqualTo(1));
         }
 

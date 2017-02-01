@@ -55,16 +55,31 @@ namespace KafkaClient.Tests.Unit
             [Values("testTopic")] string topic, 
             [Values(1, 10)] int topicsPerRequest, 
             [Values(1, 5)] int totalPartitions, 
-            [Values(3)] int messagesPerSet)
+            [Values(3)] int messagesPerSet,
+            [Values(MessageCodec.None, MessageCodec.Gzip, MessageCodec.Snappy)] MessageCodec codec)
         {
             var payloads = new List<ProduceRequest.Topic>();
             for (var t = 0; t < topicsPerRequest; t++) {
                 var partition = 1 + t%totalPartitions;
-                payloads.Add(new ProduceRequest.Topic(topic + t, partition, GenerateMessages(messagesPerSet, (byte) (version >= 2 ? 1 : 0))));
+                payloads.Add(new ProduceRequest.Topic(topic + t, partition, GenerateMessages(messagesPerSet, (byte) (version >= 2 ? 1 : 0), codec), codec));
             }
             var request = new ProduceRequest(payloads, TimeSpan.FromMilliseconds(timeoutMilliseconds), acks);
+            var requestWithUpdatedAttribute = new ProduceRequest(request.Topics.Select(t => new ProduceRequest.Topic(t.TopicName, t.PartitionId,
+                t.Messages.Select(m => m.Attribute == 0 ? m : new Message(m.Value, m.Key, 0, m.Offset, m.MessageVersion, m.Timestamp)))),
+                request.Timeout, request.Acks);
 
-            request.AssertCanEncodeDecodeRequest(version);
+            var context = new RequestContext(16, version, "Test-Response");
+            var data = KafkaEncoder.Encode(context, request);
+            var decoded = KafkaDecoder.Decode<ProduceRequest>(data.Skip(4), context);
+
+            // special case the comparison in the case of gzip because of the server semantics
+            if (!requestWithUpdatedAttribute.Equals(decoded)) {
+                var original = requestWithUpdatedAttribute.ToString();
+                var final = decoded.ToString();
+                Console.WriteLine($"Original\n{original}\nFinal\n{final}");
+                Assert.That(final, Is.EqualTo(original));
+                Assert.Fail("Not equal, although strings suggest they are?");
+            }
         }
 
         [Test]
@@ -114,7 +129,7 @@ namespace KafkaClient.Tests.Unit
             [Values("testTopic")] string topicName, 
             [Values(1, 10)] int topicsPerRequest, 
             [Values(1, 5)] int totalPartitions, 
-            [Values(MessageCodec.CodecNone, MessageCodec.CodecGzip)] MessageCodec codec, 
+            [Values(MessageCodec.None, MessageCodec.Gzip, MessageCodec.Snappy)] MessageCodec codec, 
             [Values(
                 ErrorCode.None,
                 ErrorCode.OffsetOutOfRange
@@ -838,7 +853,7 @@ namespace KafkaClient.Tests.Unit
             response.AssertCanEncodeDecodeResponse(0);
         }
 
-        private IEnumerable<Message> GenerateMessages(int count, byte version, MessageCodec codec = MessageCodec.CodecNone)
+        private IEnumerable<Message> GenerateMessages(int count, byte version, MessageCodec codec = MessageCodec.None)
         {
             var random = new Random(42);
             var messages = new List<Message>();

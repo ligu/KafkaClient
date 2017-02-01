@@ -45,8 +45,7 @@ namespace KafkaClient.Tests
 
         public static void Write(LogLevel level, string text)
         {
-            //Console.WriteLine(text); // remove this once resharper actually supports the progress write below
-            TestContext.Out.WriteLine(text);
+            Console.WriteLine(text); // remove this once resharper actually supports the progress write below
         }
     }
 }

@@ -1,8 +1,9 @@
 ﻿using System;
 using System.IO;
 using System.Text;
+using KafkaClient.Common;
 
-namespace KafkaClient.Common
+namespace KafkaClient.Protocol
 {
     /// <summary>
     /// A BinaryReader that is BigEndian aware binary reader.
@@ -107,7 +108,7 @@ namespace KafkaClient.Common
             if (count < 0) throw new EndOfStreamException();
 
             var segment = ToSegment(count, false);
-            return Crc32Provider.ComputeHash(segment);
+            return Crc32.Compute(segment);
         }
 
         private static readonly ArraySegment<byte> EmptySegment = new ArraySegment<byte>(new byte[0]);

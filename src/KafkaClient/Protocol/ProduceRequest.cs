@@ -110,7 +110,7 @@ namespace KafkaClient.Protocol
         {
             public override string ToString() => $"{{TopicName:{TopicName},PartitionId:{PartitionId},Codec:{Codec},Messages:{Messages.Count}}}";
 
-            public Topic(string topicName, int partitionId, IEnumerable<Message> messages, MessageCodec codec = MessageCodec.CodecNone) 
+            public Topic(string topicName, int partitionId, IEnumerable<Message> messages, MessageCodec codec = MessageCodec.None) 
                 : base(topicName, partitionId)
             {
                 Codec = codec;

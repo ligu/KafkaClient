@@ -30,16 +30,20 @@ namespace KafkaClient
 
         private ImmutableDictionary<Endpoint, IImmutableList<IConnection>> _connections;
         private ImmutableDictionary<int, Endpoint> _brokerEndpoints = ImmutableDictionary<int, Endpoint>.Empty;
+        private readonly SemaphoreSlim _connectionSemaphore = new SemaphoreSlim(1, 1);
+
         private ImmutableDictionary<string, Tuple<MetadataResponse.Topic, DateTimeOffset>> _topicCache = ImmutableDictionary<string, Tuple<MetadataResponse.Topic, DateTimeOffset>>.Empty;
+        private readonly SemaphoreSlim _topicSemaphore = new SemaphoreSlim(1, 1);
+
         private ImmutableDictionary<string, Tuple<int, DateTimeOffset>> _groupBrokerCache = ImmutableDictionary<string, Tuple<int, DateTimeOffset>>.Empty;
+        private readonly SemaphoreSlim _groupBrokerSemaphore = new SemaphoreSlim(1, 1);
+
         private ImmutableDictionary<string, Tuple<DescribeGroupsResponse.Group, DateTimeOffset>> _groupCache = ImmutableDictionary<string, Tuple<DescribeGroupsResponse.Group, DateTimeOffset>>.Empty;
+        private readonly SemaphoreSlim _groupSemaphore = new SemaphoreSlim(1, 1);
 
         private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, IConnection>> _memberConnectionAssignment = new ConcurrentDictionary<string, ConcurrentDictionary<string, IConnection>>();
-
         private readonly ConcurrentDictionary<string, Tuple<IImmutableList<SyncGroupRequest.GroupAssignment>, int>> _memberAssignmentCache = new ConcurrentDictionary<string, Tuple<IImmutableList<SyncGroupRequest.GroupAssignment>, int>>();
 
-        private readonly SemaphoreSlim _connectionSemaphore = new SemaphoreSlim(1, 1);
-        private readonly SemaphoreSlim _groupSemaphore = new SemaphoreSlim(1, 1);
 
         public static Task<Router> CreateAsync(
             Uri serverUri, IConnectionFactory connectionFactory = null,
@@ -226,7 +230,7 @@ namespace KafkaClient
 
         private async Task<IImmutableList<MetadataResponse.Topic>> UpdateTopicMetadataFromServerAsync(IEnumerable<string> topicNames, bool ignoreCache, CancellationToken cancellationToken)
         {
-            return await _connectionSemaphore.LockAsync(
+            return await _topicSemaphore.LockAsync(
                 async () => {
                     var cachedResults = new CachedResults<MetadataResponse.Topic>(misses: topicNames);
                     if (!ignoreCache) {
@@ -247,7 +251,7 @@ namespace KafkaClient
                     }
 
                     if (response != null) {
-                        await UpdateConnectionCacheAsync(response.Brokers);
+                        await UpdateConnectionCacheAsync(response.Brokers, cancellationToken);
                     }
                     UpdateTopicCache(response);
 
@@ -354,7 +358,7 @@ namespace KafkaClient
 
         private async Task<int> UpdateGroupBrokersFromServerAsync(string groupId, bool ignoreCache, CancellationToken cancellationToken)
         {
-            return await _connectionSemaphore.LockAsync(
+            return await _groupBrokerSemaphore.LockAsync(
                 async () => {
                     if (!ignoreCache) {
                         var brokerId = TryGetCachedGroupBrokerId(groupId, Configuration.CacheExpiration);
@@ -367,7 +371,7 @@ namespace KafkaClient
                         var response = await this.SendToAnyAsync(request, cancellationToken).ConfigureAwait(false);
 
                         if (response != null) {
-                            await UpdateConnectionCacheAsync(new [] { response });
+                            await UpdateConnectionCacheAsync(new [] { response }, cancellationToken);
                         }
                         UpdateGroupBrokerCache(request, response);
 
@@ -644,41 +648,43 @@ namespace KafkaClient
                 }, cancellationToken);
         }
 
-        private async Task UpdateConnectionCacheAsync(IEnumerable<Protocol.Broker> brokers)
+        private async Task UpdateConnectionCacheAsync(IEnumerable<Protocol.Broker> brokers, CancellationToken cancellationToken)
         {
-            var connections = _connections;
-            var brokerEndpoints = _brokerEndpoints;
-            try {
-                var hasNewBrokers = false;
-                foreach (var server in brokers) {
-                    Endpoint existing;
-                    if (brokerEndpoints.TryGetValue(server.BrokerId, out existing) 
-                        && existing.Host == server.Host 
-                        && existing.Ip.Port == server.Port)
-                    {
-                        continue; // same as we already have
+            await _connectionSemaphore.LockAsync(async () => {
+                var connections = _connections;
+                var brokerEndpoints = _brokerEndpoints;
+                try {
+                    var hasNewBrokers = false;
+                    foreach (var server in brokers) {
+                        Endpoint existing;
+                        if (brokerEndpoints.TryGetValue(server.BrokerId, out existing) 
+                            && existing.Host == server.Host 
+                            && existing.Ip.Port == server.Port)
+                        {
+                            continue; // same as we already have
+                        }
+
+                        var endpoint = await Endpoint.ResolveAsync(new Uri($"http://{server.Host}:{server.Port}"), Log);
+                        brokerEndpoints = brokerEndpoints.SetItem(server.BrokerId, endpoint);
+                        hasNewBrokers = true;
                     }
 
-                    var endpoint = await Endpoint.ResolveAsync(new Uri($"http://{server.Host}:{server.Port}"), Log);
-                    brokerEndpoints = brokerEndpoints.SetItem(server.BrokerId, endpoint);
-                    hasNewBrokers = true;
-                }
+                    if (!hasNewBrokers) return;
 
-                if (!hasNewBrokers) return;
-
-                // only keep if they're alive
-                connections = connections.SelectMany(pair => pair.Value.Where(connection => !connection.IsDisposed))
-                                         .GroupBy(connection => connection.Endpoint)
-                                         .ToImmutableDictionary(group => group.Key, group => (IImmutableList<IConnection>)group.ToImmutableList());
-                foreach (var endpoint in brokerEndpoints.Values) {
-                    if (!connections.ContainsKey(endpoint)) {
-                        connections = connections.SetItem(endpoint, ImmutableList<IConnection>.Empty.Add(_connectionFactory.Create(endpoint, ConnectionConfiguration, Log)));
+                    // only keep if they're alive
+                    connections = connections.SelectMany(pair => pair.Value.Where(connection => !connection.IsDisposed))
+                                             .GroupBy(connection => connection.Endpoint)
+                                             .ToImmutableDictionary(group => group.Key, group => (IImmutableList<IConnection>)group.ToImmutableList());
+                    foreach (var endpoint in brokerEndpoints.Values) {
+                        if (!connections.ContainsKey(endpoint)) {
+                            connections = connections.SetItem(endpoint, ImmutableList<IConnection>.Empty.Add(_connectionFactory.Create(endpoint, ConnectionConfiguration, Log)));
+                        }
                     }
+                } finally {
+                    _connections = connections.ToImmutableDictionary(pair => pair.Key, pair => (IImmutableList<IConnection>)pair.Value.ToImmutableList());
+                    _brokerEndpoints = brokerEndpoints;
                 }
-            } finally {
-                _connections = connections.ToImmutableDictionary(pair => pair.Key, pair => (IImmutableList<IConnection>)pair.Value.ToImmutableList());
-                _brokerEndpoints = brokerEndpoints;
-            }
+            }, cancellationToken);
         }
 
         private async Task DisposeConnectionsAsync(IEnumerable<IConnection> connections)
@@ -703,6 +709,8 @@ namespace KafkaClient
                 await DisposeConnectionsAsync(_connections.SelectMany(pair => pair.Value));
                 _connectionSemaphore.Dispose();
                 _groupSemaphore.Dispose();
+                _groupBrokerSemaphore.Dispose();
+                _topicSemaphore.Dispose();
             } finally {
                 _disposePromise.TrySetResult(true);
             }

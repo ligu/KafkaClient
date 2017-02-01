@@ -29,6 +29,9 @@ before_install:
   # Add dotnet to PATH
   - export PATH="$DOTNET_INSTALL_DIR:$PATH"
 
+  # Add snappy
+  - sudo apt-get install libsnappy1 libsnappy-dev
+
 install:
   - dotnet restore -v Minimal
 

@@ -10,6 +10,15 @@ namespace KafkaClient.Protocol
     ///   Crc => int32
     ///   MagicByte => int8
     ///   Attributes => int8
+    ///    bit 0 ~ 2 : Compression codec.
+    ///      0 : no compression
+    ///      1 : gzip
+    ///      2 : snappy
+    ///      3 : lz4
+    ///    bit 3 : Timestamp type
+    ///      0 : create time
+    ///      1 : log append time
+    ///    bit 4 ~ 7 : reserved
     ///   Timestamp => int64
     ///   Key => bytes
     ///   Value => bytes
@@ -27,7 +36,7 @@ namespace KafkaClient.Protocol
         {
             Offset = offset;
             MessageVersion = version;
-            Attribute = (byte)(attribute & AttributeMask);
+            Attribute = (byte)(attribute & CodecMask);
             Key = key;
             Value = value;
             Timestamp = timestamp;
@@ -75,7 +84,7 @@ namespace KafkaClient.Protocol
         /// <summary>
         ///  The lowest 2 bits contain the compression codec used for the message. The other bits should be set to 0.
         /// </summary>
-        public const byte AttributeMask = 0x3;
+        public const byte CodecMask = 0x3;
 
         /// <summary>
         /// Key value used for routing message to partitions.
@@ -110,7 +119,7 @@ namespace KafkaClient.Protocol
                 && Attribute == other.Attribute 
                 && Key.HasEqualElementsInOrder(other.Key)
                 && Value.HasEqualElementsInOrder(other.Value) 
-                && Timestamp.ToUnixTimeMilliseconds() == other.Timestamp.ToUnixTimeMilliseconds();
+                && Timestamp?.ToUnixTimeMilliseconds() == other.Timestamp?.ToUnixTimeMilliseconds();
         }
 
         /// <inheritdoc />

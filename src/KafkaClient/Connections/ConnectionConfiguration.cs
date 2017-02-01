@@ -236,10 +236,10 @@ namespace KafkaClient.Connections
 
             public static IRetry ConnectionRetry(TimeSpan? timeout = null)
             {
-                return new BackoffRetry(
-                    timeout ?? TimeSpan.FromMinutes(ConnectingTimeoutMinutes),
-                    TimeSpan.FromMilliseconds(ConnectingDelayMilliseconds), 
-                    MaxConnectionAttempts);
+                return Retry.WithBackoff(
+                    MaxConnectionAttempts, 
+                    timeout ?? TimeSpan.FromMinutes(ConnectingTimeoutMinutes), 
+                    TimeSpan.FromMilliseconds(ConnectingDelayMilliseconds));
             }
 
             public static IImmutableDictionary<string, IMembershipEncoder> Encoders(params IMembershipEncoder[] encoders)

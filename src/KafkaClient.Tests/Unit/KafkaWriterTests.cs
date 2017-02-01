@@ -1,6 +1,7 @@
 ﻿using System.IO;
 using System.Linq;
 using KafkaClient.Common;
+using KafkaClient.Protocol;
 using NUnit.Framework;
 
 namespace KafkaClient.Tests.Unit

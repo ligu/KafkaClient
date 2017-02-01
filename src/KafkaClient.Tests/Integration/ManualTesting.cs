@@ -9,6 +9,7 @@ using NUnit.Framework;
 namespace KafkaClient.Tests.Integration
 {
     [TestFixture]
+    [Category("Manual")]
     internal class ManualTesting
     {
         /// <summary>
@@ -16,9 +17,9 @@ namespace KafkaClient.Tests.Integration
         /// </summary>
 
         [Test]
-        [Ignore("Disable auto topic create in our server")]
         public async Task NewlyCreatedTopicShouldRetryUntilBrokerIsAssigned()
         {
+            // Disable auto topic create in our server
             var expectedTopic = Guid.NewGuid().ToString();
             var router = await TestConfig.Options.CreateRouterAsync();
             var response = router.GetMetadataAsync(new MetadataRequest(expectedTopic), CancellationToken.None);
@@ -30,7 +31,6 @@ namespace KafkaClient.Tests.Integration
         }
 
         [Test]
-        [Ignore("manual test")]
         public async Task ManualConsumerFailure()
         {
             var topicName = "TestTopicIssue13-3R-1P";

@@ -3,7 +3,6 @@ using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.IO;
-using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Common;
@@ -128,7 +127,7 @@ namespace KafkaClient.Connections
             if (versionSupport != null) return versionSupport.GetVersion(apiKey).GetValueOrDefault();
 
             return await _versionSupportSemaphore.LockAsync(
-                () => _configuration.ConnectionRetry.AttemptAsync(
+                () => _configuration.ConnectionRetry.TryAsync(
                     async (attempt, timer) => {
                         var response = await SendAsync(new ApiVersionsRequest(), cancellationToken, new RequestContext(version: 0)).ConfigureAwait(false);
                         if (response.ErrorCode.IsRetryable()) return RetryAttempt<short>.Retry;
@@ -162,7 +161,7 @@ namespace KafkaClient.Connections
                 var header = new byte[KafkaEncoder.ResponseHeaderSize];
                 AsyncItem asyncItem = null;
                 // use backoff so we don't take over the CPU when there's a failure
-                await new BackoffRetry(null, TimeSpan.FromMilliseconds(5), maxDelay: TimeSpan.FromSeconds(5)).AttemptAsync(
+                await Retry.Until(TimeSpan.FromSeconds(5), TimeSpan.FromMilliseconds(5)).TryAsync(
                     async attempt => {
                         await _transport.ConnectAsync(_disposeToken.Token).ConfigureAwait(false);
 
@@ -219,8 +218,6 @@ namespace KafkaClient.Connections
                 _log.Info(() => LogEvent.Create($"Stopped receiving from {Endpoint}"));
             }
         }
-
-
 
         #region Correlation
 

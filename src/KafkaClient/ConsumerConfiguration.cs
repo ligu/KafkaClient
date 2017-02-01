@@ -87,7 +87,7 @@ namespace KafkaClient
 
             public static IRetry CoordinationRetry(TimeSpan? timeout = null)
             {
-                return new BackoffRetry(
+                return Retry.Until(
                     timeout ?? TimeSpan.FromSeconds(HeartbeatSeconds),
                     TimeSpan.FromMilliseconds(GroupCoordinationRetryMilliseconds));
             }

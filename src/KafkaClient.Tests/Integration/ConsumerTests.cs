@@ -781,7 +781,6 @@ namespace KafkaClient.Tests.Integration
         [Test]
         [TestCase(1, 100)]
         [TestCase(2, 100)]
-        [TestCase(5, 500)]
         [TestCase(10, 500)]
         public async Task CanConsumeFromGroup(int members, int batchSize)
         {
@@ -824,13 +823,10 @@ namespace KafkaClient.Tests.Integration
         }
         
         [Test]
-        [TestCase(1, 1)]
-        [TestCase(2, 1)]
-        [TestCase(5, 3)]
-        [TestCase(10, 10)]
+        [TestCase(2, 2)]
+        [TestCase(5, 5)]
         public async Task CanConsumeFromMultipleGroups(int groups, int members)
         {
-            var cancellation = new CancellationTokenSource();
             var batchSize = 50;
             var totalMessages = 200;
             using (var router = await TestConfig.Options.CreateRouterAsync()) {
@@ -838,12 +834,13 @@ namespace KafkaClient.Tests.Integration
                 {
                     var allFetched = 0;
                     var tasks = new List<Task>();
+                    var groupIdPrefix = TestConfig.GroupId();
                     for (var group = 0; group < groups; group++) {
-                        var groupId = TestConfig.GroupId();
-
+                        var groupId = $"{groupIdPrefix}.{group}";
                         var groupFetched = 0;
                         await ProduceMessages(router, topicName, groupId, totalMessages, Enumerable.Range(0, members));
 
+                        var cancellation = new CancellationTokenSource();
                         var consumer = new Consumer(router, TestConfig.Options.ConsumerConfiguration, TestConfig.Options.ConnectionConfiguration.Encoders);
                         for (var index = 0; index < members; index++) {
                             tasks.Add(Task.Run(async () => {
