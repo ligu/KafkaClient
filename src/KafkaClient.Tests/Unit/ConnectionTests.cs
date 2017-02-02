@@ -582,7 +582,7 @@ namespace KafkaClient.Tests.Unit
 
             var endpoint = TestConfig.ServerEndpoint();
             using (var server = new TcpServer(endpoint.Ip.Port, TestConfig.Log))
-            using (var conn = new Connection(endpoint, new ConnectionConfiguration(requestTimeout: TimeSpan.Zero), new ConsoleLog())) {
+            using (var conn = new Connection(endpoint, new ConnectionConfiguration(requestTimeout: TimeSpan.Zero), TestConfig.Log)) {
                 server.OnReceivedAsync = data => {
                     var context = KafkaDecoder.DecodeHeader(data.Skip(KafkaEncoder.IntegerByteSize));
                     correlationId = context.CorrelationId;
@@ -590,7 +590,7 @@ namespace KafkaClient.Tests.Unit
                 };
 
                 try {
-                    Connection.OverflowGuard = 100;
+                    Connection.OverflowGuard = 10;
 
                     try {
                         await Task.WhenAll(Enumerable.Range(0, Connection.OverflowGuard).Select(i => conn.SendAsync(new MetadataRequest(), CancellationToken.None)));
@@ -598,7 +598,7 @@ namespace KafkaClient.Tests.Unit
                     } catch (TimeoutException) {
                         // expected
                     }
-                    Assert.That(await TaskTest.WaitFor(() => correlationId == Connection.OverflowGuard));
+                    Assert.That(await TaskTest.WaitFor(() => correlationId > 1));
                     try {
                         await conn.SendAsync(new MetadataRequest(), CancellationToken.None);
                         Assert.Fail("Should have thrown TimeoutException");
