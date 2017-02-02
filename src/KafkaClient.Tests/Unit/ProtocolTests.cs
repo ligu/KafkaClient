@@ -69,6 +69,9 @@ namespace KafkaClient.Tests.Unit
             [Values(3)] int messagesPerSet,
             [Values(MessageCodec.None, MessageCodec.Gzip, MessageCodec.Snappy)] MessageCodec codec)
         {
+#if ! DOTNETSTANDARD
+            if (codec == MessageCodec.Snappy) Assert.Inconclusive($"{codec} is only available in .net core");
+#endif
             var payloads = new List<ProduceRequest.Topic>();
             for (var t = 0; t < topicsPerRequest; t++) {
                 var partition = 1 + t%totalPartitions;
@@ -148,6 +151,9 @@ namespace KafkaClient.Tests.Unit
             [Values(3)] int messagesPerSet
             )
         {
+#if ! DOTNETSTANDARD
+            if (codec == MessageCodec.Snappy) Assert.Inconclusive($"{codec} is only available in .net core");
+#endif
             var topics = new List<FetchResponse.Topic>();
             for (var t = 0; t < topicsPerRequest; t++) {
                 var partitionId = t % totalPartitions;

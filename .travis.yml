@@ -33,8 +33,8 @@ install:
 
 script:
   - dotnet build -c Release -f netstandard1.6 src/KafkaClient --no-dependencies --no-incremental --version-suffix $VERSION
-  - dotnet test -c Release src/KafkaClient.Tests --test=KafkaClient.Tests.Unit
+  - dotnet test -c Release -f netcoreapp1.0 src/KafkaClient.Tests --test=KafkaClient.Tests.Unit
 
 after_success:
-  - dotnet pack -c Release src/KafkaClient --version-suffix $VERSION -o artifacts 
+  - dotnet pack -c Release -f netcoreapp1.0 src/KafkaClient --version-suffix $VERSION -o artifacts 
 
