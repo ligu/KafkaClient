@@ -24,6 +24,12 @@ namespace KafkaClient
 
         #region KafkaOptions
 
+        public static async Task<IConnection> CreateConnectionAsync(this KafkaOptions options)
+        {
+            var endpoint = await Endpoint.ResolveAsync(options.ServerUris.First(), options.Log);
+            return options.CreateConnection(endpoint);
+        }
+
         public static IConnection CreateConnection(this KafkaOptions options, Endpoint endpoint)
         {
             return options.ConnectionFactory.Create(endpoint, options.ConnectionConfiguration, options.Log);

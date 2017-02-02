@@ -155,7 +155,7 @@ namespace KafkaClient.Connections
                 var header = new byte[KafkaEncoder.ResponseHeaderSize];
                 AsyncItem asyncItem = null;
                 // use backoff so we don't take over the CPU when there's a failure
-                await Retry.Until(TimeSpan.FromSeconds(5), TimeSpan.FromMilliseconds(5)).TryAsync(
+                await Retry.WithBackoff(int.MaxValue, minimumDelay: TimeSpan.FromMilliseconds(5), maximumDelay: TimeSpan.FromSeconds(5)).TryAsync(
                     async attempt => {
                         await _transport.ConnectAsync(_disposeToken.Token).ConfigureAwait(false);
 
@@ -227,12 +227,12 @@ namespace KafkaClient.Connections
             return new AsyncItem(new RequestContext(correlationId), new UnknownRequest());
         }
 
-        private const int OverflowGuard = int.MaxValue >> 1;
+        internal static int OverflowGuard = int.MaxValue >> 1;
         private int NextCorrelationId()
         {
             var id = Interlocked.Increment(ref _correlationIdSeed);
-            if (id > OverflowGuard) {
-                // to avoid overflow
+            if (id >= OverflowGuard) {
+                // to avoid integer overflow
                 Interlocked.Exchange(ref _correlationIdSeed, 0);
             }
             return id;
@@ -256,6 +256,7 @@ namespace KafkaClient.Connections
             if (_requestsByCorrelation.TryRemove(correlationId, out request)) {
                 _log.Info(() => LogEvent.Create($"Removed request {request.ApiKey} (id {correlationId}): timed out or otherwise errored in client."));
                 if (_timedOutRequestsByCorrelation.Count > 100) {
+                    _log.Debug(() => LogEvent.Create($"Clearing timed out requests to avoid overflow ({_timedOutRequestsByCorrelation.Count})."));
                     _timedOutRequestsByCorrelation.Clear();
                 }
                 _timedOutRequestsByCorrelation.TryAdd(correlationId, request);
@@ -341,11 +342,10 @@ namespace KafkaClient.Connections
                 }
                 log.Info(() => LogEvent.Create($"Received {ApiKey} response (id {Context.CorrelationId}, {ResponseStream.Length + KafkaEncoder.CorrelationSize} bytes)"));
                 if (!ReceiveTask.TrySetResult(bytes)) {
-                    log.Debug(
-                        () => {
-                            var result = KafkaEncoder.Decode<IResponse>(Context, ApiKey, bytes);
-                            return LogEvent.Create($"Timed out -----> (timed out or otherwise errored in client) {{Context:{Context},\n{ApiKey}Response:{result}}}");
-                        });
+                    log.Debug(() => {
+                        var result = KafkaEncoder.Decode<IResponse>(Context, ApiKey, bytes);
+                        return LogEvent.Create($"Timed out -----> (timed out or otherwise errored in client) {{Context:{Context},\n{ApiKey}Response:{result}}}");
+                    });
                 }
             }
 

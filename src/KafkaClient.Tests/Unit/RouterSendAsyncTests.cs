@@ -92,7 +92,7 @@ namespace KafkaClient.Tests.Unit
         public async Task ShouldUpdateMetadataOnce()
         {
             var routerProxy = new FakeRouter();
-            var cacheExpiration = TimeSpan.FromMilliseconds(10);
+            var cacheExpiration = TimeSpan.FromMilliseconds(100);
             var router = routerProxy.Create(cacheExpiration);
 
             routerProxy.Connection1.Add(ApiKey.Fetch, ShouldReturnValidMessage);

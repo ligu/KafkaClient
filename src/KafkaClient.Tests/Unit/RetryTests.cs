@@ -1,4 +1,7 @@
 using System;
+using System.Diagnostics;
+using System.Threading;
+using System.Threading.Tasks;
 using KafkaClient.Common;
 using NUnit.Framework;
 
@@ -7,6 +10,25 @@ namespace KafkaClient.Tests.Unit
     [TestFixture]
     public class RetryTests
     {
+        [Test]
+        public async Task NoDelayBeforeFirstAttempt()
+        {
+            var timer = new Stopwatch();
+            timer.Start();
+            var result = await Retry.WithBackoff(5, minimumDelay: TimeSpan.FromSeconds(1), maximumDelay: TimeSpan.FromSeconds(1))
+                       .TryAsync(
+                           (attempt, s) =>
+                           {
+                               timer.Stop();
+                               return Task.FromResult(new RetryAttempt<long>(timer.ElapsedMilliseconds));
+                           },
+                           null,
+                           null,
+                           null,
+                           CancellationToken.None);
+            Assert.That(result, Is.LessThan(1000));
+        }
+
         [Test]
         public void RetryNoneDoesNotRetry()
         {

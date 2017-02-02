@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Linq;
-using System.Text;
-using KafkaClient.Common;
 using KafkaClient.Protocol;
 using NUnit.Framework;
 

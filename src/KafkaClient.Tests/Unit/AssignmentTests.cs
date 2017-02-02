@@ -127,6 +127,15 @@ namespace KafkaClient.Tests.Unit
             }
         }
 
+        [Test]
+        public void InterfacesAreFormattedWithinProtocol()
+        {
+            var request = new SyncGroupRequest("group", 5, "member", new[] { new SyncGroupRequest.GroupAssignment("member", new ConsumerMemberAssignment(new[] { new TopicPartition("topic", 0), new TopicPartition("topic", 1) })) });
+            var formatted = request.ToString();
+            Assert.That(formatted.Contains("TopicName:topic"));
+            Assert.That(formatted.Contains("PartitionId:1"));
+        }
+
         // design unit TESTS to write:
         // assignment priority is given to first assignor if multiple available
         // non-leader calls to get assignment data

@@ -7,10 +7,10 @@ using NUnit.Framework;
 namespace KafkaClient.Tests.Unit
 {
     [TestFixture]
-    public class KafkaEndpointTests
+    public class EndpointTests
     {
         [Test]
-        public async Task EnsureEndpointCanBeResulved()
+        public async Task EnsureEndpointCanBeResolved()
         {
             var expected = IPAddress.Parse("127.0.0.1");
             var endpoint = await Endpoint.ResolveAsync(new Uri("http://localhost:8888"), TestConfig.Log);

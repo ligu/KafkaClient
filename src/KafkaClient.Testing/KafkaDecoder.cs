@@ -19,6 +19,16 @@ namespace KafkaClient.Testing
             }            
         }
 
+        public static Tuple<IRequestContext, ApiKey> DecodeFullHeader(ArraySegment<byte> bytes)
+        {
+            ApiKey apiKey;
+            IRequestContext context;
+            using (ReadHeader(bytes, out apiKey, out context))
+            {
+                return new Tuple<IRequestContext, ApiKey>(context, apiKey);
+            }
+        }
+
         public static T Decode<T>(ArraySegment<byte> bytes, IRequestContext context = null) where T : class, IRequest
         {
             var protocolType = context?.ProtocolType;
@@ -404,22 +414,28 @@ namespace KafkaClient.Testing
 
         private static IKafkaReader ReadHeader(ArraySegment<byte> data, out IRequestContext context)
         {
+            ApiKey apikey;
+            return ReadHeader(data, out apikey, out context);
+        }
+
+        private static IKafkaReader ReadHeader(ArraySegment<byte> data, out ApiKey apiKey, out IRequestContext context)
+        {
             var reader = new KafkaReader(data);
             try {
-                // ReSharper disable once UnusedVariable
-                var apiKey = (ApiKey) reader.ReadInt16();
+                apiKey = (ApiKey)reader.ReadInt16();
                 var version = reader.ReadInt16();
                 var correlationId = reader.ReadInt32();
                 var clientId = reader.ReadString();
 
                 context = new RequestContext(correlationId, version, clientId);
             } catch {
+                apiKey = 0;
                 context = null;
                 reader.Dispose();
                 reader = null;
             }
             return reader;
-        } 
+        }
 
         #endregion
 

@@ -20,11 +20,11 @@ namespace KafkaClient.Tests
         }
 
         // turned down to reduce log noise -- turn up Level if necessary
-        public static ILog Log = new ConsoleLog();
+        public static readonly ILog Log = new ConsoleLog();
 
-        public static Uri ServerUri()
+        public static Endpoint ServerEndpoint()
         {
-            return new Uri($"http://localhost:{ServerPort()}");
+            return new Endpoint(new IPEndPoint(IPAddress.Loopback, ServerPort()), "localhost");
         }
 
         public static int ServerPort()

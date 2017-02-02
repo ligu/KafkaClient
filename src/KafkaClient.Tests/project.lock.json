@@ -559,21 +559,6 @@
           "lib/netstandard1.0/Newtonsoft.Json.dll": {}
         }
       },
-      "Nito.AsyncEx.Context/1.1.0": {
-        "type": "package",
-        "dependencies": {
-          "Nito.AsyncEx.Tasks": "1.1.0",
-          "System.Collections.Concurrent": "4.0.12",
-          "System.Diagnostics.Debug": "4.0.11",
-          "System.Threading": "4.0.11"
-        },
-        "compile": {
-          "lib/netstandard1.3/Nito.AsyncEx.Context.dll": {}
-        },
-        "runtime": {
-          "lib/netstandard1.3/Nito.AsyncEx.Context.dll": {}
-        }
-      },
       "Nito.AsyncEx.Coordination/1.0.2": {
         "type": "package",
         "dependencies": {
@@ -590,7 +575,7 @@
           "lib/netstandard1.3/Nito.AsyncEx.Coordination.dll": {}
         }
       },
-      "Nito.AsyncEx.Tasks/1.1.0": {
+      "Nito.AsyncEx.Tasks/1.0.1": {
         "type": "package",
         "dependencies": {
           "Nito.Disposables": "1.0.0",
@@ -3360,19 +3345,6 @@
         "tools/install.ps1"
       ]
     },
-    "Nito.AsyncEx.Context/1.1.0": {
-      "sha512": "YPEb4a5lHPmESSOopAqxqpMqUO/OeOAr141TZCIHjc47I/41AOPTfymBbF/YDKaZYlElzVvGHBCR1Z8J4sBMOA==",
-      "type": "package",
-      "path": "Nito.AsyncEx.Context/1.1.0",
-      "files": [
-        "Nito.AsyncEx.Context.1.1.0.nupkg.sha512",
-        "Nito.AsyncEx.Context.nuspec",
-        "lib/net46/Nito.AsyncEx.Context.dll",
-        "lib/net46/Nito.AsyncEx.Context.xml",
-        "lib/netstandard1.3/Nito.AsyncEx.Context.dll",
-        "lib/netstandard1.3/Nito.AsyncEx.Context.xml"
-      ]
-    },
     "Nito.AsyncEx.Coordination/1.0.2": {
       "sha512": "jEZHo/pFKD6kzjuxpAGcWWFT7J3UGft2NH6zZ7cBjO3k5s9SDoQhLJxSRDafx44gbao7PK8IQXxIOLBKIPPQTg==",
       "type": "package",
@@ -3386,12 +3358,12 @@
         "lib/netstandard1.3/Nito.AsyncEx.Coordination.xml"
       ]
     },
-    "Nito.AsyncEx.Tasks/1.1.0": {
-      "sha512": "0HzeuwnELt9JMMm4KS7NLW0jcacj8gMuSKNPPkXfP+EXk17/K+WyAq2Bv79VrzD2kAyOLavd9MF8JbggloJZWw==",
+    "Nito.AsyncEx.Tasks/1.0.1": {
+      "sha512": "FtQi5Qj22kxHNQv8XPYXp2xc4PPTfyr5jGATgDqRml9BF8OEYwuntSRrbGbxlbWpp0ossrXyUq2gIV1CTQQB2w==",
       "type": "package",
-      "path": "Nito.AsyncEx.Tasks/1.1.0",
+      "path": "Nito.AsyncEx.Tasks/1.0.1",
       "files": [
-        "Nito.AsyncEx.Tasks.1.1.0.nupkg.sha512",
+        "Nito.AsyncEx.Tasks.1.0.1.nupkg.sha512",
         "Nito.AsyncEx.Tasks.nuspec",
         "lib/net46/Nito.AsyncEx.Tasks.dll",
         "lib/net46/Nito.AsyncEx.Tasks.xml",
@@ -8360,7 +8332,6 @@
       "KafkaClient.Testing",
       "NSubstitute >= 2.0.0-rc",
       "NUnit >= 3.6.0",
-      "Nito.AsyncEx.Context >= 1.1.0",
       "Nito.AsyncEx.Coordination >= 1.0.2",
       "System.Collections.Immutable >= 1.3.1",
       "System.Net.Sockets >= 4.3.0",

@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Immutable;
 using KafkaClient.Common;
-using NUnit.Framework;
 
 namespace KafkaClient.Tests
 {

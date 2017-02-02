@@ -75,7 +75,7 @@ namespace KafkaClient.Tests
             return new Router(
                 new [] { new Endpoint(new IPEndPoint(IPAddress.Loopback, 1)), new Endpoint(new IPEndPoint(IPAddress.Loopback, 2)) },
                 KafkaConnectionFactory,
-                routerConfiguration: new RouterConfiguration(cacheExpiration: cacheExpiration.GetValueOrDefault(TimeSpan.FromMilliseconds(1))),
+                routerConfiguration: new RouterConfiguration(cacheExpiration: cacheExpiration.GetValueOrDefault(TimeSpan.FromMinutes(1))),
                 log: TestConfig.Log);
         }
 

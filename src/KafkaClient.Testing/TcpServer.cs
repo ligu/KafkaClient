@@ -10,7 +10,7 @@ namespace KafkaClient.Testing
 {
     public class TcpServer : IDisposable
     {
-        public Action<ArraySegment<byte>> OnBytesReceived { get; set; }
+        public Func<ArraySegment<byte>, Task> OnReceivedAsync { get; set; }
         public Action OnConnected { get; set; }
         public Action OnDisconnected { get; set; }
 
@@ -34,7 +34,7 @@ namespace KafkaClient.Testing
         {
             try {
                 await _clientSemaphore.WaitAsync();
-                _log.Debug(() => LogEvent.Create($"FAKE Server: writing {data.Count} bytes."));
+                _log.Debug(() => LogEvent.Create($"SERVER: writing {data.Count} bytes."));
                 await _client.GetStream().WriteAsync(data.Array, data.Offset, data.Count).ConfigureAwait(false);
                 return true;
             } catch (Exception ex) {
@@ -58,9 +58,9 @@ namespace KafkaClient.Testing
         {
             var buffer = new byte[8192];
             while (!_disposeToken.IsCancellationRequested) {
-                _log.Debug(() => LogEvent.Create("Server: Accepting clients."));
+                _log.Debug(() => LogEvent.Create("SERVER: Accepting clients."));
                 _client = await _listener.AcceptTcpClientAsync().ConfigureAwait(false);
-                _log.Debug(() => LogEvent.Create("Server: Connected client"));
+                _log.Debug(() => LogEvent.Create("SERVER: Connected client"));
 
                 _connectedTrigger.TrySetResult(true);
                 OnConnected?.Invoke();
@@ -72,19 +72,19 @@ namespace KafkaClient.Testing
                         var read = await stream.ReadAsync(buffer, 0, buffer.Length, _disposeToken.Token)
                                                 .ThrowIfCancellationRequested(_disposeToken.Token)
                                                 .ConfigureAwait(false);
-                        if (read > 0) {
-                            OnBytesReceived?.Invoke(new ArraySegment<byte>(buffer, 0, read));
+                        if (read > 0 && OnReceivedAsync != null) {
+                            await OnReceivedAsync(new ArraySegment<byte>(buffer, 0, read));
                         }
                     }
                 } catch (Exception ex) {
                     if (!(ex is OperationCanceledException)) {
-                        _log.Debug(() => LogEvent.Create(ex, "Server: client failed"));
+                        _log.Debug(() => LogEvent.Create(ex, "SERVER: client failed"));
                     }
                 } finally {
                     _client?.Dispose();
                 }
 
-                _log.Debug(() => LogEvent.Create("Server: Client Disconnected."));
+                _log.Debug(() => LogEvent.Create("SERVER: Client Disconnected."));
                 await _clientSemaphore.WaitAsync(_disposeToken.Token); //remove the one client
                 _connectedTrigger = new TaskCompletionSource<bool>();
                 OnDisconnected?.Invoke();

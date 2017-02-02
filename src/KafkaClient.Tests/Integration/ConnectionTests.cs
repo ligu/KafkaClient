@@ -3,9 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using KafkaClient.Connections;
+using KafkaClient.Common;
 using KafkaClient.Protocol;
-using Nito.AsyncEx;
 using NUnit.Framework;
 
 namespace KafkaClient.Tests.Integration
@@ -13,38 +12,35 @@ namespace KafkaClient.Tests.Integration
     [TestFixture]
     public class ConnectionTests
     {
-        private Connection _conn;
-
-        [SetUp]
-        public void Setup()
-        {
-            var options = new KafkaOptions(TestConfig.IntegrationUri, new ConnectionConfiguration(versionSupport: VersionSupport.Kafka9.Dynamic()), log: TestConfig.Log);
-            var endpoint = AsyncContext.Run(() => Endpoint.ResolveAsync(options.ServerUris.First(), options.Log));
-
-            _conn =  new Connection(endpoint, options.ConnectionConfiguration, TestConfig.Log);
-        }
-
         [Test]
         public async Task EnsureTwoRequestsCanCallOneAfterAnother()
         {
-            var result1 = await _conn.SendAsync(new MetadataRequest(), CancellationToken.None);
-            var result2 = await _conn.SendAsync(new MetadataRequest(), CancellationToken.None);
-            Assert.That(result1.Errors.Count(code => code != ErrorCode.None), Is.EqualTo(0));
-            Assert.That(result2.Errors.Count(code => code != ErrorCode.None), Is.EqualTo(0));
+            await Async.Using(
+                await TestConfig.Options.CreateConnectionAsync(),
+                async connection => {
+                    var result1 = await connection.SendAsync(new MetadataRequest(), CancellationToken.None);
+                    var result2 = await connection.SendAsync(new MetadataRequest(), CancellationToken.None);
+                    Assert.That(result1.Errors.Count(code => code != ErrorCode.None), Is.EqualTo(0));
+                    Assert.That(result2.Errors.Count(code => code != ErrorCode.None), Is.EqualTo(0));
+                });
         }
 
         [Test]
         public async Task EnsureAsyncRequestResponsesCorrelate()
         {
-            var result1 = _conn.SendAsync(new MetadataRequest(), CancellationToken.None);
-            var result2 = _conn.SendAsync(new MetadataRequest(), CancellationToken.None);
-            var result3 = _conn.SendAsync(new MetadataRequest(), CancellationToken.None);
+            await Async.Using(
+                await TestConfig.Options.CreateConnectionAsync(),
+                async connection => {
+                    var result1 = connection.SendAsync(new MetadataRequest(), CancellationToken.None);
+                    var result2 = connection.SendAsync(new MetadataRequest(), CancellationToken.None);
+                    var result3 = connection.SendAsync(new MetadataRequest(), CancellationToken.None);
 
-            await Task.WhenAll(result1, result2, result3);
+                    await Task.WhenAll(result1, result2, result3);
 
-            Assert.That(result1.Result.Errors.Count(code => code != ErrorCode.None), Is.EqualTo(0));
-            Assert.That(result2.Result.Errors.Count(code => code != ErrorCode.None), Is.EqualTo(0));
-            Assert.That(result3.Result.Errors.Count(code => code != ErrorCode.None), Is.EqualTo(0));
+                    Assert.That(result1.Result.Errors.Count(code => code != ErrorCode.None), Is.EqualTo(0));
+                    Assert.That(result2.Result.Errors.Count(code => code != ErrorCode.None), Is.EqualTo(0));
+                    Assert.That(result3.Result.Errors.Count(code => code != ErrorCode.None), Is.EqualTo(0));
+                });
         }
 
         [Test]
@@ -54,7 +50,7 @@ namespace KafkaClient.Tests.Integration
             var requestTasks = new ConcurrentBag<Task<MetadataResponse>>();
             using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
-                    var singleResult = await _conn.SendAsync(new MetadataRequest(TestConfig.TopicName()), CancellationToken.None);
+                    var singleResult = await router.Connections.First().SendAsync(new MetadataRequest(TestConfig.TopicName()), CancellationToken.None);
                     Assert.That(singleResult.Topics.Count, Is.GreaterThan(0));
                     Assert.That(singleResult.Topics.First().Partitions.Count, Is.GreaterThan(0));
 
@@ -64,7 +60,7 @@ namespace KafkaClient.Tests.Integration
                             while (true) {
                                 await Task.Delay(1);
                                 if (Interlocked.Increment(ref requestsSoFar) > totalRequests) break;
-                                requestTasks.Add(_conn.SendAsync(new MetadataRequest(), CancellationToken.None));
+                                requestTasks.Add(router.Connections.First().SendAsync(new MetadataRequest(), CancellationToken.None));
                             }
                         }));
                     }
@@ -85,10 +81,10 @@ namespace KafkaClient.Tests.Integration
             using (var router = await TestConfig.Options.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(
                     async topicName => {
-                        var result1 = _conn.SendAsync(RequestFactory.CreateProduceRequest(topicName, "test"), CancellationToken.None);
-                        var result2 = _conn.SendAsync(new MetadataRequest(topicName), CancellationToken.None);
-                        var result3 = _conn.SendAsync(RequestFactory.CreateOffsetRequest(topicName), CancellationToken.None);
-                        var result4 = _conn.SendAsync(RequestFactory.CreateFetchRequest(topicName, 0), CancellationToken.None);
+                        var result1 = router.Connections.First().SendAsync(RequestFactory.CreateProduceRequest(topicName, "test"), CancellationToken.None);
+                        var result2 = router.Connections.First().SendAsync(new MetadataRequest(topicName), CancellationToken.None);
+                        var result3 = router.Connections.First().SendAsync(RequestFactory.CreateOffsetRequest(topicName), CancellationToken.None);
+                        var result4 = router.Connections.First().SendAsync(RequestFactory.CreateFetchRequest(topicName, 0), CancellationToken.None);
 
                         await Task.WhenAll(result1, result2, result3, result4);
 
