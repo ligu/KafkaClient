@@ -152,7 +152,6 @@ namespace KafkaClient.Connections
 
             try {
                 var buffer = new byte[_configuration.ReadBufferSize];
-                var header = new byte[KafkaEncoder.ResponseHeaderSize];
                 AsyncItem asyncItem = null;
                 // use backoff so we don't take over the CPU when there's a failure
                 await Retry.WithBackoff(int.MaxValue, minimumDelay: TimeSpan.FromMilliseconds(5), maximumDelay: TimeSpan.FromSeconds(5)).TryAsync(
@@ -160,14 +159,9 @@ namespace KafkaClient.Connections
                         await _transport.ConnectAsync(_disposeToken.Token).ConfigureAwait(false);
 
                         if (asyncItem == null) {
-                            var headerOffset = 0;
-                            await _transport.ReadBytesAsync(buffer, KafkaEncoder.ResponseHeaderSize, bytesRead => {
-                                for (var i = 0; i < bytesRead; i++) {
-                                    header[headerOffset++] = buffer[i];
-                                }
-                            }, CancellationToken.None).ConfigureAwait(false);
-                            var responseSize = BitConverter.ToInt32(header, 0).ToBigEndian();
-                            var correlationId = BitConverter.ToInt32(header, KafkaEncoder.IntegerByteSize).ToBigEndian();
+                            await _transport.ReadBytesAsync(buffer, KafkaEncoder.ResponseHeaderSize, null, CancellationToken.None).ConfigureAwait(false);
+                            var responseSize = BitConverter.ToInt32(buffer, 0).ToBigEndian();
+                            var correlationId = BitConverter.ToInt32(buffer, KafkaEncoder.IntegerByteSize).ToBigEndian();
 
                             asyncItem = LookupByCorrelateId(correlationId, responseSize);
                             if (asyncItem.ResponseStream != null) {

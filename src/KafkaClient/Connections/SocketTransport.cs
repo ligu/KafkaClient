@@ -58,7 +58,7 @@ namespace KafkaClient.Connections
                         _configuration.OnDisconnected?.Invoke(_endpoint, ex);
                         throw ex;
                     }
-                    onBytesRead(bytesRead);
+                    onBytesRead?.Invoke(bytesRead);
                 }
                 timer.Stop();
                 _configuration.OnRead?.Invoke(_endpoint, totalBytesRead, timer.Elapsed);
