@@ -37,13 +37,13 @@
           "lib/netstandard1.3/Castle.Core.dll": {}
         }
       },
-      "dotnet-test-nunit/3.4.0-beta-3": {
+      "dotnet-test-nunit/3.4.0-beta-2": {
         "type": "package",
         "dependencies": {
           "Microsoft.Extensions.DependencyModel": "1.0.0",
           "Microsoft.Extensions.Testing.Abstractions": "1.0.0-preview2-003121",
           "Microsoft.NETCore.App": "1.0.0",
-          "NUnit.Portable.Agent": "3.4.0-beta-3"
+          "NUnit.Portable.Agent": "3.4.0-beta-2"
         },
         "compile": {
           "lib/netcoreapp1.0/dotnet-test-nunit.dll": {}
@@ -730,20 +730,16 @@
           "lib/netstandard1.0/NuGet.Versioning.dll": {}
         }
       },
-      "NUnit/3.6.0": {
+      "NUnit/3.5.0": {
         "type": "package",
-        "dependencies": {
-          "NETStandard.Library": "1.6.0",
-          "System.Runtime.Loader": "4.0.0"
-        },
         "compile": {
-          "lib/netstandard1.6/nunit.framework.dll": {}
+          "lib/dotnet/nunit.framework.dll": {}
         },
         "runtime": {
-          "lib/netstandard1.6/nunit.framework.dll": {}
+          "lib/dotnet/nunit.framework.dll": {}
         }
       },
-      "NUnit.Portable.Agent/3.4.0-beta-3": {
+      "NUnit.Portable.Agent/3.4.0-beta-2": {
         "type": "package",
         "dependencies": {
           "System.Globalization": "4.0.11",
@@ -2862,12 +2858,12 @@
         "readme.txt"
       ]
     },
-    "dotnet-test-nunit/3.4.0-beta-3": {
-      "sha512": "TCprFJd60JQrNSygKAinVFBF2zQK3V2BRm1jeBvAGKF/6omeMrjO1tBD3UKlZSGvHFNyiocPn7bgU68cNz94ug==",
+    "dotnet-test-nunit/3.4.0-beta-2": {
+      "sha512": "ImRqxsZMFzn+bM33emu5ZMzIUe8GOHPxdA2NkUIsawWd4YjvcFzdIo5iNuejlY0lw1M+RMwRbpd/cKkhKft52g==",
       "type": "package",
-      "path": "dotnet-test-nunit/3.4.0-beta-3",
+      "path": "dotnet-test-nunit/3.4.0-beta-2",
       "files": [
-        "dotnet-test-nunit.3.4.0-beta-3.nupkg.sha512",
+        "dotnet-test-nunit.3.4.0-beta-2.nupkg.sha512",
         "dotnet-test-nunit.nuspec",
         "lib/net451/dotnet-test-nunit.exe",
         "lib/netcoreapp1.0/dotnet-test-nunit.dll",
@@ -3512,20 +3508,18 @@
         "lib/netstandard1.0/NuGet.Versioning.xml"
       ]
     },
-    "NUnit/3.6.0": {
-      "sha512": "mqJP3DI3mE9YSx0o7R5loyIm0NnLJLSl2lmXn84gSkOmLWzlbrxS0oW/cCZF25tB+6Anday/mbkRUXmdvEvSCg==",
+    "NUnit/3.5.0": {
+      "sha512": "z/03NfC+ci3/OzlIlClH+nd0LZ99OU3wS74nAtLVnPo1oq6nvd+CGxTHZAc8n8xxDLeLMofZ8AjahxlROEhf/Q==",
       "type": "package",
-      "path": "NUnit/3.6.0",
+      "path": "NUnit/3.5.0",
       "files": [
         "CHANGES.txt",
         "LICENSE.txt",
         "NOTICES.txt",
-        "NUnit.3.6.0.nupkg.sha512",
+        "NUnit.3.5.0.nupkg.sha512",
         "NUnit.nuspec",
-        "lib/MonoAndroid/nunit.framework.dll",
-        "lib/MonoAndroid/nunit.framework.xml",
-        "lib/Xamarin.iOS10/nunit.framework.dll",
-        "lib/Xamarin.iOS10/nunit.framework.xml",
+        "lib/dotnet/nunit.framework.dll",
+        "lib/dotnet/nunit.framework.xml",
         "lib/net20/NUnit.System.Linq.dll",
         "lib/net20/nunit.framework.dll",
         "lib/net20/nunit.framework.xml",
@@ -3535,18 +3529,16 @@
         "lib/net40/nunit.framework.xml",
         "lib/net45/nunit.framework.dll",
         "lib/net45/nunit.framework.xml",
-        "lib/netstandard1.6/nunit.framework.dll",
-        "lib/netstandard1.6/nunit.framework.xml",
-        "lib/portable-net45+win8+wp8+wpa81/nunit.framework.dll",
-        "lib/portable-net45+win8+wp8+wpa81/nunit.framework.xml"
+        "lib/portable-net45+win8+wp8+wpa81+Xamarin.Mac+MonoAndroid10+MonoTouch10+Xamarin.iOS10/nunit.framework.dll",
+        "lib/portable-net45+win8+wp8+wpa81+Xamarin.Mac+MonoAndroid10+MonoTouch10+Xamarin.iOS10/nunit.framework.xml"
       ]
     },
-    "NUnit.Portable.Agent/3.4.0-beta-3": {
-      "sha512": "BcgxOFtivkK8+eu5krwxxTWw6RtASfp7q/nQ18Z5a2rEvDHZz9h+U2fJjIrw4P9CtqbzZwNuGHprUnhoVqlZrw==",
+    "NUnit.Portable.Agent/3.4.0-beta-2": {
+      "sha512": "91XarG692I/gCwDi3d1k5tRc1J4mPo6l6nHrYRKWSgc9M2a0SX1YNS/uJwth3bXQEn+499mdZ02NTuvJstRq1A==",
       "type": "package",
-      "path": "NUnit.Portable.Agent/3.4.0-beta-3",
+      "path": "NUnit.Portable.Agent/3.4.0-beta-2",
       "files": [
-        "NUnit.Portable.Agent.3.4.0-beta-3.nupkg.sha512",
+        "NUnit.Portable.Agent.3.4.0-beta-2.nupkg.sha512",
         "NUnit.Portable.Agent.nuspec",
         "lib/net45/NUnit.Portable.Agent.dll",
         "lib/netstandard1.3/NUnit.Portable.Agent.dll"
@@ -8331,12 +8323,12 @@
       "KafkaClient",
       "KafkaClient.Testing",
       "NSubstitute >= 2.0.0-rc",
-      "NUnit >= 3.6.0",
+      "NUnit >= 3.5.0",
       "Nito.AsyncEx.Coordination >= 1.0.2",
       "System.Collections.Immutable >= 1.3.1",
       "System.Net.Sockets >= 4.3.0",
       "System.Threading.Tasks.Parallel >= 4.3.0",
-      "dotnet-test-nunit >= 3.4.0-beta-3"
+      "dotnet-test-nunit >= 3.4.0-beta-2"
     ],
     ".NETCoreApp,Version=v1.1": [
       "Microsoft.NETCore.App >= 1.1.0-*",

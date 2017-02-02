@@ -13,9 +13,9 @@
     "Nito.AsyncEx.Coordination": "1.0.2",
 
     "NSubstitute": "2.0.0-rc",
-    "NUnit": "3.6.0",
+    "NUnit": "3.5.0",
     "System.Threading.Tasks.Parallel": "4.3.0",
-    "dotnet-test-nunit": "3.4.0-beta-3"
+    "dotnet-test-nunit": "3.4.0-beta-2"
   },
   "testRunner": "nunit",
 

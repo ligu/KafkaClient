@@ -255,12 +255,12 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public async Task WhenNoConnectionThrowSocketExceptionAfterMaxRetry()
         {
-            var reconnectionAttempt = 0;
-            const int maxAttempts = 3;
+            var connectionAttempts = 0;
+            const int maxRetries = 2;
             var endpoint = TestConfig.ServerEndpoint();
             var config = new ConnectionConfiguration(
-                Retry.AtMost(maxAttempts),
-                onConnecting: (e, attempt, elapsed) => Interlocked.Increment(ref reconnectionAttempt)
+                Retry.AtMost(maxRetries),
+                onConnecting: (e, attempt, elapsed) => Interlocked.Increment(ref connectionAttempts)
                 );
             using (var transport = new SocketTransport(endpoint, config, TestConfig.Log)) {
                 try {
@@ -269,7 +269,7 @@ namespace KafkaClient.Tests.Unit
                 } catch (ConnectionException) {
                     // expected
                 }
-                Assert.That(reconnectionAttempt, Is.EqualTo(maxAttempts + 1));
+                Assert.That(connectionAttempts, Is.EqualTo(1 + maxRetries));
             }
         }
 

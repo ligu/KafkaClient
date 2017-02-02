@@ -435,15 +435,17 @@ namespace KafkaClient.Common
             return await task.ConfigureAwait(false);
         }
 
-        public static async Task<bool> IsCancelled(this Task task, CancellationToken cancellationToken)
+        public static async Task ThrowIfCancellationRequested(this Task task, CancellationToken cancellationToken)
         {
             var tcs = new TaskCompletionSource<bool>();
-            using (cancellationToken.Register(_ => ((TaskCompletionSource<bool>)_).TrySetResult(true), tcs)) {
-                if (task != await Task.WhenAny(task, tcs.Task).ConfigureAwait(false)) {
-                    return true;
+            using (cancellationToken.Register(_ => ((TaskCompletionSource<bool>)_).TrySetResult(true), tcs))
+            {
+                if (task != await Task.WhenAny(task, tcs.Task).ConfigureAwait(false))
+                {
+                    throw new OperationCanceledException(cancellationToken);
                 }
             }
-            return false;
+            await task.ConfigureAwait(false);
         }
 
         #endregion
