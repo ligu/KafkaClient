@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using KafkaClient.Common;
 using KafkaClient.Protocol;
 
 namespace KafkaClient.Assignment

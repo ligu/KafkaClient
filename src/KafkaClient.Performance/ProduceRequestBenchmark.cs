@@ -9,7 +9,6 @@ using KafkaClient.Common;
 using KafkaClient.Connections;
 using KafkaClient.Protocol;
 using KafkaClient.Testing;
-using Nito.AsyncEx;
 
 namespace KafkaClient.Performance
 {

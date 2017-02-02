@@ -54,7 +54,7 @@ namespace KafkaClient.Connections
                 };
 
             public const EncryptionPolicy EncryptionPolicy = System.Net.Security.EncryptionPolicy.RequireEncryption;
-            public const SslProtocols EnabledProtocols = SslProtocols.Tls;
+            public const SslProtocols EnabledProtocols = SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12;
         }
     }
 }
