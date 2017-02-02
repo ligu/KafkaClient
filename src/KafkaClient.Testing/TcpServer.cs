@@ -1,15 +1,21 @@
 using System;
+using System.IO;
 using System.Net;
+using System.Net.Security;
 using System.Net.Sockets;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Common;
+using KafkaClient.Connections;
 using Nito.AsyncEx;
 
 namespace KafkaClient.Testing
 {
     public class TcpServer : IDisposable
     {
+        private readonly ISslConfiguration _sslConfiguration;
+        private readonly X509Certificate _certificate;
         public Func<ArraySegment<byte>, Task> OnReceivedAsync { get; set; }
         public Action OnConnected { get; set; }
         public Action OnDisconnected { get; set; }
@@ -21,8 +27,10 @@ namespace KafkaClient.Testing
 
         private readonly ILog _log;
 
-        public TcpServer(int port, ILog log = null)
+        public TcpServer(int port, ILog log = null, ISslConfiguration sslConfiguration = null, X509Certificate certificate = null)
         {
+            _sslConfiguration = sslConfiguration;
+            _certificate = certificate;
             _log = log ?? new TraceLog(LogLevel.Error);
             _listener = new TcpListener(IPAddress.Any, port);
             _listener.Start();
@@ -65,8 +73,19 @@ namespace KafkaClient.Testing
                 _connectedTrigger.TrySetResult(true);
                 OnConnected?.Invoke();
                 _clientSemaphore.Release();
+                Stream stream = null;
                 try {
-                    var stream = _client.GetStream();
+                    stream = _client.GetStream();
+                    if (_sslConfiguration != null && _certificate != null) {
+                        stream = new SslStream(
+                            stream,
+                            false,
+                            _sslConfiguration.RemoteCertificateValidationCallback,
+                            _sslConfiguration.LocalCertificateSelectionCallback,
+                            _sslConfiguration.EncryptionPolicy ?? EncryptionPolicy.RequireEncryption
+                        );
+                        await ((SslStream)stream).AuthenticateAsServerAsync(_certificate).ConfigureAwait(false);
+                    }
 
                     while (!_disposeToken.IsCancellationRequested) {
                         var read = await stream.ReadAsync(buffer, 0, buffer.Length, _disposeToken.Token)
@@ -81,6 +100,7 @@ namespace KafkaClient.Testing
                         _log.Debug(() => LogEvent.Create(ex, "SERVER: client failed"));
                     }
                 } finally {
+                    stream?.Dispose();
                     _client?.Dispose();
                 }
 

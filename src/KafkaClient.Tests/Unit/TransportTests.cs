@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,8 +16,84 @@ using NUnit.Framework;
 namespace KafkaClient.Tests.Unit
 {
     [TestFixture]
-    public class TransportTests
+    public class SocketTransportTests : TransportTests<SocketTransport>
     {
+        [Test]
+        public void CreatingWithSslConfigurationThrowsException()
+        {
+            var config = new ConnectionConfiguration(sslConfiguration: new SslConfiguration());
+            try {
+                using (new SocketTransport(TestConfig.ServerEndpoint(), config, TestConfig.Log)) { }
+                Assert.Fail("Should have thrown ArgumentOutOfRangeException");
+            } catch (ArgumentOutOfRangeException) {
+                // expected
+            }
+        }
+
+        protected override SocketTransport CreateTransport(Endpoint endpoint, IConnectionConfiguration configuration, ILog log)
+        {
+            return new SocketTransport(endpoint, configuration, log);
+        }
+    }
+
+    [TestFixture]
+    public class SslTransportTests : TransportTests<SslTransport>
+    {
+        [Test]
+        public void CreatingSslTransportWithoutSslConfigurationThrowsException()
+        {
+            var config = new ConnectionConfiguration(sslConfiguration: null);
+            try {
+                using (new SslTransport(TestConfig.ServerEndpoint(), config, TestConfig.Log)) { }
+                Assert.Fail("Should have thrown ArgumentOutOfRangeException");
+            } catch (ArgumentOutOfRangeException) {
+                // expected
+            }
+        }
+
+        [Test]
+        public void CreateCertificate()
+        {
+            var path = @"C:\Code\KafkaClient\src\KafkaClient.Tests\localhost.crt";
+            var cert = new X509Certificate();
+            cert.Import(path);
+
+            // Get the value.
+            string resultsTrue = cert.ToString(true);
+
+            // Display the value to the console.
+            Console.WriteLine(resultsTrue);
+
+            // Get the value.
+            string resultsFalse = cert.ToString(false);
+
+            // Display the value to the console.
+            Console.WriteLine(resultsFalse);
+        }
+
+        protected override SslTransport CreateTransport(Endpoint endpoint, IConnectionConfiguration configuration, ILog log)
+        {
+            var configWithSsl = new ConnectionConfiguration(configuration.ConnectionRetry,
+                configuration.VersionSupport,
+                configuration.RequestTimeout,
+                configuration.ReadBufferSize,
+                configuration.WriteBufferSize,
+                configuration.IsTcpKeepalive,
+                configuration.Encoders.Values,
+                new SslConfiguration(),
+                configuration.OnDisconnected,
+                configuration.OnConnecting,
+                configuration.OnConnected);
+            return new SslTransport(endpoint, configWithSsl, log);
+        }
+    }
+
+    public abstract class TransportTests<T> where T : class, ITransport
+    {
+        protected abstract T CreateTransport(Endpoint endpoint, IConnectionConfiguration configuration, ILog log);
+
+        protected virtual TcpServer CreateServer(int port, ILog log) => new TcpServer(port, log);
+
         #region Connect
 
         [Test]
@@ -24,7 +101,7 @@ namespace KafkaClient.Tests.Unit
         {
             var count = 0;
             var config = new ConnectionConfiguration(onConnecting: (e, a, _) => Interlocked.Increment(ref count));
-            using (var transport = new SocketTransport(TestConfig.ServerEndpoint(), config, TestConfig.Log)) {
+            using (var transport = CreateTransport(TestConfig.ServerEndpoint(), config, TestConfig.Log)) {
                 var task = transport.ConnectAsync(CancellationToken.None);
                 await TaskTest.WaitFor(() => count > 1, 10000);
                 Assert.That(count, Is.GreaterThan(1));
@@ -39,9 +116,9 @@ namespace KafkaClient.Tests.Unit
         public async Task ShouldDisposeWithoutExceptionThrown()
         {
             var endpoint = TestConfig.ServerEndpoint();
-            using (var server = new TcpServer(endpoint.Ip.Port, TestConfig.Log))
+            using (var server = CreateServer(endpoint.Ip.Port, TestConfig.Log))
             {
-                var transport = new SocketTransport(endpoint, TestConfig.Options.ConnectionConfiguration, TestConfig.Log);
+                var transport = CreateTransport(endpoint, TestConfig.Options.ConnectionConfiguration, TestConfig.Log);
                 server.OnConnected = () => transport.Dispose();
                 await Task.WhenAny(transport.ConnectAsync(CancellationToken.None), Task.Delay(TimeSpan.FromSeconds(3)));
                 transport.Dispose();
@@ -54,7 +131,7 @@ namespace KafkaClient.Tests.Unit
             var connectionAttempt = -1;
             var config = new ConnectionConfiguration(Retry.AtMost(5), onConnecting: (e, a, _) => connectionAttempt = a);
             var endpoint = TestConfig.ServerEndpoint();
-            using (var transport = new SocketTransport(endpoint, config, TestConfig.Log)) {
+            using (var transport = CreateTransport(endpoint, config, TestConfig.Log)) {
                 var taskResult = transport.ConnectAsync(CancellationToken.None);
 
                 await TaskTest.WaitFor(() => connectionAttempt >= 0);
@@ -73,8 +150,8 @@ namespace KafkaClient.Tests.Unit
             int readSize = 0;
             var config = new ConnectionConfiguration(onReading: (e, size) => readSize = size);
             var endpoint = TestConfig.ServerEndpoint();
-            using (new TcpServer(endpoint.Ip.Port, TestConfig.Log)) {
-                var transport = new SocketTransport(endpoint, config, TestConfig.Log);
+            using (CreateServer(endpoint.Ip.Port, TestConfig.Log)) {
+                var transport = CreateTransport(endpoint, config, TestConfig.Log);
                 try {
                     await transport.ConnectAsync(CancellationToken.None);
                     var buffer = new byte[4];
@@ -108,8 +185,8 @@ namespace KafkaClient.Tests.Unit
                 onReadBytes: (e, attempted, actual, elapsed) => Interlocked.Add(ref bytesReceived, actual),
                 onRead: (e, read, elapsed) => Interlocked.Increment(ref readCompleted));
             var endpoint = TestConfig.ServerEndpoint();
-            using (var server = new TcpServer(endpoint.Ip.Port, TestConfig.Log)) {
-                using (var transport = new SocketTransport(endpoint, config, TestConfig.Log)) {
+            using (var server = CreateServer(endpoint.Ip.Port, TestConfig.Log)) {
+                using (var transport = CreateTransport(endpoint, config, TestConfig.Log)) {
                     await transport.ConnectAsync(CancellationToken.None);
                     var buffer = new byte[4];
                     var readTask = transport.ReadBytesAsync(buffer, 4, _ => { }, CancellationToken.None);
@@ -141,8 +218,8 @@ namespace KafkaClient.Tests.Unit
         public async Task ReadShouldBeAbleToReceiveMoreThanOnce()
         {
             var endpoint = TestConfig.ServerEndpoint();
-            using (var server = new TcpServer(endpoint.Ip.Port, TestConfig.Log)) {
-                using (var transport = new SocketTransport(endpoint, TestConfig.Options.ConnectionConfiguration, TestConfig.Log)) {
+            using (var server = CreateServer(endpoint.Ip.Port, TestConfig.Log)) {
+                using (var transport = CreateTransport(endpoint, TestConfig.Options.ConnectionConfiguration, TestConfig.Log)) {
                     const int firstMessage = 99;
                     const string secondMessage = "testmessage";
 
@@ -167,8 +244,8 @@ namespace KafkaClient.Tests.Unit
         public async Task ReadShouldBeAbleToReceiveMoreThanOnceAsyncronously()
         {
             var endpoint = TestConfig.ServerEndpoint();
-            using (var server = new TcpServer(endpoint.Ip.Port, TestConfig.Log)) {
-                using (var transport = new SocketTransport(endpoint, TestConfig.Options.ConnectionConfiguration, TestConfig.Log)) {
+            using (var server = CreateServer(endpoint.Ip.Port, TestConfig.Log)) {
+                using (var transport = CreateTransport(endpoint, TestConfig.Options.ConnectionConfiguration, TestConfig.Log)) {
                     const int firstMessage = 99;
                     const int secondMessage = 100;
 
@@ -195,8 +272,8 @@ namespace KafkaClient.Tests.Unit
         public async Task ReadShouldNotLoseDataFromStreamOverMultipleReads()
         {
             var endpoint = TestConfig.ServerEndpoint();
-            using (var server = new TcpServer(endpoint.Ip.Port, TestConfig.Log)) {
-                using (var transport = new SocketTransport(endpoint, TestConfig.Options.ConnectionConfiguration, TestConfig.Log)) {
+            using (var server = CreateServer(endpoint.Ip.Port, TestConfig.Log)) {
+                using (var transport = CreateTransport(endpoint, TestConfig.Options.ConnectionConfiguration, TestConfig.Log)) {
                     const int firstMessage = 99;
                     const string secondMessage = "testmessage";
                     var bytes = Encoding.UTF8.GetBytes(secondMessage);
@@ -229,10 +306,9 @@ namespace KafkaClient.Tests.Unit
         {
             var disconnectedCount = 0;
             var endpoint = TestConfig.ServerEndpoint();
-            using (var server = new TcpServer(endpoint.Ip.Port, TestConfig.Log) {
-                OnDisconnected = () => Interlocked.Increment(ref disconnectedCount)
-            }) {
-                using (var transport = new SocketTransport(endpoint, TestConfig.Options.ConnectionConfiguration, TestConfig.Log)) {
+            using (var server = CreateServer(endpoint.Ip.Port, TestConfig.Log)) {
+                server.OnDisconnected = () => Interlocked.Increment(ref disconnectedCount);
+                using (var transport = CreateTransport(endpoint, TestConfig.Options.ConnectionConfiguration, TestConfig.Log)) {
                     await transport.ConnectAsync(CancellationToken.None);
                     var buffer = new byte[48];
                     var taskResult = transport.ReadBytesAsync(buffer, 4, _ => { }, CancellationToken.None);
@@ -262,7 +338,7 @@ namespace KafkaClient.Tests.Unit
                 Retry.AtMost(maxRetries),
                 onConnecting: (e, attempt, elapsed) => Interlocked.Increment(ref connectionAttempts)
                 );
-            using (var transport = new SocketTransport(endpoint, config, TestConfig.Log)) {
+            using (var transport = CreateTransport(endpoint, config, TestConfig.Log)) {
                 try {
                     await transport.ConnectAsync(CancellationToken.None);
                     Assert.Fail("Did not throw ConnectionException");
@@ -277,14 +353,14 @@ namespace KafkaClient.Tests.Unit
         public async Task ReadShouldStackReadRequestsAndReturnOneAtATime()
         {
             var endpoint = TestConfig.ServerEndpoint();
-            using (var server = new TcpServer(endpoint.Ip.Port, TestConfig.Log))
+            using (var server = CreateServer(endpoint.Ip.Port, TestConfig.Log))
             {
                 var messages = new[] { "test1", "test2", "test3", "test4" };
                 var expectedLength = "test1".Length;
 
                 var payload = new KafkaWriter().Write(messages);
 
-                using (var transport = new SocketTransport(endpoint, TestConfig.Options.ConnectionConfiguration, TestConfig.Log)) {
+                using (var transport = CreateTransport(endpoint, TestConfig.Options.ConnectionConfiguration, TestConfig.Log)) {
                     await transport.ConnectAsync(CancellationToken.None);
                     var tasks = messages.Select(
                         x => {
@@ -305,13 +381,14 @@ namespace KafkaClient.Tests.Unit
 
         #endregion
 
+        #region WriteBytes
 
         [Test]
         public async Task WriteAsyncShouldSendData()
         {
             var endpoint = TestConfig.ServerEndpoint();
-            using (var server = new TcpServer(endpoint.Ip.Port, TestConfig.Log))
-            using (var transport = new SocketTransport(endpoint, TestConfig.Options.ConnectionConfiguration, TestConfig.Log))
+            using (var server = CreateServer(endpoint.Ip.Port, TestConfig.Log))
+            using (var transport = CreateTransport(endpoint, TestConfig.Options.ConnectionConfiguration, TestConfig.Log))
             {
                 const int testData = 99;
                 int result = 0;
@@ -331,8 +408,8 @@ namespace KafkaClient.Tests.Unit
         public async Task WriteAsyncShouldAllowMoreThanOneWrite()
         {
             var endpoint = TestConfig.ServerEndpoint();
-            using (var server = new TcpServer(endpoint.Ip.Port, TestConfig.Log))
-            using (var transport = new SocketTransport(endpoint, TestConfig.Options.ConnectionConfiguration, TestConfig.Log))
+            using (var server = CreateServer(endpoint.Ip.Port, TestConfig.Log))
+            using (var transport = CreateTransport(endpoint, TestConfig.Options.ConnectionConfiguration, TestConfig.Log))
             {
                 const int testData = 99;
                 var results = new List<byte>();
@@ -359,8 +436,8 @@ namespace KafkaClient.Tests.Unit
             var readOnClient = new ConcurrentBag<int>();
 
             var endpoint = TestConfig.ServerEndpoint();
-            using (var server = new TcpServer(endpoint.Ip.Port, TestConfig.Log)) {
-                using (var transport = new SocketTransport(endpoint, TestConfig.Options.ConnectionConfiguration, TestConfig.Log)) {
+            using (var server = CreateServer(endpoint.Ip.Port, TestConfig.Log)) {
+                using (var transport = CreateTransport(endpoint, TestConfig.Options.ConnectionConfiguration, TestConfig.Log)) {
 #pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
                     server.OnReceivedAsync = async data => {
                         var d = data.Batch(4).Select(x => x.ToArray().ToInt32());
@@ -403,8 +480,8 @@ namespace KafkaClient.Tests.Unit
         {
             var readOnServer = new ConcurrentBag<int>();
             var endpoint = TestConfig.ServerEndpoint();
-            using (var server = new TcpServer(endpoint.Ip.Port, TestConfig.Log)) {
-                using (var transport = new SocketTransport(endpoint, TestConfig.Options.ConnectionConfiguration, TestConfig.Log)) {
+            using (var server = CreateServer(endpoint.Ip.Port, TestConfig.Log)) {
+                using (var transport = CreateTransport(endpoint, TestConfig.Options.ConnectionConfiguration, TestConfig.Log)) {
 #pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
                     server.OnReceivedAsync = async data =>
                     {
@@ -432,8 +509,8 @@ namespace KafkaClient.Tests.Unit
             var clientWriteAttempts = 0;
             var config = new ConnectionConfiguration(onWritingBytes: (e, payload) => Interlocked.Increment(ref clientWriteAttempts));
             var endpoint = TestConfig.ServerEndpoint();
-            using (var server = new TcpServer(endpoint.Ip.Port, TestConfig.Log)) {
-                using (var transport = new SocketTransport(endpoint, config, TestConfig.Log)) {
+            using (var server = CreateServer(endpoint.Ip.Port, TestConfig.Log)) {
+                using (var transport = CreateTransport(endpoint, config, TestConfig.Log)) {
                     using (var token = new CancellationTokenSource())
                     {
                         await transport.ConnectAsync(token.Token);
@@ -455,9 +532,6 @@ namespace KafkaClient.Tests.Unit
                 }
             }
         }
-
-        #region WriteBytes
-
 
         #endregion
     }
