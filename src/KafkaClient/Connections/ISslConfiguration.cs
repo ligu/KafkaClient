@@ -1,4 +1,6 @@
 ﻿using System.Net.Security;
+using System.Security.Authentication;
+using System.Security.Cryptography.X509Certificates;
 
 namespace KafkaClient.Connections
 {
@@ -8,6 +10,12 @@ namespace KafkaClient.Connections
 
         LocalCertificateSelectionCallback LocalCertificateSelectionCallback { get; }
 
-        EncryptionPolicy? EncryptionPolicy { get; }
+        X509CertificateCollection LocalCertificates { get; }
+
+        EncryptionPolicy EncryptionPolicy { get; }
+
+        SslProtocols EnabledProtocols { get; }
+
+        bool CheckCertificateRevocation { get; }
     }
 }

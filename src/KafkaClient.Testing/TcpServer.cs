@@ -27,9 +27,8 @@ namespace KafkaClient.Testing
 
         private readonly ILog _log;
 
-        public TcpServer(int port, ILog log = null, ISslConfiguration sslConfiguration = null, X509Certificate certificate = null)
+        public TcpServer(int port, ILog log = null, X509Certificate certificate = null)
         {
-            _sslConfiguration = sslConfiguration;
             _certificate = certificate;
             _log = log ?? new TraceLog(LogLevel.Error);
             _listener = new TcpListener(IPAddress.Any, port);
@@ -43,7 +42,8 @@ namespace KafkaClient.Testing
             try {
                 await _clientSemaphore.WaitAsync();
                 _log.Debug(() => LogEvent.Create($"SERVER: writing {data.Count} bytes."));
-                await _client.GetStream().WriteAsync(data.Array, data.Offset, data.Count).ConfigureAwait(false);
+                var stream = await GetStream();
+                await stream.WriteAsync(data.Array, data.Offset, data.Count).ConfigureAwait(false);
                 return true;
             } catch (Exception ex) {
                 _log.Info(() => LogEvent.Create(ex));
@@ -73,19 +73,8 @@ namespace KafkaClient.Testing
                 _connectedTrigger.TrySetResult(true);
                 OnConnected?.Invoke();
                 _clientSemaphore.Release();
-                Stream stream = null;
                 try {
-                    stream = _client.GetStream();
-                    if (_sslConfiguration != null && _certificate != null) {
-                        stream = new SslStream(
-                            stream,
-                            false,
-                            _sslConfiguration.RemoteCertificateValidationCallback,
-                            _sslConfiguration.LocalCertificateSelectionCallback,
-                            _sslConfiguration.EncryptionPolicy ?? EncryptionPolicy.RequireEncryption
-                        );
-                        await ((SslStream)stream).AuthenticateAsServerAsync(_certificate).ConfigureAwait(false);
-                    }
+                    var stream = await GetStream();
 
                     while (!_disposeToken.IsCancellationRequested) {
                         var read = await stream.ReadAsync(buffer, 0, buffer.Length, _disposeToken.Token)
@@ -100,7 +89,6 @@ namespace KafkaClient.Testing
                         _log.Debug(() => LogEvent.Create(ex, "SERVER: client failed"));
                     }
                 } finally {
-                    stream?.Dispose();
                     _client?.Dispose();
                 }
 
@@ -109,6 +97,21 @@ namespace KafkaClient.Testing
                 _connectedTrigger = new TaskCompletionSource<bool>();
                 OnDisconnected?.Invoke();
             }
+        }
+
+        private async Task<Stream> GetStream()
+        {
+            var stream = _client.GetStream();
+            if (_certificate == null) return stream;
+
+            var sslStream = new SslStream(
+                stream,
+                false,
+                (sender, certificate, chain, sslPolicyErrors) => true,
+                null
+            );
+            await sslStream.AuthenticateAsServerAsync(_certificate).ConfigureAwait(false);
+            return sslStream;
         }
 
         public void Dispose()

@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Net.Security;
 using System.Net.Sockets;
+using System.Security.Authentication;
 using System.Threading;
 using System.Threading.Tasks;
 using KafkaClient.Common;
@@ -17,6 +18,7 @@ namespace KafkaClient.Connections
 
         private readonly Endpoint _endpoint;
         private readonly IConnectionConfiguration _configuration;
+        private readonly ISslConfiguration _sslConfiguration;
         private readonly ILog _log;
 
         private int _disposeCount; // = 0;
@@ -25,6 +27,7 @@ namespace KafkaClient.Connections
         public SslTransport(Endpoint endpoint, IConnectionConfiguration configuration, ILog log)
         {
             if (configuration?.SslConfiguration == null) throw new ArgumentOutOfRangeException(nameof(configuration), "Must have SslConfiguration set");
+            _sslConfiguration = configuration.SslConfiguration;
 
             _endpoint = endpoint;
             _configuration = configuration;
@@ -44,11 +47,11 @@ namespace KafkaClient.Connections
                 sslStream = new SslStream(
                     networkStream,
                     false,
-                    _configuration.SslConfiguration.RemoteCertificateValidationCallback,
-                    _configuration.SslConfiguration.LocalCertificateSelectionCallback,
-                    _configuration.SslConfiguration.EncryptionPolicy ?? EncryptionPolicy.RequireEncryption
+                    _sslConfiguration.RemoteCertificateValidationCallback,
+                    _sslConfiguration.LocalCertificateSelectionCallback,
+                    _sslConfiguration.EncryptionPolicy
                 );
-                await sslStream.AuthenticateAsClientAsync(_endpoint.Host).ConfigureAwait(false);
+                await sslStream.AuthenticateAsClientAsync(_endpoint.Host, _sslConfiguration.LocalCertificates, _sslConfiguration.EnabledProtocols, _sslConfiguration.CheckCertificateRevocation).ConfigureAwait(false);
                 _stream = sslStream;
                 _log.Info(() => LogEvent.Create($"Successful SSL connection, SslProtocol:{sslStream.SslProtocol}, KeyExchange:{sslStream.KeyExchangeAlgorithm}.{sslStream.KeyExchangeStrength}, Cipher:{sslStream.CipherAlgorithm}.{sslStream.CipherStrength}, Hash:{sslStream.HashAlgorithm}.{sslStream.HashStrength}, Authenticated:{sslStream.IsAuthenticated}, MutuallyAuthenticated:{sslStream.IsMutuallyAuthenticated}, Encrypted:{sslStream.IsEncrypted}, Signed:{sslStream.IsSigned}"));
                 _tcpSocket = socket;
