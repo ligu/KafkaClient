@@ -28,7 +28,7 @@ namespace KafkaClient.Tests
 
         public override int GetHashCode()
         {
-            return Bytes.GetHashCode();
+            return Bytes.Count.GetHashCode();
         }
 
         public static bool operator ==(ByteTypeAssignment left, ByteTypeAssignment right)

@@ -21,13 +21,12 @@ namespace KafkaClient.Tests
             var data = KafkaEncoder.Encode(context, request);
             var decoded = KafkaDecoder.Decode<T>(data.Skip(4), context);
 
+            Assert.That(request.GetHashCode(), Is.EqualTo(decoded.GetHashCode()), "HashCode equality");
+            Assert.That(request.ShortString(), Is.EqualTo(decoded.ShortString()), "ShortString equality");
             var original = request.ToString();
             var final = decoded.ToString();
-            if (!(request == decoded && request.GetHashCode() == decoded.GetHashCode() && original == final)) {
-                Console.WriteLine($"Original\n{original}\nFinal\n{final}");
-                Assert.That(final, Is.EqualTo(original));
-                Assert.Fail("Not equal, although strings suggest they are?");
-            }
+            Assert.That(original, Is.EqualTo(final), "ToString equality");
+            Assert.That(request, Is.EqualTo(decoded), $"Original\n{original}\nFinal\n{final}");
         }
 
         public static void AssertCanEncodeDecodeResponse<T>(this T response, short version, IMembershipEncoder encoder = null) where T : class, IResponse
@@ -41,13 +40,11 @@ namespace KafkaClient.Tests
             var data = KafkaDecoder.EncodeResponseBytes(context, response);
             var decoded = KafkaEncoder.Decode<T>(context, GetType<T>(), data.Skip(KafkaEncoder.ResponseHeaderSize));
 
+            Assert.That(response.GetHashCode(), Is.EqualTo(decoded.GetHashCode()), "HashCode equality");
             var original = response.ToString();
             var final = decoded.ToString();
-            if (!(response == decoded && response.GetHashCode() == decoded.GetHashCode() && original == final)) {
-                Console.WriteLine($"Original\n{original}\nFinal\n{final}");
-                Assert.That(final, Is.EqualTo(original));
-                Assert.Fail("Not equal, although strings suggest they are?");
-            }
+            Assert.That(original, Is.EqualTo(final), "ToString equality");
+            Assert.That(response, Is.EqualTo(decoded), $"Original\n{original}\nFinal\n{final}");
         }
 
         public static ApiKey GetType<T>() where T : class, IResponse

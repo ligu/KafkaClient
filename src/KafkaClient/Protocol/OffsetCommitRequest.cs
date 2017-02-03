@@ -35,7 +35,7 @@ namespace KafkaClient.Protocol
         public override string ShortString() => $"{ApiKey} {GroupId} {MemberId}";
 
         public OffsetCommitRequest(string groupId, IEnumerable<Topic> offsetCommits, string memberId = null, int generationId = -1, TimeSpan? offsetRetention = null) 
-            : base(Protocol.ApiKey.OffsetCommit, groupId, memberId ?? "", generationId)
+            : base(ApiKey.OffsetCommit, groupId, memberId ?? "", generationId)
         {
             OffsetRetention = offsetRetention;
             Topics = ImmutableList<Topic>.Empty.AddNotNullRange(offsetCommits);
@@ -72,7 +72,7 @@ namespace KafkaClient.Protocol
             unchecked {
                 int hashCode = base.GetHashCode();
                 hashCode = (hashCode*397) ^ OffsetRetention.GetHashCode();
-                hashCode = (hashCode*397) ^ (Topics?.GetHashCode() ?? 0);
+                hashCode = (hashCode*397) ^ (Topics?.Count.GetHashCode() ?? 0);
                 return hashCode;
             }
         }

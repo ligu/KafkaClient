@@ -76,7 +76,7 @@ namespace KafkaClient.Protocol
         public override int GetHashCode()
         {
             unchecked {
-                var hashCode = Topics?.GetHashCode() ?? 0;
+                var hashCode = Topics?.Count.GetHashCode() ?? 0;
                 hashCode = (hashCode*397) ^ ThrottleTime.GetHashCode();
                 return hashCode;
             }
@@ -157,7 +157,6 @@ namespace KafkaClient.Protocol
             }
 
             #endregion
-
         }
     }
 }

@@ -53,7 +53,7 @@ namespace KafkaClient.Protocol
         public override int GetHashCode()
         {
             unchecked {
-                return (base.GetHashCode()*397) ^ (GroupAssignments?.GetHashCode() ?? 0);
+                return (base.GetHashCode()*397) ^ (GroupAssignments?.Count.GetHashCode() ?? 0);
             }
         }
 

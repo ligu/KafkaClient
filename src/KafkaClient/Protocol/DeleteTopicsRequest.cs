@@ -56,7 +56,7 @@ namespace KafkaClient.Protocol
         {
             unchecked {
                 int hashCode = base.GetHashCode();
-                hashCode = (hashCode * 397) ^ (Topics?.GetHashCode() ?? 0);
+                hashCode = (hashCode * 397) ^ (Topics?.Count.GetHashCode() ?? 0);
                 hashCode = (hashCode * 397) ^ Timeout.GetHashCode();
                 return hashCode;
             }

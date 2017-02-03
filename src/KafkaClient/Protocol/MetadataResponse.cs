@@ -80,10 +80,10 @@ namespace KafkaClient.Protocol
         public override int GetHashCode()
         {
             unchecked {
-                var hashCode = Brokers?.GetHashCode() ?? 0;
+                var hashCode = Brokers?.Count.GetHashCode() ?? 0;
                 hashCode = (hashCode*397) ^ (ControllerId?.GetHashCode() ?? 0);
                 hashCode = (hashCode*397) ^ (ClusterId?.GetHashCode() ?? 0);
-                hashCode = (hashCode*397) ^ (Topics?.GetHashCode() ?? 0);
+                hashCode = (hashCode*397) ^ (Topics?.Count.GetHashCode() ?? 0);
                 return hashCode;
             }
         }
@@ -232,8 +232,8 @@ namespace KafkaClient.Protocol
                     var hashCode = (int) ErrorCode;
                     hashCode = (hashCode*397) ^ PartitionId;
                     hashCode = (hashCode*397) ^ LeaderId;
-                    hashCode = (hashCode*397) ^ (Replicas?.GetHashCode() ?? 0);
-                    hashCode = (hashCode*397) ^ (Isrs?.GetHashCode() ?? 0);
+                    hashCode = (hashCode*397) ^ (Replicas?.Count.GetHashCode() ?? 0);
+                    hashCode = (hashCode*397) ^ (Isrs?.Count.GetHashCode() ?? 0);
                     return hashCode;
                 }
             }

@@ -27,7 +27,7 @@ namespace KafkaClient.Tests
         public override int GetHashCode()
         {
             unchecked {
-                return ((AssignmentStrategy?.GetHashCode() ?? 0) * 397) ^ Bytes.GetHashCode();
+                return ((AssignmentStrategy?.GetHashCode() ?? 0) * 397) ^ Bytes.Count.GetHashCode();
             }
         }
 

@@ -112,7 +112,7 @@ namespace KafkaClient.Protocol
                 int hashCode = base.GetHashCode();
                 hashCode = (hashCode*397) ^ SessionTimeout.GetHashCode();
                 hashCode = (hashCode*397) ^ RebalanceTimeout.GetHashCode();
-                hashCode = (hashCode*397) ^ (GroupProtocols?.GetHashCode() ?? 0);
+                hashCode = (hashCode*397) ^ (GroupProtocols?.Count.GetHashCode() ?? 0);
                 hashCode = (hashCode*397) ^ (GroupId?.GetHashCode() ?? 0);
                 hashCode = (hashCode*397) ^ (MemberId?.GetHashCode() ?? 0);
                 return hashCode;

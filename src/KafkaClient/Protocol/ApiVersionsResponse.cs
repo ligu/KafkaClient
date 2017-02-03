@@ -18,7 +18,7 @@ namespace KafkaClient.Protocol
     {
         public override string ToString() => $"{{ErrorCode:{ErrorCode},Apis:[{SupportedVersions.ToStrings()}]}}";
 
-        public ApiVersionsResponse(ErrorCode errorCode = Protocol.ErrorCode.None, IEnumerable<VersionSupport> supportedVersions = null)
+        public ApiVersionsResponse(ErrorCode errorCode = ErrorCode.None, IEnumerable<VersionSupport> supportedVersions = null)
         {
             ErrorCode = errorCode;
             Errors = ImmutableList<ErrorCode>.Empty.Add(ErrorCode);
@@ -55,7 +55,7 @@ namespace KafkaClient.Protocol
         public override int GetHashCode()
         {
             unchecked {
-                return ((int) ErrorCode*397) ^ (SupportedVersions?.GetHashCode() ?? 0);
+                return ((int) ErrorCode*397) ^ (SupportedVersions?.Count.GetHashCode() ?? 0);
             }
         }
 

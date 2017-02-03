@@ -35,7 +35,7 @@ namespace KafkaClient.Protocol
 
         public override int GetHashCode()
         {
-            return Topics?.GetHashCode() ?? 0;
+            return Topics?.Count.GetHashCode() ?? 0;
         }
 
         public static bool operator ==(TopicsResponse left, TopicsResponse right)
