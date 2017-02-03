@@ -15,81 +15,34 @@ namespace KafkaClient.Tests.Unit
     [TestFixture]
     public class ConsumerTests
     {
-        //        [Test]
-        //        public async Task CancellationShouldInterruptConsumption()
-        //        {
-        //            var routerProxy = new BrokerRouterProxy();
-        //#pragma warning disable 1998
-        //            routerProxy.Connection1.FetchResponseFunction = async () => new FetchResponse(new FetchResponse.Topic[] {});
-        //#pragma warning restore 1998
+//        [Test]
+//        public async Task CancellationShouldInterruptConsumption()
+//        {
+//            var scenario = new RoutingScenario();
+//#pragma warning disable 1998
+//            scenario.Connection1.Add(ApiKey.Fetch, async context => new FetchResponse(new FetchResponse.Topic[] { }));
+//#pragma warning restore 1998
 
-        //            var router = routerProxy.Create();
-        //            var consumer = new Consumer(router);
-        //            var tokenSrc = new CancellationTokenSource();
+//            var router = scenario.CreateRouter();
+//            var consumer = new Consumer(router);
+//            var tokenSrc = new CancellationTokenSource();
 
-        //            var consumeTask = consumer.FetchMessagesAsync("TestTopic", 0, 0, 2048, tokenSrc.Token);
+//            var consumeTask = consumer.FetchBatchAsync("TestTopic", 0, 0, tokenSrc.Token, 2048);
 
-        //                //wait until the fake broker is running and requesting fetches
-        //            var wait = await TaskTest.WaitFor(() => routerProxy.Connection1.FetchRequestCallCount > 10);
+//            //wait until the fake broker is running and requesting fetches
+//            var wait = await TaskTest.WaitFor(() => scenario.Connection1[ApiKey.Fetch] > 10);
 
-        //            tokenSrc.Cancel();
+//            tokenSrc.Cancel();
 
-        //            try {
-        //                await consumeTask;
-        //                Assert.Fail("Should throw OperationFailedException");
-        //            } catch (AggregateException ex) when (ex.InnerException is OperationCanceledException) {
-        //            }
-        //        }
-
-        //        [Test]
-        //        public async Task ConsumerWhitelistShouldOnlyConsumeSpecifiedPartition()
-        //        {
-        //            var routerProxy = new BrokerRouterProxy();
-        //#pragma warning disable 1998
-        //            routerProxy.Connection1.FetchResponseFunction = async () => new FetchResponse(new FetchResponse.Topic[] {});
-        //#pragma warning restore 1998
-        //            var router = routerProxy.Create();
-        //            var options = CreateOptions(router);
-        //            options.PartitionWhitelist = new List<int> { 0 };
-        //            using (var consumer = new OldConsumer(options))
-        //            {
-        //                var test = consumer.Consume();
-
-        //                await TaskTest.WaitFor(() => consumer.ConsumerTaskCount > 0);
-        //                await TaskTest.WaitFor(() => routerProxy.Connection1.FetchRequestCallCount > 0);
-
-        //                Assert.That(consumer.ConsumerTaskCount, Is.EqualTo(1),
-        //                    "Consumer should only create one consuming thread for partition 0.");
-        //                Assert.That(routerProxy.Connection1.FetchRequestCallCount, Is.GreaterThanOrEqualTo(1));
-        //                Assert.That(routerProxy.Connection2.FetchRequestCallCount, Is.EqualTo(0));
-        //            }
-        //        }
-
-        //        [Test]
-        //        public async Task ConsumerWithEmptyWhitelistShouldConsumeAllPartition()
-        //        {
-        //            var routerProxy = new BrokerRouterProxy();
-
-        //            var router = routerProxy.Create();
-        //            var options = CreateOptions(router);
-        //            options.PartitionWhitelist = new List<int>();
-
-        //            using (var consumer = new OldConsumer(options))
-        //            {
-        //                var test = consumer.Consume();
-
-        //                await TaskTest.WaitFor(() => consumer.ConsumerTaskCount > 0);
-        //                await TaskTest.WaitFor(() => routerProxy.Connection1.FetchRequestCallCount > 0);
-        //                await TaskTest.WaitFor(() => routerProxy.Connection2.FetchRequestCallCount > 0);
-
-        //                Assert.That(consumer.ConsumerTaskCount, Is.EqualTo(2),
-        //                    "Consumer should create one consuming thread for each partition.");
-        //                Assert.That(routerProxy.Connection1.FetchRequestCallCount, Is.GreaterThanOrEqualTo(1),
-        //                    "Connection1 not sent FetchRequest");
-        //                Assert.That(routerProxy.Connection2.FetchRequestCallCount, Is.GreaterThanOrEqualTo(1),
-        //                    "Connection2 not sent FetchRequest");
-        //            }
-        //        }
+//            try
+//            {
+//                await consumeTask;
+//                Assert.Fail("Should throw OperationFailedException");
+//            }
+//            catch (AggregateException ex) when (ex.InnerException is OperationCanceledException)
+//            {
+//            }
+//        }
 
         [Test]
         public async Task EnsureConsumerDisposesRouter()

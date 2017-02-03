@@ -8,7 +8,7 @@ using NSubstitute;
 
 namespace KafkaClient.Tests
 {
-    public class FakeRouter
+    public class RoutingScenario
     {
         public const string TestTopic = "UnitTest";
 
@@ -23,7 +23,7 @@ namespace KafkaClient.Tests
         public Func<Task<MetadataResponse>> MetadataResponse = DefaultMetadataResponse;
         public Func<Task<GroupCoordinatorResponse>> GroupCoordinatorResponse = () => DefaultGroupCoordinatorResponse(0);
 
-        public FakeRouter()
+        public RoutingScenario()
         {
             //setup mock IConnection
 #pragma warning disable 1998
@@ -70,7 +70,7 @@ namespace KafkaClient.Tests
             KafkaConnectionFactory = kafkaConnectionFactory;
         }
 
-        public IRouter Create(TimeSpan? cacheExpiration = null)
+        public IRouter CreateRouter(TimeSpan? cacheExpiration = null)
         {
             return new Router(
                 new [] { new Endpoint(new IPEndPoint(IPAddress.Loopback, 1)), new Endpoint(new IPEndPoint(IPAddress.Loopback, 2)) },

@@ -4,44 +4,11 @@ using System.Linq;
 using KafkaClient.Assignment;
 using KafkaClient.Common;
 using KafkaClient.Protocol;
-using KafkaClient.Testing;
 using NUnit.Framework;
 using NUnit.Framework.Internal;
 
 namespace KafkaClient.Tests.Unit
 {
-    /// <summary>
-    /// From http://kafka.apache.org/protocol.html#protocol_types
-    /// The protocol is built out of the following primitive types.
-    ///
-    /// Fixed Width Primitives:
-    /// int8, int16, int32, int64 - Signed integers with the given precision (in bits) stored in big endian order.
-    ///
-    /// Variable Length Primitives:
-    /// bytes, string - These types consist of a signed integer giving a length N followed by N bytes of content. 
-    /// A length of -1 indicates null. string uses an int16 for its size, and bytes uses an int32.
-    ///
-    /// Arrays:
-    /// This is a notation for handling repeated structures. These will always be encoded as an int32 size containing 
-    /// the length N followed by N repetitions of the structure which can itself be made up of other primitive types. 
-    /// In the BNF grammars below we will show an array of a structure foo as [foo].
-    /// 
-    /// Message formats are from https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-CommonRequestandResponseStructure
-    /// 
-    /// RequestOrResponse => Size (RequestMessage | ResponseMessage)
-    ///  Size => int32    : The Size field gives the size of the subsequent request or response message in bytes. 
-    ///                     The client can read requests by first reading this 4 byte size as an integer N, and 
-    ///                     then reading and parsing the subsequent N bytes of the request.
-    /// 
-    /// Request Header => api_key api_version correlation_id client_id 
-    ///  api_key => INT16             -- The id of the request type.
-    ///  api_version => INT16         -- The version of the API.
-    ///  correlation_id => INT32      -- A user-supplied integer value that will be passed back with the response.
-    ///  client_id => NULLABLE_STRING -- A user specified identifier for the client making the request.
-    /// 
-    /// Response Header => correlation_id 
-    ///  correlation_id => INT32      -- The user-supplied value passed in with the request
-    /// </summary>
     [TestFixture]
     public class ProtocolTests
     {
@@ -57,6 +24,140 @@ namespace KafkaClient.Tests.Unit
             Assert.That(withoutLength.Length, Is.EqualTo(14));
             Assert.That(withoutLength, Is.EqualTo(new byte[] { 0, 18, 0, 0, 7, 91, 205, 21, 0, 4, 116, 101, 115, 116 }));
         }
+
+        #region Messages
+
+        [Test]
+        public void DecodeMessageShouldThrowWhenCrcFails()
+        {
+            var testMessage = new Message(value: "kafka test message.", key: "test");
+
+            using (var writer = new KafkaWriter())
+            {
+                writer.Write(testMessage);
+                var encoded = writer.ToSegment(false);
+                encoded.Array[encoded.Offset] += 1;
+                using (var reader = new KafkaReader(encoded))
+                {
+                    Assert.Throws<CrcValidationException>(() => reader.ReadMessage(encoded.Count, 0).First());
+                }
+            }
+        }
+
+        [Test]
+        [TestCase("test key", "test message")]
+        [TestCase(null, "test message")]
+        [TestCase("test key", null)]
+        [TestCase(null, null)]
+        public void EnsureMessageEncodeAndDecodeAreCompatible(string key, string value)
+        {
+            var testMessage = new Message(key: key, value: value);
+
+            using (var writer = new KafkaWriter())
+            {
+                writer.Write(testMessage);
+                var encoded = writer.ToSegment(false);
+                using (var reader = new KafkaReader(encoded))
+                {
+                    var result = reader.ReadMessage(encoded.Count, 0).First();
+
+                    Assert.That(testMessage.Key, Is.EqualTo(result.Key));
+                    Assert.That(testMessage.Value, Is.EqualTo(result.Value));
+                }
+            }
+        }
+
+        [Test]
+        public void EncodeMessageSetEncodesMultipleMessages()
+        {
+            //expected generated from python library
+            var expected = new byte[]
+                {
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16, 45, 70, 24, 62, 0, 0, 0, 0, 0, 1, 49, 0, 0, 0, 1, 48, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0, 16, 90, 65, 40, 168, 0, 0, 0, 0, 0, 1, 49, 0, 0, 0, 1, 49, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 16, 195, 72, 121, 18, 0, 0, 0, 0, 0, 1, 49, 0, 0, 0, 1, 50
+                };
+
+            var messages = new[]
+                {
+                    new Message("0", "1"),
+                    new Message("1", "1"),
+                    new Message("2", "1")
+                };
+
+            using (var writer = new KafkaWriter())
+            {
+                writer.Write(messages);
+                var result = writer.ToSegment(false);
+                Assert.That(expected, Is.EqualTo(result));
+            }
+        }
+
+        [Test]
+        public void DecodeMessageSetShouldHandleResponseWithMaxBufferSizeHit()
+        {
+            using (var reader = new KafkaReader(MessageHelper.FetchResponseMaxBytesOverflow))
+            {
+                //This message set has a truncated message bytes at the end of it
+                var result = reader.ReadMessages(0);
+
+                var message = result.First().Value.ToUtf8String();
+
+                Assert.That(message, Is.EqualTo("test"));
+                Assert.That(result.Count, Is.EqualTo(529));
+            }
+        }
+
+        [Test]
+        public void WhenMessageIsTruncatedThenBufferUnderRunExceptionIsThrown()
+        {
+            // arrange
+            var message = new byte[] { };
+            var messageSize = message.Length + 1;
+            using (var writer = new KafkaWriter())
+            {
+                writer.Write(0L)
+                       .Write(messageSize)
+                       .Write(new ArraySegment<byte>(message));
+                var segment = writer.ToSegment();
+                using (var reader = new KafkaReader(segment))
+                {
+                    // act/assert
+                    Assert.Throws<BufferUnderRunException>(() => reader.ReadMessages(0));
+                }
+            }
+        }
+
+        [Test]
+        public void WhenMessageIsExactlyTheSizeOfBufferThenMessageIsDecoded()
+        {
+            // arrange
+            var expectedPayloadBytes = new ArraySegment<byte>(new byte[] { 1, 2, 3, 4 });
+            using (var writer = new KafkaWriter())
+            {
+                writer.Write(0L);
+                using (writer.MarkForLength())
+                {
+                    writer.Write(new Message(expectedPayloadBytes, new ArraySegment<byte>(new byte[] { 0 }), 0, version: 0));
+                }
+                var segment = writer.ToSegment();
+
+                // act/assert
+                using (var reader = new KafkaReader(segment))
+                {
+                    var messages = reader.ReadMessages(0);
+                    var actualPayload = messages.First().Value;
+
+                    // assert
+                    var expectedPayload = new byte[] { 1, 2, 3, 4 };
+                    CollectionAssert.AreEqual(expectedPayload, actualPayload);
+                }
+            }
+        }
+
+        #endregion
+
+        #region Request / Response
 
         [Test]
         public void ProduceRequest(
@@ -864,5 +965,7 @@ namespace KafkaClient.Tests.Unit
             }
             return messages;
         }
+
+        #endregion
     }
 }
