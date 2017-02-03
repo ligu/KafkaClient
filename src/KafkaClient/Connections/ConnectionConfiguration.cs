@@ -172,7 +172,7 @@ namespace KafkaClient.Connections
             /// <summary>
             /// The default value for <see cref="ConnectionConfiguration.IsTcpKeepalive"/> and <see cref="ConnectionConfiguration.IsTcpKeepalive"/>
             /// </summary>
-            public const bool IsTcpKeepalive = false;
+            public const bool IsTcpKeepalive = true;
 
             /// <summary>
             /// The default max retries for <see cref="ConnectionConfiguration.ConnectionRetry"/>

@@ -30,10 +30,6 @@ namespace KafkaClient.Protocol
             _bytes = bytes;
         }
 
-        public KafkaReader(byte[] bytes) : this(new ArraySegment<byte>(bytes))
-        {
-        }
-
         public int Length => _bytes.Count;
         public int Position { get; set; }
 
@@ -69,19 +65,9 @@ namespace KafkaClient.Protocol
             return ToSegment(8).ToInt64();
         }
 
-        public ushort ReadUInt16()
-        {
-            return ToSegment(2).ToUInt16();
-        }
-
         public uint ReadUInt32()
         {
             return ToSegment(4).ToUInt32();
-        }
-
-        public ulong ReadUInt64()
-        {
-            return ToSegment(8).ToUInt64();
         }
 
         public string ReadString()

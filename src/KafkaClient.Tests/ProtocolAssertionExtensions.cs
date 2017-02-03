@@ -21,9 +21,9 @@ namespace KafkaClient.Tests
             var data = KafkaEncoder.Encode(context, request);
             var decoded = KafkaDecoder.Decode<T>(data.Skip(4), context);
 
-            if (!request.Equals(decoded)) {
-                var original = request.ToString();
-                var final = decoded.ToString();
+            var original = request.ToString();
+            var final = decoded.ToString();
+            if (!(request == decoded && request.GetHashCode() == decoded.GetHashCode() && original == final)) {
                 Console.WriteLine($"Original\n{original}\nFinal\n{final}");
                 Assert.That(final, Is.EqualTo(original));
                 Assert.Fail("Not equal, although strings suggest they are?");
@@ -41,9 +41,9 @@ namespace KafkaClient.Tests
             var data = KafkaDecoder.EncodeResponseBytes(context, response);
             var decoded = KafkaEncoder.Decode<T>(context, GetType<T>(), data.Skip(KafkaEncoder.ResponseHeaderSize));
 
-            if (!response.Equals(decoded)) {
-                var original = response.ToString();
-                var final = decoded.ToString();
+            var original = response.ToString();
+            var final = decoded.ToString();
+            if (!(response == decoded && response.GetHashCode() == decoded.GetHashCode() && original == final)) {
                 Console.WriteLine($"Original\n{original}\nFinal\n{final}");
                 Assert.That(final, Is.EqualTo(original));
                 Assert.Fail("Not equal, although strings suggest they are?");

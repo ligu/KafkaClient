@@ -85,20 +85,20 @@ namespace KafkaClient.Common
             return BitConverter.ToInt64(value.Array, value.Offset).ToBigEndian();
         }
 
-        public static ushort ToUInt16(this ArraySegment<byte> value)
-        {
-            return BitConverter.ToUInt16(value.Array, value.Offset).ToBigEndian();
-        }
+        //public static ushort ToUInt16(this ArraySegment<byte> value)
+        //{
+        //    return BitConverter.ToUInt16(value.Array, value.Offset).ToBigEndian();
+        //}
 
         public static uint ToUInt32(this ArraySegment<byte> value)
         {
             return BitConverter.ToUInt32(value.Array, value.Offset).ToBigEndian();
         }
 
-        public static ulong ToUInt64(this ArraySegment<byte> value)
-        {
-            return BitConverter.ToUInt64(value.Array, value.Offset).ToBigEndian();
-        }
+        //public static ulong ToUInt64(this ArraySegment<byte> value)
+        //{
+        //    return BitConverter.ToUInt64(value.Array, value.Offset).ToBigEndian();
+        //}
 
         #endregion
 
@@ -119,50 +119,50 @@ namespace KafkaClient.Common
             return BitConverter.GetBytes(value.ToBigEndian());
         }
 
-        public static byte[] ToBytes(this ushort value)
-        {
-            return BitConverter.GetBytes(value.ToBigEndian());
-        }
+        //public static byte[] ToBytes(this ushort value)
+        //{
+        //    return BitConverter.GetBytes(value.ToBigEndian());
+        //}
 
         public static byte[] ToBytes(this uint value)
         {
             return BitConverter.GetBytes(value.ToBigEndian());
         }
 
-        public static byte[] ToBytes(this ulong value)
-        {
-            return BitConverter.GetBytes(value.ToBigEndian());
-        }
+        //public static byte[] ToBytes(this ulong value)
+        //{
+        //    return BitConverter.GetBytes(value.ToBigEndian());
+        //}
 
-        public static short ToInt16(this byte[] value)
-        {
-            return BitConverter.ToInt16(value, 0).ToBigEndian();
-        }
+        //public static short ToInt16(this byte[] value)
+        //{
+        //    return BitConverter.ToInt16(value, 0).ToBigEndian();
+        //}
 
         public static int ToInt32(this byte[] value)
         {
             return BitConverter.ToInt32(value, 0).ToBigEndian();
         }
 
-        public static long ToInt64(this byte[] value)
-        {
-            return BitConverter.ToInt64(value, 0).ToBigEndian();
-        }
+        //public static long ToInt64(this byte[] value)
+        //{
+        //    return BitConverter.ToInt64(value, 0).ToBigEndian();
+        //}
 
-        public static ushort ToUInt16(this byte[] value)
-        {
-            return BitConverter.ToUInt16(value, 0).ToBigEndian();
-        }
+        //public static ushort ToUInt16(this byte[] value)
+        //{
+        //    return BitConverter.ToUInt16(value, 0).ToBigEndian();
+        //}
 
-        public static uint ToUInt32(this byte[] value)
-        {
-            return BitConverter.ToUInt32(value, 0).ToBigEndian();
-        }
+        //public static uint ToUInt32(this byte[] value)
+        //{
+        //    return BitConverter.ToUInt32(value, 0).ToBigEndian();
+        //}
 
-        public static ulong ToUInt64(this byte[] value)
-        {
-            return BitConverter.ToUInt64(value, 0).ToBigEndian();
-        }
+        //public static ulong ToUInt64(this byte[] value)
+        //{
+        //    return BitConverter.ToUInt64(value, 0).ToBigEndian();
+        //}
 
         public static long ToBigEndian(this long value)
         {
@@ -182,12 +182,12 @@ namespace KafkaClient.Common
             return ((long) second << 32) | first;
         }
 
-        public static ulong ToBigEndian(this ulong value)
-        {
-            return BitConverter.IsLittleEndian
-                ? (ulong)ToBigEndian((long)value)
-                : value;
-        }
+        //public static ulong ToBigEndian(this ulong value)
+        //{
+        //    return BitConverter.IsLittleEndian
+        //        ? (ulong)ToBigEndian((long)value)
+        //        : value;
+        //}
 
         public static int ToBigEndian(this int value)
         {
@@ -213,12 +213,12 @@ namespace KafkaClient.Common
                 : value;
         }
 
-        public static ushort ToBigEndian(this ushort value)
-        {
-            return BitConverter.IsLittleEndian
-                ? (ushort)ToBigEndian((short)value)
-                : value;
-        }
+        //public static ushort ToBigEndian(this ushort value)
+        //{
+        //    return BitConverter.IsLittleEndian
+        //        ? (ushort)ToBigEndian((short)value)
+        //        : value;
+        //}
 
         #endregion
 
@@ -480,33 +480,33 @@ namespace KafkaClient.Common
             }
         }
 
-        public static async Task LockAsync(this SemaphoreSlim semaphore, Action action, CancellationToken cancellationToken)
-        {
-            try {
-                await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-            } catch (ArgumentNullException ex) {
-                throw new ObjectDisposedException(nameof(semaphore), ex);
-            }
-            try {
-                action();
-            } finally {
-                semaphore.Release(1);
-            }
-        }
+        //public static async Task LockAsync(this SemaphoreSlim semaphore, Action action, CancellationToken cancellationToken)
+        //{
+        //    try {
+        //        await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+        //    } catch (ArgumentNullException ex) {
+        //        throw new ObjectDisposedException(nameof(semaphore), ex);
+        //    }
+        //    try {
+        //        action();
+        //    } finally {
+        //        semaphore.Release(1);
+        //    }
+        //}
 
-        public static async Task<T> LockAsync<T>(this SemaphoreSlim semaphore, Func<T> function, CancellationToken cancellationToken)
-        {
-            try {
-                await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-            } catch (ArgumentNullException ex) {
-                throw new ObjectDisposedException(nameof(semaphore), ex);
-            }
-            try {
-                return function();
-            } finally {
-                semaphore.Release(1);
-            }
-        }
+        //public static async Task<T> LockAsync<T>(this SemaphoreSlim semaphore, Func<T> function, CancellationToken cancellationToken)
+        //{
+        //    try {
+        //        await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+        //    } catch (ArgumentNullException ex) {
+        //        throw new ObjectDisposedException(nameof(semaphore), ex);
+        //    }
+        //    try {
+        //        return function();
+        //    } finally {
+        //        semaphore.Release(1);
+        //    }
+        //}
 
         public static async Task LockAsync(this SemaphoreSlim semaphore, Func<Task> asyncAction, CancellationToken cancellationToken)
         {

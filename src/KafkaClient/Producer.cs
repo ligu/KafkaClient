@@ -90,6 +90,7 @@ namespace KafkaClient
                 throw new ObjectDisposedException("Cannot send messages after Stopped or Disposed", ex);
             } finally {
                 Interlocked.Add(ref _sendingMessageCount, -produceTopicTask.Messages.Count);
+                produceTopicTask.Dispose();
             }
         }
 
