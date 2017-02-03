@@ -12,7 +12,7 @@ namespace KafkaClient.Connections
     {
         Task ConnectAsync(CancellationToken cancellationToken);
 
-        Task<int> ReadBytesAsync(byte[] buffer, int bytesToRead, Action<int> onBytesRead, CancellationToken cancellationToken);
+        Task<int> ReadBytesAsync(ArraySegment<byte> buffer, CancellationToken cancellationToken);
 
         Task<int> WriteBytesAsync(ArraySegment<byte> buffer, CancellationToken cancellationToken, int correlationId = 0);
     }

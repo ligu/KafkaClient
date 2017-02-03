@@ -26,7 +26,7 @@ namespace KafkaClient.Connections
             _endpoint = endpoint;
             _configuration = configuration;
             _log = log;
-            _socket = new ReconnectingSocket(endpoint, configuration, log, false);
+            _socket = new ReconnectingSocket(endpoint, configuration, log, true);
         }
 
         public async Task ConnectAsync(CancellationToken cancellationToken)
@@ -34,10 +34,11 @@ namespace KafkaClient.Connections
             _tcpSocket = await _socket.ConnectAsync(cancellationToken);
         }
 
-        public async Task<int> ReadBytesAsync(byte[] buffer, int bytesToRead, Action<int> onBytesRead, CancellationToken cancellationToken)
+        public async Task<int> ReadBytesAsync(ArraySegment<byte> buffer, CancellationToken cancellationToken)
         {
             var timer = new Stopwatch();
             var totalBytesRead = 0;
+            var bytesToRead = buffer.Count;
             try {
                 _configuration.OnReading?.Invoke(_endpoint, bytesToRead);
                 timer.Start();
@@ -45,8 +46,7 @@ namespace KafkaClient.Connections
                     var bytesRemaining = bytesToRead - totalBytesRead;
                     _log.Verbose(() => LogEvent.Create($"Reading ({bytesRemaining}? bytes) from {_endpoint}"));
                     _configuration.OnReadingBytes?.Invoke(_endpoint, bytesRemaining);
-                    var bytes = new ArraySegment<byte>(buffer, 0, Math.Min(buffer.Length, bytesRemaining));
-                    var bytesRead = await _tcpSocket.ReceiveAsync(bytes, SocketFlags.None).ThrowIfCancellationRequested(cancellationToken).ConfigureAwait(false);
+                    var bytesRead = await _tcpSocket.ReceiveAsync(buffer, SocketFlags.None).ThrowIfCancellationRequested(cancellationToken).ConfigureAwait(false);
                     totalBytesRead += bytesRead;
                     _configuration.OnReadBytes?.Invoke(_endpoint, bytesRemaining, bytesRead, timer.Elapsed);
                     _log.Verbose(() => LogEvent.Create($"Read {bytesRead} bytes from {_endpoint}"));
@@ -57,7 +57,6 @@ namespace KafkaClient.Connections
                         _configuration.OnDisconnected?.Invoke(_endpoint, ex);
                         throw ex;
                     }
-                    onBytesRead?.Invoke(bytesRead);
                 }
                 timer.Stop();
                 _configuration.OnRead?.Invoke(_endpoint, totalBytesRead, timer.Elapsed);

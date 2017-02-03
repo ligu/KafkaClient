@@ -148,46 +148,42 @@ namespace KafkaClient.Connections
         private async Task DedicatedReceiveAsync()
         {
             // only allow one reader to execute, dump out all other requests
-            if (Interlocked.Increment(ref _activeReaderCount) > 1) return;
+            if (Interlocked.Increment(ref _activeReaderCount) > 1)
+            {
+                Interlocked.Decrement(ref _activeReaderCount);
+                return;
+            }
 
             try {
-                var buffer = new byte[_configuration.ReadBufferSize];
-                AsyncItem asyncItem = null;
                 // use backoff so we don't take over the CPU when there's a failure
                 await Retry.WithBackoff(int.MaxValue, minimumDelay: TimeSpan.FromMilliseconds(5), maximumDelay: TimeSpan.FromSeconds(5)).TryAsync(
                     async attempt => {
                         await _transport.ConnectAsync(_disposeToken.Token).ConfigureAwait(false);
 
-                        if (asyncItem == null) {
-                            await _transport.ReadBytesAsync(buffer, KafkaEncoder.ResponseHeaderSize, null, CancellationToken.None).ConfigureAwait(false);
-                            var responseSize = BitConverter.ToInt32(buffer, 0).ToBigEndian();
-                            var correlationId = BitConverter.ToInt32(buffer, KafkaEncoder.IntegerByteSize).ToBigEndian();
+                        //reading the header
+                        var header = new byte[KafkaEncoder.ResponseHeaderSize];
+                        await _transport.ReadBytesAsync(new ArraySegment<byte>(header), CancellationToken.None).ConfigureAwait(false);
+                        var responseSize = BitConverter.ToInt32(header, 0).ToBigEndian();
+                        var correlationId = BitConverter.ToInt32(header, KafkaEncoder.IntegerByteSize).ToBigEndian();
 
-                            asyncItem = LookupByCorrelateId(correlationId, responseSize);
-                            if (asyncItem.ResponseStream != null) {
-                                _log.Error(LogEvent.Create($"Request id {correlationId} matched a previous response ({asyncItem.ResponseStream.Length + KafkaEncoder.CorrelationSize} of {asyncItem.ResponseStream.Capacity + KafkaEncoder.CorrelationSize} bytes), now overwriting with {responseSize}? bytes"));
-                            }
-                            asyncItem.ResponseStream = new MemoryStream(responseSize - KafkaEncoder.CorrelationSize);
+                        var asyncItem = LookupByCorrelateId(correlationId, responseSize);
+                        if (asyncItem.ResponseBytes != null) {
+                            _log.Error(LogEvent.Create($"Request id {correlationId} matched a previous response ({asyncItem.ResponseBytes.Value.Count + KafkaEncoder.CorrelationSize} of {responseSize + KafkaEncoder.CorrelationSize} bytes), now overwriting with {responseSize}? bytes"));
                         }
 
-                        var currentitem = asyncItem;
-                        await _transport.ReadBytesAsync(buffer, asyncItem.RemainingResponseBytes, bytesRead => currentitem.ResponseStream.Write(buffer, 0, bytesRead), CancellationToken.None).ConfigureAwait(false);
+                        //reading the message body
+                        asyncItem.ResponseBytes = new ArraySegment<byte>(new byte[responseSize - KafkaEncoder.CorrelationSize]);
+
+                        await _transport.ReadBytesAsync(asyncItem.ResponseBytes.Value, CancellationToken.None).ConfigureAwait(false);
                         asyncItem.ResponseCompleted(_log);
-                        asyncItem = null;
 
                         if (attempt > 0) {
                             _log.Info(() => LogEvent.Create($"Polling receive thread has recovered on {Endpoint}"));
                         }
                     },
                     (exception, attempt, delay) => {
-                        if (_disposeToken.IsCancellationRequested) {
+                        if (_disposeToken.IsCancellationRequested)
                             throw exception.PrepareForRethrow();
-                        }
-
-                        // when reconnecting, will the data continue to stream or start again??
-                        //if (exception is ConnectionException) {
-                        //    asyncItem = null;
-                        //}
 
                         if (attempt == 0) {
                             _log.Error(LogEvent.Create(exception,  $"Polling failure on {Endpoint} attempt {attempt} delay {delay}"));
@@ -323,21 +319,21 @@ namespace KafkaClient.Connections
             public ApiKey ApiKey { get; }
             public ArraySegment<byte> RequestBytes { get; }
             public TaskCompletionSource<ArraySegment<byte>> ReceiveTask { get; }
-            public MemoryStream ResponseStream { get; set; }
-            public int RemainingResponseBytes => ResponseStream.Capacity - (int)ResponseStream.Length;
+            public ArraySegment<byte>? ResponseBytes { get; internal set;  }
 
-            public void ResponseCompleted(ILog log)
+            internal void ResponseCompleted(ILog log)
             {
-                ArraySegment<byte> bytes;
-                ResponseStream.TryGetBuffer(out bytes);
+                if(!ResponseBytes.HasValue)
+                    throw new InvalidOperationException();
+
                 if (Request is UnknownRequest) {
-                    log.Debug(() => LogEvent.Create($"Received {ResponseStream.Length + KafkaEncoder.CorrelationSize} bytes (id {Context.CorrelationId})"));
+                    log.Debug(() => LogEvent.Create($"Received {ResponseBytes.Value.Count + KafkaEncoder.CorrelationSize} bytes (id {Context.CorrelationId})"));
                     return;
                 }
-                log.Info(() => LogEvent.Create($"Received {ApiKey} response (id {Context.CorrelationId}, {ResponseStream.Length + KafkaEncoder.CorrelationSize} bytes)"));
-                if (!ReceiveTask.TrySetResult(bytes)) {
+                log.Info(() => LogEvent.Create($"Received {ApiKey} response (id {Context.CorrelationId}, {ResponseBytes.Value.Count + KafkaEncoder.CorrelationSize} bytes)"));
+                if (!ReceiveTask.TrySetResult(ResponseBytes.Value)) {
                     log.Debug(() => {
-                        var result = KafkaEncoder.Decode<IResponse>(Context, ApiKey, bytes);
+                        var result = KafkaEncoder.Decode<IResponse>(Context, ApiKey, ResponseBytes.Value);
                         return LogEvent.Create($"Timed out -----> (timed out or otherwise errored in client) {{Context:{Context},\n{ApiKey}Response:{result}}}");
                     });
                 }
