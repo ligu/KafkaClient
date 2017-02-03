@@ -22,7 +22,7 @@ namespace KafkaClient.Tests.Special
         [TestCase(100000, 5000)]
         public async Task SendAsyncShouldHandleHighVolumeOfMessages(int amount, int maxAsync)
         {
-            using (var router = await TestConfig.Options.CreateRouterAsync()) {
+            using (var router = await TestConfig.IntegrationOptions.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     using (var producer = new Producer(router, new ProducerConfiguration(maxAsync, amount / 2)))
                     {
@@ -62,7 +62,7 @@ namespace KafkaClient.Tests.Special
         public async Task ProducerSpeed(int totalMessages, int batchSize, MessageCodec codec)
         {
             int timeoutInMs = Math.Max(100, totalMessages / 20);
-            using (var router = await TestConfig.Options.CreateRouterAsync()) {
+            using (var router = await TestConfig.IntegrationOptions.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     var producer = new Producer(router, new ProducerConfiguration(batchSize: totalMessages / 10, batchMaxDelay: TimeSpan.FromMilliseconds(25)));
                     await producer.UsingAsync(async () => {
@@ -100,7 +100,7 @@ namespace KafkaClient.Tests.Special
         public async Task ConsumerSpeed(int totalMessages, int batchSize)
         {
             int timeoutInMs = Math.Max(100, totalMessages / 20);
-            using (var router = await TestConfig.Options.CreateRouterAsync()) {
+            using (var router = await TestConfig.IntegrationOptions.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     using (var producer = new Producer(router, new ProducerConfiguration(batchSize: totalMessages / 10, batchMaxDelay: TimeSpan.FromMilliseconds(25)))) {
                         var offset = await producer.Router.GetTopicOffsetAsync(TestConfig.TopicName(), 0, CancellationToken.None);

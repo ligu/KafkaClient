@@ -21,7 +21,7 @@ namespace KafkaClient.Tests.Special
         {
             // Disable auto topic create in our server
             var expectedTopic = Guid.NewGuid().ToString();
-            var router = await TestConfig.Options.CreateRouterAsync();
+            var router = await TestConfig.IntegrationOptions.CreateRouterAsync();
             var response = router.GetMetadataAsync(new MetadataRequest(expectedTopic), CancellationToken.None);
             var topic = (await response).Topics.FirstOrDefault();
 
@@ -34,8 +34,8 @@ namespace KafkaClient.Tests.Special
         public async Task ManualConsumerFailure()
         {
             var topicName = "TestTopicIssue13-3R-1P";
-            using (var router = await TestConfig.Options.CreateRouterAsync()) {
-                var consumer = new Consumer(await TestConfig.Options.CreateRouterAsync(), new ConsumerConfiguration(maxPartitionFetchBytes: 10000));
+            using (var router = await TestConfig.IntegrationOptions.CreateRouterAsync()) {
+                var consumer = new Consumer(await TestConfig.IntegrationOptions.CreateRouterAsync(), new ConsumerConfiguration(maxPartitionFetchBytes: 10000));
                 var offset = await router.GetTopicOffsetAsync(topicName, 0, CancellationToken.None);
 
                 var producer = new Producer(router);

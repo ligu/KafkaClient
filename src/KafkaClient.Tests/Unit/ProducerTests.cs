@@ -75,8 +75,7 @@ namespace KafkaClient.Tests.Unit
 
                 var sendTask = producer.SendMessagesAsync(messages, RoutingScenario.TestTopic, CancellationToken.None);
 
-                await AssertAsync.EventuallyThat(() => producer.ActiveSenders > 0);
-                Assert.That(producer.ActiveSenders, Is.EqualTo(1), "One async operation should be sending.");
+                await AssertAsync.ThatEventually(() => producer.ActiveSenders >= 1);
 
                 semaphore.Release();
                 await Task.WhenAny(sendTask, Task.Delay(2500));
@@ -116,14 +115,11 @@ namespace KafkaClient.Tests.Unit
                     await t;
                 });
 
-                await AssertAsync.EventuallyThat(() => producer.ActiveSenders > 0);
-                await AssertAsync.EventuallyThat(() => count > 0);
-
-                Assert.That(count, Is.EqualTo(1), "Only one SendMessagesAsync should continue.");
+                await AssertAsync.ThatEventually(() => producer.ActiveSenders == 1 && count > 0);
 
                 semaphore.Release();
-                await AssertAsync.EventuallyThat(() => count > 1);
-                Assert.That(count, Is.EqualTo(2), "The second SendMessagesAsync should continue after semaphore is released.");
+                // The second SendMessagesAsync should continue after semaphore is released.
+                await AssertAsync.ThatEventually(() => count > 1);
             }
         }
 
@@ -242,8 +238,7 @@ namespace KafkaClient.Tests.Unit
                 TestConfig.Log.Info(() => LogEvent.Create("Finished test send task"));
 
                 Assert.That(senderTask.IsCompleted);
-                await AssertAsync.EventuallyThat(() => producer.InFlightMessageCount + producer.BufferedMessageCount >= count);
-                Assert.That(producer.InFlightMessageCount + producer.BufferedMessageCount, Is.EqualTo(count));
+                await AssertAsync.ThatEventually(() => producer.InFlightMessageCount + producer.BufferedMessageCount == count);
             }
         }
 
@@ -268,8 +263,7 @@ namespace KafkaClient.Tests.Unit
                     }
                 });
 
-                await AssertAsync.EventuallyThat(() => count > 0);
-                Assert.That(producer.BufferedMessageCount, Is.EqualTo(1));
+                await AssertAsync.ThatEventually(() => count > 0 && producer.BufferedMessageCount == 1);
 
                 TestConfig.Log.Info(() => LogEvent.Create("Waiting for the rest..."));
                 await Task.WhenAny(senderTask, Task.Delay(5000));

@@ -44,5 +44,12 @@ namespace KafkaClient.Tests
             producerConfiguration: new ProducerConfiguration(stopTimeout: TimeSpan.FromSeconds(1)),
             consumerConfiguration: new ConsumerConfiguration(TimeSpan.FromMilliseconds(50), maxPartitionFetchBytes: 4096 * 8, heartbeatTimeout: TimeSpan.FromSeconds(6)),
             log: Log);
+
+        public static KafkaOptions IntegrationOptions { get; } = new KafkaOptions(
+            IntegrationUri,
+            new ConnectionConfiguration(ConnectionConfiguration.Defaults.ConnectionRetry(TimeSpan.FromSeconds(10)), requestTimeout: TimeSpan.FromSeconds(10)),
+            producerConfiguration: new ProducerConfiguration(stopTimeout: TimeSpan.FromSeconds(1)),
+            consumerConfiguration: new ConsumerConfiguration(heartbeatTimeout: TimeSpan.FromSeconds(6)),
+            log: Log);
     }
 }

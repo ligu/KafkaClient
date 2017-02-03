@@ -223,7 +223,7 @@ namespace KafkaClient.Tests.Unit
                                 var s = c.GetArguments()[0] as HeartbeatRequest;
                                 if (s == null) return false;
                                 return s.GroupId == request.GroupId && s.MemberId == memberId && s.GenerationId == response.GenerationId;
-                            }), Is.InRange(expectedHeartbeats - 1, expectedHeartbeats));
+                            }), Is.InRange(expectedHeartbeats - 1, expectedHeartbeats + 1));
         }
 
         [TestCase(100, 700)]
