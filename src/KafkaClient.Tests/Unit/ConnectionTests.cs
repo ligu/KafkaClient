@@ -582,7 +582,7 @@ namespace KafkaClient.Tests.Unit
 
             var endpoint = TestConfig.ServerEndpoint();
             using (var server = new TcpServer(endpoint.Ip.Port, TestConfig.Log))
-            using (var conn = new Connection(endpoint, new ConnectionConfiguration(requestTimeout: TimeSpan.Zero), TestConfig.Log)) {
+            using (var conn = new Connection(endpoint, new ConnectionConfiguration(requestTimeout: TimeSpan.FromMilliseconds(5)), TestConfig.Log)) {
                 server.OnReceivedAsync = data => {
                     var context = KafkaDecoder.DecodeHeader(data.Skip(KafkaEncoder.IntegerByteSize));
                     correlationId = context.CorrelationId;

@@ -17,7 +17,7 @@ namespace KafkaClient.Connections
         private readonly ILog _log;
 
         private int _disposeCount; // = 0;
-        private readonly SemaphoreSlim _sendSemaphore = new SemaphoreSlim(1, 1);
+        private readonly SemaphoreSlim _writeSemaphore = new SemaphoreSlim(1, 1);
 
         public SocketTransport(Endpoint endpoint, IConnectionConfiguration configuration, ILog log)
         {
@@ -41,8 +41,7 @@ namespace KafkaClient.Connections
             try {
                 _configuration.OnReading?.Invoke(_endpoint, bytesToRead);
                 timer.Start();
-                while (totalBytesRead < bytesToRead && !cancellationToken.IsCancellationRequested)
-                {
+                while (totalBytesRead < bytesToRead && !cancellationToken.IsCancellationRequested) {
                     var bytesRemaining = bytesToRead - totalBytesRead;
                     _log.Verbose(() => LogEvent.Create($"Reading ({bytesRemaining}? bytes) from {_endpoint}"));
                     _configuration.OnReadingBytes?.Invoke(_endpoint, bytesRemaining);
@@ -71,10 +70,10 @@ namespace KafkaClient.Connections
             return totalBytesRead;
         }
 
-        public async Task<int> WriteBytesAsync(int correlationId, ArraySegment<byte> buffer, CancellationToken cancellationToken)
+        public async Task<int> WriteBytesAsync(ArraySegment<byte> buffer, CancellationToken cancellationToken, int correlationId = 0)
         {
             var totalBytesWritten = 0;
-            await _sendSemaphore.LockAsync( // serialize sending on a given transport
+            await _writeSemaphore.LockAsync( // serialize sending on a given transport
                 async () => {
                     var timer = Stopwatch.StartNew();
                     while (totalBytesWritten < buffer.Count) {
@@ -96,7 +95,7 @@ namespace KafkaClient.Connections
         {
             if (Interlocked.Increment(ref _disposeCount) != 1) return;
 
-            _sendSemaphore.Dispose();
+            _writeSemaphore.Dispose();
             _socket.Dispose();
         }        
     }

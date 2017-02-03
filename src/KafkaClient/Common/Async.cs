@@ -8,14 +8,14 @@ namespace KafkaClient.Common
     /// </summary>
     public static class Async
     {
-        public static async Task Using<T>(T disposable, Action<T> action) where T : IAsyncDisposable
-        {
-            try {
-                action(disposable);
-            } finally {
-                await disposable.DisposeAsync().ConfigureAwait(false);
-            }
-        }
+        //public static async Task Using<T>(T disposable, Action<T> action) where T : IAsyncDisposable
+        //{
+        //    try {
+        //        action(disposable);
+        //    } finally {
+        //        await disposable.DisposeAsync().ConfigureAwait(false);
+        //    }
+        //}
 
         public static async Task Using<T>(T disposable, Func<T, Task> asyncAction) where T : IAsyncDisposable
         {

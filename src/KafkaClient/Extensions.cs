@@ -8,6 +8,7 @@ using KafkaClient.Assignment;
 using KafkaClient.Common;
 using KafkaClient.Connections;
 using KafkaClient.Protocol;
+using KafkaClient.Telemetry;
 
 namespace KafkaClient
 {
@@ -18,6 +19,77 @@ namespace KafkaClient
         public static IVersionSupport Dynamic(this VersionSupport versionSupport)
         {
             return new DynamicVersionSupport(versionSupport);
+        }
+
+        public static IConnectionConfiguration ToConfiguration(this ITrackEvents tracker)
+        {
+            if (tracker == null) return new ConnectionConfiguration();
+
+            return new ConnectionConfiguration(
+                onDisconnected: tracker.Disconnected,
+                onConnecting: tracker.Connecting,
+                onConnected: tracker.Connected,
+                onWriting: tracker.Writing,
+                onWritingBytes: tracker.WritingBytes,
+                onWroteBytes: tracker.WroteBytes,
+                onWritten: tracker.Written,
+                onWriteFailed: tracker.WriteFailed,
+                onReading: tracker.Reading,
+                onReadingBytes: tracker.ReadingBytes,
+                onReadBytes: tracker.ReadBytes,
+                onRead: tracker.Read,
+                onReadFailed: tracker.ReadFailed,
+                onProduceRequestMessages: tracker.ProduceRequestMessages);
+        }
+
+        public static IConnectionConfiguration CopyWith(
+            this IConnectionConfiguration configuration,
+            IRetry connectionRetry = null,
+            IVersionSupport versionSupport = null,
+            TimeSpan? requestTimeout = null,
+            int? readBufferSize = null,
+            int? writeBufferSize = null,
+            bool? isTcpKeepalive = null,
+            IEnumerable<IMembershipEncoder> encoders = null,
+            ISslConfiguration sslConfiguration = null,
+            ConnectError onDisconnected = null,
+            Connecting onConnecting = null,
+            Connecting onConnected = null,
+            Writing onWriting = null,
+            StartingBytes onWritingBytes = null,
+            FinishedBytes onWroteBytes = null,
+            WriteSuccess onWritten = null,
+            WriteError onWriteFailed = null,
+            Reading onReading = null,
+            StartingBytes onReadingBytes = null,
+            FinishedBytes onReadBytes = null,
+            ReadSuccess onRead = null,
+            ReadError onReadFailed = null,
+            ProduceRequestMessages onProduceRequestMessages = null)
+        {
+            return new ConnectionConfiguration(
+                connectionRetry ?? configuration.ConnectionRetry,
+                versionSupport ?? configuration.VersionSupport,
+                requestTimeout ?? configuration.RequestTimeout,
+                readBufferSize ?? configuration.ReadBufferSize,
+                writeBufferSize ?? configuration.WriteBufferSize,
+                isTcpKeepalive ?? configuration.IsTcpKeepalive,
+                encoders ?? configuration.Encoders.Values,
+                sslConfiguration ?? configuration.SslConfiguration,
+                onDisconnected ?? configuration.OnDisconnected,
+                onConnecting ?? configuration.OnConnecting,
+                onConnected ?? configuration.OnConnected,
+                onWriting ?? configuration.OnWriting,
+                onWritingBytes ?? configuration.OnWritingBytes,
+                onWroteBytes ?? configuration.OnWroteBytes,
+                onWritten ?? configuration.OnWritten,
+                onWriteFailed ?? configuration.OnWriteFailed,
+                onReading ?? configuration.OnReading,
+                onReadingBytes ?? configuration.OnReadingBytes,
+                onReadBytes ?? configuration.OnReadBytes,
+                onRead ?? configuration.OnRead,
+                onReadFailed ?? configuration.OnReadFailed,
+                onProduceRequestMessages ?? configuration.OnProduceRequestMessages);
         }
 
         #endregion

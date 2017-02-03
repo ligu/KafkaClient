@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
-using System.Text;
 using KafkaClient.Common;
 
 namespace KafkaClient.Protocol
@@ -108,7 +106,7 @@ namespace KafkaClient.Protocol
                 var hashCode = MaxWaitTime.GetHashCode();
                 hashCode = (hashCode*397) ^ MinBytes;
                 hashCode = (hashCode*397) ^ MaxBytes;
-                hashCode = (hashCode*397) ^ (Topics?.GetHashCode() ?? 0);
+                hashCode = (hashCode*397) ^ (Topics?.Count.GetHashCode() ?? 0);
                 return hashCode;
             }
         }

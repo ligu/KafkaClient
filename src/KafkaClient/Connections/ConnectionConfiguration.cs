@@ -15,56 +15,6 @@ namespace KafkaClient.Connections
         /// <summary>
         /// Configuration for the tcp connection.
         /// </summary>
-        /// <param name="connectionTimeout">The total timeout to use for the connection attempts.</param>
-        public ConnectionConfiguration(TimeSpan connectionTimeout)
-            : this(Defaults.ConnectionRetry(connectionTimeout))
-        {
-        }
-
-        /// <summary>
-        /// Configuration for the tcp connection.
-        /// </summary>
-        /// <param name="tracker">Mechanism for tracking telemetry.</param>
-        /// <param name="connectionRetry">Retry details for (re)establishing the connection.</param>
-        /// <param name="versionSupport">Support for different protocol versions for Kakfa requests and responses.</param>
-        /// <param name="requestTimeout">The maximum time to wait for requests.</param>
-        /// <param name="readBufferSize">The buffer size to use for the socket, when receiving bytes.</param>
-        /// <param name="writeBufferSize">The buffer size to use for the socket, when sending bytes.</param>
-        /// <param name="isTcpKeepalive">TCP keepalive option.</param>
-        /// <param name="encoders">Custom Encoding support for different protocol types</param>
-        /// <param name="sslConfiguration">Configuration for SSL encrypted communication</param>
-        public ConnectionConfiguration(
-            ITrackEvents tracker, 
-            IRetry connectionRetry = null, 
-            IVersionSupport versionSupport = null, 
-            TimeSpan? requestTimeout = null, 
-            int? readBufferSize = null, 
-            int? writeBufferSize = null,
-            bool? isTcpKeepalive = null,
-            IEnumerable<IMembershipEncoder> encoders = null,
-            ISslConfiguration sslConfiguration = null
-        ) : this(
-            connectionRetry, versionSupport, requestTimeout, readBufferSize, writeBufferSize, isTcpKeepalive, encoders, sslConfiguration,
-            tracker != null ? (ConnectError)tracker.Disconnected : null, 
-            tracker != null ? (Connecting)tracker.Connecting : null, 
-            tracker != null ? (Connecting)tracker.Connected : null, 
-            tracker != null ? (Writing)tracker.Writing : null, 
-            tracker != null ? (StartingBytes)tracker.WritingBytes : null, 
-            tracker != null ? (FinishedBytes)tracker.WroteBytes : null, 
-            tracker != null ? (WriteSuccess)tracker.Written : null, 
-            tracker != null ? (WriteError)tracker.WriteFailed : null, 
-            tracker != null ? (Reading)tracker.Reading : null, 
-            tracker != null ? (StartingBytes)tracker.ReadingBytes : null, 
-            tracker != null ? (FinishedBytes)tracker.ReadBytes : null, 
-            tracker != null ? (ReadSuccess)tracker.Read : null, 
-            tracker != null ? (ReadError)tracker.ReadFailed: null, 
-            tracker != null ? (ProduceRequestMessages)tracker.ProduceRequestMessages : null)
-        {
-        }
-
-        /// <summary>
-        /// Configuration for the tcp connection.
-        /// </summary>
         /// <param name="connectionRetry">Retry details for (re)establishing the connection.</param>
         /// <param name="versionSupport">Support for different protocol versions for Kakfa requests and responses.</param>
         /// <param name="requestTimeout">The maximum time to wait for requests.</param>
@@ -222,7 +172,7 @@ namespace KafkaClient.Connections
             /// <summary>
             /// The default value for <see cref="ConnectionConfiguration.IsTcpKeepalive"/> and <see cref="ConnectionConfiguration.IsTcpKeepalive"/>
             /// </summary>
-            public const bool IsTcpKeepalive = false;
+            public const bool IsTcpKeepalive = true;
 
             /// <summary>
             /// The default max retries for <see cref="ConnectionConfiguration.ConnectionRetry"/>

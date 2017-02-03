@@ -95,7 +95,7 @@ namespace KafkaClient.Connections
                         _log.Debug(() => LogEvent.Create($"{request.ApiKey} -----> {Endpoint} {{Context:{context},\nRequest:{request}}}"));
                         _configuration.OnWriting?.Invoke(Endpoint, request.ApiKey);
                         timer.Start();
-                        var bytesWritten = await _transport.WriteBytesAsync(context.CorrelationId, asyncItem.RequestBytes, cancellation.Token).ConfigureAwait(false);
+                        var bytesWritten = await _transport.WriteBytesAsync(asyncItem.RequestBytes, cancellation.Token, context.CorrelationId).ConfigureAwait(false);
                         timer.Stop();
                         _configuration.OnWritten?.Invoke(Endpoint, request.ApiKey, bytesWritten, timer.Elapsed);
 

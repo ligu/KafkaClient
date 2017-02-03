@@ -1,4 +1,3 @@
-using KafkaClient.Common;
 using KafkaClient.Protocol;
 
 namespace KafkaClient.Assignment

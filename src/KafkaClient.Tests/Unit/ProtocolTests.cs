@@ -82,18 +82,7 @@ namespace KafkaClient.Tests.Unit
                 t.Messages.Select(m => m.Attribute == 0 ? m : new Message(m.Value, m.Key, 0, m.Offset, m.MessageVersion, m.Timestamp)))),
                 request.Timeout, request.Acks);
 
-            var context = new RequestContext(16, version, "Test-Response");
-            var data = KafkaEncoder.Encode(context, request);
-            var decoded = KafkaDecoder.Decode<ProduceRequest>(data.Skip(4), context);
-
-            // special case the comparison in the case of gzip because of the server semantics
-            if (!requestWithUpdatedAttribute.Equals(decoded)) {
-                var original = requestWithUpdatedAttribute.ToString();
-                var final = decoded.ToString();
-                Console.WriteLine($"Original\n{original}\nFinal\n{final}");
-                Assert.That(final, Is.EqualTo(original));
-                Assert.Fail("Not equal, although strings suggest they are?");
-            }
+            request.AssertCanEncodeDecodeRequest(version, forComparison: requestWithUpdatedAttribute);
         }
 
         [Test]
@@ -165,18 +154,7 @@ namespace KafkaClient.Tests.Unit
                 t.Messages.Select(m => m.Attribute == 0 ? m : new Message(m.Value, m.Key, 0, m.Offset, m.MessageVersion, m.Timestamp)))), 
                 response.ThrottleTime);
 
-            var context = new RequestContext(16, version, "Test-Response");
-            var data = KafkaDecoder.EncodeResponseBytes(context, response);
-            var decoded = KafkaEncoder.Decode<FetchResponse>(context, ApiKey.Fetch, data.Skip(KafkaEncoder.ResponseHeaderSize));
-
-            // special case the comparison in the case of gzip because of the server semantics
-            if (!responseWithUpdatedAttribute.Equals(decoded)) {
-                var original = responseWithUpdatedAttribute.ToString();
-                var final = decoded.ToString();
-                Console.WriteLine($"Original\n{original}\nFinal\n{final}");
-                Assert.That(final, Is.EqualTo(original));
-                Assert.Fail("Not equal, although strings suggest they are?");
-            }
+            response.AssertCanEncodeDecodeResponse(version, forComparison: responseWithUpdatedAttribute);
         }
 
         [Test]

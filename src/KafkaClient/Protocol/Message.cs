@@ -129,8 +129,8 @@ namespace KafkaClient.Protocol
                 var hashCode = Offset.GetHashCode();
                 hashCode = (hashCode*397) ^ MessageVersion.GetHashCode();
                 hashCode = (hashCode*397) ^ Attribute.GetHashCode();
-                hashCode = (hashCode*397) ^ Key.GetHashCode();
-                hashCode = (hashCode*397) ^ Value.GetHashCode();
+                hashCode = (hashCode*397) ^ Key.Count.GetHashCode();
+                hashCode = (hashCode*397) ^ Value.Count.GetHashCode();
                 hashCode = (hashCode*397) ^ Timestamp.GetHashCode();
                 return hashCode;
             }

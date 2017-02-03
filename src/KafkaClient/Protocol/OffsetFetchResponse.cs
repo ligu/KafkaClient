@@ -49,7 +49,7 @@ namespace KafkaClient.Protocol
         /// <inheritdoc />
         public override int GetHashCode()
         {
-            return Topics?.GetHashCode() ?? 0;
+            return Topics?.Count.GetHashCode() ?? 0;
         }
 
         /// <inheritdoc />

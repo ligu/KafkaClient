@@ -64,7 +64,7 @@ namespace KafkaClient.Protocol
         public override int GetHashCode()
         {
             unchecked {
-                return ((Topics?.GetHashCode() ?? 0) * 397) ^ Timeout.GetHashCode();
+                return ((Topics?.Count.GetHashCode() ?? 0) * 397) ^ Timeout.GetHashCode();
             }
         }
 
@@ -156,8 +156,8 @@ namespace KafkaClient.Protocol
                     var hashCode = TopicName?.GetHashCode() ?? 0;
                     hashCode = (hashCode * 397) ^ NumberOfPartitions;
                     hashCode = (hashCode * 397) ^ ReplicationFactor.GetHashCode();
-                    hashCode = (hashCode * 397) ^ (ReplicaAssignments?.GetHashCode() ?? 0);
-                    hashCode = (hashCode * 397) ^ (Configs?.GetHashCode() ?? 0);
+                    hashCode = (hashCode * 397) ^ (ReplicaAssignments?.Count.GetHashCode() ?? 0);
+                    hashCode = (hashCode * 397) ^ (Configs?.Count.GetHashCode() ?? 0);
                     return hashCode;
                 }
             }
@@ -211,7 +211,7 @@ namespace KafkaClient.Protocol
             public override int GetHashCode()
             {
                 unchecked {
-                    return (PartitionId * 397) ^ (Replicas?.GetHashCode() ?? 0);
+                    return (PartitionId * 397) ^ (Replicas?.Count.GetHashCode() ?? 0);
                 }
             }
 

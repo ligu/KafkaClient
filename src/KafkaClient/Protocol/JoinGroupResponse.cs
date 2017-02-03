@@ -101,7 +101,7 @@ namespace KafkaClient.Protocol
                 hashCode = (hashCode*397) ^ (GroupProtocol?.GetHashCode() ?? 0);
                 hashCode = (hashCode*397) ^ (LeaderId?.GetHashCode() ?? 0);
                 hashCode = (hashCode*397) ^ (MemberId?.GetHashCode() ?? 0);
-                hashCode = (hashCode*397) ^ (Members?.GetHashCode() ?? 0);
+                hashCode = (hashCode*397) ^ (Members?.Count.GetHashCode() ?? 0);
                 return hashCode;
             }
         }

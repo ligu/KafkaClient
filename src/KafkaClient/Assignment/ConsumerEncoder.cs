@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using KafkaClient.Common;
 using KafkaClient.Protocol;
 
 namespace KafkaClient.Assignment

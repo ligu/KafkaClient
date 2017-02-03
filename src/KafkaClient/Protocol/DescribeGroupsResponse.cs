@@ -57,7 +57,7 @@ namespace KafkaClient.Protocol
         /// <inheritdoc />
         public override int GetHashCode()
         {
-            return Groups?.GetHashCode() ?? 0;
+            return Groups?.Count.GetHashCode() ?? 0;
         }
 
         /// <inheritdoc />
@@ -221,7 +221,7 @@ namespace KafkaClient.Protocol
                     hashCode = (hashCode*397) ^ (State?.GetHashCode() ?? 0);
                     hashCode = (hashCode*397) ^ (ProtocolType?.GetHashCode() ?? 0);
                     hashCode = (hashCode*397) ^ (Protocol?.GetHashCode() ?? 0);
-                    hashCode = (hashCode*397) ^ (Members?.GetHashCode() ?? 0);
+                    hashCode = (hashCode*397) ^ (Members?.Count.GetHashCode() ?? 0);
                     return hashCode;
                 }
             }

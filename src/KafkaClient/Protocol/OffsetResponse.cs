@@ -60,7 +60,7 @@ namespace KafkaClient.Protocol
         /// <inheritdoc />
         public override int GetHashCode()
         {
-            return Topics?.GetHashCode() ?? 0;
+            return Topics?.Count.GetHashCode() ?? 0;
         }
 
         /// <inheritdoc />
@@ -81,7 +81,7 @@ namespace KafkaClient.Protocol
         {
             public override string ToString() => $"{{TopicName:{TopicName},PartitionId:{PartitionId},ErrorCode:{ErrorCode},Offset:{Offset}}}";
 
-            public Topic(string topic, int partitionId, ErrorCode errorCode = Protocol.ErrorCode.None, long offset = -1, DateTimeOffset? timestamp = null) 
+            public Topic(string topic, int partitionId, ErrorCode errorCode = ErrorCode.None, long offset = -1, DateTimeOffset? timestamp = null) 
                 : base(topic, partitionId, errorCode)
             {
                 Offset = offset;
@@ -136,8 +136,6 @@ namespace KafkaClient.Protocol
             }
         
             #endregion
-
         }
-
     }
 }

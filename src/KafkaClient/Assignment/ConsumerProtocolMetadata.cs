@@ -78,8 +78,8 @@ namespace KafkaClient.Assignment
         {
             unchecked {
                 var hashCode = Version.GetHashCode();
-                hashCode = (hashCode*397) ^ (Subscriptions?.GetHashCode() ?? 0);
-                hashCode = (hashCode*397) ^ UserData.GetHashCode();
+                hashCode = (hashCode*397) ^ (Subscriptions?.Count.GetHashCode() ?? 0);
+                hashCode = (hashCode*397) ^ UserData.Count.GetHashCode();
                 return hashCode;
             }
         }

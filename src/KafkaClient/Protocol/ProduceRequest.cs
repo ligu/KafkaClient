@@ -37,7 +37,7 @@ namespace KafkaClient.Protocol
         }
 
         public ProduceRequest(IEnumerable<Topic> payload, TimeSpan? timeout = null, short acks = 1) 
-            : base(Protocol.ApiKey.Produce, acks != 0)
+            : base(ApiKey.Produce, acks != 0)
         {
             Timeout = timeout.GetValueOrDefault(TimeSpan.FromSeconds(1));
             Acks = acks;
@@ -83,7 +83,7 @@ namespace KafkaClient.Protocol
             unchecked {
                 var hashCode = Timeout.GetHashCode();
                 hashCode = (hashCode*397) ^ Acks.GetHashCode();
-                hashCode = (hashCode*397) ^ (Topics?.GetHashCode() ?? 0);
+                hashCode = (hashCode*397) ^ (Topics?.Count.GetHashCode() ?? 0);
                 return hashCode;
             }
         }
@@ -144,7 +144,7 @@ namespace KafkaClient.Protocol
                 unchecked {
                     int hashCode = base.GetHashCode();
                     hashCode = (hashCode*397) ^ (int) Codec;
-                    hashCode = (hashCode*397) ^ (Messages?.GetHashCode() ?? 0);
+                    hashCode = (hashCode*397) ^ (Messages?.Count.GetHashCode() ?? 0);
                     return hashCode;
                 }
             }

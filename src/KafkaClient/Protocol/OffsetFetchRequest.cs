@@ -28,7 +28,7 @@ namespace KafkaClient.Protocol
         }
 
         public OffsetFetchRequest(string groupId, IEnumerable<TopicPartition> topics) 
-            : base(Protocol.ApiKey.OffsetFetch)
+            : base(ApiKey.OffsetFetch)
         {
             if (string.IsNullOrEmpty(groupId)) throw new ArgumentNullException(nameof(groupId));
 
@@ -61,7 +61,7 @@ namespace KafkaClient.Protocol
         public override int GetHashCode()
         {
             unchecked {
-                return ((GroupId?.GetHashCode() ?? 0)*397) ^ (Topics?.GetHashCode() ?? 0);
+                return ((GroupId?.GetHashCode() ?? 0)*397) ^ (Topics?.Count.GetHashCode() ?? 0);
             }
         }
 
