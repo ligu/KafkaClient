@@ -39,14 +39,8 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public async Task ThrowsConnectionExceptionOnInvalidEndpoint()
         {
-            var conn = new Connection(new Endpoint(null, "not.com"));
-            try {
-                await conn.UsingAsync(
-                    async () => await conn.SendAsync(new ApiVersionsRequest(), CancellationToken.None));
-                Assert.Fail("should have thrown ConnectionException");
-            } catch (ConnectionException) {
-                // expected
-            }
+            var options = new KafkaOptions(new Uri("http://notadomain"));
+            await AssertAsync.Throws<ConnectionException>(() => options.CreateConnectionAsync());
         }
 
         #endregion 
@@ -59,8 +53,7 @@ namespace KafkaClient.Tests.Unit
             var count = 0;
             var config = new ConnectionConfiguration(onConnecting: (e, a, _) => Interlocked.Increment(ref count));
             var endpoint = TestConfig.ServerEndpoint();
-            using (var conn = new Connection(endpoint, config, log: TestConfig.Log))
-            {
+            using (new Connection(endpoint, config, log: TestConfig.Log)) {
                 await AssertAsync.ThatEventually(() => count > 0);
             }
         }
@@ -521,14 +514,7 @@ namespace KafkaClient.Tests.Unit
                     await server.SendDataAsync(KafkaDecoder.EncodeResponseBytes(context, new MetadataResponse()));
                 };
 
-                try
-                {
-                    await conn.SendAsync(new MetadataRequest(), CancellationToken.None);
-                    Assert.Fail("Should have thrown TimeoutException");
-                } catch (TimeoutException) {
-                    // expected
-                }
-
+                await AssertAsync.Throws<TimeoutException>(() => conn.SendAsync(new MetadataRequest(), CancellationToken.None));
                 await AssertAsync.ThatEventually(() => received > 0);
                 await AssertAsync.ThatEventually(() => logger.LogEvents.Any(e => e.Item1 == LogLevel.Debug && e.Item2.Message.StartsWith("Timed out -----> (timed out or otherwise errored in client)")));
             }
@@ -542,18 +528,10 @@ namespace KafkaClient.Tests.Unit
 
             var endpoint = TestConfig.ServerEndpoint();
             using (var server = new TcpServer(endpoint.Ip.Port, TestConfig.Log))
-            using (var conn = new Connection(endpoint, new ConnectionConfiguration(requestTimeout: timeout), logger))
-            {
+            using (var conn = new Connection(endpoint, new ConnectionConfiguration(requestTimeout: timeout), logger)) {
                 await Task.WhenAny(server.ClientConnected, Task.Delay(TimeSpan.FromSeconds(3)));
 
-                try {
-                    // generate enough requests to overflow the buffer size
-                    await Task.WhenAll(Enumerable.Range(0, 102).Select(i => conn.SendAsync(new MetadataRequest(), CancellationToken.None)));
-                    Assert.Fail("Should have thrown TimeoutException");
-                } catch (TimeoutException) {
-                    // expected
-                }
-
+                await AssertAsync.Throws<TimeoutException>(() => Task.WhenAll(Enumerable.Range(0, 102).Select(i => conn.SendAsync(new MetadataRequest(), CancellationToken.None))));
                 await AssertAsync.ThatEventually(() => logger.LogEvents.Any(e => e.Item1 == LogLevel.Debug && e.Item2.Message.StartsWith("Clearing timed out requests to avoid overflow")));
             }
         }
@@ -575,19 +553,9 @@ namespace KafkaClient.Tests.Unit
                 try {
                     Connection.OverflowGuard = 10;
 
-                    try {
-                        await Task.WhenAll(Enumerable.Range(0, Connection.OverflowGuard).Select(i => conn.SendAsync(new MetadataRequest(), CancellationToken.None)));
-                        Assert.Fail("Should have thrown TimeoutException");
-                    } catch (TimeoutException) {
-                        // expected
-                    }
+                    await AssertAsync.Throws<TimeoutException>(() => Task.WhenAll(Enumerable.Range(0, Connection.OverflowGuard).Select(i => conn.SendAsync(new MetadataRequest(), CancellationToken.None))));
                     await AssertAsync.ThatEventually(() => correlationId > 1);
-                    try {
-                        await conn.SendAsync(new MetadataRequest(), CancellationToken.None);
-                        Assert.Fail("Should have thrown TimeoutException");
-                    } catch (TimeoutException) {
-                        // expected
-                    }
+                    await AssertAsync.Throws<TimeoutException>(() => conn.SendAsync(new MetadataRequest(), CancellationToken.None));
                     await AssertAsync.ThatEventually(() => correlationId == 1);
                 }
                 finally {

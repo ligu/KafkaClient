@@ -163,13 +163,9 @@ namespace KafkaClient.Tests.Integration
                     using (var consumer = new Consumer(router, TestConfig.IntegrationOptions.ConsumerConfiguration)) {
                         var offset = await router.GetTopicOffsetAsync(TestConfig.TopicName(), 0, CancellationToken.None);
 
-                        try {
-                            // Now let's consume
-                            await consumer.FetchBatchAsync(offset.TopicName, offset.PartitionId, offset.Offset + 1, CancellationToken.None, 5);
-                            Assert.Fail("should have thrown FetchOutOfRangeException");
-                        } catch (FetchOutOfRangeException ex) when (ex.Message.StartsWith("Kafka returned OffsetOutOfRange for Fetch request")) {
-                            TestConfig.Log.Error(LogEvent.Create(ex));
-                        }
+                        await AssertAsync.Throws<FetchOutOfRangeException>(
+                            () => consumer.FetchBatchAsync(offset.TopicName, offset.PartitionId, offset.Offset + 1, CancellationToken.None, 5),
+                            ex => ex.Message.StartsWith("Kafka returned OffsetOutOfRange for Fetch request"));
                     }
                 });
             }
@@ -184,7 +180,7 @@ namespace KafkaClient.Tests.Integration
                         var offset = -1;
 
                         // Now let's consume
-                        Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await consumer.FetchBatchAsync(topicName, 0, offset, CancellationToken.None, 5));
+                        await AssertAsync.Throws<ArgumentOutOfRangeException>(() => consumer.FetchBatchAsync(topicName, 0, offset, CancellationToken.None, 5));
                     }
                 });
             }
@@ -199,13 +195,9 @@ namespace KafkaClient.Tests.Integration
                 using (var consumer = new Consumer(router, new ConsumerConfiguration(maxPartitionFetchBytes: TestConfig.IntegrationOptions.ConsumerConfiguration.MaxFetchBytes * 2))) {
                     var offset = 0;
 
-                    // Now let's consume
-                    try {
-                        await consumer.FetchBatchAsync(topicName, 0, offset, CancellationToken.None, 5);
-                        Assert.Fail("should have thrown CachedMetadataException");
-                    } catch (CachedMetadataException ex) when (ex.Message.StartsWith($"The topic ({topicName}) has no partitionId {0} defined.")) {
-                        // expected
-                    }
+                    await AssertAsync.Throws<CachedMetadataException>(
+                        () => consumer.FetchBatchAsync(topicName, 0, offset, CancellationToken.None, 5),
+                        ex => ex.Message.StartsWith($"The topic ({topicName}) has no partitionId {0} defined."));
                 }
             }
         }
@@ -219,12 +211,9 @@ namespace KafkaClient.Tests.Integration
                         var offset = 0;
                         var partitionId = 100;
 
-                        try {
-                            await consumer.FetchBatchAsync(topicName, partitionId, offset, CancellationToken.None, 5);
-                            Assert.Fail("should have thrown CachedMetadataException");
-                        } catch (CachedMetadataException ex) when (ex.Message.StartsWith($"The topic ({topicName}) has no partitionId {partitionId} defined.")) {
-                            // expected
-                        }
+                        await AssertAsync.Throws<CachedMetadataException>(
+                            () => consumer.FetchBatchAsync(topicName, partitionId, offset, CancellationToken.None, 5),
+                            ex => ex.Message.StartsWith($"The topic ({topicName}) has no partitionId {partitionId} defined."));
                     }
                 });
             }
@@ -248,13 +237,7 @@ namespace KafkaClient.Tests.Integration
                                 messages, topicName, 0,
                                 new SendMessageConfiguration(ackTimeout: TimeSpan.FromSeconds(3)), CancellationToken.None);
 
-                            try {
-                                // Now let's consume
-                                await consumer.FetchBatchAsync(offset, 5, CancellationToken.None);
-                                Assert.Fail("should have thrown BufferUnderRunException");
-                            } catch (BufferUnderRunException) {
-                                // Console.WriteLine(ex.ToString());
-                            }
+                            await AssertAsync.Throws<BufferUnderRunException>(() => consumer.FetchBatchAsync(offset, 5, CancellationToken.None));
                         }
                     }
                 });

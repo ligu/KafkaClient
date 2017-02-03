@@ -10,6 +10,15 @@ namespace KafkaClient.Tests.Unit
     public class EndpointTests
     {
         [Test]
+        public void ThrowsExceptionIfIpNull()
+        {
+            Assert.Throws<ArgumentNullException>(
+                () => {
+                    var x = new Endpoint(null);
+                });
+        }
+
+        [Test]
         public async Task EnsureEndpointCanBeResolved()
         {
             var expected = IPAddress.Parse("127.0.0.1");

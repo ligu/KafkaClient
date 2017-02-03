@@ -899,18 +899,12 @@ namespace KafkaClient.Tests.Unit
         public async Task GetTopicOffsetShouldThrowAnyException()
         {
             var scenario = new RoutingScenario();
-            scenario.Connection1.Add(ApiKey.Offset, _ => { throw new Exception("test 99"); });
+            scenario.Connection1.Add(ApiKey.Offset, _ => { throw new BufferUnderRunException("test 99"); });
             var router = scenario.CreateRouter();
 
-            try
-            {
-                await router.GetTopicOffsetsAsync(RoutingScenario.TestTopic, 2, -1, CancellationToken.None);
-                Assert.Fail("Should have thrown exception");
-            }
-            catch (Exception ex)
-            {
-                Assert.That(ex.Message, Does.Contain("test 99"));
-            }
+            await AssertAsync.Throws<BufferUnderRunException>(
+                () => router.GetTopicOffsetsAsync(RoutingScenario.TestTopic, 2, -1, CancellationToken.None),
+                ex => ex.Message.Contains("test 99"));
         }
 
         #endregion

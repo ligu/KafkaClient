@@ -21,6 +21,8 @@ namespace KafkaClient.Connections
 
         public ReconnectingSocket(Endpoint endpoint, IConnectionConfiguration configuration, ILog log, bool isBlocking)
         {
+            if (endpoint == null) throw new ArgumentNullException(nameof(endpoint));
+
             _configuration = configuration;
             _endpoint = endpoint;
             _log = log;
@@ -29,7 +31,6 @@ namespace KafkaClient.Connections
 
         private Socket CreateSocket()
         {
-            if (_endpoint.Ip == null) throw new ConnectionException(_endpoint);
             if (_disposeCount > 0) throw new ObjectDisposedException($"Connection to {_endpoint}");
 
             var socket = new Socket(_endpoint.Ip.AddressFamily, SocketType.Stream, ProtocolType.Tcp) {
@@ -98,8 +99,7 @@ namespace KafkaClient.Connections
                                 if (_disposeCount > 0) throw new ObjectDisposedException(nameof(ReconnectingSocket), ex);
                                 _log.Warn(() => LogEvent.Create(ex, $"Failed connection to {_endpoint}: Will retry in {retry}"));
 
-                                if (ex is ObjectDisposedException || ex is PlatformNotSupportedException)
-                                {
+                                if (ex is ObjectDisposedException || ex is PlatformNotSupportedException) {
                                     Disconnect();
                                     _log.Info(() => LogEvent.Create($"Creating new socket to {_endpoint}"));
                                     socket = CreateSocket();
@@ -107,8 +107,7 @@ namespace KafkaClient.Connections
                             },
                             (ex, attempt) => {
                                 _log.Warn(() => LogEvent.Create(ex, $"Failed connection to {_endpoint} on attempt {attempt}"));
-                                if (ex is SocketException || ex is PlatformNotSupportedException)
-                                {
+                                if (ex is SocketException || ex is PlatformNotSupportedException) {
                                     throw new ConnectionException(_endpoint, ex);
                                 }
                             },

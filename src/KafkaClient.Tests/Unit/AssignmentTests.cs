@@ -32,12 +32,7 @@ namespace KafkaClient.Tests.Unit
                     try {
                         using (var m = await consumer.JoinConsumerGroupAsync("group", ConsumerEncoder.Protocol, metadata, CancellationToken.None)) {
                             var member = (ConsumerMember) m;
-                            await member.SyncGroupAsync(
-                                    //member.GroupId, member.MemberId, member.GenerationId, member.ProtocolType,
-                                    //ImmutableDictionary<string, IMemberMetadata>.Empty.Add(metadata.AssignmentStrategy, metadata),
-                                    //ImmutableDictionary<string, IMemberAssignment>.Empty,
-                                    CancellationToken.None)
-                                ;
+                            await member.SyncGroupAsync(CancellationToken.None);
                         }
                         Assert.Fail("Should have thrown exception");
                     } catch (ArgumentOutOfRangeException ex) when (ex.Message.StartsWith($"Unknown strategy {metadata.AssignmentStrategy} for ProtocolType {ConsumerEncoder.Protocol}")) {

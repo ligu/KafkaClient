@@ -22,13 +22,15 @@ namespace KafkaClient.Tests
             return true;
         }
 
-        public static async Task Throws<T>(Func<Task> asyncAction) where T : Exception
+        public static async Task Throws<T>(Func<Task> asyncAction, Func<T, bool> when = null) where T : Exception
         {
             try {
                 await asyncAction();
-                Assert.Fail($"Should have thrown {nameof(T)}");
-            } catch (T) {
-                // expected
+                Assert.Fail($"Should have thrown {typeof(T)}");
+            } catch (T ex) {
+                if (when != null) {
+                    Assert.That(when(ex));
+                }
             }
         }
     }

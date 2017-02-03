@@ -75,12 +75,9 @@ namespace KafkaClient.Tests.Unit
 
             var consumer = new Consumer(router);
             using (consumer) {
-                try {
-                    await consumer.JoinConsumerGroupAsync("group", protocolType, new ByteTypeMetadata("mine", new ArraySegment<byte>()), CancellationToken.None);
-                    Assert.Fail("Should have thrown exception");
-                } catch (ArgumentOutOfRangeException ex) {
-                    Assert.That(ex.Message.StartsWith($"ProtocolType {protocolType} is unknown"));
-                }
+                await AssertAsync.Throws<ArgumentOutOfRangeException>(
+                    () => consumer.JoinConsumerGroupAsync("group", protocolType, new ByteTypeMetadata("mine", new ArraySegment<byte>()), CancellationToken.None),
+                    ex => ex.Message.StartsWith($"ProtocolType {protocolType} is unknown"));
             }
         }
 

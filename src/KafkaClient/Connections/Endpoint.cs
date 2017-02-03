@@ -11,6 +11,7 @@ namespace KafkaClient.Connections
     {
         public Endpoint(IPEndPoint ip, string host = null)
         {
+            if (ip == null) throw new ArgumentNullException(nameof(ip));
             Ip = ip;
             Host = host ?? ip.Address.ToString();
         }
@@ -41,7 +42,7 @@ namespace KafkaClient.Connections
         public override int GetHashCode()
         {
             // calculated like this to ensure ports on same address sort in descending order
-            return Ip?.Address.GetHashCode() + Ip?.Port ?? 0;
+            return Ip.Address.GetHashCode() + Ip.Port;
         }
 
         public static bool operator ==(Endpoint left, Endpoint right)
@@ -56,7 +57,7 @@ namespace KafkaClient.Connections
 
         #endregion
 
-        public override string ToString() => $"{Host}:{Ip?.Port}";
+        public override string ToString() => $"{Host}:{Ip.Port}";
 
         public static async Task<Endpoint> ResolveAsync(Uri uri, ILog log)
         {
