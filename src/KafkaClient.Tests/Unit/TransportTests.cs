@@ -459,10 +459,10 @@ namespace KafkaClient.Tests.Unit
                         Assert.That(clientWriteAttempts, Is.EqualTo(1), "Socket should have attempted to write.");
 
                         //create a buffer write that will take a long time
-                        var data = Enumerable.Range(0, 100000000).Select(b => (byte)b).ToArray();
+                        var data = Enumerable.Range(0, 1000000).Select(b => (byte)b).ToArray();
                         token.Cancel();
                         var taskResult = transport.WriteBytesAsync(new ArraySegment<byte>(data), token.Token, 6);
-                        await Task.WhenAny(taskResult, Task.Delay(TimeSpan.FromSeconds(5))).ConfigureAwait(false);
+                        await Task.WhenAny(taskResult, Task.Delay(TimeSpan.FromSeconds(2))).ConfigureAwait(false);
 
                         Assert.That(taskResult.IsCanceled || !taskResult.IsFaulted, Is.True, "Task should have cancelled.");
                     }

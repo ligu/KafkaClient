@@ -10,7 +10,7 @@ namespace KafkaClient.Tests
 {
     public static class ProtocolAssertionExtensions
     {
-        public static void AssertCanEncodeDecodeRequest<T>(this T request, short version, IMembershipEncoder encoder = null) where T : class, IRequest
+        public static void AssertCanEncodeDecodeRequest<T>(this T request, short version, IMembershipEncoder encoder = null, T forComparison = null) where T : class, IRequest
         {
             var encoders = ImmutableDictionary<string, IMembershipEncoder>.Empty;
             if (encoder != null) {
@@ -21,15 +21,19 @@ namespace KafkaClient.Tests
             var data = KafkaEncoder.Encode(context, request);
             var decoded = KafkaDecoder.Decode<T>(data.Skip(4), context);
 
-            Assert.That(request.GetHashCode(), Is.EqualTo(decoded.GetHashCode()), "HashCode equality");
-            Assert.That(request.ShortString(), Is.EqualTo(decoded.ShortString()), "ShortString equality");
-            var original = request.ToString();
+            if (forComparison == null) {
+                forComparison = request;
+            }
+            Assert.That(forComparison.GetHashCode(), Is.EqualTo(decoded.GetHashCode()), "HashCode equality");
+            Assert.That(forComparison.ShortString(), Is.EqualTo(decoded.ShortString()), "ShortString equality");
+            var original = forComparison.ToString();
             var final = decoded.ToString();
             Assert.That(original, Is.EqualTo(final), "ToString equality");
-            Assert.That(request, Is.EqualTo(decoded), $"Original\n{original}\nFinal\n{final}");
+            Assert.That(decoded.Equals(final), Is.False); // general test for equality
+            Assert.That(forComparison.Equals(decoded), $"Original\n{original}\nFinal\n{final}");
         }
 
-        public static void AssertCanEncodeDecodeResponse<T>(this T response, short version, IMembershipEncoder encoder = null) where T : class, IResponse
+        public static void AssertCanEncodeDecodeResponse<T>(this T response, short version, IMembershipEncoder encoder = null, T forComparison = null) where T : class, IResponse
         {
             var encoders = ImmutableDictionary<string, IMembershipEncoder>.Empty;
             if (encoder != null) {
@@ -40,11 +44,16 @@ namespace KafkaClient.Tests
             var data = KafkaDecoder.EncodeResponseBytes(context, response);
             var decoded = KafkaEncoder.Decode<T>(context, GetType<T>(), data.Skip(KafkaEncoder.ResponseHeaderSize));
 
-            Assert.That(response.GetHashCode(), Is.EqualTo(decoded.GetHashCode()), "HashCode equality");
-            var original = response.ToString();
+            if (forComparison == null) {
+                forComparison = response;
+            }
+            Assert.That(forComparison.GetHashCode(), Is.EqualTo(decoded.GetHashCode()), "HashCode equality");
+            var original = forComparison.ToString();
             var final = decoded.ToString();
             Assert.That(original, Is.EqualTo(final), "ToString equality");
-            Assert.That(response, Is.EqualTo(decoded), $"Original\n{original}\nFinal\n{final}");
+            Assert.That(decoded.Equals(final), Is.False); // general test for equality
+            Assert.That(forComparison.Equals(decoded), $"Original\n{original}\nFinal\n{final}");
+            Assert.That(forComparison.Errors.HasEqualElementsInOrder(decoded.Errors), "Errors");
         }
 
         public static ApiKey GetType<T>() where T : class, IResponse
