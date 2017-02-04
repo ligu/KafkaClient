@@ -44,16 +44,6 @@ namespace KafkaClient.Protocol
             }
         }
 
-        public static bool operator ==(TopicPartition left, TopicPartition right)
-        {
-            return Equals(left, right);
-        }
-
-        public static bool operator !=(TopicPartition left, TopicPartition right)
-        {
-            return !Equals(left, right);
-        }
-
         #endregion
 
         public override string ToString() => $"{{TopicName:{TopicName},PartitionId:{PartitionId}}}";

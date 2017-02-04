@@ -8,25 +8,19 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class RequestException : KafkaException
     {
-        public RequestException(ApiKey apiKey, ErrorCode errorCode, string message = null)
-            : base($"Kafka returned {errorCode} for {apiKey} request: {message}")
+        public RequestException(ApiKey apiKey, ErrorCode errorCode, Endpoint endpoint, string message = null)
+            : base($"{endpoint} returned {errorCode} for {apiKey} request: {message}")
         {
-            ApiKey = apiKey;
+            _apiKey = apiKey;
             ErrorCode = errorCode;
+            _endpoint = endpoint;
         }
 
-        public RequestException(string message)
-            : base(message)
-        {
-        }
+        // ReSharper disable NotAccessedField.Local -- for debugging
+        private readonly ApiKey _apiKey;
+        private readonly Endpoint _endpoint;
+        // ReSharper restore NotAccessedField.Local
 
-        public RequestException(string message, Exception innerException)
-            : base(message, innerException)
-        {
-        }
-
-        public ApiKey ApiKey { get; }
         public ErrorCode ErrorCode { get; }
-        public Endpoint Endpoint { get; set; }
     }
 }

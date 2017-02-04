@@ -50,18 +50,6 @@ namespace KafkaClient.Protocol
             return Topics?.Count.GetHashCode() ?? 0;
         }
 
-        /// <inheritdoc />
-        public static bool operator ==(OffsetCommitResponse left, OffsetCommitResponse right)
-        {
-            return Equals(left, right);
-        }
-
-        /// <inheritdoc />
-        public static bool operator !=(OffsetCommitResponse left, OffsetCommitResponse right)
-        {
-            return !Equals(left, right);
-        }
-
         #endregion
     }
 }

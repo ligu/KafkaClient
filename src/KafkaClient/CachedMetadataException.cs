@@ -16,8 +16,5 @@ namespace KafkaClient
             : base(message, innerException)
         {
         }
-
-        public string TopicName { get; set; }
-        public int? Partition { get; set; }
     }
 }

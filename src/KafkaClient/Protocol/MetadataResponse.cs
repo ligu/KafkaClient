@@ -88,18 +88,6 @@ namespace KafkaClient.Protocol
             }
         }
 
-        /// <inheritdoc />
-        public static bool operator ==(MetadataResponse left, MetadataResponse right)
-        {
-            return Equals(left, right);
-        }
-
-        /// <inheritdoc />
-        public static bool operator !=(MetadataResponse left, MetadataResponse right)
-        {
-            return !Equals(left, right);
-        }
-
         #endregion
 
         public class Topic : IEquatable<Topic>
@@ -150,18 +138,6 @@ namespace KafkaClient.Protocol
                     hashCode = (hashCode*397) ^ (Partitions?.GetHashCode() ?? 0);
                     return hashCode;
                 }
-            }
-
-            /// <inheritdoc />
-            public static bool operator ==(Topic left, Topic right)
-            {
-                return Equals(left, right);
-            }
-
-            /// <inheritdoc />
-            public static bool operator !=(Topic left, Topic right)
-            {
-                return !Equals(left, right);
             }
 
             #endregion
@@ -236,18 +212,6 @@ namespace KafkaClient.Protocol
                     hashCode = (hashCode*397) ^ (Isrs?.Count.GetHashCode() ?? 0);
                     return hashCode;
                 }
-            }
-
-            /// <inheritdoc />
-            public static bool operator ==(Partition left, Partition right)
-            {
-                return Equals(left, right);
-            }
-
-            /// <inheritdoc />
-            public static bool operator !=(Partition left, Partition right)
-            {
-                return !Equals(left, right);
             }
         }
 

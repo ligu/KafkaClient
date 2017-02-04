@@ -44,16 +44,6 @@ namespace KafkaClient.Protocol
                 return hashCode;
             }
         }
-
-        public static bool operator ==(Broker left, Broker right)
-        {
-            return Equals(left, right);
-        }
-
-        public static bool operator !=(Broker left, Broker right)
-        {
-            return !Equals(left, right);
-        }
                 
         #endregion
 

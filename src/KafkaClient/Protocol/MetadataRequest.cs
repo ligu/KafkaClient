@@ -55,18 +55,6 @@ namespace KafkaClient.Protocol
             return Topics?.Count.GetHashCode() ?? 0;
         }
 
-        /// <inheritdoc />
-        public static bool operator ==(MetadataRequest left, MetadataRequest right)
-        {
-            return Equals(left, right);
-        }
-
-        /// <inheritdoc />
-        public static bool operator !=(MetadataRequest left, MetadataRequest right)
-        {
-            return !Equals(left, right);
-        }
-
         #endregion
     }
 }

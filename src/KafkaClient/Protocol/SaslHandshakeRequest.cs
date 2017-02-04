@@ -44,18 +44,6 @@ namespace KafkaClient.Protocol
                 return (base.GetHashCode()*397) ^ (Mechanism?.GetHashCode() ?? 0);
             }
         }
-
-        /// <inheritdoc />
-        public static bool operator ==(SaslHandshakeRequest left, SaslHandshakeRequest right)
-        {
-            return Equals(left, right);
-        }
-
-        /// <inheritdoc />
-        public static bool operator !=(SaslHandshakeRequest left, SaslHandshakeRequest right)
-        {
-            return !Equals(left, right);
-        }
         
         #endregion
     }

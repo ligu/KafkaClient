@@ -65,18 +65,6 @@ namespace KafkaClient.Protocol
             }
         }
 
-        /// <inheritdoc />
-        public static bool operator ==(OffsetFetchRequest left, OffsetFetchRequest right)
-        {
-            return Equals(left, right);
-        }
-
-        /// <inheritdoc />
-        public static bool operator !=(OffsetFetchRequest left, OffsetFetchRequest right)
-        {
-            return !Equals(left, right);
-        }
-
         #endregion
     }
 }

@@ -68,16 +68,6 @@ namespace KafkaClient.Protocol
             }
         }
 
-        public static bool operator ==(CreateTopicsRequest left, CreateTopicsRequest right)
-        {
-            return Equals(left, right);
-        }
-
-        public static bool operator !=(CreateTopicsRequest left, CreateTopicsRequest right)
-        {
-            return !Equals(left, right);
-        }
-
         #endregion
 
         public class Topic : IEquatable<Topic>
@@ -162,16 +152,6 @@ namespace KafkaClient.Protocol
                 }
             }
 
-            public static bool operator ==(Topic left, Topic right)
-            {
-                return Equals(left, right);
-            }
-
-            public static bool operator !=(Topic left, Topic right)
-            {
-                return !Equals(left, right);
-            }
-
             #endregion
         }
 
@@ -213,16 +193,6 @@ namespace KafkaClient.Protocol
                 unchecked {
                     return (PartitionId * 397) ^ (Replicas?.Count.GetHashCode() ?? 0);
                 }
-            }
-
-            public static bool operator ==(ReplicaAssignment left, ReplicaAssignment right)
-            {
-                return Equals(left, right);
-            }
-
-            public static bool operator !=(ReplicaAssignment left, ReplicaAssignment right)
-            {
-                return !Equals(left, right);
             }
 
             #endregion

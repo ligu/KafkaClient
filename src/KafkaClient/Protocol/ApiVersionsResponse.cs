@@ -59,18 +59,6 @@ namespace KafkaClient.Protocol
             }
         }
 
-        /// <inheritdoc />
-        public static bool operator ==(ApiVersionsResponse left, ApiVersionsResponse right)
-        {
-            return Equals(left, right);
-        }
-
-        /// <inheritdoc />
-        public static bool operator !=(ApiVersionsResponse left, ApiVersionsResponse right)
-        {
-            return !Equals(left, right);
-        }
-
         #endregion
 
         public class VersionSupport : IEquatable<VersionSupport>
@@ -121,16 +109,6 @@ namespace KafkaClient.Protocol
                     hashCode = (hashCode*397) ^ MaxVersion.GetHashCode();
                     return hashCode;
                 }
-            }
-
-            public static bool operator ==(VersionSupport left, VersionSupport right)
-            {
-                return Equals(left, right);
-            }
-
-            public static bool operator !=(VersionSupport left, VersionSupport right)
-            {
-                return !Equals(left, right);
             }
 
             #endregion

@@ -119,18 +119,6 @@ namespace KafkaClient.Protocol
             }
         }
 
-        /// <inheritdoc />
-        public static bool operator ==(JoinGroupRequest left, JoinGroupRequest right)
-        {
-            return Equals(left, right);
-        }
-
-        /// <inheritdoc />
-        public static bool operator !=(JoinGroupRequest left, JoinGroupRequest right)
-        {
-            return !Equals(left, right);
-        }
-
         #endregion
 
         public class GroupProtocol : IEquatable<GroupProtocol>
@@ -166,18 +154,6 @@ namespace KafkaClient.Protocol
                 unchecked {
                     return ((Name?.GetHashCode() ?? 0)*397) ^ (Metadata?.GetHashCode() ?? 0);
                 }
-            }
-
-            /// <inheritdoc />
-            public static bool operator ==(GroupProtocol left, GroupProtocol right)
-            {
-                return Equals(left, right);
-            }
-
-            /// <inheritdoc />
-            public static bool operator !=(GroupProtocol left, GroupProtocol right)
-            {
-                return !Equals(left, right);
             }
         }
 

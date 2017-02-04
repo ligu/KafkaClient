@@ -77,18 +77,6 @@ namespace KafkaClient.Protocol
             }
         }
 
-        /// <inheritdoc />
-        public static bool operator ==(OffsetCommitRequest left, OffsetCommitRequest right)
-        {
-            return Equals(left, right);
-        }
-
-        /// <inheritdoc />
-        public static bool operator !=(OffsetCommitRequest left, OffsetCommitRequest right)
-        {
-            return !Equals(left, right);
-        }
-
         #endregion
 
         public class Topic : TopicPartition, IEquatable<Topic>
@@ -143,16 +131,6 @@ namespace KafkaClient.Protocol
                     hashCode = (hashCode*397) ^ (Metadata?.GetHashCode() ?? 0);
                     return hashCode;
                 }
-            }
-
-            public static bool operator ==(Topic left, Topic right)
-            {
-                return Equals(left, right);
-            }
-
-            public static bool operator !=(Topic left, Topic right)
-            {
-                return !Equals(left, right);
             }
         }
 

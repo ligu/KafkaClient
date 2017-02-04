@@ -63,18 +63,6 @@ namespace KafkaClient.Protocol
             return Topics?.Count.GetHashCode() ?? 0;
         }
 
-        /// <inheritdoc />
-        public static bool operator ==(OffsetResponse left, OffsetResponse right)
-        {
-            return Equals(left, right);
-        }
-
-        /// <inheritdoc />
-        public static bool operator !=(OffsetResponse left, OffsetResponse right)
-        {
-            return !Equals(left, right);
-        }
-
         #endregion
 
         public class Topic : TopicResponse, IEquatable<Topic>
@@ -123,16 +111,6 @@ namespace KafkaClient.Protocol
                     hashCode = (hashCode*397) ^ Offset.GetHashCode();
                     return hashCode;
                 }
-            }
-
-            public static bool operator ==(Topic left, Topic right)
-            {
-                return Equals(left, right);
-            }
-
-            public static bool operator !=(Topic left, Topic right)
-            {
-                return !Equals(left, right);
             }
         
             #endregion

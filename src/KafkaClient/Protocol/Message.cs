@@ -136,18 +136,6 @@ namespace KafkaClient.Protocol
             }
         }
 
-        /// <inheritdoc />
-        public static bool operator ==(Message left, Message right)
-        {
-            return Equals(left, right);
-        }
-
-        /// <inheritdoc />
-        public static bool operator !=(Message left, Message right)
-        {
-            return !Equals(left, right);
-        }
-
         #endregion
     }
 }

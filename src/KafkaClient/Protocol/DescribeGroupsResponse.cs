@@ -60,18 +60,6 @@ namespace KafkaClient.Protocol
             return Groups?.Count.GetHashCode() ?? 0;
         }
 
-        /// <inheritdoc />
-        public static bool operator ==(DescribeGroupsResponse left, DescribeGroupsResponse right)
-        {
-            return Equals(left, right);
-        }
-
-        /// <inheritdoc />
-        public static bool operator !=(DescribeGroupsResponse left, DescribeGroupsResponse right)
-        {
-            return !Equals(left, right);
-        }
-
         #endregion
 
         public class Group : IEquatable<Group>
@@ -226,18 +214,6 @@ namespace KafkaClient.Protocol
                 }
             }
 
-            /// <inheritdoc />
-            public static bool operator ==(Group left, Group right)
-            {
-                return Equals(left, right);
-            }
-
-            /// <inheritdoc />
-            public static bool operator !=(Group left, Group right)
-            {
-                return !Equals(left, right);
-            }
-
             #endregion
         }
 
@@ -310,18 +286,6 @@ namespace KafkaClient.Protocol
                     hashCode = (hashCode*397) ^ (MemberAssignment?.GetHashCode() ?? 0);
                     return hashCode;
                 }
-            }
-
-            /// <inheritdoc />
-            public static bool operator ==(Member left, Member right)
-            {
-                return Equals(left, right);
-            }
-
-            /// <inheritdoc />
-            public static bool operator !=(Member left, Member right)
-            {
-                return !Equals(left, right);
             }
 
             #endregion

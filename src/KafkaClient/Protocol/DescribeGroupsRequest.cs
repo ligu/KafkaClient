@@ -58,18 +58,6 @@ namespace KafkaClient.Protocol
             }
         }
 
-        /// <inheritdoc />
-        public static bool operator ==(DescribeGroupsRequest left, DescribeGroupsRequest right)
-        {
-            return Equals(left, right);
-        }
-
-        /// <inheritdoc />
-        public static bool operator !=(DescribeGroupsRequest left, DescribeGroupsRequest right)
-        {
-            return !Equals(left, right);
-        }
-
         #endregion
     }
 }

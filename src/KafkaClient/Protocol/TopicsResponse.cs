@@ -38,16 +38,6 @@ namespace KafkaClient.Protocol
             return Topics?.Count.GetHashCode() ?? 0;
         }
 
-        public static bool operator ==(TopicsResponse left, TopicsResponse right)
-        {
-            return Equals(left, right);
-        }
-
-        public static bool operator !=(TopicsResponse left, TopicsResponse right)
-        {
-            return !Equals(left, right);
-        }
-
         #endregion
 
         public class Topic : IEquatable<Topic>
@@ -82,16 +72,6 @@ namespace KafkaClient.Protocol
                 unchecked {
                     return ((TopicName?.GetHashCode() ?? 0) * 397) ^ (int) ErrorCode;
                 }
-            }
-
-            public static bool operator ==(Topic left, Topic right)
-            {
-                return Equals(left, right);
-            }
-
-            public static bool operator !=(Topic left, Topic right)
-            {
-                return !Equals(left, right);
             }
 
             #endregion

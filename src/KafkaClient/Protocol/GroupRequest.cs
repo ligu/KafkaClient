@@ -60,17 +60,5 @@ namespace KafkaClient.Protocol
                 return hashCode;
             }
         }
-
-        /// <inheritdoc />
-        public static bool operator ==(GroupRequest left, GroupRequest right)
-        {
-            return Equals(left, right);
-        }
-
-        /// <inheritdoc />
-        public static bool operator !=(GroupRequest left, GroupRequest right)
-        {
-            return !Equals(left, right);
-        }
     }
 }

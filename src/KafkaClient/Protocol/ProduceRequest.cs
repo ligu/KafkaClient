@@ -88,18 +88,6 @@ namespace KafkaClient.Protocol
             }
         }
 
-        /// <inheritdoc />
-        public static bool operator ==(ProduceRequest left, ProduceRequest right)
-        {
-            return Equals(left, right);
-        }
-
-        /// <inheritdoc />
-        public static bool operator !=(ProduceRequest left, ProduceRequest right)
-        {
-            return !Equals(left, right);
-        }
-
         #endregion
 
         /// <summary>
@@ -147,18 +135,6 @@ namespace KafkaClient.Protocol
                     hashCode = (hashCode*397) ^ (Messages?.Count.GetHashCode() ?? 0);
                     return hashCode;
                 }
-            }
-
-            /// <inheritdoc />
-            public static bool operator ==(Topic left, Topic right)
-            {
-                return Equals(left, right);
-            }
-
-            /// <inheritdoc />
-            public static bool operator !=(Topic left, Topic right)
-            {
-                return !Equals(left, right);
             }
 
             #endregion

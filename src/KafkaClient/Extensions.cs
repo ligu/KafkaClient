@@ -395,19 +395,19 @@ namespace KafkaClient
         public static async Task<T> SendToAnyAsync<T>(this IRouter router, IRequest<T> request, CancellationToken cancellationToken, IRequestContext context = null) where T : class, IResponse
         {
             Exception lastException = null;
-            var servers = new List<string>();
+            var endpoints = new List<Endpoint>();
             foreach (var connection in router.Connections) {
-                var server = connection.Endpoint?.ToString();
+                var endpoint = connection.Endpoint;
                 try {
                     return await connection.SendAsync(request, cancellationToken, context).ConfigureAwait(false);
                 } catch (Exception ex) {
                     lastException = ex;
-                    servers.Add(server);
-                    router.Log.Info(() => LogEvent.Create(ex, $"Failed to contact {server}: Trying next server"));
+                    endpoints.Add(endpoint);
+                    router.Log.Info(() => LogEvent.Create(ex, $"Failed to contact {endpoint} -> Trying next server"));
                 }
             }
 
-            throw new ConnectionException($"Unable to make {request.ApiKey} Request to any of {string.Join(" ", servers)}", lastException);
+            throw new ConnectionException(endpoints, lastException);
         }
 
         internal static async Task<bool> RefreshGroupMetadataIfInvalidAsync(this IRouter router, string groupId, bool? metadataInvalid, CancellationToken cancellationToken)
@@ -483,7 +483,9 @@ namespace KafkaClient
         {
             return await router.Configuration.RefreshRetry.TryAsync(
                 async (attempt, timer) => {
-                    var response = await router.SendToAnyAsync(request, cancellationToken).ConfigureAwait(false);
+                    var connections = router.Connections.ToList();
+                    var connection = connections[attempt % connections.Count];
+                    var response = await connection.SendAsync(request, cancellationToken).ConfigureAwait(false);
                     if (response == null) return new RetryAttempt<MetadataResponse>(null);
 
                     var results = response.Brokers
@@ -492,7 +494,7 @@ namespace KafkaClient
                         .Where(r => !r.IsValid.GetValueOrDefault())
                         .ToList();
 
-                    var exceptions = results.Select(r => r.ToException()).Where(e => e != null).ToList();
+                    var exceptions = results.Select(r => r.ToException(connection.Endpoint)).Where(e => e != null).ToList();
                     if (exceptions.Count == 1) throw exceptions.Single();
                     if (exceptions.Count > 1) throw new AggregateException(exceptions);
 
@@ -505,9 +507,7 @@ namespace KafkaClient
                 },
                 (attempt, retry) => router.Log.Warn(() => LogEvent.Create($"Failed metadata request on attempt {attempt}: Will retry in {retry}")),
                 null, // return the failed response above, resulting in the final response
-                (ex, attempt, retry) => {
-                    throw ex.PrepareForRethrow();
-                },
+                (ex, attempt, retry) => router.Log.Info(() => LogEvent.Create(ex, $"Failed metadata request on attempt {attempt}")),
                 (ex, attempt) => router.Log.Warn(() => LogEvent.Create(ex, $"Failed metadata request on attempt {attempt}")),
                 cancellationToken).ConfigureAwait(false);
         }
@@ -518,12 +518,12 @@ namespace KafkaClient
             public string Message { get; }
             private readonly ErrorCode _errorCode;
 
-            public Exception ToException()
+            public Exception ToException(Endpoint endpoint)
             {
                 if (IsValid.GetValueOrDefault(true)) return null;
 
                 if (_errorCode == ErrorCode.None) return new ConnectionException(Message);
-                return new RequestException(ApiKey.Metadata, _errorCode, Message);
+                return new RequestException(ApiKey.Metadata, _errorCode, endpoint, Message);
             }
 
             public MetadataResult(ErrorCode errorCode = ErrorCode.None, bool? isValid = null, string message = null)

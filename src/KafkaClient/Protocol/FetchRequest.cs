@@ -111,18 +111,6 @@ namespace KafkaClient.Protocol
             }
         }
 
-        /// <inheritdoc />
-        public static bool operator ==(FetchRequest left, FetchRequest right)
-        {
-            return Equals(left, right);
-        }
-
-        /// <inheritdoc />
-        public static bool operator !=(FetchRequest left, FetchRequest right)
-        {
-            return !Equals(left, right);
-        }
-
         #endregion
 
         public class Topic : TopicPartition, IEquatable<Topic>
@@ -170,16 +158,6 @@ namespace KafkaClient.Protocol
                     hashCode = (hashCode*397) ^ MaxBytes;
                     return hashCode;
                 }
-            }
-
-            public static bool operator ==(Topic left, Topic right)
-            {
-                return Equals(left, right);
-            }
-
-            public static bool operator !=(Topic left, Topic right)
-            {
-                return !Equals(left, right);
             }
 
             #endregion

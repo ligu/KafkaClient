@@ -46,18 +46,6 @@ namespace KafkaClient.Protocol
             return (int) ErrorCode;
         }
 
-        /// <inheritdoc />
-        public static bool operator ==(HeartbeatResponse left, HeartbeatResponse right)
-        {
-            return Equals(left, right);
-        }
-
-        /// <inheritdoc />
-        public static bool operator !=(HeartbeatResponse left, HeartbeatResponse right)
-        {
-            return !Equals(left, right);
-        }
-
         #endregion
     }
 }

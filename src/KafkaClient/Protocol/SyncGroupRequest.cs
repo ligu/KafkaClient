@@ -57,18 +57,6 @@ namespace KafkaClient.Protocol
             }
         }
 
-        /// <inheritdoc />
-        public static bool operator ==(SyncGroupRequest left, SyncGroupRequest right)
-        {
-            return Equals(left, right);
-        }
-
-        /// <inheritdoc />
-        public static bool operator !=(SyncGroupRequest left, SyncGroupRequest right)
-        {
-            return !Equals(left, right);
-        }
-
         #endregion
 
         public class GroupAssignment : IEquatable<GroupAssignment>
@@ -107,18 +95,6 @@ namespace KafkaClient.Protocol
                 unchecked {
                     return ((MemberId?.GetHashCode() ?? 0)*397) ^ (MemberAssignment?.GetHashCode() ?? 0);
                 }
-            }
-
-            /// <inheritdoc />
-            public static bool operator ==(GroupAssignment left, GroupAssignment right)
-            {
-                return Equals(left, right);
-            }
-
-            /// <inheritdoc />
-            public static bool operator !=(GroupAssignment left, GroupAssignment right)
-            {
-                return !Equals(left, right);
             }
 
             #endregion

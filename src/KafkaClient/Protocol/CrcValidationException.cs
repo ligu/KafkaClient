@@ -1,27 +1,17 @@
-﻿using System;
-
-namespace KafkaClient.Protocol
+﻿namespace KafkaClient.Protocol
 {
     public class CrcValidationException : KafkaException
     {
-        public CrcValidationException(uint crc, uint calculatedCrc)
-            : base("Calculated CRC did not match reported CRC.")
+        public CrcValidationException(uint crc, uint crcHash)
+            : base($"CRC {crc} and hashed content {crcHash} did not match.")
         {
-            Crc = crc;
-            CalculatedCrc = calculatedCrc;
+            _crc = crc;
+            _crcHash = crcHash;
         }
 
-        public CrcValidationException(string message)
-            : base(message)
-        {
-        }
-
-        public CrcValidationException(string message, Exception innerException)
-            : base(message, innerException)
-        {
-        }
-
-        public uint Crc { get; set; }
-        public uint CalculatedCrc { get; set; }
+        // ReSharper disable NotAccessedField.Local -- for debugging
+        private readonly uint _crc;
+        private readonly uint _crcHash;
+        // ReSharper restore NotAccessedField.Local
     }
 }

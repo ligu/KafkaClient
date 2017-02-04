@@ -180,7 +180,7 @@ namespace KafkaClient.Tests.Unit
 
                     await x.Task;
                     log.Debug(() => LogEvent.Create("SocketException "));
-                    throw new ConnectionException("");
+                    throw new ConnectionException(scenario.Connection1.Endpoint);
                 }
                 log.Debug(() => LogEvent.Create("Completed "));
 
@@ -279,14 +279,17 @@ namespace KafkaClient.Tests.Unit
             {
                 if (context.CorrelationId == 1)
                 {
-                    await Task.Delay(delay);
-                    await Task.Delay(1);
-                    if (exceptionType == typeof(ConnectionException))
-                    {
-                        throw new ConnectionException("");
+                    await Task.Delay(delay.Add(TimeSpan.FromMilliseconds(1)));
+                    if (exceptionType == typeof(ConnectionException)) {
+                        throw new ConnectionException("error test");
                     }
-                    object[] args = new object[1];
-                    args[0] = "error Test";
+                    if (exceptionType == typeof (RequestException)) {
+                        throw new RequestException(ApiKey.CreateTopics, ErrorCode.BrokerNotAvailable, TestConfig.ServerEndpoint());
+                    }
+                    if (exceptionType == typeof (FetchOutOfRangeException)) {
+                        throw new FetchOutOfRangeException(new FetchRequest.Topic("name", 0, 0L), ErrorCode.BrokerNotAvailable, TestConfig.ServerEndpoint());
+                    }
+                    var args = new object[] { "error Test" };
                     throw (Exception)Activator.CreateInstance(exceptionType, args);
                 }
                 return new FetchResponse();
@@ -668,13 +671,14 @@ namespace KafkaClient.Tests.Unit
         public async Task BrokerRouteShouldThrowIfCycleCouldNotConnectToAnyServer()
         {
             var scenario = new RoutingScenario();
-            scenario.Connection1.Add(ApiKey.Metadata, _ => { throw new Exception("some error"); });
-            scenario.Connection2.Add(ApiKey.Metadata, _ => { throw new Exception("some error"); });
+            scenario.Connection1.Add(ApiKey.Metadata, _ => { throw new ConnectionException("some error"); });
+            scenario.Connection2.Add(ApiKey.Metadata, _ => { throw new ConnectionException("some error"); });
             var router = scenario.CreateRouter();
 
             await AssertAsync.Throws<ConnectionException>(() => router.GetTopicMetadataAsync(RoutingScenario.TestTopic, CancellationToken.None));
 
-            Assert.That(scenario.Connection1[ApiKey.Metadata], Is.EqualTo(1));
+            // 3 attempts total, round robin so 2 to connection1, 1 to connection2
+            Assert.That(scenario.Connection1[ApiKey.Metadata], Is.EqualTo(2));
             Assert.That(scenario.Connection2[ApiKey.Metadata], Is.EqualTo(1));
         }
 

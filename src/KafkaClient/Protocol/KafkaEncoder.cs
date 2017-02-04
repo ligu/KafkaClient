@@ -557,7 +557,7 @@ namespace KafkaClient.Protocol
         {
             var crc = reader.ReadUInt32();
             var crcHash = reader.ReadCrc(messageSize - 4);
-            if (crc != crcHash) throw new CrcValidationException("Buffer did not match CRC validation.") { Crc = crc, CalculatedCrc = crcHash };
+            if (crc != crcHash) throw new CrcValidationException(crc, crcHash);
 
             var messageVersion = reader.ReadByte();
             var attribute = reader.ReadByte();

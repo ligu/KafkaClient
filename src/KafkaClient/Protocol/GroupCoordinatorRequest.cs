@@ -48,18 +48,6 @@ namespace KafkaClient.Protocol
             return GroupId?.GetHashCode() ?? 0;
         }
 
-        /// <inheritdoc />
-        public static bool operator ==(GroupCoordinatorRequest left, GroupCoordinatorRequest right)
-        {
-            return Equals(left, right);
-        }
-
-        /// <inheritdoc />
-        public static bool operator !=(GroupCoordinatorRequest left, GroupCoordinatorRequest right)
-        {
-            return !Equals(left, right);
-        }
-
         #endregion
     }
 }

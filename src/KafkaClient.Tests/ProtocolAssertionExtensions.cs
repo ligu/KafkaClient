@@ -29,7 +29,8 @@ namespace KafkaClient.Tests
             var original = forComparison.ToString();
             var final = decoded.ToString();
             Assert.That(original, Is.EqualTo(final), "ToString equality");
-            Assert.That(decoded.Equals(final), Is.False); // general test for equality
+            Assert.That(decoded.Equals(final), Is.False); // general equality test for sanity
+            Assert.That(decoded.Equals(decoded), Is.True); // general equality test for sanity
             Assert.That(forComparison.Equals(decoded), $"Original\n{original}\nFinal\n{final}");
         }
 
@@ -52,6 +53,7 @@ namespace KafkaClient.Tests
             var final = decoded.ToString();
             Assert.That(original, Is.EqualTo(final), "ToString equality");
             Assert.That(decoded.Equals(final), Is.False); // general test for equality
+            Assert.That(decoded.Equals(decoded), Is.True); // general equality test for sanity
             Assert.That(forComparison.Equals(decoded), $"Original\n{original}\nFinal\n{final}");
             Assert.That(forComparison.Errors.HasEqualElementsInOrder(decoded.Errors), "Errors");
         }

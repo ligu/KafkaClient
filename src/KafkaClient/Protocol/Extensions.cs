@@ -22,21 +22,19 @@ namespace KafkaClient.Protocol
                     exceptions.Add(ExtractException(request, errorCode, endpoint));
                 }
             }
-            if (exceptions.Count == 0) return new RequestException(request.ApiKey, ErrorCode.None) { Endpoint = endpoint };
+            if (exceptions.Count == 0) return new RequestException(request.ApiKey, ErrorCode.None, endpoint);
             if (exceptions.Count == 1) return exceptions[0];
             return new AggregateException(exceptions);
         }
 
         public static Exception ExtractException(this IRequest request, ErrorCode errorCode, Endpoint endpoint) 
         {
-            var exception = ExtractFetchException(request as FetchRequest, errorCode) ??
-                            ExtractMemberException(request, errorCode)??
-                            new RequestException(request.ApiKey, errorCode);
-            exception.Endpoint = endpoint;
-            return exception;
+            return ExtractFetchException(request as FetchRequest, errorCode, endpoint) ??
+                   ExtractMemberException(request, errorCode, endpoint) ??
+                   new RequestException(request.ApiKey, errorCode, endpoint);
         }
 
-        private static MemberRequestException ExtractMemberException(IRequest request, ErrorCode errorCode)
+        private static MemberRequestException ExtractMemberException(IRequest request, ErrorCode errorCode, Endpoint endpoint)
         {
             var member = request as IGroupMember;
             if (member != null && 
@@ -44,16 +42,15 @@ namespace KafkaClient.Protocol
                 errorCode == ErrorCode.IllegalGeneration || 
                 errorCode == ErrorCode.InconsistentGroupProtocol))
             {
-                return new MemberRequestException(member, request.ApiKey, errorCode);
+                return new MemberRequestException(member, request.ApiKey, errorCode, endpoint);
             }
             return null;
         } 
 
-        private static FetchOutOfRangeException ExtractFetchException(FetchRequest request, ErrorCode errorCode)
+        private static FetchOutOfRangeException ExtractFetchException(FetchRequest request, ErrorCode errorCode, Endpoint endpoint)
         {
             if (errorCode == ErrorCode.OffsetOutOfRange && request?.Topics?.Count == 1) {
-                var fetch = request.Topics.First();
-                return new FetchOutOfRangeException(fetch, request.ApiKey, errorCode);
+                return new FetchOutOfRangeException(request.Topics.First(), errorCode, endpoint);
             }
             return null;
         }        

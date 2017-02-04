@@ -116,11 +116,7 @@ namespace KafkaClient
         private TopicBroker GetCachedTopicBroker(string topicName, int partitionId, MetadataResponse.Topic topic)
         {
             var partition = topic.Partitions.FirstOrDefault(x => x.PartitionId == partitionId);
-            if (partition == null)
-                throw new CachedMetadataException($"The topic ({topicName}) has no partitionId {partitionId} defined.") {
-                    TopicName = topicName,
-                    Partition = partitionId
-                };
+            if (partition == null) throw new CachedMetadataException($"The topic ({topicName}) has no partitionId {partitionId} defined.");
 
             return GetCachedTopicBroker(topicName, partition);
         }
@@ -140,10 +136,7 @@ namespace KafkaClient
                 return new TopicBroker(topicName, partition.PartitionId, partition.LeaderId, connections[index]);
             }
 
-            throw new CachedMetadataException($"Lead broker cannot be found for partition/{partition.PartitionId}, leader {partition.LeaderId}") {
-                TopicName = topicName,
-                Partition = partition.PartitionId
-            };
+            throw new CachedMetadataException($"Lead broker cannot be found for {partition}");
         }
 
         #endregion
@@ -210,7 +203,7 @@ namespace KafkaClient
             var topic = TryGetCachedTopic(topicName, expiration);
             if (topic != null) return topic;
 
-            throw new CachedMetadataException($"No metadata defined for topic/{topicName}") { TopicName = topicName };
+            throw new CachedMetadataException($"No metadata defined for Topic {topicName}");
         }
 
         private MetadataResponse.Topic TryGetCachedTopic(string topicName, TimeSpan? expiration = null)
@@ -267,13 +260,11 @@ namespace KafkaClient
             var topic = partitionElections.FirstOrDefault();
             if (topic == null) return null;
 
-            var message = $"Leader Election for topic {topic.TopicName} partition {topic.PartitionId}";
+            var message = $"Leader Election for {topic}";
             var innerException = GetPartitionElectionException(partitionElections.Skip(1).ToList());
             var exception = innerException != null
                                 ? new CachedMetadataException(message, innerException)
                                 : new CachedMetadataException(message);
-            exception.TopicName = topic.TopicName;
-            exception.Partition = topic.PartitionId;
             return exception;
         }
 

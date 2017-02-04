@@ -46,18 +46,6 @@ namespace KafkaClient.Protocol
             return ApiKey.GetHashCode();
         }
 
-        /// <inheritdoc />
-        public static bool operator ==(Request left, Request right)
-        {
-            return Equals(left, right);
-        }
-
-        /// <inheritdoc />
-        public static bool operator !=(Request left, Request right)
-        {
-            return !Equals(left, right);
-        }
-
         #endregion
     }
 }

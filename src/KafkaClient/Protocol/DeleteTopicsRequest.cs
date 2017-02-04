@@ -62,16 +62,6 @@ namespace KafkaClient.Protocol
             }
         }
 
-        public static bool operator ==(DeleteTopicsRequest left, DeleteTopicsRequest right)
-        {
-            return Equals(left, right);
-        }
-
-        public static bool operator !=(DeleteTopicsRequest left, DeleteTopicsRequest right)
-        {
-            return !Equals(left, right);
-        }
-
         #endregion
     }
 }
