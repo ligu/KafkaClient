@@ -375,6 +375,7 @@ namespace KafkaClient
 
             return await (retryPolicy ?? router.Configuration.SendRetry).TryAsync(
                 async (attempt, timer) => {
+                    routedRequest.LogAttempt(attempt);
                     metadataInvalid = await router.RefreshGroupMetadataIfInvalidAsync(groupId, metadataInvalid, cancellationToken).ConfigureAwait(false);
                     await routedRequest.SendAsync(router, cancellationToken, context).ConfigureAwait(false);
                     return routedRequest.MetadataRetryResponse(attempt, out metadataInvalid);
