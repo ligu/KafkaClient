@@ -165,7 +165,7 @@ namespace KafkaClient.Connections
                                 for (var i = 0; i < bytesRead; i++) {
                                     header[headerOffset++] = buffer[i];
                                 }
-                            }, CancellationToken.None).ConfigureAwait(false);
+                            }, _disposeToken.Token).ConfigureAwait(false);
                             var responseSize = BitConverter.ToInt32(header, 0).ToBigEndian();
                             var correlationId = BitConverter.ToInt32(header, KafkaEncoder.IntegerByteSize).ToBigEndian();
 

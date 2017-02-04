@@ -69,19 +69,21 @@ namespace KafkaClient.Connections
             try {
                 await _readSemaphore.LockAsync( // serialize receiving on a given transport
                     async () => {
+                        var stream = _stream; // so if the socket is reconnected, we don't read partially from different sockets
+                        var socket = _tcpSocket;
                         _configuration.OnReading?.Invoke(_endpoint, bytesToRead);
                         timer.Start();
                         while (totalBytesRead < bytesToRead && !cancellationToken.IsCancellationRequested) {
                             var bytesRemaining = bytesToRead - totalBytesRead;
                             _log.Verbose(() => LogEvent.Create($"Reading ({bytesRemaining}? bytes) from {_endpoint}"));
                             _configuration.OnReadingBytes?.Invoke(_endpoint, bytesRemaining);
-                            var bytesRead = await _stream.ReadAsync(buffer, totalBytesRead, bytesRemaining, cancellationToken).ConfigureAwait(false);
+                            var bytesRead = await stream.ReadAsync(buffer, totalBytesRead, bytesRemaining, cancellationToken).ConfigureAwait(false);
                             totalBytesRead += bytesRead;
                             _configuration.OnReadBytes?.Invoke(_endpoint, bytesRemaining, bytesRead, timer.Elapsed);
                             _log.Verbose(() => LogEvent.Create($"Read {bytesRead} bytes from {_endpoint}"));
 
                             if (bytesRead <= 0 && _socket.Available == 0) {
-                                _socket.Disconnect();
+                                _socket.Disconnect(socket);
                                 var ex = new ConnectionException(_endpoint);
                                 _configuration.OnDisconnected?.Invoke(_endpoint, ex);
                                 throw ex;
@@ -105,12 +107,13 @@ namespace KafkaClient.Connections
             var totalBytes = buffer.Count;
             await _writeSemaphore.LockAsync( // serialize sending on a given transport
                 async () => {
+                    var stream = _stream; // so if the socket is reconnected, we don't write partially to different sockets
                     var timer = Stopwatch.StartNew();
                     cancellationToken.ThrowIfCancellationRequested();
                 
                     _log.Verbose(() => LogEvent.Create($"Writing {totalBytes}? bytes (id {correlationId}) to {_endpoint}"));
                     _configuration.OnWritingBytes?.Invoke(_endpoint, totalBytes);
-                    await _stream.WriteAsync(buffer.Array, buffer.Offset, totalBytes, cancellationToken).ConfigureAwait(false);
+                    await stream.WriteAsync(buffer.Array, buffer.Offset, totalBytes, cancellationToken).ConfigureAwait(false);
                     _configuration.OnWroteBytes?.Invoke(_endpoint, totalBytes, totalBytes, timer.Elapsed);
                     _log.Verbose(() => LogEvent.Create($"Wrote {totalBytes} bytes (id {correlationId}) to {_endpoint}"));
                 }, cancellationToken).ConfigureAwait(false);

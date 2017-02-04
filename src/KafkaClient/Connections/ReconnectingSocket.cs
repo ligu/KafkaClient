@@ -47,10 +47,11 @@ namespace KafkaClient.Connections
             return socket;
         }
 
-        public void Disconnect()
+        public void Disconnect(Socket socket)
         {
+            Socket i;
             try {
-                var socket = Interlocked.Exchange(ref _socket, null);
+                Interlocked.CompareExchange(ref _socket, socket, null);
                 if (socket == null) return;
                 _log.Info(() => LogEvent.Create($"Disposing transport to {_endpoint}"));
                 using (socket) {
@@ -100,7 +101,7 @@ namespace KafkaClient.Connections
                                 _log.Warn(() => LogEvent.Create(ex, $"Failed connection to {_endpoint}: Will retry in {retry}"));
 
                                 if (ex is ObjectDisposedException || ex is PlatformNotSupportedException) {
-                                    Disconnect();
+                                    Disconnect(socket);
                                     _log.Info(() => LogEvent.Create($"Creating new socket to {_endpoint}"));
                                     socket = CreateSocket();
                                 }
@@ -123,7 +124,7 @@ namespace KafkaClient.Connections
 
             _disposeToken.Cancel();
             _connectSemaphore.Dispose();
-            Disconnect();
+            Disconnect(_socket);
         }
     }
 }

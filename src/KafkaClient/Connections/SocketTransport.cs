@@ -39,6 +39,7 @@ namespace KafkaClient.Connections
             var timer = new Stopwatch();
             var totalBytesRead = 0;
             try {
+                var socket = _tcpSocket; // so if the socket is reconnected, we don't read partially from different sockets
                 _configuration.OnReading?.Invoke(_endpoint, bytesToRead);
                 timer.Start();
                 while (totalBytesRead < bytesToRead && !cancellationToken.IsCancellationRequested) {
@@ -46,13 +47,13 @@ namespace KafkaClient.Connections
                     _log.Verbose(() => LogEvent.Create($"Reading ({bytesRemaining}? bytes) from {_endpoint}"));
                     _configuration.OnReadingBytes?.Invoke(_endpoint, bytesRemaining);
                     var bytes = new ArraySegment<byte>(buffer, 0, Math.Min(buffer.Length, bytesRemaining));
-                    var bytesRead = await _tcpSocket.ReceiveAsync(bytes, SocketFlags.None).ThrowIfCancellationRequested(cancellationToken).ConfigureAwait(false);
+                    var bytesRead = await socket.ReceiveAsync(bytes, SocketFlags.None).ThrowIfCancellationRequested(cancellationToken).ConfigureAwait(false);
                     totalBytesRead += bytesRead;
                     _configuration.OnReadBytes?.Invoke(_endpoint, bytesRemaining, bytesRead, timer.Elapsed);
                     _log.Verbose(() => LogEvent.Create($"Read {bytesRead} bytes from {_endpoint}"));
 
                     if (bytesRead <= 0 && _socket.Available == 0) {
-                        _socket.Disconnect();
+                        _socket.Disconnect(socket);
                         var ex = new ConnectionException(_endpoint);
                         _configuration.OnDisconnected?.Invoke(_endpoint, ex);
                         throw ex;
@@ -75,6 +76,7 @@ namespace KafkaClient.Connections
             var totalBytesWritten = 0;
             await _writeSemaphore.LockAsync( // serialize sending on a given transport
                 async () => {
+                    var socket = _tcpSocket; // so if the socket is reconnected, we don't write partially to different sockets
                     var timer = Stopwatch.StartNew();
                     while (totalBytesWritten < buffer.Count) {
                         cancellationToken.ThrowIfCancellationRequested();
@@ -82,7 +84,7 @@ namespace KafkaClient.Connections
                         var bytesRemaining = buffer.Count - totalBytesWritten;
                         _log.Verbose(() => LogEvent.Create($"Writing {bytesRemaining}? bytes (id {correlationId}) to {_endpoint}"));
                         _configuration.OnWritingBytes?.Invoke(_endpoint, bytesRemaining);
-                        var bytesWritten = await _tcpSocket.SendAsync(new ArraySegment<byte>(buffer.Array, buffer.Offset + totalBytesWritten, bytesRemaining), SocketFlags.None).ConfigureAwait(false);
+                        var bytesWritten = await socket.SendAsync(new ArraySegment<byte>(buffer.Array, buffer.Offset + totalBytesWritten, bytesRemaining), SocketFlags.None).ConfigureAwait(false);
                         _configuration.OnWroteBytes?.Invoke(_endpoint, bytesRemaining, bytesWritten, timer.Elapsed);
                         _log.Verbose(() => LogEvent.Create($"Wrote {bytesWritten} bytes (id {correlationId}) to {_endpoint}"));
                         totalBytesWritten += bytesWritten;
