@@ -328,13 +328,13 @@ namespace KafkaClient.Tests.Unit
                  ErrorCode.UnknownTopicOrPartition
              )] ErrorCode errorCode)
         {
-            var brokers = new List<KafkaClient.Protocol.Broker>();
+            var brokers = new List<KafkaClient.Protocol.Server>();
             for (var b = 0; b < brokersPerRequest; b++) {
                 string rack = null;
                 if (version >= 1) {
                     rack = "Rack" + b;
                 }
-                brokers.Add(new KafkaClient.Protocol.Broker(b, "broker-" + b, 9092 + b, rack));
+                brokers.Add(new KafkaClient.Protocol.Server(b, "broker-" + b, 9092 + b, rack));
             }
             var topics = new List<MetadataResponse.Topic>();
             for (var t = 0; t < topicsPerRequest; t++) {

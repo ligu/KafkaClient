@@ -8,7 +8,7 @@ namespace KafkaClient.Protocol
     public interface IRequest
     {
         /// <summary>
-        /// Indicates this request should wait for a response from the broker
+        /// Indicates this request should wait for a response from the server
         /// </summary>
         bool ExpectResponse { get; }
 

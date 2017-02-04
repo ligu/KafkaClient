@@ -13,7 +13,7 @@ namespace KafkaClient.Tests
             return KafkaDecoder.EncodeResponseBytes(
                 context,
                 new MetadataResponse(
-                    new[] {new KafkaClient.Protocol.Broker(1, "http://localhost", 8990), new KafkaClient.Protocol.Broker(2, "http://localhost", 8991)},
+                    new[] {new KafkaClient.Protocol.Server(1, "http://localhost", 8990), new KafkaClient.Protocol.Server(2, "http://localhost", 8991)},
                     new[] {
                         new MetadataResponse.Topic(
                             topic,

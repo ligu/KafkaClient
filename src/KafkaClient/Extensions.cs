@@ -334,7 +334,7 @@ namespace KafkaClient
 
         #region Router
 
-        /// <exception cref="CachedMetadataException">Thrown if the cached metadata for the given topic is invalid or missing.</exception>
+        /// <exception cref="RoutingException">Thrown if the cached metadata for the given topic is invalid or missing.</exception>
         /// <exception cref="FetchOutOfRangeException">Thrown if the fetch request is not valid.</exception>
         /// <exception cref="TimeoutException">Thrown if there request times out</exception>
         /// <exception cref="ConnectionException">Thrown in case of network error contacting broker (after retries), or if none of the default brokers can be contacted.</exception>
@@ -342,28 +342,28 @@ namespace KafkaClient
         public static async Task<T> SendAsync<T>(this IRouter router, IRequest<T> request, string topicName, int partitionId, CancellationToken cancellationToken, IRequestContext context = null, IRetry retryPolicy = null) where T : class, IResponse
         {
             bool? metadataInvalid = false;
-            var brokeredRequest = new RoutedTopicRequest<T>(request, topicName, partitionId, router.Log);
+            var routedRequest = new RoutedTopicRequest<T>(request, topicName, partitionId, router.Log);
 
             return await (retryPolicy ?? router.Configuration.SendRetry).TryAsync(
                 async (attempt, timer) => {
                     metadataInvalid = await router.RefreshTopicMetadataIfInvalidAsync(topicName, metadataInvalid, cancellationToken).ConfigureAwait(false);
-                    await brokeredRequest.SendAsync(router, cancellationToken, context).ConfigureAwait(false);
-                    return brokeredRequest.MetadataRetryResponse(attempt, out metadataInvalid);
+                    await routedRequest.SendAsync(router, cancellationToken, context).ConfigureAwait(false);
+                    return routedRequest.MetadataRetryResponse(attempt, out metadataInvalid);
                 },
-                brokeredRequest.MetadataRetry,
-                brokeredRequest.ThrowExtractedException,
-                (ex, attempt, retry) => brokeredRequest.MetadataRetry(attempt, ex, out metadataInvalid),
+                routedRequest.Retry,
+                routedRequest.ThrowExtractedException,
+                (ex, attempt, retry) => routedRequest.Retry(attempt, ex, out metadataInvalid),
                 (ex, attempt) => {
                     var connectionException = ex as ConnectionException;
                     if (connectionException?.Message != null && connectionException.Message.StartsWith("Unable to make Metadata Request to any of")) {
-                        throw new CachedMetadataException("Unable to find Metadata", ex);
+                        throw new RoutingException("Unable to find Metadata", ex);
                     }
                     throw ex.PrepareForRethrow(); 
                 },
                 cancellationToken).ConfigureAwait(false);
         }
 
-        /// <exception cref="CachedMetadataException">Thrown if the cached metadata for the given topic is invalid or missing.</exception>
+        /// <exception cref="RoutingException">Thrown if the cached metadata for the given topic is invalid or missing.</exception>
         /// <exception cref="FetchOutOfRangeException">Thrown if the fetch request is not valid.</exception>
         /// <exception cref="TimeoutException">Thrown if there request times out</exception>
         /// <exception cref="ConnectionException">Thrown in case of network error contacting broker (after retries), or if none of the default brokers can be contacted.</exception>
@@ -371,21 +371,21 @@ namespace KafkaClient
         public static async Task<T> SendAsync<T>(this IRouter router, IRequest<T> request, string groupId, CancellationToken cancellationToken, IRequestContext context = null, IRetry retryPolicy = null) where T : class, IResponse
         {
             bool? metadataInvalid = false;
-            var brokeredRequest = new RoutedGroupRequest<T>(request, groupId, router.Log);
+            var routedRequest = new RoutedGroupRequest<T>(request, groupId, router.Log);
 
             return await (retryPolicy ?? router.Configuration.SendRetry).TryAsync(
                 async (attempt, timer) => {
                     metadataInvalid = await router.RefreshGroupMetadataIfInvalidAsync(groupId, metadataInvalid, cancellationToken).ConfigureAwait(false);
-                    await brokeredRequest.SendAsync(router, cancellationToken, context).ConfigureAwait(false);
-                    return brokeredRequest.MetadataRetryResponse(attempt, out metadataInvalid);
+                    await routedRequest.SendAsync(router, cancellationToken, context).ConfigureAwait(false);
+                    return routedRequest.MetadataRetryResponse(attempt, out metadataInvalid);
                 },
-                brokeredRequest.MetadataRetry,
-                brokeredRequest.ThrowExtractedException,
-                (ex, attempt, retry) => brokeredRequest.MetadataRetry(attempt, ex, out metadataInvalid),
+                routedRequest.Retry,
+                routedRequest.ThrowExtractedException,
+                (ex, attempt, retry) => routedRequest.Retry(attempt, ex, out metadataInvalid),
                 (ex, attempt) => {
                     var connectionException = ex as ConnectionException;
                     if (connectionException?.Message != null && connectionException.Message.StartsWith("Unable to make Metadata Request to any of")) {
-                        throw new CachedMetadataException("Unable to find Metadata", ex);
+                        throw new RoutingException("Unable to find Metadata", ex);
                     }
                     throw ex.PrepareForRethrow(); 
                 },
@@ -414,7 +414,7 @@ namespace KafkaClient
         {
             if (metadataInvalid.GetValueOrDefault(true)) {
                 // unknown metadata status should not force the issue
-                await router.RefreshGroupBrokerAsync(groupId, metadataInvalid.GetValueOrDefault(), cancellationToken).ConfigureAwait(false);
+                await router.RefreshGroupConnectionAsync(groupId, metadataInvalid.GetValueOrDefault(), cancellationToken).ConfigureAwait(false);
             }
             return false;
         }
@@ -440,7 +440,7 @@ namespace KafkaClient
         internal static void MetadataRetry<T>(this IEnumerable<RoutedTopicRequest<T>> brokeredRequests, int attempt, TimeSpan retry) where T : class, IResponse
         {
             foreach (var brokeredRequest in brokeredRequests) {
-                brokeredRequest.MetadataRetry(attempt, retry);
+                brokeredRequest.Retry(attempt, retry);
             }
         }
 
@@ -454,7 +454,7 @@ namespace KafkaClient
             retry = null;
             foreach (var brokeredRequest in brokeredRequests) {
                 bool? requestRetry;
-                brokeredRequest.MetadataRetry(attempt, exception, out requestRetry);
+                brokeredRequest.Retry(attempt, exception, out requestRetry);
                 if (requestRetry.HasValue) {
                     retry = requestRetry;
                 }
@@ -466,7 +466,7 @@ namespace KafkaClient
             return exception is FetchOutOfRangeException
                 || exception is TimeoutException
                 || exception is ConnectionException
-                || exception is CachedMetadataException;
+                || exception is RoutingException;
         }
 
         /// <summary>
@@ -534,11 +534,11 @@ namespace KafkaClient
             }
         }
 
-        private static MetadataResult ValidateBroker(Protocol.Broker broker)
+        private static MetadataResult ValidateBroker(Server server)
         {
-            if (broker.BrokerId == -1)             return new MetadataResult(ErrorCode.Unknown);
-            if (string.IsNullOrEmpty(broker.Host)) return new MetadataResult(ErrorCode.None, false, "Broker missing host information.");
-            if (broker.Port <= 0)                  return new MetadataResult(ErrorCode.None, false, "Broker missing port information.");
+            if (server.Id == -1)                   return new MetadataResult(ErrorCode.Unknown);
+            if (string.IsNullOrEmpty(server.Host)) return new MetadataResult(ErrorCode.None, false, "Broker missing host information.");
+            if (server.Port <= 0)                  return new MetadataResult(ErrorCode.None, false, "Broker missing port information.");
             return new MetadataResult(isValid: true);
         }
 
@@ -546,7 +546,7 @@ namespace KafkaClient
         {
             var errorCode = topic.ErrorCode;
             if (errorCode == ErrorCode.None) return new MetadataResult(isValid: true);
-            if (errorCode.IsRetryable()) return new MetadataResult(errorCode, null, $"topic/{topic.TopicName} returned error code of {errorCode}: Retrying");
+            if (errorCode.IsRetryable())     return new MetadataResult(errorCode, null, $"topic/{topic.TopicName} returned error code of {errorCode}: Retrying");
             return new MetadataResult(errorCode, false, $"topic/{topic.TopicName} returned an error of {errorCode}");
         }
 

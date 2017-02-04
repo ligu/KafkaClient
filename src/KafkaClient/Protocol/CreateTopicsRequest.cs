@@ -112,7 +112,7 @@ namespace KafkaClient.Protocol
             public short ReplicationFactor { get; }
 
             /// <summary>
-            /// 	Replica assignment among kafka brokers for this topic partitions. 
+            /// Replica assignment among kafka brokers for this topic partitions. 
             /// If this is set num_partitions and replication_factor must be unset.
             /// </summary>
             public IImmutableList<ReplicaAssignment> ReplicaAssignments { get; }

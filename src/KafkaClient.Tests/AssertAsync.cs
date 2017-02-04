@@ -28,9 +28,7 @@ namespace KafkaClient.Tests
                 await asyncAction();
                 Assert.Fail($"Should have thrown {typeof(T)}");
             } catch (T ex) {
-                if (when != null) {
-                    Assert.That(when(ex));
-                }
+                if (when != null && !when(ex)) throw;
             }
         }
     }

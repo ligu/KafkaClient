@@ -5,14 +5,14 @@ namespace KafkaClient
     /// <summary>
     /// An exception cause by invalid/missing/out-of-date metadata in the local metadata cache
     /// </summary>
-    public class CachedMetadataException : KafkaException
+    public class RoutingException : KafkaException
     {
-        public CachedMetadataException(string message)
+        public RoutingException(string message)
             : base(message)
         {
         }
 
-        public CachedMetadataException(string message, Exception innerException)
+        public RoutingException(string message, Exception innerException)
             : base(message, innerException)
         {
         }

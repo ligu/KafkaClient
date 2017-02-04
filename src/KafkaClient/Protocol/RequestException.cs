@@ -1,5 +1,4 @@
-﻿using System;
-using KafkaClient.Connections;
+﻿using KafkaClient.Connections;
 
 namespace KafkaClient.Protocol
 {

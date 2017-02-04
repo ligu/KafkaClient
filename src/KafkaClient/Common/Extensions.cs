@@ -283,7 +283,7 @@ namespace KafkaClient.Common
         {
             var timer = new Stopwatch();
             timer.Start();
-            for (var attempt = 0; !cancellationToken.IsCancellationRequested; attempt++) {
+            for (var attempt = 0;; attempt++) {
                 cancellationToken.ThrowIfCancellationRequested();
                 try {
                     await action(attempt).ConfigureAwait(false);

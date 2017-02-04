@@ -86,8 +86,8 @@ namespace KafkaClient.Tests.Unit
         {
             var router = Substitute.For<IRouter>();
             var conn = Substitute.For<IConnection>();
-            router.GetGroupBrokerAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-                  .Returns(_ => Task.FromResult(new GroupBroker(_.Arg<string>(), 0, conn)));
+            router.GetGroupConnectionAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                  .Returns(_ => Task.FromResult(new GroupConnection(_.Arg<string>(), 0, conn)));
             router.Configuration.Returns(new RouterConfiguration(refreshRetry: new Retry(1, TimeSpan.FromSeconds(2))));
 
             var consumer = new Consumer(router, new ConsumerConfiguration(coordinationRetry: Retry.AtMost(2)), encoders: ConnectionConfiguration.Defaults.Encoders());
@@ -106,8 +106,8 @@ namespace KafkaClient.Tests.Unit
             var protocol = new JoinGroupRequest.GroupProtocol(new ConsumerProtocolMetadata("mine"));
             var router = Substitute.For<IRouter>();
             var conn = Substitute.For<IConnection>();
-            router.GetGroupBrokerAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-                  .Returns(_ => Task.FromResult(new GroupBroker(_.Arg<string>(), 0, conn)));            
+            router.GetGroupConnectionAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                  .Returns(_ => Task.FromResult(new GroupConnection(_.Arg<string>(), 0, conn)));            
             router.SyncGroupAsync(Arg.Any<SyncGroupRequest>(), Arg.Any<IRequestContext>(), Arg.Any<IRetry>(), Arg.Any<CancellationToken>())
                 .Returns(_ => Task.FromResult(new SyncGroupResponse(ErrorCode.None, new ConsumerMemberAssignment(new [] { new TopicPartition("name", 0) }))));
 
@@ -139,8 +139,8 @@ namespace KafkaClient.Tests.Unit
             var protocol = new JoinGroupRequest.GroupProtocol(new ConsumerProtocolMetadata("mine"));
             var router = Substitute.For<IRouter>();
             var conn = Substitute.For<IConnection>();
-            router.GetGroupBrokerAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-                  .Returns(_ => Task.FromResult(new GroupBroker(_.Arg<string>(), 0, conn)));            
+            router.GetGroupConnectionAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                  .Returns(_ => Task.FromResult(new GroupConnection(_.Arg<string>(), 0, conn)));            
             router.SyncGroupAsync(Arg.Any<SyncGroupRequest>(), Arg.Any<IRequestContext>(), Arg.Any<IRetry>(), Arg.Any<CancellationToken>())
                 .Returns(_ => Task.FromResult(new SyncGroupResponse(ErrorCode.None, new ConsumerMemberAssignment(new [] { new TopicPartition("name", 0) }))));
 
@@ -168,8 +168,8 @@ namespace KafkaClient.Tests.Unit
             var protocol = new JoinGroupRequest.GroupProtocol(new ConsumerProtocolMetadata("mine"));
             var router = Substitute.For<IRouter>();
             var conn = Substitute.For<IConnection>();
-            router.GetGroupBrokerAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-                  .Returns(_ => Task.FromResult(new GroupBroker(_.Arg<string>(), 0, conn)));            
+            router.GetGroupConnectionAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                  .Returns(_ => Task.FromResult(new GroupConnection(_.Arg<string>(), 0, conn)));            
             router.SyncGroupAsync(Arg.Any<SyncGroupRequest>(), Arg.Any<IRequestContext>(), Arg.Any<IRetry>(), Arg.Any<CancellationToken>())
                 .Returns(_ => Task.FromResult(new SyncGroupResponse(ErrorCode.None, new ConsumerMemberAssignment(new [] { new TopicPartition("name", 0) }))));
 
@@ -231,8 +231,8 @@ namespace KafkaClient.Tests.Unit
             var protocol = new JoinGroupRequest.GroupProtocol(new ConsumerProtocolMetadata("mine"));
             var router = Substitute.For<IRouter>();
             var conn = Substitute.For<IConnection>();
-            router.GetGroupBrokerAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-                  .Returns(_ => Task.FromResult(new GroupBroker(_.Arg<string>(), 0, conn)));
+            router.GetGroupConnectionAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                  .Returns(_ => Task.FromResult(new GroupConnection(_.Arg<string>(), 0, conn)));
 
             var consumer = new Consumer(router);
             var lastHeartbeat = DateTimeOffset.UtcNow;

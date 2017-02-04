@@ -30,8 +30,8 @@ namespace KafkaClient
         {
             if (_memberId == null) {
                 // can use any connection
-                var broker = await router.GetGroupBrokerAsync(_groupId, cancellationToken).ConfigureAwait(false);
-                return broker?.Connection;
+                var groupConnection = await router.GetGroupConnectionAsync(_groupId, cancellationToken).ConfigureAwait(false);
+                return groupConnection?.Connection;
             }
             return await router.GetConnectionAsync(_groupId, _memberId, cancellationToken);
         }

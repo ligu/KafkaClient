@@ -189,26 +189,26 @@ namespace KafkaClient
             await Router.GetTopicMetadataAsync(produceTasks.Select(m => m.Partition.TopicName), cancellationToken).ConfigureAwait(false);
 
             // we must send a different produce request for each ack level and timeout combination.
-            // we must also send requests to the correct broker / endpoint
+            // we must also send requests to the correct server
             var endpointGroups = produceTasks.Select(
                 produceTask => new {
                     ProduceTask = produceTask,
-                    Route = Router.GetTopicBroker(produceTask.Partition.TopicName, produceTask.Partition.PartitionId)
+                    TopicConnection = Router.GetTopicConnection(produceTask.Partition.TopicName, produceTask.Partition.PartitionId)
                 })
-                .GroupBy(_ => new {_.ProduceTask.Acks, _.ProduceTask.AckTimeout, _.Route.Connection.Endpoint});
+                .GroupBy(_ => new {_.ProduceTask.Acks, _.ProduceTask.AckTimeout, _.TopicConnection.Connection.Endpoint});
 
             var sendBatches = new List<ProduceTaskBatch>();
             foreach (var endpointGroup in endpointGroups) {
                 var produceTasksByTopic = endpointGroup
-                    .GroupBy(_ => new TopicPartition(_.Route.TopicName, _.Route.PartitionId))
+                    .GroupBy(_ => new TopicPartition(_.TopicConnection.TopicName, _.TopicConnection.PartitionId))
                     .ToImmutableDictionary(g => g.Key, g => g.Select(_ => _.ProduceTask).ToImmutableList());
                 var messageCount = produceTasksByTopic.Values.Sum(_ => _.Count);
                 var payloads = produceTasksByTopic.Select(p => new ProduceRequest.Topic(p.Key.TopicName, p.Key.PartitionId, p.Value.SelectMany(_ => _.Messages), codec));
                 var request = new ProduceRequest(payloads, endpointGroup.Key.AckTimeout, endpointGroup.Key.Acks);
                 Router.Log.Debug(() => LogEvent.Create($"Produce request for topics{request.Topics.Aggregate("", (buffer, p) => $"{buffer} {p}")} with {messageCount} messages"));
 
-                var connection = endpointGroup.Select(_ => _.Route).First().Connection; // they'll all be the same since they're grouped by this
-                // TODO: what about retryability like for the broker router?? Need this to be robust to node failures
+                var connection = endpointGroup.Select(_ => _.TopicConnection).First().Connection; // they'll all be the same since they're grouped by this
+                // TODO: what about retryability like for the router?? Need this to be robust to node failures
                 var sendGroupTask = _produceRequestSemaphore.LockAsync(() => connection.SendAsync(request, cancellationToken), cancellationToken);
                 sendBatches.Add(new ProduceTaskBatch(connection.Endpoint, endpointGroup.Key.Acks, sendGroupTask, produceTasksByTopic));
             }

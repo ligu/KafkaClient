@@ -532,7 +532,7 @@ namespace KafkaClient.Testing
 
             writer.Write(response.Brokers.Count);
             foreach (var broker in response.Brokers) {
-                writer.Write(broker.BrokerId)
+                writer.Write(broker.Id)
                     .Write(broker.Host)
                     .Write(broker.Port);
                 if (context.ApiVersion >= 1) {
@@ -612,7 +612,7 @@ namespace KafkaClient.Testing
             if (response == null) return false;
 
             writer.Write(response.ErrorCode)
-                .Write(response.BrokerId)
+                .Write(response.Id)
                 .Write(response.Host)
                 .Write(response.Port);
             return true;

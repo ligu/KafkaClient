@@ -677,7 +677,7 @@ namespace KafkaClient.Protocol
         private static IResponse MetadataResponse(IRequestContext context, ArraySegment<byte> payload)
         {
             using (var reader = new KafkaReader(payload)) {
-                var brokers = new Broker[reader.ReadInt32()];
+                var brokers = new Server[reader.ReadInt32()];
                 for (var b = 0; b < brokers.Length; b++) {
                     var brokerId = reader.ReadInt32();
                     var host = reader.ReadString();
@@ -687,7 +687,7 @@ namespace KafkaClient.Protocol
                         rack = reader.ReadString();
                     }
 
-                    brokers[b] = new Broker(brokerId, host, port, rack);
+                    brokers[b] = new Server(brokerId, host, port, rack);
                 }
 
                 string clusterId = null;

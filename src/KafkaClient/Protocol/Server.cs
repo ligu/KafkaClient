@@ -2,17 +2,20 @@
 
 namespace KafkaClient.Protocol
 {
-    public class Broker : IEquatable<Broker>
+    /// <summary>
+    /// Also called a Broker or Node
+    /// </summary>
+    public class Server : IEquatable<Server>
     {
-        public Broker(int brokerId, string host, int port, string rack = null)
+        public Server(int id, string host, int port, string rack = null)
         {
-            BrokerId = brokerId;
+            Id = id;
             Host = host;
             Port = port;
             Rack = rack;
         }
 
-        public int BrokerId { get; }
+        public int Id { get; }
         public string Host { get; }
         public int Port { get; }
         public string Rack { get; }
@@ -21,14 +24,14 @@ namespace KafkaClient.Protocol
 
         public override bool Equals(object obj)
         {
-            return Equals(obj as Broker);
+            return Equals(obj as Server);
         }
 
-        public bool Equals(Broker other)
+        public bool Equals(Server other)
         {
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
-            return BrokerId == other.BrokerId 
+            return Id == other.Id 
                    && string.Equals(Host, other.Host) 
                    && Port == other.Port
                    && string.Equals(Rack, other.Rack);
@@ -37,7 +40,7 @@ namespace KafkaClient.Protocol
         public override int GetHashCode()
         {
             unchecked {
-                var hashCode = BrokerId;
+                var hashCode = Id;
                 hashCode = (hashCode*397) ^ (Host?.GetHashCode() ?? 0);
                 hashCode = (hashCode*397) ^ Port;
                 hashCode = (hashCode*397) ^ (Rack?.GetHashCode() ?? 0);
@@ -47,6 +50,6 @@ namespace KafkaClient.Protocol
                 
         #endregion
 
-        public override string ToString() => $"{{NodeId:{BrokerId},Host:'{Host}',Port:{Port},Rack:{Rack}}}";
+        public override string ToString() => $"{{NodeId:{Id},Host:'{Host}',Port:{Port},Rack:{Rack}}}";
     }
 }

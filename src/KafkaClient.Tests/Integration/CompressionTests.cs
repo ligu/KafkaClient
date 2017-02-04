@@ -26,7 +26,7 @@ namespace KafkaClient.Tests.Integration
                     TestConfig.Log.Info(() => LogEvent.Create(">> Start GetTopicMetadataAsync"));
                     await router.GetTopicMetadataAsync(topicName, CancellationToken.None);
                     TestConfig.Log.Info(() => LogEvent.Create(">> End GetTopicMetadataAsync"));
-                    var conn = router.GetTopicBroker(topicName, 0);
+                    var conn = router.GetTopicConnection(topicName, 0);
 
                     var request = new ProduceRequest(new ProduceRequest.Topic(topicName, 0, new [] {
                                         new Message("0", "1"),
@@ -95,7 +95,7 @@ namespace KafkaClient.Tests.Integration
                     TestConfig.Log.Info(() => LogEvent.Create(">> Start GetTopicMetadataAsync"));
                     await router.GetTopicMetadataAsync(topicName, CancellationToken.None);
                     TestConfig.Log.Info(() => LogEvent.Create(">> End GetTopicMetadataAsync"));
-                    var conn = router.GetTopicBroker(topicName, 0);
+                    var conn = router.GetTopicConnection(topicName, 0);
 
                     var request = new ProduceRequest(new ProduceRequest.Topic(topicName, 0, new [] {
                                         new Message("0", "1"),

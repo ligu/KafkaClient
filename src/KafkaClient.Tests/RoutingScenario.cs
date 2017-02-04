@@ -84,8 +84,8 @@ namespace KafkaClient.Tests
         {
             return new MetadataResponse(
                 new [] {
-                    new Protocol.Broker(0, "localhost", 1),
-                    new Protocol.Broker(1, "localhost", 2)
+                    new Protocol.Server(0, "localhost", 1),
+                    new Protocol.Server(1, "localhost", 2)
                 },
                 new [] {
                     new MetadataResponse.Topic(TestTopic, 
@@ -105,7 +105,7 @@ namespace KafkaClient.Tests
         {
             return new MetadataResponse(
                 new [] {
-                    new Protocol.Broker(1, "localhost", 2)
+                    new Protocol.Server(1, "localhost", 2)
                 },
                 new [] {
                     new MetadataResponse.Topic(TestTopic, 
@@ -120,7 +120,7 @@ namespace KafkaClient.Tests
         {
             return new MetadataResponse(
                 new [] {
-                    new Protocol.Broker(1, "localhost", 2)
+                    new Protocol.Server(1, "localhost", 2)
                 },
                 new [] {
                     new MetadataResponse.Topic(TestTopic, 

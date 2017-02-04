@@ -39,11 +39,11 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class MetadataResponse : IResponse, IEquatable<MetadataResponse>
     {
-        public override string ToString() => $"{{Brokers:[{Brokers.ToStrings()}],Topics:[{Topics.ToStrings()}],ClusterId:{ClusterId},ControllerId:{ControllerId}}}";
+        public override string ToString() => $"{{Servers:[{Brokers.ToStrings()}],Topics:[{Topics.ToStrings()}],ClusterId:{ClusterId},ControllerId:{ControllerId}}}";
 
-        public MetadataResponse(IEnumerable<Broker> brokers = null, IEnumerable<Topic> topics = null, int? controllerId = null, string clusterId = null)
+        public MetadataResponse(IEnumerable<Server> brokers = null, IEnumerable<Topic> topics = null, int? controllerId = null, string clusterId = null)
         {
-            Brokers = ImmutableList<Broker>.Empty.AddNotNullRange(brokers);
+            Brokers = ImmutableList<Server>.Empty.AddNotNullRange(brokers);
             Topics = ImmutableList<Topic>.Empty.AddNotNullRange(topics);
             ControllerId = controllerId;
             ClusterId = clusterId;
@@ -52,7 +52,7 @@ namespace KafkaClient.Protocol
 
         public IImmutableList<ErrorCode> Errors { get; }
 
-        public IImmutableList<Broker> Brokers { get; }
+        public IImmutableList<Server> Brokers { get; }
         public int? ControllerId { get; }
         public string ClusterId { get; }
         public IImmutableList<Topic> Topics { get; }

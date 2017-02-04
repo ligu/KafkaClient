@@ -165,7 +165,7 @@ namespace KafkaClient.Tests.Integration
 
                         await AssertAsync.Throws<FetchOutOfRangeException>(
                             () => consumer.FetchBatchAsync(offset.TopicName, offset.PartitionId, offset.Offset + 1, CancellationToken.None, 5),
-                            ex => ex.Message.StartsWith("Kafka returned OffsetOutOfRange for Fetch request"));
+                            ex => ex.Message.StartsWith("kafka1:9092 returned OffsetOutOfRange for Fetch request"));
                     }
                 });
             }
@@ -195,7 +195,7 @@ namespace KafkaClient.Tests.Integration
                 using (var consumer = new Consumer(router, new ConsumerConfiguration(maxPartitionFetchBytes: TestConfig.IntegrationOptions.ConsumerConfiguration.MaxFetchBytes * 2))) {
                     var offset = 0;
 
-                    await AssertAsync.Throws<CachedMetadataException>(
+                    await AssertAsync.Throws<RoutingException>(
                         () => consumer.FetchBatchAsync(topicName, 0, offset, CancellationToken.None, 5),
                         ex => ex.Message.StartsWith($"The topic ({topicName}) has no partitionId {0} defined."));
                 }
@@ -211,7 +211,7 @@ namespace KafkaClient.Tests.Integration
                         var offset = 0;
                         var partitionId = 100;
 
-                        await AssertAsync.Throws<CachedMetadataException>(
+                        await AssertAsync.Throws<RoutingException>(
                             () => consumer.FetchBatchAsync(topicName, partitionId, offset, CancellationToken.None, 5),
                             ex => ex.Message.StartsWith($"The topic ({topicName}) has no partitionId {partitionId} defined."));
                     }
@@ -294,7 +294,7 @@ namespace KafkaClient.Tests.Integration
                     try {
                         await router.GetTopicOffsetAsync(topicName, partitionId, groupId, CancellationToken.None);
                         Assert.Fail("should have thrown CachedMetadataException");
-                    } catch (CachedMetadataException ex) when (ex.Message.StartsWith($"The topic ({topicName}) has no partitionId {partitionId} defined.")) {
+                    } catch (RoutingException ex) when (ex.Message.StartsWith($"The topic ({topicName}) has no partitionId {partitionId} defined.")) {
                         // expected
                     }
                 });
@@ -312,7 +312,7 @@ namespace KafkaClient.Tests.Integration
                 try {
                     await router.GetTopicOffsetAsync(topicName, 0, groupId, CancellationToken.None);
                     Assert.Fail("should have thrown CachedMetadataException");
-                } catch (CachedMetadataException ex) when (ex.Message.StartsWith($"The topic ({topicName}) has no partitionId {0} defined.")) {
+                } catch (RoutingException ex) when (ex.Message.StartsWith($"The topic ({topicName}) has no partitionId {0} defined.")) {
                     // expected
                 }
             }
@@ -388,7 +388,7 @@ namespace KafkaClient.Tests.Integration
                     try {
                         await router.CommitTopicOffsetAsync(topicName, partitionId, groupId, offest, CancellationToken.None);
                         Assert.Fail("should have thrown CachedMetadataException");
-                    } catch (CachedMetadataException ex) when (ex.Message.StartsWith($"The topic ({topicName}) has no partitionId {partitionId} defined.")) {
+                    } catch (RoutingException ex) when (ex.Message.StartsWith($"The topic ({topicName}) has no partitionId {partitionId} defined.")) {
                         // expected
                     }
                 });
@@ -409,7 +409,7 @@ namespace KafkaClient.Tests.Integration
                 try {
                     await router.CommitTopicOffsetAsync(topicName, partitionId, groupId, offest, CancellationToken.None);
                     Assert.Fail("should have thrown CachedMetadataException");
-                } catch (CachedMetadataException ex) when (ex.Message.StartsWith($"The topic ({topicName}) has no partitionId {0} defined.")) {
+                } catch (RoutingException ex) when (ex.Message.StartsWith($"The topic ({topicName}) has no partitionId {0} defined.")) {
                     // expected
                 }
             }
@@ -466,7 +466,7 @@ namespace KafkaClient.Tests.Integration
                     try {
                         await router.GetTopicOffsetAsync(topicName, partitionId, CancellationToken.None);
                         Assert.Fail("should have thrown CachedMetadataException");
-                    } catch (CachedMetadataException ex) when (ex.Message.StartsWith($"The topic ({topicName}) has no partitionId {partitionId} defined.")) {
+                    } catch (RoutingException ex) when (ex.Message.StartsWith($"The topic ({topicName}) has no partitionId {partitionId} defined.")) {
                         // expected
                     }
                 });
@@ -483,7 +483,7 @@ namespace KafkaClient.Tests.Integration
                 try {
                     await router.GetTopicOffsetAsync(topicName, 0, CancellationToken.None);
                     Assert.Fail("should have thrown CachedMetadataException");
-                } catch (CachedMetadataException ex) when (ex.Message.StartsWith($"The topic ({topicName}) has no partitionId {0} defined.")) {
+                } catch (RoutingException ex) when (ex.Message.StartsWith($"The topic ({topicName}) has no partitionId {0} defined.")) {
                     // expected
                 }
             }
@@ -742,7 +742,7 @@ namespace KafkaClient.Tests.Integration
             var producer = new Producer(router, new ProducerConfiguration(batchSize: totalMessages / 10, batchMaxDelay: TimeSpan.FromMilliseconds(25), stopTimeout: TimeSpan.FromMilliseconds(50)));
             await producer.UsingAsync(async () => {
                 var offsets = await router.GetTopicOffsetsAsync(topicName, CancellationToken.None);
-                await router.GetGroupBrokerIdAsync(groupId, CancellationToken.None);
+                await router.GetGroupServerIdAsync(groupId, CancellationToken.None);
                 foreach (var partitionId in partitionIds ?? new [] { 0 }) {
                     var offset = offsets.SingleOrDefault(o => o.PartitionId == partitionId);
                     //await router.SendAsync(new GroupCoordinatorRequest(groupId), topicName, partitionId, CancellationToken.None).ConfigureAwait(false);

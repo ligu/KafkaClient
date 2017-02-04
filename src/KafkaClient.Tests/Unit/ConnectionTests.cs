@@ -553,10 +553,11 @@ namespace KafkaClient.Tests.Unit
                 try {
                     Connection.OverflowGuard = 10;
 
-                    await AssertAsync.Throws<TimeoutException>(() => Task.WhenAll(Enumerable.Range(0, Connection.OverflowGuard).Select(i => conn.SendAsync(new MetadataRequest(), CancellationToken.None))));
+                    await AssertAsync.Throws<TimeoutException>(() => Task.WhenAll(Enumerable.Range(0, Connection.OverflowGuard - 1).Select(i => conn.SendAsync(new MetadataRequest(), CancellationToken.None))));
                     await AssertAsync.ThatEventually(() => correlationId > 1);
-                    await AssertAsync.Throws<TimeoutException>(() => conn.SendAsync(new MetadataRequest(), CancellationToken.None));
-                    await AssertAsync.ThatEventually(() => correlationId == 1);
+                    var currentCorrelation = correlationId;
+                    await AssertAsync.Throws<TimeoutException>(() => Task.WhenAll(Enumerable.Range(0, Connection.OverflowGuard / 2).Select(i => conn.SendAsync(new MetadataRequest(), CancellationToken.None))));
+                    await AssertAsync.ThatEventually(() => correlationId < currentCorrelation);
                 }
                 finally {
                     Connection.OverflowGuard = int.MaxValue >> 1;

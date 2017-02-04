@@ -61,15 +61,15 @@ namespace KafkaClient
             return RetryAttempt<T>.Retry;
         }
 
-        public void MetadataRetry(int attempt, TimeSpan retry)
+        public void Retry(int attempt, TimeSpan retry)
         {
             bool? ignored;
-            MetadataRetry(attempt, null, out ignored);
+            Retry(attempt, null, out ignored);
         }
 
         private bool TryReconnect(Exception exception) => exception is ObjectDisposedException && (_router?.TryRestore(_connection, _cancellationToken) ?? false);
 
-        public void MetadataRetry(int attempt, Exception exception, out bool? retry)
+        public void Retry(int attempt, Exception exception, out bool? retry)
         {
             retry = true;
             if (exception != null) {

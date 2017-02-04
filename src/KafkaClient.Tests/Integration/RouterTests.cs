@@ -21,7 +21,7 @@ namespace KafkaClient.Tests.Integration
                 await router.TemporaryTopicAsync(async topicName => {
                     var request = new OffsetFetchRequest(Guid.NewGuid().ToString(), new TopicPartition(topicName, partitionId));
                     await router.GetTopicMetadataAsync(topicName, CancellationToken.None);
-                    var conn = router.GetTopicBroker(topicName, partitionId);
+                    var conn = router.GetTopicConnection(topicName, partitionId);
 
                     var response = await conn.Connection.SendAsync(request, CancellationToken.None);
                     var topic = response.Topics.FirstOrDefault();
@@ -40,7 +40,7 @@ namespace KafkaClient.Tests.Integration
             using (var router = await TestConfig.IntegrationOptions.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     await router.GetTopicMetadataAsync(topicName, CancellationToken.None);
-                    var conn = router.GetTopicBroker(topicName, partitionId);
+                    var conn = router.GetTopicConnection(topicName, partitionId);
 
                     // ensure the group exists
                     var groupId = TestConfig.GroupId();
@@ -68,7 +68,7 @@ namespace KafkaClient.Tests.Integration
             using (var router = await TestConfig.IntegrationOptions.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
                     await router.GetTopicMetadataAsync(topicName, CancellationToken.None);
-                    var conn = router.GetTopicBroker(topicName, partitionId);
+                    var conn = router.GetTopicConnection(topicName, partitionId);
 
                     // ensure the group exists
                     var groupId = TestConfig.GroupId();
@@ -104,7 +104,7 @@ namespace KafkaClient.Tests.Integration
 
             using (var router = await TestConfig.IntegrationOptions.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
-                    var conn = await router.GetTopicBrokerAsync(topicName, partitionId, CancellationToken.None);
+                    var conn = await router.GetTopicConnectionAsync(topicName, partitionId, CancellationToken.None);
 
                     // ensure the group exists
                     var groupId = TestConfig.GroupId();
@@ -137,7 +137,7 @@ namespace KafkaClient.Tests.Integration
         {
             using (var router = await TestConfig.IntegrationOptions.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
-                    var conn = await router.GetTopicBrokerAsync(topicName, 0, CancellationToken.None);
+                    var conn = await router.GetTopicConnectionAsync(topicName, 0, CancellationToken.None);
 
                     var groupId = TestConfig.GroupId();
                     var request = new GroupCoordinatorRequest(groupId);
