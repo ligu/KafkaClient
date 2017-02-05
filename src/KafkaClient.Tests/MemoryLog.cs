@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Immutable;
+using System.Linq;
 using System.Text;
 using KafkaClient.Common;
 
@@ -19,6 +20,15 @@ namespace KafkaClient.Tests
             if (WriteToConsole) {
                 ConsoleLog.Write(level, ConsoleLog.ToText(level, logEvent));
             }
+        }
+
+        public string ToString(LogLevel level)
+        {
+            var buffer = new StringBuilder();
+            foreach (var logEvent in LogEvents.Where(e => e.Item1 == level)) {
+                buffer.AppendLine(ConsoleLog.ToText(logEvent.Item1, logEvent.Item2));
+            }
+            return buffer.ToString();
         }
 
         public override string ToString()

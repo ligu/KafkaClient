@@ -515,7 +515,7 @@ namespace KafkaClient.Tests.Unit
 
                 await AssertAsync.Throws<TimeoutException>(() => conn.SendAsync(new MetadataRequest(), CancellationToken.None));
                 await AssertAsync.ThatEventually(() => received > 0, () => $"received {received}");
-                await AssertAsync.ThatEventually(() => logger.LogEvents.Any(e => e.Item1 == LogLevel.Debug && e.Item2.Message.StartsWith("Timed out -----> (timed out or otherwise errored in client)")), logger.ToString);
+                await AssertAsync.ThatEventually(() => logger.LogEvents.Any(e => e.Item1 == LogLevel.Debug && e.Item2.Message.StartsWith("Timed out -----> (timed out or otherwise errored in client)")), () => logger.ToString(LogLevel.Debug));
             }
         }
 
@@ -530,8 +530,8 @@ namespace KafkaClient.Tests.Unit
             using (var conn = new Connection(endpoint, new ConnectionConfiguration(requestTimeout: timeout), logger)) {
                 await Task.WhenAny(server.ClientConnected, Task.Delay(TimeSpan.FromSeconds(3)));
 
-                await AssertAsync.Throws<TimeoutException>(() => Task.WhenAll(Enumerable.Range(0, 102).Select(i => conn.SendAsync(new MetadataRequest(), CancellationToken.None))));
-                await AssertAsync.ThatEventually(() => logger.LogEvents.Any(e => e.Item1 == LogLevel.Debug && e.Item2.Message.StartsWith("Clearing timed out requests to avoid overflow")), logger.ToString);
+                await AssertAsync.Throws<TimeoutException>(() => Task.WhenAll(Enumerable.Range(0, 201).Select(i => conn.SendAsync(new MetadataRequest(), CancellationToken.None))));
+                await AssertAsync.ThatEventually(() => logger.LogEvents.Any(e => e.Item1 == LogLevel.Debug && e.Item2.Message.StartsWith("Clearing timed out requests to avoid overflow")), () => logger.ToString(LogLevel.Debug));
             }
         }
 
