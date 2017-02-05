@@ -62,10 +62,11 @@ namespace KafkaClient.Connections
             }
         }
 
-        public async Task<int> ReadBytesAsync(byte[] buffer, int bytesToRead, Action<int> onBytesRead, CancellationToken cancellationToken)
+        public async Task<int> ReadBytesAsync(ArraySegment<byte> buffer, CancellationToken cancellationToken)
         {
             var timer = new Stopwatch();
             var totalBytesRead = 0;
+            var bytesToRead = buffer.Count;
             try {
                 await _readSemaphore.LockAsync( // serialize receiving on a given transport
                     async () => {
@@ -77,18 +78,17 @@ namespace KafkaClient.Connections
                             var bytesRemaining = bytesToRead - totalBytesRead;
                             _log.Verbose(() => LogEvent.Create($"Reading ({bytesRemaining}? bytes) from {_endpoint}"));
                             _configuration.OnReadingBytes?.Invoke(_endpoint, bytesRemaining);
-                            var bytesRead = await stream.ReadAsync(buffer, totalBytesRead, bytesRemaining, cancellationToken).ConfigureAwait(false);
+                            var bytesRead = await stream.ReadAsync(buffer.Array, buffer.Offset + totalBytesRead, bytesRemaining, cancellationToken).ConfigureAwait(false);
                             totalBytesRead += bytesRead;
                             _configuration.OnReadBytes?.Invoke(_endpoint, bytesRemaining, bytesRead, timer.Elapsed);
                             _log.Verbose(() => LogEvent.Create($"Read {bytesRead} bytes from {_endpoint}"));
 
-                            if (bytesRead <= 0 && _socket.Available == 0) {
+                            if (bytesRead <= 0 && socket.Available == 0) {
                                 _socket.Disconnect(socket);
                                 var ex = new ConnectionException(_endpoint);
                                 _configuration.OnDisconnected?.Invoke(_endpoint, ex);
                                 throw ex;
                             }
-                            onBytesRead(bytesRead);
                         }
                         timer.Stop();
                         _configuration.OnRead?.Invoke(_endpoint, totalBytesRead, timer.Elapsed);
