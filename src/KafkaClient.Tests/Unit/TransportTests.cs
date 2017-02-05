@@ -53,7 +53,7 @@ namespace KafkaClient.Tests.Unit
         public async Task ShouldDisposeEvenWhilePollingToReconnect()
         {
             var connectionAttempt = -1;
-            var config = new ConnectionConfiguration(Retry.AtMost(5), onConnecting: (e, a, _) => connectionAttempt = a);
+            var config = new ConnectionConfiguration(Retry.Until(TimeSpan.FromSeconds(10)), onConnecting: (e, a, _) => connectionAttempt = a);
             var endpoint = TestConfig.ServerEndpoint();
             using (var transport = CreateTransport(endpoint, config, TestConfig.Log)) {
                 var taskResult = transport.ConnectAsync(CancellationToken.None);
