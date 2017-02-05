@@ -274,63 +274,6 @@ namespace KafkaClient.Common
 
         #region Retry
 
-        public static async Task TryAsync(
-            this IRetry policy, 
-            Func<int, Task> action, 
-            Action<Exception, int, TimeSpan> onException, 
-            Action<Exception, int> onFinalException, 
-            CancellationToken cancellationToken)
-        {
-            var timer = new Stopwatch();
-            timer.Start();
-            for (var attempt = 0;; attempt++) {
-                cancellationToken.ThrowIfCancellationRequested();
-                try {
-                    await action(attempt).ConfigureAwait(false);
-                    // reset attempt when successful
-                    attempt = -1;
-                    timer.Restart();
-                } catch (Exception ex) {
-                    if (attempt == 0) { // first failure
-                        timer.Restart();
-                    }
-                    await policy.CatchAsync(onException, onFinalException, attempt, timer, ex, cancellationToken).ConfigureAwait(false);
-                }
-            }
-        }
-
-        public static async Task<T> TryAsync<T>(
-            this IRetry policy, 
-            Func<int, Stopwatch, Task<RetryAttempt<T>>> action, 
-            Action<int, TimeSpan> onRetry, 
-            Action<int> onFinal, 
-            Action<Exception> onException, 
-            CancellationToken cancellationToken)
-        {
-            var timer = new Stopwatch();
-            timer.Start();
-            for (var attempt = 0;; attempt++) {
-                cancellationToken.ThrowIfCancellationRequested();
-                try {
-                    var response = await action(attempt, timer).ConfigureAwait(false);
-                    if (response.IsSuccessful) return response.Value;
-
-                    var retryDelay = policy.RetryDelay(attempt, timer.Elapsed);
-                    if (response.ShouldRetry && retryDelay.HasValue) {
-                        onRetry?.Invoke(attempt, retryDelay.Value);
-                        await Task.Delay(retryDelay.Value, cancellationToken).ConfigureAwait(false);
-                    } else {
-                        onFinal?.Invoke(attempt);
-                        return response.Value;
-                    }
-                } catch (Exception ex) {
-                    onException?.Invoke(ex);
-                    onFinal?.Invoke(attempt);
-                    return default(T);
-                }
-            }
-        }
-
         public static async Task<T> TryAsync<T>(
             this IRetry policy, 
             Func<int, Stopwatch, Task<RetryAttempt<T>>> action, 

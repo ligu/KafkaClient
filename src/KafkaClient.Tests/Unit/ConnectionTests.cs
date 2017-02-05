@@ -103,9 +103,9 @@ namespace KafkaClient.Tests.Unit
         #region Read
 
         [Test]
-        public async Task ShouldLogDisconnectAndRecover([Values(3, 4)] int connectionAttempts)
+        public async Task ShouldLogDisconnectAndRecover()
         {
-            var mockLog = new MemoryLog();
+            var log = new MemoryLog();
             var clientDisconnected = 0;
             var clientConnected = 0;
             var serverConnected = 0;
@@ -122,9 +122,9 @@ namespace KafkaClient.Tests.Unit
             using (var server = new TcpServer(endpoint.Ip.Port, TestConfig.Log) {
                 OnConnected = () => Interlocked.Increment(ref serverConnected)
             })
-            using (new Connection(endpoint, config, log: mockLog))
+            using (new Connection(endpoint, config, log: log))
             {
-                for (var connectionAttempt = 1; connectionAttempt <= connectionAttempts; connectionAttempt++)
+                for (var connectionAttempt = 1; connectionAttempt <= 4; connectionAttempt++)
                 {
                     var currentAttempt = connectionAttempt;
                     await AssertAsync.ThatEventually(() => serverConnected == currentAttempt, () => $"server {serverConnected}, attempt {currentAttempt}");
@@ -132,13 +132,13 @@ namespace KafkaClient.Tests.Unit
                     TestConfig.Log.Write(LogLevel.Info, () => LogEvent.Create($"Sent CONNECTION attempt {currentAttempt}"));
                     await AssertAsync.ThatEventually(() => clientConnected == currentAttempt, TimeSpan.FromMilliseconds(200), () => $"client {clientConnected}, attempt {currentAttempt}");
 
-                    Assert.That(mockLog.LogEvents.Count(e => e.Item1 == LogLevel.Info && e.Item2.Message.StartsWith("Polling receive thread has recovered on ")), Is.EqualTo(currentAttempt-1));
+                    await AssertAsync.ThatEventually(() => log.LogEvents.Count(e => e.Item1 == LogLevel.Info && e.Item2.Message.StartsWith("Received 4 bytes (id ")) == currentAttempt, () => $"attempt {currentAttempt}\n" + log.ToString(LogLevel.Info));
 
                     TestConfig.Log.Write(LogLevel.Info, () => LogEvent.Create($"Dropping CONNECTION attempt {currentAttempt}"));
                     server.DropConnection();
                     await AssertAsync.ThatEventually(() => clientDisconnected == currentAttempt, () => $"client {clientDisconnected}, attempt {currentAttempt}");
 
-                    Assert.That(mockLog.LogEvents.Count(e => e.Item1 == LogLevel.Info && e.Item2.Message.StartsWith("Disposing transport to")), Is.AtLeast(currentAttempt));
+                    Assert.That(log.LogEvents.Count(e => e.Item1 == LogLevel.Info && e.Item2.Message.StartsWith("Disposing transport to")), Is.AtLeast(currentAttempt));
                 }
             }
         }
@@ -183,7 +183,7 @@ namespace KafkaClient.Tests.Unit
                     // repeat until the connection is all up and working ...
                 }
                 await AssertAsync.ThatEventually(() => bytesRead >= size, () => $"read {bytesRead}, size {size}");
-                await AssertAsync.ThatEventually(() => log.LogEvents.Count(e => e.Item1 == LogLevel.Debug && e.Item2.Message.StartsWith($"Received {size} bytes (id {correlationId})")) == 1, log.ToString);
+                await AssertAsync.ThatEventually(() => log.LogEvents.Count(e => e.Item1 == LogLevel.Info && e.Item2.Message.StartsWith($"Received {size} bytes (id {correlationId})")) == 1, log.ToString);
             }
         }
 

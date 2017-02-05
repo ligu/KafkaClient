@@ -17,11 +17,11 @@ namespace KafkaClient.Tests.Unit
             timer.Start();
             var result = await Retry.WithBackoff(5, minimumDelay: TimeSpan.FromSeconds(1), maximumDelay: TimeSpan.FromSeconds(1))
                        .TryAsync(
-                           (attempt, s) =>
-                           {
+                           (attempt, elapsed) => {
                                timer.Stop();
                                return Task.FromResult(new RetryAttempt<long>(timer.ElapsedMilliseconds));
                            },
+                           null,
                            null,
                            null,
                            null,

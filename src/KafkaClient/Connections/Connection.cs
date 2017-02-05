@@ -120,22 +120,31 @@ namespace KafkaClient.Connections
             if (versionSupport != null) return versionSupport.GetVersion(apiKey).GetValueOrDefault();
 
             return await _versionSupportSemaphore.LockAsync(
-                () => _configuration.ConnectionRetry.TryAsync(
-                    async (attempt, timer) => {
-                        var response = await SendAsync(new ApiVersionsRequest(), cancellationToken, new RequestContext(version: 0)).ConfigureAwait(false);
-                        if (response.ErrorCode.IsRetryable()) return RetryAttempt<short>.Retry;
-                        if (!response.ErrorCode.IsSuccess()) return RetryAttempt<short>.Abort;
+                async () => {
+                    try {
+                        return await _configuration.ConnectionRetry.TryAsync(
+                            async (attempt, timer) => {
+                                var response = await SendAsync(new ApiVersionsRequest(), cancellationToken, new RequestContext(version: 0)).ConfigureAwait(false);
+                                if (response.ErrorCode.IsRetryable()) return RetryAttempt<short>.Retry;
+                                if (!response.ErrorCode.IsSuccess()) return RetryAttempt<short>.Abort;
 
-                        var supportedVersions = response.SupportedVersions.ToImmutableDictionary(
-                                                        _ => _.ApiKey,
-                                                        _ => configuredSupport.UseMaxSupported ? _.MaxVersion : _.MinVersion);
-                        _versionSupport = new VersionSupport(supportedVersions);
-                        return new RetryAttempt<short>(_versionSupport.GetVersion(apiKey).GetValueOrDefault());
-                    },
-                    (attempt, timer) => _log.Debug(() => LogEvent.Create($"Retrying {nameof(GetVersionAsync)} attempt {attempt}")),
-                    attempt => _versionSupport = _configuration.VersionSupport,
-                    exception => _log.Error(LogEvent.Create(exception)),
-                    cancellationToken), 
+                                var supportedVersions = response.SupportedVersions.ToImmutableDictionary(
+                                                                _ => _.ApiKey,
+                                                                _ => configuredSupport.UseMaxSupported ? _.MaxVersion : _.MinVersion);
+                                _versionSupport = new VersionSupport(supportedVersions);
+                                return new RetryAttempt<short>(_versionSupport.GetVersion(apiKey).GetValueOrDefault());
+                            },
+                            (attempt, timer) => _log.Debug(() => LogEvent.Create($"Retrying {nameof(GetVersionAsync)} attempt {attempt}")),
+                            attempt => _versionSupport = _configuration.VersionSupport, // fall back to default support in this case
+                            (exception, attempt, elapsed) => exception.PrepareForRethrow(),
+                            null,
+                            cancellationToken);
+                    } catch (Exception ex) {
+                        _log.Error(LogEvent.Create(ex));
+                        _versionSupport = _configuration.VersionSupport; // fall back to default support in this case
+                        return (short)0;
+                    }
+                }, 
                 cancellationToken
             ).ConfigureAwait(false);
         }
@@ -149,56 +158,60 @@ namespace KafkaClient.Connections
                 var buffer = new byte[_configuration.ReadBufferSize];
                 var header = new byte[KafkaEncoder.ResponseHeaderSize];
                 AsyncItem asyncItem = null;
-                // use backoff so we don't take over the CPU when there's a failure
-                await Retry.WithBackoff(int.MaxValue, minimumDelay: TimeSpan.FromMilliseconds(5), maximumDelay: TimeSpan.FromSeconds(5)).TryAsync(
-                    async attempt => {
-                        await _transport.ConnectAsync(_disposeToken.Token).ConfigureAwait(false);
+                while (!_disposeToken.IsCancellationRequested) {
+                    // use backoff so we don't take over the CPU when there's a failure
+                    await Retry
+                        .WithBackoff(int.MaxValue, minimumDelay: TimeSpan.FromMilliseconds(5), maximumDelay: TimeSpan.FromSeconds(5))
+                        .TryAsync(
+                            async (attempt, elapsed) => {
+                                await _transport.ConnectAsync(_disposeToken.Token).ConfigureAwait(false);
 
-                        if (asyncItem == null) {
-                            var headerOffset = 0;
-                            await _transport.ReadBytesAsync(buffer, KafkaEncoder.ResponseHeaderSize, bytesRead => {
-                                for (var i = 0; i < bytesRead; i++) {
-                                    header[headerOffset++] = buffer[i];
+                                if (asyncItem == null) {
+                                    var headerOffset = 0;
+                                    await _transport.ReadBytesAsync(buffer, KafkaEncoder.ResponseHeaderSize, bytesRead => {
+                                        for (var i = 0; i < bytesRead; i++) {
+                                            header[headerOffset++] = buffer[i];
+                                        }
+                                    }, _disposeToken.Token).ConfigureAwait(false);
+                                    var responseSize = BitConverter.ToInt32(header, 0).ToBigEndian();
+                                    var correlationId = BitConverter.ToInt32(header, KafkaEncoder.IntegerByteSize).ToBigEndian();
+
+                                    asyncItem = LookupByCorrelateId(correlationId, responseSize);
+                                    if (asyncItem.ResponseStream != null) {
+                                        _log.Error(LogEvent.Create($"Request id {correlationId} matched a previous response ({asyncItem.ResponseStream.Length + KafkaEncoder.CorrelationSize} of {asyncItem.ResponseStream.Capacity + KafkaEncoder.CorrelationSize} bytes), now overwriting with {responseSize}? bytes"));
+                                    }
+                                    asyncItem.ResponseStream = new MemoryStream(responseSize - KafkaEncoder.CorrelationSize);
                                 }
-                            }, _disposeToken.Token).ConfigureAwait(false);
-                            var responseSize = BitConverter.ToInt32(header, 0).ToBigEndian();
-                            var correlationId = BitConverter.ToInt32(header, KafkaEncoder.IntegerByteSize).ToBigEndian();
 
-                            asyncItem = LookupByCorrelateId(correlationId, responseSize);
-                            if (asyncItem.ResponseStream != null) {
-                                _log.Error(LogEvent.Create($"Request id {correlationId} matched a previous response ({asyncItem.ResponseStream.Length + KafkaEncoder.CorrelationSize} of {asyncItem.ResponseStream.Capacity + KafkaEncoder.CorrelationSize} bytes), now overwriting with {responseSize}? bytes"));
-                            }
-                            asyncItem.ResponseStream = new MemoryStream(responseSize - KafkaEncoder.CorrelationSize);
-                        }
+                                var currentitem = asyncItem;
+                                await _transport.ReadBytesAsync(buffer, asyncItem.RemainingResponseBytes, bytesRead => currentitem.ResponseStream.Write(buffer, 0, bytesRead), CancellationToken.None).ConfigureAwait(false);
+                                asyncItem.ResponseCompleted(_log);
+                                asyncItem = null;
 
-                        var currentitem = asyncItem;
-                        await _transport.ReadBytesAsync(buffer, asyncItem.RemainingResponseBytes, bytesRead => currentitem.ResponseStream.Write(buffer, 0, bytesRead), CancellationToken.None).ConfigureAwait(false);
-                        asyncItem.ResponseCompleted(_log);
-                        asyncItem = null;
+                                return new RetryAttempt<bool>(true);
+                            },
+                            null,
+                            null,
+                            (exception, attempt, delay) => {
+                                if (_disposeToken.IsCancellationRequested) {
+                                    throw exception.PrepareForRethrow();
+                                }
 
-                        if (attempt > 0) {
-                            _log.Info(() => LogEvent.Create($"Polling receive thread has recovered on {Endpoint}"));
-                        }
-                    },
-                    (exception, attempt, delay) => {
-                        if (_disposeToken.IsCancellationRequested) {
-                            throw exception.PrepareForRethrow();
-                        }
+                                // when reconnecting, will the data continue to stream or start again??
+                                //if (exception is ConnectionException) {
+                                //    asyncItem = null;
+                                //}
 
-                        // when reconnecting, will the data continue to stream or start again??
-                        //if (exception is ConnectionException) {
-                        //    asyncItem = null;
-                        //}
-
-                        if (attempt == 0) {
-                            _log.Error(LogEvent.Create(exception,  $"Polling failure on {Endpoint} attempt {attempt} delay {delay}"));
-                        } else {
-                            _log.Info(() => LogEvent.Create(exception, $"Polling failure on {Endpoint} attempt {attempt} delay {delay}"));
-                        }
-                    },
-                    null, // since there is no max attempts/delay
-                    _disposeToken.Token
-                ).ConfigureAwait(false);
+                                if (attempt == 0) {
+                                    _log.Error(LogEvent.Create(exception,  $"Polling failure on {Endpoint} attempt {attempt} delay {delay}"));
+                                } else {
+                                    _log.Info(() => LogEvent.Create(exception, $"Polling failure on {Endpoint} attempt {attempt} delay {delay}"));
+                                }
+                            },
+                            null, // since there is no max attempts/delay
+                            _disposeToken.Token
+                        ).ConfigureAwait(false);
+                }
             } catch (Exception ex) {
                 _log.Debug(() => LogEvent.Create(ex));
             } finally {
@@ -332,7 +345,7 @@ namespace KafkaClient.Connections
                 ArraySegment<byte> bytes;
                 ResponseStream.TryGetBuffer(out bytes);
                 if (Request is UnknownRequest) {
-                    log.Debug(() => LogEvent.Create($"Received {ResponseStream.Length + KafkaEncoder.CorrelationSize} bytes (id {Context.CorrelationId})"));
+                    log.Info(() => LogEvent.Create($"Received {ResponseStream.Length + KafkaEncoder.CorrelationSize} bytes (id {Context.CorrelationId})"));
                     return;
                 }
                 log.Info(() => LogEvent.Create($"Received {ApiKey} response (id {Context.CorrelationId}, {ResponseStream.Length + KafkaEncoder.CorrelationSize} bytes)"));
