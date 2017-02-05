@@ -9,14 +9,23 @@ namespace KafkaClient.Tests
 {
     public static class AssertAsync
     {
-        /// <exception cref="Exception">A delegate callback throws an exception.</exception>
-        public static async Task<bool> ThatEventually(Expression<Func<bool>> predicate, TimeSpan? timeout = null)
+        public static Task<bool> ThatEventually(Expression<Func<bool>> predicate, Func<string> messageFunc)
+        {
+            return ThatEventually(predicate, null, messageFunc);
+        }
+
+        public static async Task<bool> ThatEventually(Expression<Func<bool>> predicate, TimeSpan? timeout = null, Func<string> messageFunc = null)
         {
             var compiled = predicate.Compile();
             var timer = Stopwatch.StartNew();
             var timeoutMilliseconds = timeout?.TotalMilliseconds ?? 3000;
             while (compiled() == false) {
-                if (timer.ElapsedMilliseconds > timeoutMilliseconds) Assert.Fail(predicate.ToReadableString());
+                if (timer.ElapsedMilliseconds > timeoutMilliseconds) {
+                    if (messageFunc != null) {
+                        Assert.Fail(predicate.ToReadableString() + $"\n{messageFunc()}");
+                    }
+                    Assert.Fail(predicate.ToReadableString());
+                }
                 await Task.Delay(50).ConfigureAwait(false);
             }
             return true;

@@ -75,7 +75,7 @@ namespace KafkaClient.Tests.Unit
 
                 var sendTask = producer.SendMessagesAsync(messages, RoutingScenario.TestTopic, CancellationToken.None);
 
-                await AssertAsync.ThatEventually(() => producer.ActiveSenders >= 1);
+                await AssertAsync.ThatEventually(() => producer.ActiveSenders >= 1, () => $"senders {producer.ActiveSenders}");
 
                 semaphore.Release();
                 await Task.WhenAny(sendTask, Task.Delay(2500));
@@ -115,11 +115,11 @@ namespace KafkaClient.Tests.Unit
                     await t;
                 });
 
-                await AssertAsync.ThatEventually(() => producer.ActiveSenders == 1 && count > 0);
+                await AssertAsync.ThatEventually(() => producer.ActiveSenders == 1 && count > 0, () => $"senders {producer.ActiveSenders}, count {count}");
 
                 semaphore.Release();
                 // The second SendMessagesAsync should continue after semaphore is released.
-                await AssertAsync.ThatEventually(() => count > 1);
+                await AssertAsync.ThatEventually(() => count > 1, () => $"count {count}");
             }
         }
 
@@ -238,7 +238,7 @@ namespace KafkaClient.Tests.Unit
                 TestConfig.Log.Info(() => LogEvent.Create("Finished test send task"));
 
                 Assert.That(senderTask.IsCompleted);
-                await AssertAsync.ThatEventually(() => producer.InFlightMessageCount + producer.BufferedMessageCount == count);
+                await AssertAsync.ThatEventually(() => producer.InFlightMessageCount + producer.BufferedMessageCount == count, () => $"in flight {producer.InFlightMessageCount}, buffered {producer.BufferedMessageCount}, total {count}");
             }
         }
 
@@ -263,7 +263,7 @@ namespace KafkaClient.Tests.Unit
                     }
                 });
 
-                await AssertAsync.ThatEventually(() => count > 0 && producer.BufferedMessageCount == 1);
+                await AssertAsync.ThatEventually(() => count > 0 && producer.BufferedMessageCount == 1, () => $"buffered {producer.BufferedMessageCount}, count {count}");
 
                 TestConfig.Log.Info(() => LogEvent.Create("Waiting for the rest..."));
                 await Task.WhenAny(senderTask, Task.Delay(5000));

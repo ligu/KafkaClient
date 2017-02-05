@@ -28,7 +28,7 @@ namespace KafkaClient.Tests.Unit
             var config = new ConnectionConfiguration(onConnecting: (e, a, _) => Interlocked.Increment(ref count));
             using (var transport = CreateTransport(TestConfig.ServerEndpoint(), config, TestConfig.Log)) {
                 var task = transport.ConnectAsync(CancellationToken.None);
-                await AssertAsync.ThatEventually(() => count > 1, TimeSpan.FromSeconds(10));
+                await AssertAsync.ThatEventually(() => count > 1, TimeSpan.FromSeconds(10), () => $"count {count}");
             }
         }
 
@@ -58,7 +58,7 @@ namespace KafkaClient.Tests.Unit
             using (var transport = CreateTransport(endpoint, config, TestConfig.Log)) {
                 var taskResult = transport.ConnectAsync(CancellationToken.None);
 
-                await AssertAsync.ThatEventually(() => connectionAttempt >= 0);
+                await AssertAsync.ThatEventually(() => connectionAttempt >= 0, () => $"attempt {connectionAttempt}");
 
                 transport.Dispose();
                 await Task.WhenAny(taskResult, Task.Delay(1000)).ConfigureAwait(false);
@@ -81,7 +81,7 @@ namespace KafkaClient.Tests.Unit
                     var buffer = new byte[4];
                     var taskResult = transport.ReadBytesAsync(buffer, 4, _ => { }, CancellationToken.None);
 
-                    await AssertAsync.ThatEventually(() => readSize > 0);
+                    await AssertAsync.ThatEventually(() => readSize > 0, () => $"readSize {readSize}");
 
                     using (transport) { }
                     transport = null;
@@ -120,7 +120,7 @@ namespace KafkaClient.Tests.Unit
                     await server.SendDataAsync(new ArraySegment<byte>(new byte[] { 0, 0, 0 }));
 
                     // Three bytes should have been received and we are waiting on the last byte.
-                    await AssertAsync.ThatEventually(() => bytesReceived >= 3);
+                    await AssertAsync.ThatEventually(() => bytesReceived >= 3, () => $"bytesReceived {bytesReceived}");
                     Assert.That(readTask.IsCompleted, Is.False, "Task should still be running, blocking.");
                     Assert.That(readCompleted, Is.EqualTo(0), "Should still block even though bytes have been received.");
 
@@ -236,7 +236,7 @@ namespace KafkaClient.Tests.Unit
 
                     server.DropConnection();
 
-                    await AssertAsync.ThatEventually(() => disconnectedCount > 0);
+                    await AssertAsync.ThatEventually(() => disconnectedCount > 0, () => $"disconnected {disconnectedCount}");
 
                     await Task.WhenAny(taskResult, Task.Delay(1000)).ConfigureAwait(false);
 
@@ -323,7 +323,7 @@ namespace KafkaClient.Tests.Unit
 
                 await transport.ConnectAsync(CancellationToken.None);
                 await transport.WriteBytesAsync(new ArraySegment<byte>(testData.ToBytes()), CancellationToken.None);
-                await AssertAsync.ThatEventually(() => read == 4 && bytes.ToInt32() == testData);
+                await AssertAsync.ThatEventually(() => read == 4 && bytes.ToInt32() == testData, () => $"read {read}");
             }
         }
 
@@ -345,7 +345,7 @@ namespace KafkaClient.Tests.Unit
                 await Task.WhenAll(
                     transport.WriteBytesAsync(new ArraySegment<byte>(testData.ToBytes()), CancellationToken.None), 
                     transport.WriteBytesAsync(new ArraySegment<byte>(testData.ToBytes()), CancellationToken.None));
-                await AssertAsync.ThatEventually(() => results.Count == 8);
+                await AssertAsync.ThatEventually(() => results.Count == 8, () => $"count {results.Count}");
             }
         }
 
@@ -381,13 +381,13 @@ namespace KafkaClient.Tests.Unit
 
                     await Task.WhenAll(clientWriteTasks.Union(clientReadTasks).Union(serverWriteTasks));
 
-                    await AssertAsync.ThatEventually(() => bytesReadOnServer == bytes.Length);
+                    await AssertAsync.ThatEventually(() => bytesReadOnServer == bytes.Length, () => $"length {bytes.Length}, read {bytesReadOnServer}");
                     var readOnServer = new List<int>();
                     foreach (var value in bytes.Batch(4).Select(x => x.ToArray().ToInt32())) {
                         readOnServer.Add(value);
                     }
                     Assert.That(readOnServer.Count, Is.EqualTo(requests), "not all writes propagated to the server in time");
-                    await AssertAsync.ThatEventually(() => readOnClient.Count == requests);
+                    await AssertAsync.ThatEventually(() => readOnClient.Count == requests, () => $"read {readOnClient.Count}, requests {requests}");
                     var w = readOnServer.OrderBy(x => x);
                     var r = readOnClient.OrderBy(x => x);
 
@@ -424,7 +424,7 @@ namespace KafkaClient.Tests.Unit
                     var clientWriteTasks = Enumerable.Range(1, requests).Select(i => transport.WriteBytesAsync(new ArraySegment<byte>(i.ToBytes()), CancellationToken.None));
 
                     await Task.WhenAll(clientWriteTasks);
-                    await AssertAsync.ThatEventually(() => bytesReadOnServer == bytes.Length);
+                    await AssertAsync.ThatEventually(() => bytesReadOnServer == bytes.Length, () => $"bytes read {bytesReadOnServer}, total {bytes.Length}");
                     var readOnServer = new List<int>();
                     foreach (var value in bytes.Batch(4).Select(x => x.ToArray().ToInt32())) {
                         readOnServer.Add(value);
@@ -449,7 +449,7 @@ namespace KafkaClient.Tests.Unit
                         var write = transport.WriteBytesAsync(new ArraySegment<byte>(1.ToBytes()), token.Token);
 
                         await Task.WhenAny(server.ClientConnected, Task.Delay(TimeSpan.FromSeconds(3)));
-                        await AssertAsync.ThatEventually(() => clientWriteAttempts == 1);
+                        await AssertAsync.ThatEventually(() => clientWriteAttempts == 1, () => $"attempts {clientWriteAttempts}");
 
                         //create a buffer write that will take a long time
                         var data = Enumerable.Range(0, 1000000).Select(b => (byte)b).ToArray();
