@@ -19,10 +19,10 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public async Task ShouldStartReadPollingOnConstruction()
         {
+            var log = new MemoryLog();
             var endpoint = TestConfig.ServerEndpoint();
-            using (var conn = new Connection(endpoint, log: TestConfig.Log))
-            {
-                await AssertAsync.ThatEventually(() => conn.IsReaderAlive);
+            using (new Connection(endpoint, log: log)) {
+                await AssertAsync.ThatEventually(() => log.LogEvents.Any(e => e.Item1 == LogLevel.Info && e.Item2.Message.StartsWith("Connecting to")), log.ToString);
             }
         }
 
@@ -551,8 +551,9 @@ namespace KafkaClient.Tests.Unit
 
                 try {
                     Connection.OverflowGuard = 10;
-
-                    await AssertAsync.Throws<TimeoutException>(() => Task.WhenAll(Enumerable.Range(0, Connection.OverflowGuard - 1).Select(i => conn.SendAsync(new MetadataRequest(), CancellationToken.None))));
+                    await AssertAsync.Throws<TimeoutException>(() => conn.SendAsync(new MetadataRequest(), CancellationToken.None));
+                    var initialCorrelation = correlationId;
+                    await AssertAsync.Throws<TimeoutException>(() => Task.WhenAll(Enumerable.Range(initialCorrelation, Connection.OverflowGuard - 1).Select(i => conn.SendAsync(new MetadataRequest(), CancellationToken.None))));
                     await AssertAsync.ThatEventually(() => correlationId > 1, () => $"correlation {correlationId}");
                     var currentCorrelation = correlationId;
                     await AssertAsync.Throws<TimeoutException>(() => Task.WhenAll(Enumerable.Range(0, Connection.OverflowGuard / 2).Select(i => conn.SendAsync(new MetadataRequest(), CancellationToken.None))));

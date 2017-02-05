@@ -49,7 +49,6 @@ namespace KafkaClient.Connections
 
         public void Disconnect(Socket socket)
         {
-            Socket i;
             try {
                 Interlocked.CompareExchange(ref _socket, socket, null);
                 if (socket == null) return;
