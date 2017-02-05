@@ -63,8 +63,6 @@ namespace KafkaClient.Connections
             }
         }
 
-        public int Available => _socket?.Available ?? 0;
-
         public async Task<Socket> ConnectAsync(CancellationToken cancellationToken)
         {
             if (_disposeCount > 0) throw new ObjectDisposedException(nameof(ReconnectingSocket));

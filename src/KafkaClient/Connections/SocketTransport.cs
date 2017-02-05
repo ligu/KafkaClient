@@ -38,16 +38,16 @@ namespace KafkaClient.Connections
         {
             var timer = new Stopwatch();
             var totalBytesRead = 0;
-            var bytesToRead = buffer.Count;
             try {
                 var socket = _tcpSocket; // so if the socket is reconnected, we don't read partially from different sockets
-                _configuration.OnReading?.Invoke(_endpoint, bytesToRead);
+                _configuration.OnReading?.Invoke(_endpoint, buffer.Count);
                 timer.Start();
-                while (totalBytesRead < bytesToRead && !cancellationToken.IsCancellationRequested) {
-                    var bytesRemaining = bytesToRead - totalBytesRead;
+                while (totalBytesRead < buffer.Count && !cancellationToken.IsCancellationRequested) {
+                    var bytesRemaining = buffer.Count - totalBytesRead;
                     _log.Verbose(() => LogEvent.Create($"Reading ({bytesRemaining}? bytes) from {_endpoint}"));
                     _configuration.OnReadingBytes?.Invoke(_endpoint, bytesRemaining);
-                    var bytesRead = await socket.ReceiveAsync(buffer, SocketFlags.None).ThrowIfCancellationRequested(cancellationToken).ConfigureAwait(false);
+                    var socketSegment = new ArraySegment<byte>(buffer.Array, buffer.Offset + totalBytesRead, bytesRemaining);
+                    var bytesRead = await socket.ReceiveAsync(socketSegment, SocketFlags.None).ThrowIfCancellationRequested(cancellationToken).ConfigureAwait(false);
                     totalBytesRead += bytesRead;
                     _configuration.OnReadBytes?.Invoke(_endpoint, bytesRemaining, bytesRead, timer.Elapsed);
                     _log.Verbose(() => LogEvent.Create($"Read {bytesRead} bytes from {_endpoint}"));
@@ -63,7 +63,7 @@ namespace KafkaClient.Connections
                 _configuration.OnRead?.Invoke(_endpoint, totalBytesRead, timer.Elapsed);
             } catch (Exception ex) {
                 timer.Stop();
-                _configuration.OnReadFailed?.Invoke(_endpoint, bytesToRead, timer.Elapsed, ex);
+                _configuration.OnReadFailed?.Invoke(_endpoint, buffer.Count, timer.Elapsed, ex);
                 if (_disposeCount > 0) throw new ObjectDisposedException(nameof(SocketTransport));
                 throw;
             }
