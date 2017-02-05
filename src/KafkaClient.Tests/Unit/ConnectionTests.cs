@@ -148,6 +148,48 @@ namespace KafkaClient.Tests.Unit
         {
             var log = new MemoryLog();
             var bytesRead = 0;
+            var firstLength = 99;
+
+            var config = new ConnectionConfiguration(onReadBytes: (e, attempted, actual, elapsed) => {
+                if (Interlocked.Add(ref bytesRead, actual) == firstLength) throw new OutOfMemoryException();
+            });
+
+            var endpoint = TestConfig.ServerEndpoint();
+            using (var server = new TcpServer(endpoint.Ip.Port, TestConfig.Log))
+            using (new Connection(endpoint, config, log))
+            {
+                // send size
+                var size = 200;
+                await server.SendDataAsync(new ArraySegment<byte>(size.ToBytes()));
+                var bytes = new byte[size];
+                new Random(42).NextBytes(bytes);
+                var offset = 0;
+                var correlationId = 200;
+                foreach (var b in correlationId.ToBytes()) {
+                    bytes[offset++] = b;
+                }
+
+                // send half of payload
+                await server.SendDataAsync(new ArraySegment<byte>(bytes, 0, firstLength));
+                await AssertAsync.ThatEventually(() => bytesRead >= firstLength, () => $"read {bytesRead}, length {bytes.Length}");
+
+                Assert.That(log.LogEvents.Count(e => e.Item1 == LogLevel.Warn && e.Item2.Message.StartsWith($"Unexpected response (id {correlationId}, {size}? bytes) from")), Is.EqualTo(1));
+                Assert.That(log.LogEvents.Count(e => e.Item1 == LogLevel.Debug && e.Item2.Message.StartsWith($"Received {size} bytes (id {correlationId})")), Is.EqualTo(0));
+
+                // send half of payload should be skipped
+                while (!await server.SendDataAsync(new ArraySegment<byte>(bytes, firstLength, size - firstLength))) {
+                    // repeat until the connection is all up and working ...
+                }
+                await AssertAsync.ThatEventually(() => bytesRead >= size, () => $"read {bytesRead}, size {size}");
+                await AssertAsync.ThatEventually(() => log.LogEvents.Count(e => e.Item1 == LogLevel.Info && e.Item2.Message.StartsWith($"Received {size} bytes (id {correlationId})")) == 1, log.ToString);
+            }
+        }
+
+        [Test]
+        public async Task ShouldNotFinishPartiallyReadMessage()
+        {
+            var log = new MemoryLog();
+            var bytesRead = 0;
 
             var config = new ConnectionConfiguration(onReadBytes: (e, attempted, actual, elapsed) => Interlocked.Add(ref bytesRead, actual));
 
@@ -158,32 +200,24 @@ namespace KafkaClient.Tests.Unit
                 // send size
                 var size = 200;
                 await server.SendDataAsync(new ArraySegment<byte>(size.ToBytes()));
-                var random = new Random(42);
-                var firstBytes = new byte[99];
-                random.NextBytes(firstBytes);
+                var bytes = new byte[99];
+                new Random(42).NextBytes(bytes);
                 var offset = 0;
                 var correlationId = 200;
                 foreach (var b in correlationId.ToBytes()) {
-                    firstBytes[offset++] = b;
+                    bytes[offset++] = b;
                 }
 
                 // send half of payload
-                await server.SendDataAsync(new ArraySegment<byte>(firstBytes));
-                await AssertAsync.ThatEventually(() => bytesRead >= firstBytes.Length, () => $"read {bytesRead}, length {firstBytes.Length}");
+                await server.SendDataAsync(new ArraySegment<byte>(bytes, 0, 99));
+                await AssertAsync.ThatEventually(() => bytesRead >= bytes.Length, () => $"read {bytesRead}, length {bytes.Length}");
 
                 Assert.That(log.LogEvents.Count(e => e.Item1 == LogLevel.Warn && e.Item2.Message.StartsWith($"Unexpected response (id {correlationId}, {size}? bytes) from")), Is.EqualTo(1));
                 Assert.That(log.LogEvents.Count(e => e.Item1 == LogLevel.Debug && e.Item2.Message.StartsWith($"Received {size} bytes (id {correlationId})")), Is.EqualTo(0));
 
                 server.DropConnection();
 
-                // send half of payload should be skipped
-                var lastBytes = new byte[size];
-                random.NextBytes(lastBytes);
-                while (!await server.SendDataAsync(new ArraySegment<byte>(lastBytes))) {
-                    // repeat until the connection is all up and working ...
-                }
-                await AssertAsync.ThatEventually(() => bytesRead >= size, () => $"read {bytesRead}, size {size}");
-                await AssertAsync.ThatEventually(() => log.LogEvents.Count(e => e.Item1 == LogLevel.Info && e.Item2.Message.StartsWith($"Received {size} bytes (id {correlationId})")) == 1, log.ToString);
+                await AssertAsync.ThatEventually(() => log.LogEvents.Count(e => e.Item1 == LogLevel.Warn && e.Item2.Message.StartsWith("Socket has been re-established, so recovery of the remaining of the current message is uncertain at best")) == 1, log.ToString);
             }
         }
 

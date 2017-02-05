@@ -197,10 +197,15 @@ namespace KafkaClient.Connections
                                     throw exception.PrepareForRethrow();
                                 }
 
-                                // when reconnecting, will the data continue to stream or start again??
-                                //if (exception is ConnectionException) {
-                                //    asyncItem = null;
-                                //}
+                                if (exception is ConnectionException) {
+                                    _log.Warn(() => LogEvent.Create(exception, "Socket has been re-established, so recovery of the remaining of the current message is uncertain at best"));
+                                    try {
+                                        asyncItem.ResponseCompleted(_log);
+                                    } catch {
+                                        // ignore
+                                    }
+                                    asyncItem = null;
+                                }
 
                                 if (attempt == 0) {
                                     _log.Error(LogEvent.Create(exception,  $"Polling failure on {Endpoint} attempt {attempt} delay {delay}"));
