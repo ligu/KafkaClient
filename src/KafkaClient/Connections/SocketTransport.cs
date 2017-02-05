@@ -26,7 +26,7 @@ namespace KafkaClient.Connections
             _endpoint = endpoint;
             _configuration = configuration;
             _log = log;
-            _socket = new ReconnectingSocket(endpoint, configuration, log, false);
+            _socket = new ReconnectingSocket(endpoint, configuration, log, true);
         }
 
         public async Task ConnectAsync(CancellationToken cancellationToken)
@@ -34,37 +34,36 @@ namespace KafkaClient.Connections
             _tcpSocket = await _socket.ConnectAsync(cancellationToken);
         }
 
-        public async Task<int> ReadBytesAsync(byte[] buffer, int bytesToRead, Action<int> onBytesRead, CancellationToken cancellationToken)
+        public async Task<int> ReadBytesAsync(ArraySegment<byte> buffer, CancellationToken cancellationToken)
         {
             var timer = new Stopwatch();
             var totalBytesRead = 0;
             try {
                 var socket = _tcpSocket; // so if the socket is reconnected, we don't read partially from different sockets
-                _configuration.OnReading?.Invoke(_endpoint, bytesToRead);
+                _configuration.OnReading?.Invoke(_endpoint, buffer.Count);
                 timer.Start();
-                while (totalBytesRead < bytesToRead && !cancellationToken.IsCancellationRequested) {
-                    var bytesRemaining = bytesToRead - totalBytesRead;
+                while (totalBytesRead < buffer.Count && !cancellationToken.IsCancellationRequested) {
+                    var bytesRemaining = buffer.Count - totalBytesRead;
                     _log.Verbose(() => LogEvent.Create($"Reading ({bytesRemaining}? bytes) from {_endpoint}"));
                     _configuration.OnReadingBytes?.Invoke(_endpoint, bytesRemaining);
-                    var bytes = new ArraySegment<byte>(buffer, 0, Math.Min(buffer.Length, bytesRemaining));
-                    var bytesRead = await socket.ReceiveAsync(bytes, SocketFlags.None).ThrowIfCancellationRequested(cancellationToken).ConfigureAwait(false);
+                    var socketSegment = new ArraySegment<byte>(buffer.Array, buffer.Offset + totalBytesRead, bytesRemaining);
+                    var bytesRead = await socket.ReceiveAsync(socketSegment, SocketFlags.None).ThrowIfCancellationRequested(cancellationToken).ConfigureAwait(false);
                     totalBytesRead += bytesRead;
                     _configuration.OnReadBytes?.Invoke(_endpoint, bytesRemaining, bytesRead, timer.Elapsed);
                     _log.Verbose(() => LogEvent.Create($"Read {bytesRead} bytes from {_endpoint}"));
 
-                    if (bytesRead <= 0 && _socket.Available == 0) {
+                    if (bytesRead <= 0 && socket.Available == 0) {
                         _socket.Disconnect(socket);
                         var ex = new ConnectionException(_endpoint);
                         _configuration.OnDisconnected?.Invoke(_endpoint, ex);
                         throw ex;
                     }
-                    onBytesRead(bytesRead);
                 }
                 timer.Stop();
                 _configuration.OnRead?.Invoke(_endpoint, totalBytesRead, timer.Elapsed);
             } catch (Exception ex) {
                 timer.Stop();
-                _configuration.OnReadFailed?.Invoke(_endpoint, bytesToRead, timer.Elapsed, ex);
+                _configuration.OnReadFailed?.Invoke(_endpoint, buffer.Count, timer.Elapsed, ex);
                 if (_disposeCount > 0) throw new ObjectDisposedException(nameof(SocketTransport));
                 throw;
             }

@@ -173,7 +173,7 @@ namespace KafkaClient.Tests.Unit
                 await server.SendDataAsync(new ArraySegment<byte>(bytes, 0, firstLength));
                 await AssertAsync.ThatEventually(() => bytesRead >= firstLength, () => $"read {bytesRead}, length {bytes.Length}");
 
-                Assert.That(log.LogEvents.Count(e => e.Item1 == LogLevel.Warn && e.Item2.Message.StartsWith($"Unexpected response (id {correlationId}, {size}? bytes) from")), Is.EqualTo(1));
+                Assert.That(log.LogEvents.Count(e => e.Item1 == LogLevel.Warn && e.Item2.Message.StartsWith($"Unexpected response (id {correlationId}, {size}? bytes) from")), Is.EqualTo(1), log.ToString());
                 Assert.That(log.LogEvents.Count(e => e.Item1 == LogLevel.Debug && e.Item2.Message.StartsWith($"Received {size} bytes (id {correlationId})")), Is.EqualTo(0));
 
                 // send half of payload should be skipped
@@ -212,7 +212,7 @@ namespace KafkaClient.Tests.Unit
                 await server.SendDataAsync(new ArraySegment<byte>(bytes, 0, 99));
                 await AssertAsync.ThatEventually(() => bytesRead >= bytes.Length, () => $"read {bytesRead}, length {bytes.Length}");
 
-                Assert.That(log.LogEvents.Count(e => e.Item1 == LogLevel.Warn && e.Item2.Message.StartsWith($"Unexpected response (id {correlationId}, {size}? bytes) from")), Is.EqualTo(1));
+                Assert.That(log.LogEvents.Count(e => e.Item1 == LogLevel.Warn && e.Item2.Message.StartsWith($"Unexpected response (id {correlationId}, {size}? bytes) from")), Is.EqualTo(1), log.ToString());
                 Assert.That(log.LogEvents.Count(e => e.Item1 == LogLevel.Debug && e.Item2.Message.StartsWith($"Received {size} bytes (id {correlationId})")), Is.EqualTo(0));
 
                 server.DropConnection();
