@@ -59,12 +59,11 @@ namespace KafkaClient.Tests.Unit
                 var taskResult = transport.ConnectAsync(CancellationToken.None);
 
                 await AssertAsync.ThatEventually(() => connectionAttempt >= 0, () => $"attempt {connectionAttempt}");
-
                 transport.Dispose();
-                await Task.WhenAny(taskResult, Task.Delay(1000)).ConfigureAwait(false);
 
-                Assert.That(taskResult.IsFaulted, Is.True);
-                Assert.That(taskResult.Exception.InnerException, Is.TypeOf<ObjectDisposedException>());
+                using (var cancellation = new TimedCancellation(CancellationToken.None, TimeSpan.FromSeconds(3))) {
+                    await AssertAsync.Throws<ObjectDisposedException>(() => taskResult.ThrowIfCancellationRequested(cancellation.Token));
+                }
             }
         }
 
