@@ -171,7 +171,7 @@ namespace KafkaClient.Protocol
             RoutedTopicRequest<OffsetResponse>[] routedTopicRequests = null;
 
             return await router.Configuration.SendRetry.TryAsync(
-                async (attempt, timer) => {
+                async (retryAttempt, elapsed) => {
                     metadataInvalid = await router.RefreshTopicMetadataIfInvalidAsync(topicName, metadataInvalid, cancellationToken).ConfigureAwait(false);
 
                     var topicMetadata = await router.GetTopicMetadataAsync(topicName, cancellationToken).ConfigureAwait(false);
@@ -188,7 +188,7 @@ namespace KafkaClient.Protocol
                         .ToArray();
 
                     await Task.WhenAll(routedTopicRequests.Select(_ => _.SendAsync(router, cancellationToken))).ConfigureAwait(false);
-                    var responses = routedTopicRequests.Select(_ => _.MetadataRetryResponse(attempt, out metadataInvalid)).ToArray();
+                    var responses = routedTopicRequests.Select(_ => _.MetadataRetryResponse(retryAttempt, out metadataInvalid)).ToArray();
                     foreach (var response in responses.Where(_ => _.IsSuccessful)) {
                         foreach (var offsetTopic in response.Value.Topics) {
                             offsets[offsetTopic.PartitionId] = offsetTopic;
@@ -199,10 +199,8 @@ namespace KafkaClient.Protocol
                         ? new RetryAttempt<IImmutableList<OffsetResponse.Topic>>(offsets.Values.ToImmutableList()) 
                         : RetryAttempt<IImmutableList<OffsetResponse.Topic>>.Retry;
                 },
-                routedTopicRequests.MetadataRetry,
-                routedTopicRequests.ThrowExtractedException,
-                (ex, attempt, retry) => routedTopicRequests.MetadataRetry(attempt, ex, out metadataInvalid),
-                null, // do nothing on final exception -- will be rethrown
+                (ex, retryAttempt, retryDelay) => routedTopicRequests.MetadataRetry(ex, out metadataInvalid),
+                routedTopicRequests.ThrowExtractedException, 
                 cancellationToken).ConfigureAwait(false);
         }
 

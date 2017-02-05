@@ -530,9 +530,10 @@ namespace KafkaClient.Tests.Unit
                 conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), Arg.Any<CancellationToken>());
             });
 
-            Assert.That(log.LogEvents.Any(e => e.Item1 == LogLevel.Warn && e.Item2.Message.StartsWith("Failed metadata request on attempt 0: Will retry in")));
-            Assert.That(log.LogEvents.Any(e => e.Item1 == LogLevel.Warn && e.Item2.Message.StartsWith("Failed metadata request on attempt 1: Will retry in")));
-            Assert.That(log.LogEvents.Count(e => e.Item1 == LogLevel.Warn && e.Item2.Message.StartsWith("Failed metadata request on attempt")), Is.EqualTo(2));
+            Assert.That(log.LogEvents.Any(e => e.Item1 == LogLevel.Warn && e.Item2.Message.StartsWith("Failed metadata request on attempt 0: Will retry in 00:00:00")));
+            Assert.That(log.LogEvents.Any(e => e.Item1 == LogLevel.Warn && e.Item2.Message.StartsWith("Failed metadata request on attempt 1: Will retry in 00:00:00")));
+            Assert.That(log.LogEvents.Any(e => e.Item1 == LogLevel.Warn && e.Item2.Message.StartsWith("Failed metadata request on attempt 2: Will retry in 00:00:00")), Is.False);
+            Assert.That(log.LogEvents.Count(e => e.Item1 == LogLevel.Warn && e.Item2.Message.StartsWith("Failed metadata request on attempt")), Is.EqualTo(3));
         }
 
         private static IRouter GetRouter(IConnection conn)

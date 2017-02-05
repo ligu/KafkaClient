@@ -123,7 +123,7 @@ namespace KafkaClient.Connections
                 async () => {
                     try {
                         return await _configuration.ConnectionRetry.TryAsync(
-                            async (attempt, timer) => {
+                            async (retryAttempt, elapsed) => {
                                 var response = await SendAsync(new ApiVersionsRequest(), cancellationToken, new RequestContext(version: 0)).ConfigureAwait(false);
                                 if (response.ErrorCode.IsRetryable()) return RetryAttempt<short>.Retry;
                                 if (!response.ErrorCode.IsSuccess()) return RetryAttempt<short>.Abort;
@@ -134,10 +134,11 @@ namespace KafkaClient.Connections
                                 _versionSupport = new VersionSupport(supportedVersions);
                                 return new RetryAttempt<short>(_versionSupport.GetVersion(apiKey).GetValueOrDefault());
                             },
-                            (attempt, timer) => _log.Debug(() => LogEvent.Create($"Retrying {nameof(GetVersionAsync)} attempt {attempt}")),
-                            attempt => _versionSupport = _configuration.VersionSupport, // fall back to default support in this case
-                            (exception, attempt, elapsed) => exception.PrepareForRethrow(),
-                            null,
+                            (exception, retryAttempt, retryDelay) => {
+                                _log.Debug(() => LogEvent.Create(exception, $"Failed getting version info on retry {retryAttempt}: Will retry in {retryDelay}"));
+                                exception.PrepareForRethrow();
+                            },
+                            () => _versionSupport = _configuration.VersionSupport, // fall back to default support in this case
                             cancellationToken);
                     } catch (Exception ex) {
                         _log.Error(LogEvent.Create(ex));
@@ -163,7 +164,7 @@ namespace KafkaClient.Connections
                     await Retry
                         .WithBackoff(int.MaxValue, minimumDelay: TimeSpan.FromMilliseconds(5), maximumDelay: TimeSpan.FromSeconds(5))
                         .TryAsync(
-                            async (attempt, elapsed) => {
+                            async (retryAttempt, elapsed) => {
                                 await _transport.ConnectAsync(_disposeToken.Token).ConfigureAwait(false);
 
                                 if (asyncItem == null) {
@@ -190,11 +191,10 @@ namespace KafkaClient.Connections
 
                                 return new RetryAttempt<bool>(true);
                             },
-                            null,
-                            null,
-                            (exception, attempt, delay) => {
+                            (exception, retryAttempt, retryDelay) => {
                                 if (_disposeToken.IsCancellationRequested) {
-                                    throw exception.PrepareForRethrow();
+                                    exception.PrepareForRethrow();
+                                    _disposeToken.Token.ThrowIfCancellationRequested(); // in case exception is null
                                 }
 
                                 if (exception is ConnectionException) {
@@ -207,15 +207,10 @@ namespace KafkaClient.Connections
                                     asyncItem = null;
                                 }
 
-                                if (attempt == 0) {
-                                    _log.Error(LogEvent.Create(exception,  $"Polling failure on {Endpoint} attempt {attempt} delay {delay}"));
-                                } else {
-                                    _log.Info(() => LogEvent.Create(exception, $"Polling failure on {Endpoint} attempt {attempt} delay {delay}"));
-                                }
+                                _log.Write(retryAttempt == 0 ? LogLevel.Error : LogLevel.Info, () => LogEvent.Create(exception, $"Failed receiving from {Endpoint} on retry {retryAttempt}: Will retry in {retryDelay}"));
                             },
-                            null, // since there is no max attempts/delay
-                            _disposeToken.Token
-                        ).ConfigureAwait(false);
+                            null,
+                            _disposeToken.Token).ConfigureAwait(false);
                 }
             } catch (Exception ex) {
                 _log.Debug(() => LogEvent.Create(ex));

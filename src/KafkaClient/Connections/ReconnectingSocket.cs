@@ -74,42 +74,39 @@ namespace KafkaClient.Connections
                 return await _connectSemaphore.LockAsync(
                     async () => {
                         if (_socket?.Connected ?? cancellation.Token.IsCancellationRequested) return _socket;
-                        var socket = _socket ?? CreateSocket();
+                        var socket = _socket;
                         _socket = await _configuration.ConnectionRetry.TryAsync(
                             //action
-                            async (attempt, timer) => {
+                            async (retryAttempt, elapsed) => {
                                 if (cancellation.Token.IsCancellationRequested) return RetryAttempt<Socket>.Abort;
 
+                                if (socket == null) {
+                                    _log.Info(() => LogEvent.Create($"Creating new socket to {_endpoint}"));
+                                    socket = CreateSocket();
+                                }
+
                                 _log.Info(() => LogEvent.Create($"Connecting to {_endpoint}"));
-                                _configuration.OnConnecting?.Invoke(_endpoint, attempt, timer.Elapsed);
+                                _configuration.OnConnecting?.Invoke(_endpoint, retryAttempt, elapsed);
 
                                 await socket.ConnectAsync(_endpoint.Ip.Address, _endpoint.Ip.Port).ThrowIfCancellationRequested(cancellation.Token).ConfigureAwait(false);
                                 if (!socket.Connected) return RetryAttempt<Socket>.Retry;
 
                                 _log.Info(() => LogEvent.Create($"Connection established to {_endpoint}"));
-                                _configuration.OnConnected?.Invoke(_endpoint, attempt, timer.Elapsed);
+                                _configuration.OnConnected?.Invoke(_endpoint, retryAttempt, elapsed);
                                 return new RetryAttempt<Socket>(socket);
                             },
-                            (attempt, retry) => _log.Warn(() => LogEvent.Create($"Failed connection to {_endpoint}: Will retry in {retry}")),
-                            attempt => {
-                                _log.Warn(() => LogEvent.Create($"Failed connection to {_endpoint} on attempt {attempt}"));
-                                throw new ConnectionException(_endpoint);
-                            },
-                            (ex, attempt, retry) => {
+                            (ex, retryAttempt, retryDelay) => {
                                 if (_disposeCount > 0) throw new ObjectDisposedException(nameof(ReconnectingSocket), ex);
-                                _log.Warn(() => LogEvent.Create(ex, $"Failed connection to {_endpoint}: Will retry in {retry}"));
+                                _log.Warn(() => LogEvent.Create(ex, $"Failed connection to {_endpoint} on retry {retryAttempt}: Will retry in {retryDelay}"));
 
                                 if (ex is ObjectDisposedException || ex is PlatformNotSupportedException) {
                                     Disconnect(socket);
-                                    _log.Info(() => LogEvent.Create($"Creating new socket to {_endpoint}"));
-                                    socket = CreateSocket();
+                                    socket = null;
                                 }
                             },
-                            (ex, attempt) => {
-                                _log.Warn(() => LogEvent.Create(ex, $"Failed connection to {_endpoint} on attempt {attempt}"));
-                                if (ex is SocketException || ex is PlatformNotSupportedException) {
-                                    throw new ConnectionException(new [] { _endpoint }, ex);
-                                }
+                            () => {
+                                Disconnect(socket);
+                                throw new ConnectionException(_endpoint);
                             },
                             cancellation.Token).ConfigureAwait(false);
                         return _socket;

@@ -57,39 +57,34 @@ namespace KafkaClient
             metadataInvalid = errors.All(e => e.IsFromStaleMetadata());
             _log.Warn(() => LogEvent.Create($"{_request.ApiKey} response contained errors (attempt {attempt}): {string.Join(" ", errors)}"));
 
-            if (!shouldRetry) ThrowExtractedException(attempt);
+            if (!shouldRetry) ThrowExtractedException();
             return RetryAttempt<T>.Retry;
-        }
-
-        public void Retry(int attempt, TimeSpan retry)
-        {
-            bool? ignored;
-            Retry(attempt, null, out ignored);
         }
 
         private bool TryReconnect(Exception exception) => exception is ObjectDisposedException && (_router?.TryRestore(_connection, _cancellationToken) ?? false);
 
-        public void Retry(int attempt, Exception exception, out bool? retry)
+        public void OnRetry(Exception exception, out bool? shouldRetry)
         {
-            retry = true;
+            shouldRetry = true;
             if (exception != null) {
                 if (!TryReconnect(exception) && !exception.IsPotentiallyRecoverableByMetadataRefresh()) throw exception.PrepareForRethrow();
-                retry = null; // ie. the state of the metadata is unknown
+                shouldRetry = null; // ie. the state of the metadata is unknown
                 if (!(exception is OperationCanceledException)) {
                     _log.Debug(() => LogEvent.Create(exception));
                 }
             }
         }
 
-        public void LogAttempt(int attempt)
+        public void LogAttempt(int retryAttempt)
         {
-            if (attempt > 0) {
-                _log.Debug(() => LogEvent.Create($"Retrying request {_request.ApiKey} (attempt {attempt})"));
+            if (retryAttempt > 0) {
+                _log.Debug(() => LogEvent.Create($"Retrying request {_request.ApiKey} (attempt {retryAttempt})"));
             }
         }
 
-        public void ThrowExtractedException(int attempt)
+        public void ThrowExtractedException()
         {
+            if (_response == null || _response.Errors.All(e => e.IsSuccess())) return;
             throw ResponseException;
         }
 
