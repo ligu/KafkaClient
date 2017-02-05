@@ -10,7 +10,7 @@ Status
 
 | OS      | Framework | Status |
 |---------|-----------|--------|
-| Windows | .net 4.6.2 | ![Build status](https://awrobins.visualstudio.com/_apis/public/build/definitions/e49d1758-2507-4f2f-9aa1-2a659124ae7c/1/badge) |
+| Windows | .net 4.6.2 | [![Build status](https://awrobins.visualstudio.com/_apis/public/build/definitions/e49d1758-2507-4f2f-9aa1-2a659124ae7c/1/badge)](https://awrobins.visualstudio.com/KafkaClient/_build/index?definitionId=1) |
 | Windows | .net standard 1.6 | [![Build status](https://ci.appveyor.com/api/projects/status/e7ej2g9q77if8mkf?svg=true)](https://ci.appveyor.com/project/AndrewRobinson/kafkanetclient) |
 | Linux   | .net standard 1.6 | [![Build status](https://api.travis-ci.org/awr/KafkaClient.svg?branch=master)](https://travis-ci.org/awr/KafkaClient) |
 
