@@ -34,7 +34,7 @@ namespace KafkaClient.Tests.Special
                                               "topic", 
                                               partitionId, 
                                               500,
-                                              ErrorCode.None,
+                                              ErrorCode.NONE,
                                               Enumerable.Range(1, messages)
                                                         .Select(i => new Message(GenerateMessageBytes(messageSize), new ArraySegment<byte>(), (byte) codec, version: messageVersion))
                                           )));

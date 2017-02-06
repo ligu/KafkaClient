@@ -20,8 +20,8 @@ namespace KafkaClient.Tests.Integration
                 async connection => {
                     var result1 = await connection.SendAsync(new MetadataRequest(), CancellationToken.None);
                     var result2 = await connection.SendAsync(new MetadataRequest(), CancellationToken.None);
-                    Assert.That(result1.Errors.Count(code => code != ErrorCode.None), Is.EqualTo(0));
-                    Assert.That(result2.Errors.Count(code => code != ErrorCode.None), Is.EqualTo(0));
+                    Assert.That(result1.Errors.Count(code => code != ErrorCode.NONE), Is.EqualTo(0));
+                    Assert.That(result2.Errors.Count(code => code != ErrorCode.NONE), Is.EqualTo(0));
                 });
         }
 
@@ -37,9 +37,9 @@ namespace KafkaClient.Tests.Integration
 
                     await Task.WhenAll(result1, result2, result3);
 
-                    Assert.That(result1.Result.Errors.Count(code => code != ErrorCode.None), Is.EqualTo(0));
-                    Assert.That(result2.Result.Errors.Count(code => code != ErrorCode.None), Is.EqualTo(0));
-                    Assert.That(result3.Result.Errors.Count(code => code != ErrorCode.None), Is.EqualTo(0));
+                    Assert.That(result1.Result.Errors.Count(code => code != ErrorCode.NONE), Is.EqualTo(0));
+                    Assert.That(result2.Result.Errors.Count(code => code != ErrorCode.NONE), Is.EqualTo(0));
+                    Assert.That(result3.Result.Errors.Count(code => code != ErrorCode.NONE), Is.EqualTo(0));
                 });
         }
 

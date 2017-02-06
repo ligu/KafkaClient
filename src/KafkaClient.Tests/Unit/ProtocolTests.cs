@@ -194,8 +194,8 @@ namespace KafkaClient.Tests.Unit
             [Values(1, 10)] int topicsPerRequest, 
             [Values(1, 5)] int totalPartitions, 
             [Values(
-                ErrorCode.None,
-                ErrorCode.CorruptMessage
+                ErrorCode.NONE,
+                ErrorCode.CORRUPT_MESSAGE
             )] ErrorCode errorCode,
             [Values(0, 100000)] int throttleTime)
         {
@@ -235,8 +235,8 @@ namespace KafkaClient.Tests.Unit
             [Values(1, 5)] int totalPartitions, 
             [Values(MessageCodec.None, MessageCodec.Gzip, MessageCodec.Snappy)] MessageCodec codec, 
             [Values(
-                ErrorCode.None,
-                ErrorCode.OffsetOutOfRange
+                ErrorCode.NONE,
+                ErrorCode.OFFSET_OUT_OF_RANGE
             )] ErrorCode errorCode, 
             [Values(3)] int messagesPerSet
             )
@@ -284,9 +284,9 @@ namespace KafkaClient.Tests.Unit
             [Values(1, 10)] int topicsPerRequest, 
             [Values(5)] int totalPartitions, 
             [Values(
-                ErrorCode.UnknownTopicOrPartition,
-                ErrorCode.NotLeaderForPartition,
-                ErrorCode.Unknown
+                ErrorCode.UNKNOWN_TOPIC_OR_PARTITION,
+                ErrorCode.NOT_LEADER_FOR_PARTITION,
+                ErrorCode.UNKNOWN
             )] ErrorCode errorCode, 
             [Values(1, 5)] int offsetsPerPartition)
         {
@@ -324,8 +324,8 @@ namespace KafkaClient.Tests.Unit
             [Values(1, 10)] int topicsPerRequest,
             [Values(1, 5)] int partitionsPerTopic,
             [Values(
-                 ErrorCode.None,
-                 ErrorCode.UnknownTopicOrPartition
+                 ErrorCode.NONE,
+                 ErrorCode.UNKNOWN_TOPIC_OR_PARTITION
              )] ErrorCode errorCode)
         {
             var brokers = new List<KafkaClient.Protocol.Server>();
@@ -392,8 +392,8 @@ namespace KafkaClient.Tests.Unit
             [Values(1, 10)] int topicsPerRequest,
             [Values(1, 5)] int partitionsPerTopic,
             [Values(
-                 ErrorCode.None,
-                 ErrorCode.OffsetMetadataTooLarge
+                 ErrorCode.NONE,
+                 ErrorCode.OFFSET_METADATA_TOO_LARGE
              )] ErrorCode errorCode)
         {
             var topics = new List<TopicResponse>();
@@ -429,14 +429,14 @@ namespace KafkaClient.Tests.Unit
             [Values(1, 10)] int topicsPerRequest,
             [Values(1, 5)] int partitionsPerTopic,
             [Values(
-                 ErrorCode.None,
-                 ErrorCode.UnknownTopicOrPartition,
-                 ErrorCode.GroupLoadInProgress,
-                 ErrorCode.NotCoordinatorForGroup,
-                 ErrorCode.IllegalGeneration,
-                 ErrorCode.UnknownMemberId,
-                 ErrorCode.TopicAuthorizationFailed,
-                 ErrorCode.GroupAuthorizationFailed
+                 ErrorCode.NONE,
+                 ErrorCode.UNKNOWN_TOPIC_OR_PARTITION,
+                 ErrorCode.GROUP_LOAD_IN_PROGRESS,
+                 ErrorCode.NOT_COORDINATOR_FOR_GROUP,
+                 ErrorCode.ILLEGAL_GENERATION,
+                 ErrorCode.UNKNOWN_MEMBER_ID,
+                 ErrorCode.TOPIC_AUTHORIZATION_FAILED,
+                 ErrorCode.GROUP_AUTHORIZATION_FAILED
              )] ErrorCode errorCode)
         {
             var topics = new List<OffsetFetchResponse.Topic>();
@@ -461,9 +461,9 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public void GroupCoordinatorResponse(
             [Values(
-                 ErrorCode.None,
-                 ErrorCode.GroupCoordinatorNotAvailable,
-                 ErrorCode.GroupAuthorizationFailed
+                 ErrorCode.NONE,
+                 ErrorCode.GROUP_COORDINATOR_NOT_AVAILABLE,
+                 ErrorCode.GROUP_AUTHORIZATION_FAILED
              )] ErrorCode errorCode,
             [Values(0, 1)] int coordinatorId
             )
@@ -483,8 +483,8 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public void ApiVersionsResponse(
             [Values(
-                 ErrorCode.None,
-                 ErrorCode.BrokerNotAvailable
+                 ErrorCode.NONE,
+                 ErrorCode.BROKER_NOT_AVAILABLE
              )] ErrorCode errorCode
             )
         {
@@ -520,8 +520,8 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public void JoinGroupResponse(
             [Values(
-                 ErrorCode.None,
-                 ErrorCode.OffsetMetadataTooLarge
+                 ErrorCode.NONE,
+                 ErrorCode.OFFSET_METADATA_TOO_LARGE
              )] ErrorCode errorCode,
             [Values(0, 1, 20000)] int generationId,
             [Values("consumer", "other")] string protocol, 
@@ -564,8 +564,8 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public void JoinConsumerGroupResponse(
             [Values(
-                 ErrorCode.None,
-                 ErrorCode.OffsetMetadataTooLarge
+                 ErrorCode.NONE,
+                 ErrorCode.OFFSET_METADATA_TOO_LARGE
              )] ErrorCode errorCode,
             [Values(0, 1, 20000)] int generationId,
             [Values("consumer")] string protocol, 
@@ -600,8 +600,8 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public void HeartbeatResponse(
             [Values(
-                 ErrorCode.None,
-                 ErrorCode.OffsetMetadataTooLarge
+                 ErrorCode.NONE,
+                 ErrorCode.OFFSET_METADATA_TOO_LARGE
              )] ErrorCode errorCode)
         {
             var response = new HeartbeatResponse(errorCode);
@@ -622,8 +622,8 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public void LeaveGroupResponse(
             [Values(
-                 ErrorCode.None,
-                 ErrorCode.OffsetMetadataTooLarge
+                 ErrorCode.NONE,
+                 ErrorCode.OFFSET_METADATA_TOO_LARGE
              )] ErrorCode errorCode)
         {
             var response = new LeaveGroupResponse(errorCode);
@@ -653,8 +653,8 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public void SyncGroupResponse(
             [Values(
-                 ErrorCode.None,
-                 ErrorCode.OffsetMetadataTooLarge
+                 ErrorCode.NONE,
+                 ErrorCode.OFFSET_METADATA_TOO_LARGE
              )] ErrorCode errorCode)
         {
             var bytes = new byte[1000];
@@ -692,8 +692,8 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public void SyncConsumerGroupResponse(
             [Values(
-                 ErrorCode.None,
-                 ErrorCode.OffsetMetadataTooLarge
+                 ErrorCode.NONE,
+                 ErrorCode.OFFSET_METADATA_TOO_LARGE
              )] ErrorCode errorCode,
             [Values(1, 10)] int memberCount)
         {
@@ -727,8 +727,8 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public void DescribeGroupsResponse(
             [Values(
-                 ErrorCode.None,
-                 ErrorCode.OffsetMetadataTooLarge
+                 ErrorCode.NONE,
+                 ErrorCode.OFFSET_METADATA_TOO_LARGE
              )] ErrorCode errorCode,
             [Values("test", "a groupId")] string groupId, 
             [Range(2, 3)] int count,
@@ -757,8 +757,8 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public void DescribeConsumerGroupsResponse(
             [Values(
-                 ErrorCode.None,
-                 ErrorCode.OffsetMetadataTooLarge
+                 ErrorCode.NONE,
+                 ErrorCode.OFFSET_METADATA_TOO_LARGE
              )] ErrorCode errorCode,
             [Values("test", "a groupId")] string groupId, 
             [Range(2, 3)] int count,
@@ -801,8 +801,8 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public void ListGroupsResponse(
             [Values(
-                 ErrorCode.None,
-                 ErrorCode.OffsetMetadataTooLarge
+                 ErrorCode.NONE,
+                 ErrorCode.OFFSET_METADATA_TOO_LARGE
              )] ErrorCode errorCode,
             [Values("test", "a groupId")] string groupId, 
             [Range(2, 3)] int count,
@@ -829,8 +829,8 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public void SaslHandshakeResponse(
             [Values(
-                 ErrorCode.None,
-                 ErrorCode.OffsetMetadataTooLarge
+                 ErrorCode.NONE,
+                 ErrorCode.OFFSET_METADATA_TOO_LARGE
              )] ErrorCode errorCode,
             [Range(1, 11)] int count)
         {
@@ -858,8 +858,8 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public void DeleteTopicsResponse(
             [Values(
-                 ErrorCode.None,
-                 ErrorCode.NotController
+                 ErrorCode.NONE,
+                 ErrorCode.NOT_CONTROLLER
              )] ErrorCode errorCode,
             [Values("test", "anotherNameForATopic")] string topicName, 
             [Range(1, 11)] int count)
@@ -933,9 +933,9 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public void CreateTopicsResponse(
             [Values(
-                 ErrorCode.None,
-                 ErrorCode.InvalidTopic,
-                ErrorCode.InvalidPartitions
+                 ErrorCode.NONE,
+                 ErrorCode.INVALID_TOPIC_EXCEPTION,
+                ErrorCode.INVALID_PARTITIONS
              )] ErrorCode errorCode,
             [Values("test", "anotherNameForATopic")] string topicName, 
             [Range(1, 11)] int count)

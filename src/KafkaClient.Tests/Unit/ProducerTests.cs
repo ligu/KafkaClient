@@ -39,7 +39,7 @@ namespace KafkaClient.Tests.Unit
         public void ShouldSendAsyncToAllConnectionsEvenWhenExceptionOccursOnOne()
         {
             var scenario = new RoutingScenario();
-            scenario.Connection2.Add(ApiKey.Produce, _ => { throw new RequestException(ApiKey.Produce, ErrorCode.CorruptMessage, scenario.Connection2.Endpoint, "some exception"); });
+            scenario.Connection2.Add(ApiKey.Produce, _ => { throw new RequestException(ApiKey.Produce, ErrorCode.CORRUPT_MESSAGE, scenario.Connection2.Endpoint, "some exception"); });
             var router = scenario.CreateRouter();
 
             using (var producer = new Producer(router))

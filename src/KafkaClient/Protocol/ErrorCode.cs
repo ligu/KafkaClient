@@ -1,4 +1,5 @@
-﻿namespace KafkaClient.Protocol
+﻿// ReSharper disable InconsistentNaming -- naming same as http://kafka.apache.org/protocol.html#protocol_api_keys for easy googling
+namespace KafkaClient.Protocol
 {
     /// <summary>
     /// Enumeration of error codes that might be returned from a Kafka server
@@ -10,228 +11,228 @@
         /// <summary>
         /// No error -- it worked!
         /// </summary>
-        None = 0,
+        NONE = 0,
 
         /// <summary>
         /// The server experienced an unexpected error when processing the request
         /// </summary>
-        Unknown = -1,
+        UNKNOWN = -1,
 
         /// <summary>
         /// The requested offset is not within the range of offsets maintained by the server.
         /// </summary>
-        OffsetOutOfRange = 1,
+        OFFSET_OUT_OF_RANGE = 1,
 
         /// <summary>
         /// This message has failed its CRC checksum, exceeds the valid size, or is otherwise corrupt.
         /// </summary>
-        CorruptMessage = 2,
+        CORRUPT_MESSAGE = 2,
 
         /// <summary>
         /// This server does not host this topic-partition.
         /// </summary>
-        UnknownTopicOrPartition = 3,
+        UNKNOWN_TOPIC_OR_PARTITION = 3,
 
         /// <summary>
         /// The requested fetch size is invalid (negative?).
         /// </summary>
-        InvalidFetchSize = 4,
+        INVALID_FETCH_SIZE = 4,
 
         /// <summary>
         /// There is no leader for this topic-partition as we are in the middle of a leadership election.
         /// </summary>
-        LeaderNotAvailable = 5,
+        LEADER_NOT_AVAILABLE = 5,
 
         /// <summary>
         /// This server is not the leader for that topic-partition. It indicates that the clients metadata is out of date.
         /// </summary>
-        NotLeaderForPartition = 6,
+        NOT_LEADER_FOR_PARTITION = 6,
 
         /// <summary>
         /// The request timed out (on the server).
         /// </summary>
-        RequestTimedOut = 7,
+        REQUEST_TIMED_OUT = 7,
 
         /// <summary>
         /// Internal error code for broker-to-broker communication: The broker is not available.
         /// </summary>
-        BrokerNotAvailable = 8,
+        BROKER_NOT_AVAILABLE = 8,
 
         /// <summary>
         /// The replica is not available for the requested topic-partition.
         /// </summary>
-        ReplicaNotAvailable = 9,
+        REPLICA_NOT_AVAILABLE = 9,
 
         /// <summary>
         /// The request included a message larger than the max message size the server will accept.
         /// </summary>
-        MessageTooLarge = 10,
+        MESSAGE_TOO_LARGE = 10,
 
         /// <summary>
         /// Internal error code for broker-to-broker communication: The controller moved to another broker.
         /// </summary>
-        StaleControllerEpoch = 11,
+        STALE_CONTROLLER_EPOCH = 11,
 
         /// <summary>
         /// The metadata field of the offset request was too large.
         /// </summary>
-        OffsetMetadataTooLarge = 12,
+        OFFSET_METADATA_TOO_LARGE = 12,
 
         /// <summary>
         /// The server disconnected before a response was received.
         /// </summary>
-        NetworkException = 13,
+        NETWORK_EXCEPTION = 13,
 
         /// <summary>
         /// The coordinator is loading and hence can't process requests for this group.
         /// </summary>
-        GroupLoadInProgress = 14,
+        GROUP_LOAD_IN_PROGRESS = 14,
 
         /// <summary>
         /// The group coordinator is not available.
         /// </summary>
-        GroupCoordinatorNotAvailable = 15,
+        GROUP_COORDINATOR_NOT_AVAILABLE = 15,
 
         /// <summary>
         /// This is not the correct coordinator for this group.
         /// </summary>
-        NotCoordinatorForGroup = 16,
+        NOT_COORDINATOR_FOR_GROUP = 16,
 
         /// <summary>
         /// The request attempted to perform an operation on an invalid topic.
         /// </summary>
-        InvalidTopic = 17,
+        INVALID_TOPIC_EXCEPTION = 17,
 
         /// <summary>
         /// The request included message batch larger than the configured segment size on the server.
         /// </summary>
-        RecordListTooLarge = 18,
+        RECORD_LIST_TOO_LARGE = 18,
 
         /// <summary>
         /// Messages are rejected since there are fewer in-sync replicas than required.
         /// </summary>
-        NotEnoughReplicas = 19,
+        NOT_ENOUGH_REPLICAS = 19,
 
         /// <summary>
         /// Messages are written to the log, but to fewer in-sync replicas than required.
         /// </summary>
-        NotEnoughReplicasAfterAppend = 20,
+        NOT_ENOUGH_REPLICAS_AFTER_APPEND = 20,
 
         /// <summary>
         /// Produce request specified an invalid value for required acks.
         /// </summary>
-        InvalidRequiredAcks = 21,
+        INVALID_REQUIRED_ACKS = 21,
 
         /// <summary>
         /// Specified group generation id is not valid (not current).
         /// </summary>
-        IllegalGeneration = 22,
+        ILLEGAL_GENERATION = 22,
 
         /// <summary>
         /// The group member's supported protocols are incompatible with those of existing members.
         /// </summary>
-        InconsistentGroupProtocol = 23,
+        INCONSISTENT_GROUP_PROTOCOL = 23,
 
         /// <summary>
         /// The configured groupId is invalid (empty or null).
         /// </summary>
-        InvalidGroupId = 24,
+        INVALID_GROUP_ID = 24,
 
         /// <summary>
         /// The memberId is not in the current generation (on group requests).
         /// </summary>
-        UnknownMemberId = 25,
+        UNKNOWN_MEMBER_ID = 25,
 
         /// <summary>
         /// The session timeout is not within the range allowed by the broker (as configured
         /// by group.min.session.timeout.ms and group.max.session.timeout.ms).
         /// </summary>
-        InvalidSessionTimeout = 26,
+        INVALID_SESSION_TIMEOUT = 26,
 
         /// <summary>
         /// The group is rebalancing, so a rejoin is needed.
         /// </summary>
-        RebalanceInProgress = 27,
+        REBALANCE_IN_PROGRESS = 27,
 
         /// <summary>
         /// The committing offset data size is not valid
         /// </summary>
-        InvalidCommitOffsetSize = 28,
+        INVALID_COMMIT_OFFSET_SIZE = 28,
 
         /// <summary>
         /// Not authorized to access topic.
         /// </summary>
-        TopicAuthorizationFailed = 29,
+        TOPIC_AUTHORIZATION_FAILED = 29,
 
         /// <summary>
         /// Not authorized to access group.
         /// </summary>
-        GroupAuthorizationFailed = 30,
+        GROUP_AUTHORIZATION_FAILED = 30,
 
         /// <summary>
         /// Cluster authorization failed.
         /// </summary>
-        ClusterAuthorizationFailed = 31,
+        CLUSTER_AUTHORIZATION_FAILED = 31,
 
         /// <summary>
         /// The timestamp of the message is out of acceptable range.
         /// </summary>
-        InvalidTimestamp = 32,
+        INVALID_TIMESTAMP = 32,
 
         /// <summary>
         /// The broker does not support the requested SASL mechanism.
         /// </summary>
-        UnsupportedSaslMechanism = 33,
+        UNSUPPORTED_SASL_MECHANISM = 33,
 
         /// <summary>
         /// Request is not valid given the current SASL state.
         /// </summary>
-        IllegalSaslState = 34,
+        ILLEGAL_SASL_STATE = 34,
 
         /// <summary>
         /// The version of API is not supported.
         /// </summary>
-        UnsupportedVersion = 35,
+        UNSUPPORTED_VERSION = 35,
 
         /// <summary>
         /// Topic with this name already exists.
         /// </summary>
-        TopicAlreadyExists = 36,
+        TOPIC_ALREADY_EXISTS = 36,
 
         /// <summary>
         /// Number of partitions is invalid.
         /// </summary>
-        InvalidPartitions = 37,
+        INVALID_PARTITIONS = 37,
 
         /// <summary>
         /// Replication-factor is invalid.
         /// </summary>
-        InvalidReplicationFactor = 38,
+        INVALID_REPLICATION_FACTOR = 38,
 
         /// <summary>
         /// Replica assignment is invalid.
         /// </summary>
-        InvalidReplicaAssignment = 39,
+        INVALID_REPLICA_ASSIGNMENT = 39,
 
         /// <summary>
         /// Configuration is invalid.
         /// </summary>
-        InvalidConfig = 40,
+        INVALID_CONFIG = 40,
 
         /// <summary>
         /// This is not the correct controller for this cluster.
         /// </summary>
-        NotController = 41,
+        NOT_CONTROLLER = 41,
 
         /// <summary>
         /// This most likely occurs because of a request being malformed by the client library or the message 
         /// was sent to an incompatible broker. See the broker logs for more details.
         /// </summary>
-        InvalidRequest = 42,
+        INVALID_REQUEST = 42,
 
         /// <summary>
         /// The message format version on the broker does not support the request.
         /// </summary>
-        UnsupportedForMessageFormat = 43
+        UNSUPPORTED_FOR_MESSAGE_FORMAT = 43
     }
 }

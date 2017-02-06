@@ -229,7 +229,7 @@ namespace KafkaClient
                     if (batch.Acks == 0 && batchResult == null) {
                         foreach (var topic in batch.ProduceTasksByTopic.Keys) {
                             foreach (var produceTask in batch.ProduceTasksByTopic[topic]) {
-                                produceTask.Tcs.SetResult(new ProduceResponse.Topic(topic.TopicName, topic.PartitionId, ErrorCode.None, -1));
+                                produceTask.Tcs.SetResult(new ProduceResponse.Topic(topic.TopicName, topic.PartitionId, ErrorCode.NONE, -1));
                             }
                         }
                         return;
@@ -255,7 +255,7 @@ namespace KafkaClient
                         var messageCount = produceTasks.Sum(t => t.Messages.Count);
                         foreach (var produceTask in produceTasks) {
                             produceTask.Tcs.SetResult(batch.Acks == 0
-                                ? new ProduceResponse.Topic(topic.TopicName, topic.PartitionId, ErrorCode.None, -1)
+                                ? new ProduceResponse.Topic(topic.TopicName, topic.PartitionId, ErrorCode.NONE, -1)
                                 : new ProduceResponse.Topic(topic.TopicName, topic.PartitionId, topic.ErrorCode, topic.Offset + messageCount - 1, topic.Timestamp));
                         }
                     }

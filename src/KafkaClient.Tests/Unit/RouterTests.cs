@@ -19,10 +19,10 @@ namespace KafkaClient.Tests.Unit
     {
         #region SendAsync
 
-        [TestCase(ErrorCode.NotLeaderForPartition)]
-        [TestCase(ErrorCode.LeaderNotAvailable)]
-        [TestCase(ErrorCode.GroupCoordinatorNotAvailable)]
-        [TestCase(ErrorCode.UnknownTopicOrPartition)]
+        [TestCase(ErrorCode.NOT_LEADER_FOR_PARTITION)]
+        [TestCase(ErrorCode.LEADER_NOT_AVAILABLE)]
+        [TestCase(ErrorCode.GROUP_COORDINATOR_NOT_AVAILABLE)]
+        [TestCase(ErrorCode.UNKNOWN_TOPIC_OR_PARTITION)]
         [Test]
         public async Task ShouldTryToRefreshMataDataIfCanRecoverByRefreshMetadata(ErrorCode code)
         {
@@ -72,13 +72,13 @@ namespace KafkaClient.Tests.Unit
         }
 
         [Test]
-        [TestCase(ErrorCode.InvalidFetchSize)]
-        [TestCase(ErrorCode.MessageTooLarge)]
-        [TestCase(ErrorCode.OffsetMetadataTooLarge)]
-        [TestCase(ErrorCode.OffsetOutOfRange)]
-        [TestCase(ErrorCode.Unknown)]
-        [TestCase(ErrorCode.StaleControllerEpoch)]
-        [TestCase(ErrorCode.ReplicaNotAvailable)]
+        [TestCase(ErrorCode.INVALID_FETCH_SIZE)]
+        [TestCase(ErrorCode.MESSAGE_TOO_LARGE)]
+        [TestCase(ErrorCode.OFFSET_METADATA_TOO_LARGE)]
+        [TestCase(ErrorCode.OFFSET_OUT_OF_RANGE)]
+        [TestCase(ErrorCode.UNKNOWN)]
+        [TestCase(ErrorCode.STALE_CONTROLLER_EPOCH)]
+        [TestCase(ErrorCode.REPLICA_NOT_AVAILABLE)]
         public async Task SendProtocolRequestShouldNotTryToRefreshMataDataIfCanNotRecoverByRefreshMetadata(
             ErrorCode code)
         {
@@ -215,7 +215,7 @@ namespace KafkaClient.Tests.Unit
         public async Task ShouldRecoverFromFetchErrorByUpdateMetadataOnceFullScenario1()
         {
             await ShouldRecoverByUpdateMetadataOnceFullScenario(
-                FailedInFirstMessageError(ErrorCode.LeaderNotAvailable, TimeSpan.Zero));
+                FailedInFirstMessageError(ErrorCode.LEADER_NOT_AVAILABLE, TimeSpan.Zero));
         }
 
         /// <summary>
@@ -284,10 +284,10 @@ namespace KafkaClient.Tests.Unit
                         throw new ConnectionException("error test");
                     }
                     if (exceptionType == typeof (RequestException)) {
-                        throw new RequestException(ApiKey.CreateTopics, ErrorCode.BrokerNotAvailable, TestConfig.ServerEndpoint());
+                        throw new RequestException(ApiKey.CreateTopics, ErrorCode.BROKER_NOT_AVAILABLE, TestConfig.ServerEndpoint());
                     }
                     if (exceptionType == typeof (FetchOutOfRangeException)) {
-                        throw new FetchOutOfRangeException(new FetchRequest.Topic("name", 0, 0L), ErrorCode.BrokerNotAvailable, TestConfig.ServerEndpoint());
+                        throw new FetchOutOfRangeException(new FetchRequest.Topic("name", 0, 0L), ErrorCode.BROKER_NOT_AVAILABLE, TestConfig.ServerEndpoint());
                     }
                     var args = new object[] { "error Test" };
                     throw (Exception)Activator.CreateInstance(exceptionType, args);
@@ -506,9 +506,9 @@ namespace KafkaClient.Tests.Unit
         #region Topic Metadata
 
         [Test]
-        [TestCase(ErrorCode.LeaderNotAvailable)]
-        [TestCase(ErrorCode.GroupLoadInProgress)]
-        [TestCase(ErrorCode.GroupCoordinatorNotAvailable)]
+        [TestCase(ErrorCode.LEADER_NOT_AVAILABLE)]
+        [TestCase(ErrorCode.GROUP_LOAD_IN_PROGRESS)]
+        [TestCase(ErrorCode.GROUP_COORDINATOR_NOT_AVAILABLE)]
         public async Task ShouldRetryWhenReceiveAnRetryErrorCode(ErrorCode errorCode)
         {
             var conn = Substitute.For<IConnection>();
@@ -550,7 +550,7 @@ namespace KafkaClient.Tests.Unit
             var conn = Substitute.For<IConnection>();
 
             conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), Arg.Any<CancellationToken>(), Arg.Any<IRequestContext>())
-                .Returns(x => CreateMetadataResponse(-1, "123", 1), x => CreateMetadataResponse(ErrorCode.None));
+                .Returns(x => CreateMetadataResponse(-1, "123", 1), x => CreateMetadataResponse(ErrorCode.NONE));
 
             var router = GetRouter(conn);
             var log = new MemoryLog();
@@ -574,7 +574,7 @@ namespace KafkaClient.Tests.Unit
             var conn = Substitute.For<IConnection>();
 
             conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), Arg.Any<CancellationToken>())
-                .Returns(x => CreateMetadataResponse(ErrorCode.None));
+                .Returns(x => CreateMetadataResponse(ErrorCode.NONE));
 
             var router = GetRouter(conn);
             var source = new CancellationTokenSource();
@@ -590,7 +590,7 @@ namespace KafkaClient.Tests.Unit
             var conn = Substitute.For<IConnection>();
 
             conn.SendAsync(Arg.Any<IRequest<MetadataResponse>>(), Arg.Any<CancellationToken>())
-                .Returns(x => CreateMetadataResponse(ErrorCode.None));
+                .Returns(x => CreateMetadataResponse(ErrorCode.NONE));
 
             var router = GetRouter(conn);
             var source = new CancellationTokenSource();
@@ -601,9 +601,9 @@ namespace KafkaClient.Tests.Unit
         }
 
         [Test]
-        [TestCase(ErrorCode.Unknown)]
-        [TestCase(ErrorCode.InvalidTopic)]
-        [TestCase(ErrorCode.InvalidRequiredAcks)]
+        [TestCase(ErrorCode.UNKNOWN)]
+        [TestCase(ErrorCode.INVALID_TOPIC_EXCEPTION)]
+        [TestCase(ErrorCode.INVALID_REQUIRED_ACKS)]
         public async Task ShouldThrowExceptionWhenNotARetriableErrorCode(ErrorCode errorCode)
         {
             var conn = Substitute.For<IConnection>();

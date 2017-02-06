@@ -129,14 +129,14 @@ namespace KafkaClient
                     } catch (OperationCanceledException) { // cancellation token fired while attempting to get tasks: normal behavior
                     } catch (RequestException ex) {
                         switch (ex.ErrorCode) {
-                            case ErrorCode.RebalanceInProgress:
+                            case ErrorCode.REBALANCE_IN_PROGRESS:
                                 Log.Info(() => LogEvent.Create(ex.Message));
                                 TriggerRejoin();
                                 delay = _heartbeatDelay;
                                 break;
 
-                            case ErrorCode.GroupAuthorizationFailed:
-                            case ErrorCode.UnknownMemberId:
+                            case ErrorCode.GROUP_AUTHORIZATION_FAILED:
+                            case ErrorCode.UNKNOWN_MEMBER_ID:
                                 Log.Warn(() => LogEvent.Create(ex));
                                 _leaveOnDispose = false; // no point in attempting to leave the group since it will fail
                                 _disposeToken.Cancel();
@@ -250,11 +250,11 @@ namespace KafkaClient
                 await _stateChangeQueue.EnqueueAsync(ApiKey.SyncGroup, _disposeToken.Token);
             } catch (RequestException ex) {
                 switch (ex.ErrorCode) {
-                    case ErrorCode.IllegalGeneration:
-                    case ErrorCode.GroupAuthorizationFailed:
-                    case ErrorCode.UnknownMemberId:
-                    case ErrorCode.InconsistentGroupProtocol:
-                    case ErrorCode.InvalidSessionTimeout:
+                    case ErrorCode.ILLEGAL_GENERATION:
+                    case ErrorCode.GROUP_AUTHORIZATION_FAILED:
+                    case ErrorCode.UNKNOWN_MEMBER_ID:
+                    case ErrorCode.INCONSISTENT_GROUP_PROTOCOL:
+                    case ErrorCode.INVALID_SESSION_TIMEOUT:
                         Log.Warn(() => LogEvent.Create(ex));
                         _leaveOnDispose = false; // no point in attempting to leave the group since it will fail
                         _disposeToken.Cancel();
@@ -303,13 +303,13 @@ namespace KafkaClient
                 response = await Router.SyncGroupAsync(request, new RequestContext(protocolType: ProtocolType), Configuration.GroupCoordinationRetry, cancellationToken).ConfigureAwait(false);
             } catch (RequestException ex) {
                 switch (ex.ErrorCode) {
-                    case ErrorCode.RebalanceInProgress:
+                    case ErrorCode.REBALANCE_IN_PROGRESS:
                         Log.Info(() => LogEvent.Create(ex.Message));
                         TriggerRejoin();
                         return;
 
-                    case ErrorCode.GroupAuthorizationFailed:
-                    case ErrorCode.UnknownMemberId:
+                    case ErrorCode.GROUP_AUTHORIZATION_FAILED:
+                    case ErrorCode.UNKNOWN_MEMBER_ID:
                         Log.Warn(() => LogEvent.Create(ex));
                         _leaveOnDispose = false; // no point in attempting to leave the group since it will fail
                         _disposeToken.Cancel();

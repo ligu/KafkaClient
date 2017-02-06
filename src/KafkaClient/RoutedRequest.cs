@@ -50,7 +50,7 @@ namespace KafkaClient
             metadataInvalid = false;
             if (_response == null) return _request.ExpectResponse ? RetryAttempt<T>.Retry : new RetryAttempt<T>(null);
 
-            var errors = _response.Errors.Where(e => e != ErrorCode.None).ToList();
+            var errors = _response.Errors.Where(e => !e.IsSuccess()).ToList();
             if (errors.Count == 0) return new RetryAttempt<T>(_response);
 
             var shouldRetry = errors.Any(e => e.IsRetryable());

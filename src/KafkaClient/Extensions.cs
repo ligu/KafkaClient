@@ -489,11 +489,11 @@ namespace KafkaClient
             {
                 if (IsValid.GetValueOrDefault(true)) return null;
 
-                if (_errorCode == ErrorCode.None) return new ConnectionException(Message);
+                if (_errorCode.IsSuccess()) return new ConnectionException(Message);
                 return new RequestException(ApiKey.Metadata, _errorCode, endpoint, Message);
             }
 
-            public MetadataResult(ErrorCode errorCode = ErrorCode.None, bool? isValid = null, string message = null)
+            public MetadataResult(ErrorCode errorCode = ErrorCode.NONE, bool? isValid = null, string message = null)
             {
                 Message = message ?? "";
                 _errorCode = errorCode;
@@ -503,16 +503,16 @@ namespace KafkaClient
 
         private static MetadataResult ValidateBroker(Server server)
         {
-            if (server.Id == -1)                   return new MetadataResult(ErrorCode.Unknown);
-            if (string.IsNullOrEmpty(server.Host)) return new MetadataResult(ErrorCode.None, false, "Broker missing host information.");
-            if (server.Port <= 0)                  return new MetadataResult(ErrorCode.None, false, "Broker missing port information.");
+            if (server.Id == -1)                   return new MetadataResult(ErrorCode.UNKNOWN);
+            if (string.IsNullOrEmpty(server.Host)) return new MetadataResult(ErrorCode.NONE, false, "Broker missing host information.");
+            if (server.Port <= 0)                  return new MetadataResult(ErrorCode.NONE, false, "Broker missing port information.");
             return new MetadataResult(isValid: true);
         }
 
         private static MetadataResult ValidateTopic(MetadataResponse.Topic topic)
         {
             var errorCode = topic.ErrorCode;
-            if (errorCode == ErrorCode.None) return new MetadataResult(isValid: true);
+            if (errorCode == ErrorCode.NONE) return new MetadataResult(isValid: true);
             if (errorCode.IsRetryable())     return new MetadataResult(errorCode, null, $"topic/{topic.TopicName} returned error code of {errorCode}: Retrying");
             return new MetadataResult(errorCode, false, $"topic/{topic.TopicName} returned an error of {errorCode}");
         }

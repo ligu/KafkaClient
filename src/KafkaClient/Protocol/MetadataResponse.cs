@@ -94,7 +94,7 @@ namespace KafkaClient.Protocol
         {
             public override string ToString() => $"{{TopicName:{TopicName},ErrorCode:{ErrorCode},Partitions:[{Partitions.ToStrings()}],IsInternal:{IsInternal}}}";
 
-            public Topic(string topicName, ErrorCode errorCode = ErrorCode.None, IEnumerable<Partition> partitions = null, bool? isInternal = null)
+            public Topic(string topicName, ErrorCode errorCode = ErrorCode.NONE, IEnumerable<Partition> partitions = null, bool? isInternal = null)
             {
                 ErrorCode = errorCode;
                 TopicName = topicName;
@@ -147,7 +147,7 @@ namespace KafkaClient.Protocol
         {
             public override string ToString() => $"{{PartitionId:{PartitionId},ErrorCode:{ErrorCode},LeaderId:{LeaderId},Replicas:[{Replicas.ToStrings()}],Isr:[{Isrs.ToStrings()}]}}";
 
-            public Partition(int partitionId, int leaderId, ErrorCode errorCode = ErrorCode.None, IEnumerable<int> replicas = null, IEnumerable<int> isrs = null)
+            public Partition(int partitionId, int leaderId, ErrorCode errorCode = ErrorCode.NONE, IEnumerable<int> replicas = null, IEnumerable<int> isrs = null)
             {
                 ErrorCode = errorCode;
                 PartitionId = partitionId;

@@ -18,11 +18,11 @@ namespace KafkaClient.Protocol
         {
             var exceptions = new List<Exception>();
             if (response != null) {
-                foreach (var errorCode in response.Errors.Where(e => e != ErrorCode.None)) {
+                foreach (var errorCode in response.Errors.Where(e => !e.IsSuccess())) {
                     exceptions.Add(ExtractException(request, errorCode, endpoint));
                 }
             }
-            if (exceptions.Count == 0) return new RequestException(request.ApiKey, ErrorCode.None, endpoint);
+            if (exceptions.Count == 0) return new RequestException(request.ApiKey, ErrorCode.NONE, endpoint);
             if (exceptions.Count == 1) return exceptions[0];
             return new AggregateException(exceptions);
         }
@@ -38,9 +38,9 @@ namespace KafkaClient.Protocol
         {
             var member = request as IGroupMember;
             if (member != null && 
-                (errorCode == ErrorCode.UnknownMemberId ||
-                errorCode == ErrorCode.IllegalGeneration || 
-                errorCode == ErrorCode.InconsistentGroupProtocol))
+                (errorCode == ErrorCode.UNKNOWN_MEMBER_ID ||
+                errorCode == ErrorCode.ILLEGAL_GENERATION || 
+                errorCode == ErrorCode.INCONSISTENT_GROUP_PROTOCOL))
             {
                 return new MemberRequestException(member, request.ApiKey, errorCode, endpoint);
             }
@@ -49,7 +49,7 @@ namespace KafkaClient.Protocol
 
         private static FetchOutOfRangeException ExtractFetchException(FetchRequest request, ErrorCode errorCode, Endpoint endpoint)
         {
-            if (errorCode == ErrorCode.OffsetOutOfRange && request?.Topics?.Count == 1) {
+            if (errorCode == ErrorCode.OFFSET_OUT_OF_RANGE && request?.Topics?.Count == 1) {
                 return new FetchOutOfRangeException(request.Topics.First(), errorCode, endpoint);
             }
             return null;
@@ -120,7 +120,7 @@ namespace KafkaClient.Protocol
 
         public static bool IsSuccess(this ErrorCode code)
         {
-            return code == ErrorCode.None;
+            return code == ErrorCode.NONE;
         }
 
         /// <summary>
@@ -128,28 +128,28 @@ namespace KafkaClient.Protocol
         /// </summary>
         public static bool IsRetryable(this ErrorCode code)
         {
-            return code == ErrorCode.CorruptMessage
-                || code == ErrorCode.UnknownTopicOrPartition
-                || code == ErrorCode.LeaderNotAvailable
-                || code == ErrorCode.NotLeaderForPartition
-                || code == ErrorCode.RequestTimedOut
-                || code == ErrorCode.NetworkException
-                || code == ErrorCode.GroupLoadInProgress
-                || code == ErrorCode.GroupCoordinatorNotAvailable
-                || code == ErrorCode.NotCoordinatorForGroup
-                || code == ErrorCode.NotEnoughReplicas
-                || code == ErrorCode.NotEnoughReplicasAfterAppend
-                || code == ErrorCode.NotController;
+            return code == ErrorCode.CORRUPT_MESSAGE
+                || code == ErrorCode.UNKNOWN_TOPIC_OR_PARTITION
+                || code == ErrorCode.LEADER_NOT_AVAILABLE
+                || code == ErrorCode.NOT_LEADER_FOR_PARTITION
+                || code == ErrorCode.REQUEST_TIMED_OUT
+                || code == ErrorCode.NETWORK_EXCEPTION
+                || code == ErrorCode.GROUP_LOAD_IN_PROGRESS
+                || code == ErrorCode.GROUP_COORDINATOR_NOT_AVAILABLE
+                || code == ErrorCode.NOT_COORDINATOR_FOR_GROUP
+                || code == ErrorCode.NOT_ENOUGH_REPLICAS
+                || code == ErrorCode.NOT_ENOUGH_REPLICAS_AFTER_APPEND
+                || code == ErrorCode.NOT_CONTROLLER;
         }
 
         public static bool IsFromStaleMetadata(this ErrorCode code)
         {
-            return code == ErrorCode.UnknownTopicOrPartition
-                || code == ErrorCode.LeaderNotAvailable
-                || code == ErrorCode.NotLeaderForPartition
-                || code == ErrorCode.GroupLoadInProgress
-                || code == ErrorCode.GroupCoordinatorNotAvailable
-                || code == ErrorCode.NotCoordinatorForGroup;
+            return code == ErrorCode.UNKNOWN_TOPIC_OR_PARTITION
+                || code == ErrorCode.LEADER_NOT_AVAILABLE
+                || code == ErrorCode.NOT_LEADER_FOR_PARTITION
+                || code == ErrorCode.GROUP_LOAD_IN_PROGRESS
+                || code == ErrorCode.GROUP_COORDINATOR_NOT_AVAILABLE
+                || code == ErrorCode.NOT_COORDINATOR_FOR_GROUP;
         }
 
         #endregion

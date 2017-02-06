@@ -36,7 +36,7 @@ namespace KafkaClient.Tests.Integration
                     TestConfig.Log.Info(() => LogEvent.Create(">> start SendAsync"));
                     var response = await conn.Connection.SendAsync(request, CancellationToken.None);
                     TestConfig.Log.Info(() => LogEvent.Create("end SendAsync"));
-                    Assert.That(response.Errors.Any(e => e != ErrorCode.None), Is.False);
+                    Assert.That(response.Errors.Any(e => e != ErrorCode.NONE), Is.False);
                     TestConfig.Log.Info(() => LogEvent.Create("start dispose"));
                     TestConfig.Log.Info(() => LogEvent.Create(">> End EnsureGzipCompressedMessageCanSend"));
                 });
@@ -105,7 +105,7 @@ namespace KafkaClient.Tests.Integration
                     TestConfig.Log.Info(() => LogEvent.Create(">> start SendAsync"));
                     var response = await conn.Connection.SendAsync(request, CancellationToken.None);
                     TestConfig.Log.Info(() => LogEvent.Create("end SendAsync"));
-                    Assert.That(response.Errors.Any(e => e != ErrorCode.None), Is.False);
+                    Assert.That(response.Errors.Any(e => e != ErrorCode.NONE), Is.False);
                     TestConfig.Log.Info(() => LogEvent.Create("start dispose"));
                     TestConfig.Log.Info(() => LogEvent.Create(">> End EnsureGzipCompressedMessageCanSend"));
                 });

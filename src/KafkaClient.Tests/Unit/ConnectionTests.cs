@@ -455,7 +455,7 @@ namespace KafkaClient.Tests.Unit
                     switch (correlationId - firstCorrelation)
                     {
                         case 0:
-                            await server.SendDataAsync(KafkaDecoder.EncodeResponseBytes(context, new ApiVersionsResponse(ErrorCode.None, new[] { new ApiVersionsResponse.VersionSupport(ApiKey.Fetch, apiVersion, apiVersion) })));
+                            await server.SendDataAsync(KafkaDecoder.EncodeResponseBytes(context, new ApiVersionsResponse(ErrorCode.NONE, new[] { new ApiVersionsResponse.VersionSupport(ApiKey.Fetch, apiVersion, apiVersion) })));
                             break;
                         case 1:
                             sentVersion = context.ApiVersion.GetValueOrDefault();
@@ -488,7 +488,7 @@ namespace KafkaClient.Tests.Unit
                     switch (fullHeader.Item2) {
                         case ApiKey.ApiVersions:
                             Interlocked.Increment(ref versionRequests);
-                            await server.SendDataAsync(KafkaDecoder.EncodeResponseBytes(context, new ApiVersionsResponse(ErrorCode.None, new[] { new ApiVersionsResponse.VersionSupport(ApiKey.Fetch, 3, 3) })));
+                            await server.SendDataAsync(KafkaDecoder.EncodeResponseBytes(context, new ApiVersionsResponse(ErrorCode.NONE, new[] { new ApiVersionsResponse.VersionSupport(ApiKey.Fetch, 3, 3) })));
                             break;
 
                         default:

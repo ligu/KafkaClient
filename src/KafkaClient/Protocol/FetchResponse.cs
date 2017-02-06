@@ -77,7 +77,7 @@ namespace KafkaClient.Protocol
         {
             public override string ToString() => $"{{TopicName:{TopicName},PartitionId:{PartitionId},ErrorCode:{ErrorCode},HighwaterMarkOffset:{HighWaterMark},Messages:{Messages.Count}}}";
 
-            public Topic(string topic, int partitionId, long highWaterMark, ErrorCode errorCode = ErrorCode.None, IEnumerable<Message> messages = null)
+            public Topic(string topic, int partitionId, long highWaterMark, ErrorCode errorCode = ErrorCode.NONE, IEnumerable<Message> messages = null)
                 : base(topic, partitionId, errorCode)
             {
                 HighWaterMark = highWaterMark;

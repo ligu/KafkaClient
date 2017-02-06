@@ -18,7 +18,7 @@ namespace KafkaClient.Protocol
     {
         public override string ToString() => $"{{ErrorCode:{ErrorCode},Groups:[{Groups.ToStrings()}]}}";
 
-        public ListGroupsResponse(ErrorCode errorCode = ErrorCode.None, IEnumerable<Group> groups = null)
+        public ListGroupsResponse(ErrorCode errorCode = ErrorCode.NONE, IEnumerable<Group> groups = null)
         {
             ErrorCode = errorCode;
             Errors = ImmutableList<ErrorCode>.Empty.Add(ErrorCode);

@@ -18,7 +18,7 @@ namespace KafkaClient.Protocol
     {
         public override string ToString() => $"{{ErrorCode:{ErrorCode},Apis:[{SupportedVersions.ToStrings()}]}}";
 
-        public ApiVersionsResponse(ErrorCode errorCode = ErrorCode.None, IEnumerable<VersionSupport> supportedVersions = null)
+        public ApiVersionsResponse(ErrorCode errorCode = ErrorCode.NONE, IEnumerable<VersionSupport> supportedVersions = null)
         {
             ErrorCode = errorCode;
             Errors = ImmutableList<ErrorCode>.Empty.Add(ErrorCode);
