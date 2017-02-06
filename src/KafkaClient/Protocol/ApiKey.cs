@@ -7,7 +7,7 @@
     {
         Produce = 0,
         Fetch = 1,
-        Offset = 2,
+        Offsets = 2,
         Metadata = 3,
         OffsetCommit = 8,
         OffsetFetch = 9,

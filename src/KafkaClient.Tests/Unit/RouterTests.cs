@@ -896,15 +896,15 @@ namespace KafkaClient.Tests.Unit
             var router = scenario.CreateRouter();
 
             await router.GetTopicOffsetsAsync(RoutingScenario.TestTopic, 2, -1, CancellationToken.None);
-            Assert.That(scenario.Connection1[ApiKey.Offset], Is.EqualTo(1));
-            Assert.That(scenario.Connection2[ApiKey.Offset], Is.EqualTo(1));
+            Assert.That(scenario.Connection1[ApiKey.Offsets], Is.EqualTo(1));
+            Assert.That(scenario.Connection2[ApiKey.Offsets], Is.EqualTo(1));
         }
 
         [Test]
         public async Task GetTopicOffsetShouldThrowAnyException()
         {
             var scenario = new RoutingScenario();
-            scenario.Connection1.Add(ApiKey.Offset, _ => { throw new BufferUnderRunException("test 99"); });
+            scenario.Connection1.Add(ApiKey.Offsets, _ => { throw new BufferUnderRunException("test 99"); });
             var router = scenario.CreateRouter();
 
             await AssertAsync.Throws<BufferUnderRunException>(

@@ -52,10 +52,10 @@ namespace KafkaClient.Tests.Integration
             TestConfig.Log.Info(() => LogEvent.Create(">> Start EnsureGzipCanDecompressMessageFromKafka"));
             using (var router = await TestConfig.IntegrationOptions.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
-                    OffsetResponse.Topic offset;
+                    OffsetsResponse.Topic offset;
                     var messages = new List<Message>();
                     using (var producer = new Producer(router, new ProducerConfiguration(batchSize: numberOfMessages))) {
-                        offset = await producer.Router.GetTopicOffsetAsync(topicName, 0, CancellationToken.None) ?? new OffsetResponse.Topic(topicName, partitionId, offset: 0);
+                        offset = await producer.Router.GetTopicOffsetAsync(topicName, 0, CancellationToken.None) ?? new OffsetsResponse.Topic(topicName, partitionId, offset: 0);
                         for (var i = 0; i < numberOfMessages; i++) {
                             messages.Add(new Message(i.ToString()));
                         }
@@ -126,10 +126,10 @@ namespace KafkaClient.Tests.Integration
             TestConfig.Log.Info(() => LogEvent.Create(">> Start EnsureGzipCanDecompressMessageFromKafka"));
             using (var router = await TestConfig.IntegrationOptions.CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
-                    OffsetResponse.Topic offset;
+                    OffsetsResponse.Topic offset;
                     var messages = new List<Message>();
                     using (var producer = new Producer(router, new ProducerConfiguration(batchSize: numberOfMessages))) {
-                        offset = await producer.Router.GetTopicOffsetAsync(topicName, 0, CancellationToken.None) ?? new OffsetResponse.Topic(topicName, partitionId, offset: 0);
+                        offset = await producer.Router.GetTopicOffsetAsync(topicName, 0, CancellationToken.None) ?? new OffsetsResponse.Topic(topicName, partitionId, offset: 0);
                         for (var i = 0; i < numberOfMessages; i++) {
                             messages.Add(new Message(i.ToString()));
                         }

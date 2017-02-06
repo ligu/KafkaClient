@@ -1,15 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using KafkaClient.Common;
 
 namespace KafkaClient.Protocol
 {
     /// <summary>
-    /// OffsetFetchRequest => GroupId [TopicName [Partition]]
-    ///  GroupId => string     -- The consumer group id.
-    ///  TopicName => string   -- The topic to commit.
-    ///  Partition => int32    -- The partition id.
+    /// OffsetFetchRequest => group_id [topics]
+    ///  group_id => STRING     -- The consumer group id.
+    ///  topics => topic [partition] 
+    ///   topic => STRING       -- The topic to commit.
+    ///   partition_id => INT32    -- The partition id.
     ///
     /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
     /// Class that represents both the request and the response from a kafka server of requesting a stored offset value
@@ -18,9 +20,29 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class OffsetFetchRequest : Request, IRequest<OffsetFetchResponse>, IEquatable<OffsetFetchRequest>
     {
-        public override string ToString() => $"{{Api:{ApiKey},GroupId:{GroupId},Topics:[{Topics.ToStrings()}]}}";
+        public override string ToString() => $"{{Api:{ApiKey},group_id:{group_id},topics:[{topics.ToStrings()}]}}";
 
-        public override string ShortString() => Topics.Count == 1 ? $"{ApiKey} {GroupId} {Topics[0].TopicName}" : $"{ApiKey} {GroupId}";
+        public override string ShortString() => topics.Count == 1 ? $"{ApiKey} {group_id} {topics[0].topic}" : $"{ApiKey} {group_id}";
+
+        protected override void EncodeBody(IKafkaWriter writer, IRequestContext context)
+        {
+            var topicGroups = topics.GroupBy(x => x.topic).ToList();
+
+            writer.Write(group_id)
+                  .Write(topicGroups.Count);
+
+            foreach (var topicGroup in topicGroups) {
+                var partitions = topicGroup.GroupBy(x => x.partition_id).ToList();
+                writer.Write(topicGroup.Key)
+                      .Write(partitions.Count);
+
+                foreach (var partition in partitions) {
+                    foreach (var offset in partition) {
+                        writer.Write(offset.partition_id);
+                    }
+                }
+            }
+        }
 
         public OffsetFetchRequest(string groupId, params TopicPartition[] topics) 
             : this(groupId, (IEnumerable<TopicPartition>)topics)
@@ -32,13 +54,13 @@ namespace KafkaClient.Protocol
         {
             if (string.IsNullOrEmpty(groupId)) throw new ArgumentNullException(nameof(groupId));
 
-            GroupId = groupId;
-            Topics = ImmutableList<TopicPartition>.Empty.AddNotNullRange(topics);
+            group_id = groupId;
+            this.topics = ImmutableList<TopicPartition>.Empty.AddNotNullRange(topics);
         }
 
-        public string GroupId { get; }
+        public string group_id { get; }
 
-        public IImmutableList<TopicPartition> Topics { get; }
+        public IImmutableList<TopicPartition> topics { get; }
 
         #region Equality
 
@@ -53,15 +75,15 @@ namespace KafkaClient.Protocol
         {
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
-            return string.Equals(GroupId, other.GroupId) 
-                && Topics.HasEqualElementsInOrder(other.Topics);
+            return string.Equals(group_id, other.group_id) 
+                && topics.HasEqualElementsInOrder(other.topics);
         }
 
         /// <inheritdoc />
         public override int GetHashCode()
         {
             unchecked {
-                return ((GroupId?.GetHashCode() ?? 0)*397) ^ (Topics?.Count.GetHashCode() ?? 0);
+                return ((group_id?.GetHashCode() ?? 0)*397) ^ (topics?.Count.GetHashCode() ?? 0);
             }
         }
 

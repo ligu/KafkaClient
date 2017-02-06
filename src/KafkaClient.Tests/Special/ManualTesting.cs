@@ -39,8 +39,8 @@ namespace KafkaClient.Tests.Special
                 var offset = await router.GetTopicOffsetAsync(topicName, 0, CancellationToken.None);
 
                 var producer = new Producer(router);
-                var send = SandMessageForever(producer, offset.TopicName, offset.PartitionId);
-                var read = ReadMessageForever(consumer, offset.TopicName, offset.PartitionId, offset.Offset);
+                var send = SandMessageForever(producer, offset.topic, offset.partition_id);
+                var read = ReadMessageForever(consumer, offset.topic, offset.partition_id, offset.Offset);
                 await Task.WhenAll(send, read);
             }
         }

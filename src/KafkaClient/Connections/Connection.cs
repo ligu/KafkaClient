@@ -309,6 +309,11 @@ namespace KafkaClient.Connections
             public bool ExpectResponse => true;
             public ApiKey ApiKey => ApiKey.ApiVersions;
             public string ShortString() => "Unknown";
+
+            public ArraySegment<byte> ToBytes(IRequestContext context)
+            {
+                throw new NotImplementedException();
+            }
         }
 
         private class AsyncItem : IDisposable
@@ -320,7 +325,7 @@ namespace KafkaClient.Connections
             {
                 Context = context;
                 Request = request;
-                RequestBytes = request is UnknownRequest ? new ArraySegment<byte>() : KafkaEncoder.Encode(context, request);
+                RequestBytes = request is UnknownRequest ? new ArraySegment<byte>() : request.ToBytes(context);
                 ApiKey = request.ApiKey;
                 ReceiveTask = new TaskCompletionSource<ArraySegment<byte>>();
             }

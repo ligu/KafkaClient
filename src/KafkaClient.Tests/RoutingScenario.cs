@@ -31,10 +31,10 @@ namespace KafkaClient.Tests
                 { ApiKey.Produce, async _ => new ProduceResponse(new ProduceResponse.Topic(TestTopic, 0, ErrorCode.NONE, _offset1++)) },
                 { ApiKey.Metadata, async _ => await MetadataResponse() },
                 { ApiKey.GroupCoordinator, async _ => await GroupCoordinatorResponse() },
-                { ApiKey.Offset, async _ => new OffsetResponse(
+                { ApiKey.Offsets, async _ => new OffsetsResponse(
                     new[] {
-                        new OffsetResponse.Topic(TestTopic, 0, ErrorCode.NONE, 0L),
-                        new OffsetResponse.Topic(TestTopic, 0, ErrorCode.NONE, 99L)
+                        new OffsetsResponse.Topic(TestTopic, 0, ErrorCode.NONE, 0L),
+                        new OffsetsResponse.Topic(TestTopic, 0, ErrorCode.NONE, 99L)
                     }) },
                 { ApiKey.Fetch, async _ => {
                         await Task.Delay(500);
@@ -47,10 +47,10 @@ namespace KafkaClient.Tests
                 { ApiKey.Produce, async _ => new ProduceResponse(new ProduceResponse.Topic(TestTopic, 1, ErrorCode.NONE, _offset2++)) },
                 { ApiKey.Metadata, async _ => await MetadataResponse() },
                 { ApiKey.GroupCoordinator, async _ => await GroupCoordinatorResponse() },
-                { ApiKey.Offset, async _ => new OffsetResponse(
+                { ApiKey.Offsets, async _ => new OffsetsResponse(
                     new[] {
-                        new OffsetResponse.Topic(TestTopic, 1, ErrorCode.NONE, 0L),
-                        new OffsetResponse.Topic(TestTopic, 1, ErrorCode.NONE, 100L)
+                        new OffsetsResponse.Topic(TestTopic, 1, ErrorCode.NONE, 0L),
+                        new OffsetsResponse.Topic(TestTopic, 1, ErrorCode.NONE, 100L)
                     }) },
                 { ApiKey.Fetch, async _ => {
                         await Task.Delay(500);

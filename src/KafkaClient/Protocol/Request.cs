@@ -24,6 +24,38 @@ namespace KafkaClient.Protocol
 
         public virtual string ShortString() => ApiKey.ToString();
 
+        public ArraySegment<byte> ToBytes(IRequestContext context)
+        {
+            using (var writer = EncodeHeader(context, this)) {
+                EncodeBody(writer, context);
+                return writer.ToSegment();
+            }
+        }
+
+        /// <summary>
+        /// Encode the common header for kafka request.
+        /// see http://kafka.apache.org/protocol.html#protocol_messages
+        /// </summary>
+        /// <remarks>
+        /// Request Header => api_key api_version correlation_id client_id 
+        ///  api_key => INT16             -- The id of the request type.
+        ///  api_version => INT16         -- The version of the API.
+        ///  correlation_id => INT32      -- A user-supplied integer value that will be passed back with the response.
+        ///  client_id => NULLABLE_STRING -- A user specified identifier for the client making the request.
+        /// </remarks>
+        private static IKafkaWriter EncodeHeader(IRequestContext context, IRequest request)
+        {
+            return new KafkaWriter()
+                .Write((short)request.ApiKey)
+                .Write(context.ApiVersion.GetValueOrDefault())
+                .Write(context.CorrelationId)
+                .Write(context.ClientId);
+        }
+
+        protected virtual void EncodeBody(IKafkaWriter writer, IRequestContext context)
+        {
+        }
+
         #region Equals
 
         /// <inheritdoc />

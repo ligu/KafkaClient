@@ -22,16 +22,16 @@ namespace KafkaClient.Protocol
     /// 
     /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetAPI(AKAListOffset)
     /// </summary>
-    public class OffsetResponse : IResponse, IEquatable<OffsetResponse>
+    public class OffsetsResponse : IResponse, IEquatable<OffsetsResponse>
     {
         public override string ToString() => $"{{Topics:[{Topics.ToStrings()}]}}";
 
-        public OffsetResponse(Topic topic)
+        public OffsetsResponse(Topic topic)
             : this(new[] {topic})
         {
         }
 
-        public OffsetResponse(IEnumerable<Topic> topics = null)
+        public OffsetsResponse(IEnumerable<Topic> topics = null)
         {
             Topics = ImmutableList<Topic>.Empty.AddNotNullRange(topics);
             Errors = ImmutableList<ErrorCode>.Empty.AddRange(Topics.Select(t => t.ErrorCode));
@@ -46,11 +46,11 @@ namespace KafkaClient.Protocol
         /// <inheritdoc />
         public override bool Equals(object obj)
         {
-            return Equals(obj as OffsetResponse);
+            return Equals(obj as OffsetsResponse);
         }
 
         /// <inheritdoc />
-        public bool Equals(OffsetResponse other)
+        public bool Equals(OffsetsResponse other)
         {
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
@@ -67,7 +67,7 @@ namespace KafkaClient.Protocol
 
         public class Topic : TopicResponse, IEquatable<Topic>
         {
-            public override string ToString() => $"{{TopicName:{TopicName},PartitionId:{PartitionId},ErrorCode:{ErrorCode},Offset:{Offset}}}";
+            public override string ToString() => $"{{TopicName:{topic},PartitionId:{partition_id},ErrorCode:{ErrorCode},Offset:{Offset}}}";
 
             public Topic(string topic, int partitionId, ErrorCode errorCode = ErrorCode.NONE, long offset = -1, DateTimeOffset? timestamp = null) 
                 : base(topic, partitionId, errorCode)

@@ -74,7 +74,7 @@ namespace KafkaClient.Tests.Special
                         var sendList = new List<Task>(totalMessages/batchSize);
                         var timedOut = Task.Delay(maxTimeToRun);
                         for (var i = 0; i < totalMessages; i+=batchSize) {
-                            var sendTask = producer.SendMessagesAsync(batchSize.Repeat(x => new Message(x.ToString())), offset.TopicName, offset.PartitionId, new SendMessageConfiguration(codec: codec), CancellationToken.None);
+                            var sendTask = producer.SendMessagesAsync(batchSize.Repeat(x => new Message(x.ToString())), offset.topic, offset.partition_id, new SendMessageConfiguration(codec: codec), CancellationToken.None);
                             sendList.Add(sendTask);
                         }
                         var doneSend = Task.WhenAll(sendList.ToArray());
@@ -112,7 +112,7 @@ namespace KafkaClient.Tests.Special
                             stopwatch.Start();
                             var sendList = new List<Task>(missingMessages/batchSize);
                             for (var i = 0; i < missingMessages; i+=batchSize) {
-                                var sendTask = producer.SendMessagesAsync(batchSize.Repeat(x => new Message(x.ToString())), offset.TopicName, offset.PartitionId, new SendMessageConfiguration(codec: MessageCodec.Gzip), CancellationToken.None);
+                                var sendTask = producer.SendMessagesAsync(batchSize.Repeat(x => new Message(x.ToString())), offset.topic, offset.partition_id, new SendMessageConfiguration(codec: MessageCodec.Gzip), CancellationToken.None);
                                 sendList.Add(sendTask);
                             }
                             var doneSend = Task.WhenAll(sendList.ToArray());
@@ -131,7 +131,7 @@ namespace KafkaClient.Tests.Special
                             var fetched = 0;
                             stopwatch.Restart();
                             while (fetched < totalMessages) {
-                                var doneFetch = consumer.FetchBatchAsync(offset.TopicName, offset.PartitionId, fetched, CancellationToken.None, totalMessages);
+                                var doneFetch = consumer.FetchBatchAsync(offset.topic, offset.partition_id, fetched, CancellationToken.None, totalMessages);
                                 var delay = Task.Delay((int) Math.Max(0, maxTimeToRun.TotalMilliseconds - stopwatch.ElapsedMilliseconds));
                                 await Task.WhenAny(doneFetch, delay);
                                 if (delay.IsCompleted && !doneFetch.IsCompleted) {

@@ -393,8 +393,8 @@ namespace KafkaClient
         {
             if (request == null || response == null) return;
 
-            _groupServerCache = _groupServerCache.SetItem(request.GroupId, new Tuple<int, DateTimeOffset>(response.Id, DateTimeOffset.UtcNow));
-            Log.Verbose(() => LogEvent.Create($"Router set serverId to {response.Id} for group {request.GroupId}"));
+            _groupServerCache = _groupServerCache.SetItem(request.group_id, new Tuple<int, DateTimeOffset>(response.Id, DateTimeOffset.UtcNow));
+            Log.Verbose(() => LogEvent.Create($"Router set serverId to {response.Id} for group {request.group_id}"));
         }
 
         #endregion
@@ -510,12 +510,12 @@ namespace KafkaClient
 
         public Task<SyncGroupResponse> SyncGroupAsync(SyncGroupRequest request, IRequestContext context, IRetry retryPolicy, CancellationToken cancellationToken)
         {
-            if (request.GroupAssignments.Count > 0) {
-                var value = new Tuple<IImmutableList<SyncGroupRequest.GroupAssignment>, int>(request.GroupAssignments, request.GenerationId);
-                _memberAssignmentCache.AddOrUpdate(request.GroupId, value, (key, old) => value);
+            if (request.group_assignments.Count > 0) {
+                var value = new Tuple<IImmutableList<SyncGroupRequest.GroupAssignment>, int>(request.group_assignments, request.generation_id);
+                _memberAssignmentCache.AddOrUpdate(request.group_id, value, (key, old) => value);
             }
 
-            return this.SendAsync(request, request.GroupId, cancellationToken, context, retryPolicy); 
+            return this.SendAsync(request, request.group_id, cancellationToken, context, retryPolicy); 
         }
 
         public IImmutableDictionary<string, IMemberAssignment> GetGroupMemberAssignment(string groupId, int? generationId = null)
@@ -531,7 +531,7 @@ namespace KafkaClient
         {
             Tuple<IImmutableList<SyncGroupRequest.GroupAssignment>, int> cachedValue;
             if (_memberAssignmentCache.TryGetValue(groupId, out cachedValue) && (!generationId.HasValue || generationId.Value == cachedValue.Item2)) {
-                return cachedValue.Item1.ToImmutableDictionary(assignment => assignment.MemberId, assignment => assignment.MemberAssignment);
+                return cachedValue.Item1.ToImmutableDictionary(assignment => assignment.member_id, assignment => assignment.member_assignment);
             }
             return null;
         }

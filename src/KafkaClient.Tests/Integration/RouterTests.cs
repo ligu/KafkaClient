@@ -49,7 +49,7 @@ namespace KafkaClient.Tests.Integration
                     Assert.That(groupResponse, Is.Not.Null);
                     Assert.That(groupResponse.ErrorCode, Is.EqualTo(ErrorCode.NONE));
 
-                    var commit = new OffsetCommitRequest(group.GroupId, new []{ new OffsetCommitRequest.Topic(topicName, partitionId, 10, null) });
+                    var commit = new OffsetCommitRequest(group.group_id, new []{ new OffsetCommitRequest.Topic(topicName, partitionId, 10, null) });
                     var response = await conn.Connection.SendAsync(commit, CancellationToken.None);
                     var topic = response.Topics.FirstOrDefault();
 
@@ -77,7 +77,7 @@ namespace KafkaClient.Tests.Integration
                     Assert.That(groupResponse, Is.Not.Null);
                     Assert.That(groupResponse.ErrorCode, Is.EqualTo(ErrorCode.NONE));
 
-                    var commit = new OffsetCommitRequest(group.GroupId, new []{ new OffsetCommitRequest.Topic(topicName, partitionId, offset, null) });
+                    var commit = new OffsetCommitRequest(group.group_id, new []{ new OffsetCommitRequest.Topic(topicName, partitionId, offset, null) });
                     var commitResponse = await conn.Connection.SendAsync(commit, CancellationToken.None);
                     var commitTopic = commitResponse.Topics.SingleOrDefault();
 
@@ -113,7 +113,7 @@ namespace KafkaClient.Tests.Integration
                     Assert.That(groupResponse, Is.Not.Null);
                     Assert.That(groupResponse.ErrorCode, Is.EqualTo(ErrorCode.NONE));
 
-                    var commit = new OffsetCommitRequest(group.GroupId, new []{ new OffsetCommitRequest.Topic(topicName, partitionId, offset, metadata) });
+                    var commit = new OffsetCommitRequest(group.group_id, new []{ new OffsetCommitRequest.Topic(topicName, partitionId, offset, metadata) });
                     var commitResponse = await conn.Connection.SendAsync(commit, CancellationToken.None);
                     var commitTopic = commitResponse.Topics.SingleOrDefault();
 

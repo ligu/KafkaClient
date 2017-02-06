@@ -6,8 +6,8 @@ using KafkaClient.Common;
 namespace KafkaClient.Protocol
 {
     /// <summary>
-    /// DescribeGroupsRequest => [GroupId]
-    ///   GroupId => string
+    /// DescribeGroupsRequest => [group_id]
+    ///   group_id => STRING
     ///
     /// From http://kafka.apache.org/protocol.html#protocol_messages
     /// 
@@ -16,9 +16,14 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class DescribeGroupsRequest : Request, IRequest<DescribeGroupsResponse>, IEquatable<DescribeGroupsRequest>
     {
-        public override string ToString() => $"{{Api:{ApiKey},GroupIds:[{GroupIds.ToStrings()}]}}";
+        public override string ToString() => $"{{Api:{ApiKey},group_ids:[{group_ids.ToStrings()}]}}";
 
-        public override string ShortString() => GroupIds.Count == 1 ? $"{ApiKey} {GroupIds[0]}" : ApiKey.ToString();
+        public override string ShortString() => group_ids.Count == 1 ? $"{ApiKey} {group_ids[0]}" : ApiKey.ToString();
+
+        protected override void EncodeBody(IKafkaWriter writer, IRequestContext context)
+        {
+            writer.Write(group_ids, true);
+        }
 
         public DescribeGroupsRequest(params string[] groupIds) 
             : this((IEnumerable<string>) groupIds)
@@ -28,10 +33,10 @@ namespace KafkaClient.Protocol
         public DescribeGroupsRequest(IEnumerable<string> groupIds) 
             : base(ApiKey.DescribeGroups)
         {
-            GroupIds = ImmutableList<string>.Empty.AddNotNullRange(groupIds);
+            group_ids = ImmutableList<string>.Empty.AddNotNullRange(groupIds);
         }
 
-        public IImmutableList<string> GroupIds { get; }
+        public IImmutableList<string> group_ids { get; }
 
         #region Equality
 
@@ -47,14 +52,14 @@ namespace KafkaClient.Protocol
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
             return base.Equals(other) 
-                   && GroupIds.HasEqualElementsInOrder(other.GroupIds);
+                   && group_ids.HasEqualElementsInOrder(other.group_ids);
         }
 
         /// <inheritdoc />
         public override int GetHashCode()
         {
             unchecked {
-                return (base.GetHashCode()*397) ^ (GroupIds?.Count.GetHashCode() ?? 0);
+                return (base.GetHashCode()*397) ^ (group_ids?.Count.GetHashCode() ?? 0);
             }
         }
 

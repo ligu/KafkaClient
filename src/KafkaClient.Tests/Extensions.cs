@@ -67,19 +67,19 @@ namespace KafkaClient.Tests
             await router.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
         }
 
-        public static Task<IMessageBatch> FetchBatchAsync(this IConsumer consumer, OffsetResponse.Topic offset, int batchSize, CancellationToken cancellationToken)
+        public static Task<IMessageBatch> FetchBatchAsync(this IConsumer consumer, OffsetsResponse.Topic offset, int batchSize, CancellationToken cancellationToken)
         {
-            return consumer.FetchBatchAsync(offset.TopicName, offset.PartitionId, offset.Offset, cancellationToken, batchSize);
+            return consumer.FetchBatchAsync(offset.topic, offset.partition_id, offset.Offset, cancellationToken, batchSize);
         }
 
-        public static Task<int> FetchAsync(this IConsumer consumer, Func<IMessageBatch, CancellationToken, Task> onMessagesAsync, OffsetResponse.Topic offset, int batchSize, CancellationToken cancellationToken)
+        public static Task<int> FetchAsync(this IConsumer consumer, Func<IMessageBatch, CancellationToken, Task> onMessagesAsync, OffsetsResponse.Topic offset, int batchSize, CancellationToken cancellationToken)
         {
-            return consumer.FetchAsync(onMessagesAsync, offset.TopicName, offset.PartitionId, offset.Offset, cancellationToken, batchSize);
+            return consumer.FetchAsync(onMessagesAsync, offset.topic, offset.partition_id, offset.Offset, cancellationToken, batchSize);
         }
 
-        public static Task<int> FetchAsync(this IConsumer consumer, Func<Message, CancellationToken, Task> onMessageAsync, OffsetResponse.Topic offset, int batchSize, CancellationToken cancellationToken)
+        public static Task<int> FetchAsync(this IConsumer consumer, Func<Message, CancellationToken, Task> onMessageAsync, OffsetsResponse.Topic offset, int batchSize, CancellationToken cancellationToken)
         {
-            return consumer.FetchAsync(onMessageAsync, offset.TopicName, offset.PartitionId, offset.Offset, cancellationToken, batchSize);
+            return consumer.FetchAsync(onMessageAsync, offset.topic, offset.partition_id, offset.Offset, cancellationToken, batchSize);
         }
 
         public static byte[] ToBytes(this string value)

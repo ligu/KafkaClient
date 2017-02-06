@@ -3,8 +3,8 @@
 namespace KafkaClient.Protocol
 {
     /// <summary>
-    /// GroupCoordinatorRequest => GroupId
-    ///  GroupId => string -- The consumer group id.
+    /// GroupCoordinatorRequest => group_id
+    ///  group_id => STRING -- The consumer group id.
     ///
     /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
     /// The offsets for a given consumer group is maintained by a specific broker called the offset coordinator. i.e., a consumer needs
@@ -12,19 +12,24 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class GroupCoordinatorRequest : Request, IRequest<GroupCoordinatorResponse>, IEquatable<GroupCoordinatorRequest>
     {
-        public override string ToString() => $"{{Api:{ApiKey},GroupId:{GroupId}}}";
+        public override string ToString() => $"{{Api:{ApiKey},group_id:{group_id}}}";
 
-        public override string ShortString() => $"{ApiKey} {GroupId}";
+        public override string ShortString() => $"{ApiKey} {group_id}";
+
+        protected override void EncodeBody(IKafkaWriter writer, IRequestContext context)
+        {
+            writer.Write(group_id);
+        }
 
         public GroupCoordinatorRequest(string groupId) 
             : base(ApiKey.GroupCoordinator)
         {
             if (string.IsNullOrEmpty(groupId)) throw new ArgumentNullException(nameof(groupId));
 
-            GroupId = groupId;
+            group_id = groupId;
         }
 
-        public string GroupId { get; }
+        public string group_id { get; }
 
         #region Equality
 
@@ -39,13 +44,13 @@ namespace KafkaClient.Protocol
         {
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
-            return string.Equals(GroupId, other.GroupId);
+            return string.Equals(group_id, other.group_id);
         }
 
         /// <inheritdoc />
         public override int GetHashCode()
         {
-            return GroupId?.GetHashCode() ?? 0;
+            return group_id?.GetHashCode() ?? 0;
         }
 
         #endregion

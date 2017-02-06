@@ -101,9 +101,9 @@ namespace KafkaClient
                     response = await Router.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
                 } catch (BufferUnderRunException ex) {
                     if (Configuration.FetchByteMultiplier <= 1) throw;
-                    var maxBytes = topic.MaxBytes * Configuration.FetchByteMultiplier;
-                    Router.Log.Warn(() => LogEvent.Create(ex, $"Retrying Fetch Request with multiplier {Math.Pow(Configuration.FetchByteMultiplier, attempt)}, {topic.MaxBytes} -> {maxBytes}"));
-                    topic = new FetchRequest.Topic(topic.TopicName, topic.PartitionId, topic.Offset, maxBytes);
+                    var maxBytes = topic.max_bytes * Configuration.FetchByteMultiplier;
+                    Router.Log.Warn(() => LogEvent.Create(ex, $"Retrying Fetch Request with multiplier {Math.Pow(Configuration.FetchByteMultiplier, attempt)}, {topic.max_bytes} -> {maxBytes}"));
+                    topic = new FetchRequest.Topic(topic.topic, topic.partition_id, topic.fetch_offset, maxBytes);
                 }
             }
             return response?.Topics?.SingleOrDefault()?.Messages?.ToImmutableList() ?? ImmutableList<Message>.Empty;
@@ -142,13 +142,13 @@ namespace KafkaClient
             public async Task<IMessageBatch> FetchNextAsync(CancellationToken cancellationToken)
             {
                 var offset = await CommitMarkedAsync(cancellationToken).ConfigureAwait(false);
-                var messages = await _consumer.FetchBatchAsync(_allMessages, _partition.TopicName, _partition.PartitionId, offset, _batchSize, cancellationToken).ConfigureAwait(false);
+                var messages = await _consumer.FetchBatchAsync(_allMessages, _partition.topic, _partition.partition_id, offset, _batchSize, cancellationToken).ConfigureAwait(false);
                 return new MessageBatch(messages, _partition, offset, _batchSize, _consumer);
             }
 
             public void MarkSuccessful(Message message)
             {
-                if (_disposeCount > 0) throw new ObjectDisposedException($"The topic/{_partition.TopicName}/partition/{_partition.PartitionId} batch is disposed.");
+                if (_disposeCount > 0) throw new ObjectDisposedException($"The topic/{_partition.topic}/partition/{_partition.partition_id} batch is disposed.");
                 var offset = message.Offset + 1;
                 if (_offsetMarked > offset) throw new ArgumentOutOfRangeException(nameof(message), $"Marked offset is {_offsetMarked}, cannot mark previous offset of {offset}.");
                 _offsetMarked = message.Offset + 1;
@@ -156,15 +156,15 @@ namespace KafkaClient
 
             public async Task<long> CommitMarkedAsync(CancellationToken cancellationToken)
             {
-                if (_disposeCount > 0) throw new ObjectDisposedException($"The topic/{_partition.TopicName}/partition/{_partition.PartitionId} batch is disposed.");
+                if (_disposeCount > 0) throw new ObjectDisposedException($"The topic/{_partition.topic}/partition/{_partition.partition_id} batch is disposed.");
 
                 var offset = _offsetMarked;
                 var committed = _offsetCommitted;
                 if (offset <= committed) return committed;
 
                 if (_groupId != null && _memberId != null) {
-                    var request = new OffsetCommitRequest(_groupId, new[] { new OffsetCommitRequest.Topic(_partition.TopicName, _partition.PartitionId, offset) }, _memberId, _generationId);
-                    await _consumer.Router.SendAsync(request, _partition.TopicName, _partition.PartitionId, cancellationToken).ConfigureAwait(false);
+                    var request = new OffsetCommitRequest(_groupId, new[] { new OffsetCommitRequest.Topic(_partition.topic, _partition.partition_id, offset) }, _memberId, _generationId);
+                    await _consumer.Router.SendAsync(request, _partition.topic, _partition.partition_id, cancellationToken).ConfigureAwait(false);
                 }
                 _offsetCommitted = offset;
                 return offset;

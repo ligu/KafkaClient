@@ -14,9 +14,9 @@ namespace KafkaClient.Tests
             return new FetchRequest(new FetchRequest.Topic(topic, partitionId, offset));
         }
 
-        public static OffsetRequest CreateOffsetRequest(string topic, int partitionId = 0, int maxOffsets = 1, int time = -1)
+        public static OffsetsRequest CreateOffsetRequest(string topic, int partitionId = 0, int maxOffsets = 1, int time = -1)
         {
-            return new OffsetRequest(new OffsetRequest.Topic(topic, partitionId, time, maxOffsets));
+            return new OffsetsRequest(new OffsetsRequest.Topic(topic, partitionId, time, maxOffsets));
         }
 
         public static OffsetFetchRequest CreateOffsetFetchRequest(string topic, int partitionId = 0)

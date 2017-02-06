@@ -17,7 +17,7 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public void HeaderShouldCorrectPackByteLengths()
         {
-            var result = KafkaEncoder.Encode(new RequestContext(123456789, clientId: "test"), new ApiVersionsRequest());
+            var result = new ApiVersionsRequest().ToBytes(new RequestContext(123456789, clientId: "test"));
 
             var withoutLength = new byte[result.Count - 4];
             Buffer.BlockCopy(result.Array, 4, withoutLength, 0, result.Count - 4);
@@ -34,7 +34,7 @@ namespace KafkaClient.Tests.Unit
 
             using (var writer = new KafkaWriter())
             {
-                writer.Write(testMessage);
+                testMessage.WriteTo(writer);
                 var encoded = writer.ToSegment(false);
                 encoded.Array[encoded.Offset] += 1;
                 using (var reader = new KafkaReader(encoded))
@@ -55,7 +55,7 @@ namespace KafkaClient.Tests.Unit
 
             using (var writer = new KafkaWriter())
             {
-                writer.Write(testMessage);
+                testMessage.WriteTo(writer);
                 var encoded = writer.ToSegment(false);
                 using (var reader = new KafkaReader(encoded))
                 {
@@ -138,7 +138,7 @@ namespace KafkaClient.Tests.Unit
                 writer.Write(0L);
                 using (writer.MarkForLength())
                 {
-                    writer.Write(new Message(expectedPayloadBytes, new ArraySegment<byte>(new byte[] { 0 }), 0, version: 0));
+                    new Message(expectedPayloadBytes, new ArraySegment<byte>(new byte[] { 0 }), 0, version: 0).WriteTo(writer);
                 }
                 var segment = writer.ToSegment();
 
@@ -179,9 +179,9 @@ namespace KafkaClient.Tests.Unit
                 payloads.Add(new ProduceRequest.Topic(topic + t, partition, GenerateMessages(messagesPerSet, (byte) (version >= 2 ? 1 : 0), codec), codec));
             }
             var request = new ProduceRequest(payloads, TimeSpan.FromMilliseconds(timeoutMilliseconds), acks);
-            var requestWithUpdatedAttribute = new ProduceRequest(request.Topics.Select(t => new ProduceRequest.Topic(t.TopicName, t.PartitionId,
+            var requestWithUpdatedAttribute = new ProduceRequest(request.topics.Select(t => new ProduceRequest.Topic(t.topic, t.partition_id,
                 t.Messages.Select(m => m.Attribute == 0 ? m : new Message(m.Value, m.Key, 0, m.Offset, m.MessageVersion, m.Timestamp)))),
-                request.Timeout, request.Acks);
+                request.timeout, request.acks);
 
             request.AssertCanEncodeDecodeRequest(version, forComparison: requestWithUpdatedAttribute);
         }
@@ -251,7 +251,7 @@ namespace KafkaClient.Tests.Unit
                 topics.Add(new FetchResponse.Topic(topicName + t, partitionId, _randomizer.Next(), errorCode, messages));
             }
             var response = new FetchResponse(topics, version >= 1 ? TimeSpan.FromMilliseconds(throttleTime) : (TimeSpan?)null);
-            var responseWithUpdatedAttribute = new FetchResponse(response.Topics.Select(t => new FetchResponse.Topic(t.TopicName, t.PartitionId, t.HighWaterMark, t.ErrorCode, 
+            var responseWithUpdatedAttribute = new FetchResponse(response.Topics.Select(t => new FetchResponse.Topic(t.topic, t.partition_id, t.HighWaterMark, t.ErrorCode, 
                 t.Messages.Select(m => m.Attribute == 0 ? m : new Message(m.Value, m.Key, 0, m.Offset, m.MessageVersion, m.Timestamp)))), 
                 response.ThrottleTime);
 
@@ -267,12 +267,12 @@ namespace KafkaClient.Tests.Unit
             [Values(-2, -1, 123456, 10000000)] long time,
             [Values(1, 10)] int maxOffsets)
         {
-            var topics = new List<OffsetRequest.Topic>();
+            var topics = new List<OffsetsRequest.Topic>();
             for (var t = 0; t < topicsPerRequest; t++) {
-                var offset = new OffsetRequest.Topic(topic + t, t % totalPartitions, time, version == 0 ? maxOffsets : 1);
+                var offset = new OffsetsRequest.Topic(topic + t, t % totalPartitions, time, version == 0 ? maxOffsets : 1);
                 topics.Add(offset);
             }
-            var request = new OffsetRequest(topics);
+            var request = new OffsetsRequest(topics);
 
             request.AssertCanEncodeDecodeRequest(version);
         }
@@ -290,14 +290,14 @@ namespace KafkaClient.Tests.Unit
             )] ErrorCode errorCode, 
             [Values(1, 5)] int offsetsPerPartition)
         {
-            var topics = new List<OffsetResponse.Topic>();
+            var topics = new List<OffsetsResponse.Topic>();
             for (var t = 0; t < topicsPerRequest; t++) {
                 var partitionId = t % totalPartitions;
                 for (var o = 0; o < offsetsPerPartition; o++) {
-                    topics.Add(new OffsetResponse.Topic(topicName + t, partitionId, errorCode, _randomizer.Next(-1, int.MaxValue), version >= 1 ? (DateTimeOffset?)DateTimeOffset.UtcNow : null));
+                    topics.Add(new OffsetsResponse.Topic(topicName + t, partitionId, errorCode, _randomizer.Next(-1, int.MaxValue), version >= 1 ? (DateTimeOffset?)DateTimeOffset.UtcNow : null));
                 }
             }
-            var response = new OffsetResponse(topics);
+            var response = new OffsetsResponse(topics);
 
             response.AssertCanEncodeDecodeResponse(version);
         }

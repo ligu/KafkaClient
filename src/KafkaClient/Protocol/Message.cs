@@ -27,6 +27,19 @@ namespace KafkaClient.Protocol
     {
         public override string ToString() => $"{{KeySize:{Key.Count},ValueSize:{Value.Count},Offset:{Offset}}}";
 
+        public void WriteTo(IKafkaWriter writer)
+        {
+            using (writer.MarkForCrc()) {
+                writer.Write(MessageVersion)
+                      .Write((byte)0);
+                if (MessageVersion >= 1) {
+                    writer.Write(Timestamp.GetValueOrDefault(DateTimeOffset.UtcNow).ToUnixTimeMilliseconds());
+                }
+                writer.Write(Key)
+                      .Write(Value);
+            }
+        }
+
         public Message(ArraySegment<byte> value, byte attribute, long offset = 0L, byte version = 0, DateTimeOffset? timestamp = null)
             : this(value, EmptySegment, attribute, offset, version, timestamp)
         {
