@@ -70,17 +70,17 @@ namespace KafkaClient.Connections
                         var socket = _tcpSocket ?? CreateSocket();
                         _tcpSocket = await _configuration.ConnectionRetry.TryAsync(
                             //action
-                            async (attempt, timer) => {
+                            async (attempt, elapsed) => {
                                 if (cancellation.Token.IsCancellationRequested) return RetryAttempt<Socket>.Abort;
 
                                 _log.Info(() => LogEvent.Create($"Connecting to {_endpoint}"));
-                                _configuration.OnConnecting?.Invoke(_endpoint, attempt, timer.Elapsed);
+                                _configuration.OnConnecting?.Invoke(_endpoint, attempt, elapsed);
 
                                 await socket.ConnectAsync(_endpoint.Ip.Address, _endpoint.Ip.Port).ThrowIfCancellationRequested(cancellation.Token).ConfigureAwait(false);
                                 if (!socket.Connected) return RetryAttempt<Socket>.Retry;
 
                                 _log.Info(() => LogEvent.Create($"Connection established to {_endpoint}"));
-                                _configuration.OnConnected?.Invoke(_endpoint, attempt, timer.Elapsed);
+                                _configuration.OnConnected?.Invoke(_endpoint, attempt, elapsed);
 
                                 _log.Verbose(() => LogEvent.Create($"Attempting SSL connection to {_endpoint.Host}, SslProtocol:{_sslConfiguration.EnabledProtocols}, Policy:{_sslConfiguration.EncryptionPolicy}"));
                                 Interlocked.Exchange(ref _stream, null)?.Dispose();
@@ -106,11 +106,6 @@ namespace KafkaClient.Connections
 
                                 return new RetryAttempt<Socket>(socket);
                             },
-                            (attempt, retry) => _log.Warn(() => LogEvent.Create($"Failed connection to {_endpoint}: Will retry in {retry}")),
-                            attempt => {
-                                _log.Warn(() => LogEvent.Create($"Failed connection to {_endpoint} on attempt {attempt}"));
-                                throw new ConnectionException(_endpoint);
-                            },
                             (ex, attempt, retry) => {
                                 if (_disposeCount > 0) throw new ObjectDisposedException(nameof(SslTransport), ex);
                                 _log.Warn(() => LogEvent.Create(ex, $"Failed connection to {_endpoint}: Will retry in {retry}"));
@@ -122,12 +117,9 @@ namespace KafkaClient.Connections
                                     socket = CreateSocket();
                                 }
                             },
-                            (ex, attempt) => {
-                                _log.Warn(() => LogEvent.Create(ex, $"Failed connection to {_endpoint} on attempt {attempt}"));
-                                if (ex is SocketException || ex is PlatformNotSupportedException)
-                                {
-                                    throw new ConnectionException(_endpoint, ex);
-                                }
+                            () => {
+                                _log.Warn(() => LogEvent.Create($"Failed connection to {_endpoint}"));
+                                throw new ConnectionException(_endpoint);
                             },
                             cancellation.Token).ConfigureAwait(false);
                     }, cancellation.Token).ConfigureAwait(false);
