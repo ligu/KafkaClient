@@ -18,7 +18,7 @@ namespace KafkaClient.Protocol
     {
         public override string ToString() => $"{{ErrorCode:{ErrorCode},Apis:[{SupportedVersions.ToStrings()}]}}";
 
-        public ApiVersionsResponse(ErrorCode errorCode = ErrorCode.None, IEnumerable<VersionSupport> supportedVersions = null)
+        public ApiVersionsResponse(ErrorCode errorCode = ErrorCode.NONE, IEnumerable<VersionSupport> supportedVersions = null)
         {
             ErrorCode = errorCode;
             Errors = ImmutableList<ErrorCode>.Empty.Add(ErrorCode);
@@ -57,18 +57,6 @@ namespace KafkaClient.Protocol
             unchecked {
                 return ((int) ErrorCode*397) ^ (SupportedVersions?.Count.GetHashCode() ?? 0);
             }
-        }
-
-        /// <inheritdoc />
-        public static bool operator ==(ApiVersionsResponse left, ApiVersionsResponse right)
-        {
-            return Equals(left, right);
-        }
-
-        /// <inheritdoc />
-        public static bool operator !=(ApiVersionsResponse left, ApiVersionsResponse right)
-        {
-            return !Equals(left, right);
         }
 
         #endregion
@@ -121,16 +109,6 @@ namespace KafkaClient.Protocol
                     hashCode = (hashCode*397) ^ MaxVersion.GetHashCode();
                     return hashCode;
                 }
-            }
-
-            public static bool operator ==(VersionSupport left, VersionSupport right)
-            {
-                return Equals(left, right);
-            }
-
-            public static bool operator !=(VersionSupport left, VersionSupport right)
-            {
-                return !Equals(left, right);
             }
 
             #endregion

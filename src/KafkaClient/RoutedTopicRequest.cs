@@ -21,7 +21,7 @@ namespace KafkaClient
 
         protected override async Task<IConnection> GetConnectionAsync(IRouter router, CancellationToken cancellationToken)
         {
-            var broker = await router.GetTopicBrokerAsync(_topicName, _partitionId, cancellationToken).ConfigureAwait(false);
+            var broker = await router.GetTopicConnectionAsync(_topicName, _partitionId, cancellationToken).ConfigureAwait(false);
             return broker?.Connection;
         }
     }

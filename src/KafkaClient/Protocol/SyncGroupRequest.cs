@@ -7,30 +7,44 @@ using KafkaClient.Common;
 namespace KafkaClient.Protocol
 {
     /// <summary>
-    /// SyncGroupRequest => GroupId GroupGenerationId MemberId [GroupAssignment]
-    ///   GroupId => string
-    ///   GroupGenerationId => int32
-    ///   MemberId => string
-    ///   GroupAssignment => MemberId MemberAssignment -- only the leader should specify group assignments
-    ///     MemberId => string
-    ///     MemberAssignment => bytes
+    /// SyncGroupRequest => group_id generation_id member_id [group_assignment]
+    ///   group_id => STRING
+    ///   generation_id => INT32
+    ///   member_id => STRING
+    ///   group_assignment => member_id MemberAssignment -- only the leader should specify group assignments
+    ///     member_id => STRING
+    ///     member_assignment => BYTES
     /// 
     /// see http://kafka.apache.org/protocol.html#protocol_messages
     /// </summary>
     public class SyncGroupRequest : GroupRequest, IRequest<SyncGroupResponse>, IEquatable<SyncGroupRequest>
     {
-        public override string ToString() => $"{{Api:{ApiKey},GroupId:{GroupId},MemberId:{MemberId},GenerationId:{GenerationId},GroupAssignments:[{GroupAssignments.ToStrings()}]}}";
+        public override string ToString() => $"{{Api:{ApiKey},group_id:{group_id},member_id:{member_id},generation_id:{generation_id},group_assignments:[{group_assignments.ToStrings()}]}}";
 
-        public override string ShortString() => $"{ApiKey} {GroupId} {MemberId}";
+        public override string ShortString() => $"{ApiKey} {group_id} {member_id}";
+
+        protected override void EncodeBody(IKafkaWriter writer, IRequestContext context)
+        {
+            writer.Write(group_id)
+                  .Write(generation_id)
+                  .Write(member_id)
+                  .Write(group_assignments.Count);
+
+            var encoder = context.GetEncoder(context.ProtocolType);
+            foreach (var assignment in group_assignments) {
+                writer.Write(assignment.member_id)
+                        .Write(assignment.member_assignment, encoder);
+            }
+        }
 
         /// <inheritdoc />
         public SyncGroupRequest(string groupId, int generationId, string memberId, IEnumerable<GroupAssignment> groupAssignments = null) 
             : base(ApiKey.SyncGroup, groupId, memberId, generationId)
         {
-            GroupAssignments = ImmutableList<GroupAssignment>.Empty.AddNotNullRange(groupAssignments);
+            group_assignments = ImmutableList<GroupAssignment>.Empty.AddNotNullRange(groupAssignments);
         }
 
-        public IImmutableList<GroupAssignment> GroupAssignments { get; }
+        public IImmutableList<GroupAssignment> group_assignments { get; }
 
         #region Equality
 
@@ -46,43 +60,31 @@ namespace KafkaClient.Protocol
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
             return base.Equals(other) 
-                && GroupAssignments.HasEqualElementsInOrder(other.GroupAssignments);
+                && group_assignments.HasEqualElementsInOrder(other.group_assignments);
         }
 
         /// <inheritdoc />
         public override int GetHashCode()
         {
             unchecked {
-                return (base.GetHashCode()*397) ^ (GroupAssignments?.Count.GetHashCode() ?? 0);
+                return (base.GetHashCode()*397) ^ (group_assignments?.Count.GetHashCode() ?? 0);
             }
-        }
-
-        /// <inheritdoc />
-        public static bool operator ==(SyncGroupRequest left, SyncGroupRequest right)
-        {
-            return Equals(left, right);
-        }
-
-        /// <inheritdoc />
-        public static bool operator !=(SyncGroupRequest left, SyncGroupRequest right)
-        {
-            return !Equals(left, right);
         }
 
         #endregion
 
         public class GroupAssignment : IEquatable<GroupAssignment>
         {
-            public override string ToString() => $"{{MemberId:{MemberId},MemberAssignment:{MemberAssignment}}}";
+            public override string ToString() => $"{{member_id:{member_id},member_assignment:{member_assignment}}}";
 
             public GroupAssignment(string memberId, IMemberAssignment memberAssignment)
             {
-                MemberId = memberId;
-                MemberAssignment = memberAssignment;
+                member_id = memberId;
+                member_assignment = memberAssignment;
             }
 
-            public string MemberId { get; }
-            public IMemberAssignment MemberAssignment { get; }
+            public string member_id { get; }
+            public IMemberAssignment member_assignment { get; }
 
             #region Equality
 
@@ -97,28 +99,16 @@ namespace KafkaClient.Protocol
             {
                 if (ReferenceEquals(null, other)) return false;
                 if (ReferenceEquals(this, other)) return true;
-                return string.Equals(MemberId, other.MemberId) 
-                    && Equals(MemberAssignment, other.MemberAssignment);
+                return string.Equals(member_id, other.member_id) 
+                    && Equals(member_assignment, other.member_assignment);
             }
 
             /// <inheritdoc />
             public override int GetHashCode()
             {
                 unchecked {
-                    return ((MemberId?.GetHashCode() ?? 0)*397) ^ (MemberAssignment?.GetHashCode() ?? 0);
+                    return ((member_id?.GetHashCode() ?? 0)*397) ^ (member_assignment?.GetHashCode() ?? 0);
                 }
-            }
-
-            /// <inheritdoc />
-            public static bool operator ==(GroupAssignment left, GroupAssignment right)
-            {
-                return Equals(left, right);
-            }
-
-            /// <inheritdoc />
-            public static bool operator !=(GroupAssignment left, GroupAssignment right)
-            {
-                return !Equals(left, right);
             }
 
             #endregion

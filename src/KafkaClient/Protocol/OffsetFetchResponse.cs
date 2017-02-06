@@ -52,23 +52,11 @@ namespace KafkaClient.Protocol
             return Topics?.Count.GetHashCode() ?? 0;
         }
 
-        /// <inheritdoc />
-        public static bool operator ==(OffsetFetchResponse left, OffsetFetchResponse right)
-        {
-            return Equals(left, right);
-        }
-
-        /// <inheritdoc />
-        public static bool operator !=(OffsetFetchResponse left, OffsetFetchResponse right)
-        {
-            return !Equals(left, right);
-        }
-
         #endregion
 
         public class Topic : TopicResponse, IEquatable<Topic>
         {
-            public override string ToString() => $"{{TopicName:{TopicName},PartitionID:{PartitionId},Offset:{Offset},Metadata:{MetaData},ErrorCode:{ErrorCode}}}";
+            public override string ToString() => $"{{TopicName:{topic},PartitionID:{partition_id},Offset:{Offset},Metadata:{MetaData},ErrorCode:{ErrorCode}}}";
 
             public Topic(string topic, int partitionId, ErrorCode errorCode, long offset, string metadata) 
                 : base(topic, partitionId, errorCode)
@@ -111,16 +99,6 @@ namespace KafkaClient.Protocol
                     hashCode = (hashCode*397) ^ (MetaData?.GetHashCode() ?? 0);
                     return hashCode;
                 }
-            }
-
-            public static bool operator ==(Topic left, Topic right)
-            {
-                return Equals(left, right);
-            }
-
-            public static bool operator !=(Topic left, Topic right)
-            {
-                return !Equals(left, right);
             }        
 
             #endregion

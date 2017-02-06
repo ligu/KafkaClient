@@ -274,110 +274,48 @@ namespace KafkaClient.Common
 
         #region Retry
 
-        public static async Task TryAsync(
-            this IRetry policy, 
-            Func<int, Task> action, 
-            Action<Exception, int, TimeSpan> onException, 
-            Action<Exception, int> onFinalException, 
+        public static Task<T> TryAsync<T>(
+            this IRetry policy,
+            Func<int, TimeSpan, Task<RetryAttempt<T>>> func,
+            Action<Exception, int, TimeSpan?> onRetry,
             CancellationToken cancellationToken)
         {
-            var timer = new Stopwatch();
-            timer.Start();
-            for (var attempt = 0; !cancellationToken.IsCancellationRequested; attempt++) {
-                cancellationToken.ThrowIfCancellationRequested();
-                try {
-                    await action(attempt).ConfigureAwait(false);
-                    // reset attempt when successful
-                    attempt = -1;
-                    timer.Restart();
-                } catch (Exception ex) {
-                    if (attempt == 0) { // first failure
-                        timer.Restart();
-                    }
-                    await policy.CatchAsync(onException, onFinalException, attempt, timer, ex, cancellationToken).ConfigureAwait(false);
-                }
-            }
+            return policy.TryAsync(func, onRetry, null, cancellationToken);
         }
 
         public static async Task<T> TryAsync<T>(
             this IRetry policy, 
-            Func<int, Stopwatch, Task<RetryAttempt<T>>> action, 
-            Action<int, TimeSpan> onRetry, 
-            Action<int> onFinal, 
-            Action<Exception> onException, 
+            Func<int, TimeSpan, Task<RetryAttempt<T>>> func, 
+            Action<Exception, int, TimeSpan?> onRetry, 
+            Action onFailure, 
             CancellationToken cancellationToken)
         {
             var timer = new Stopwatch();
             timer.Start();
-            for (var attempt = 0;; attempt++) {
+            for (var retryCount = 0;; retryCount++) {
                 cancellationToken.ThrowIfCancellationRequested();
                 try {
-                    var response = await action(attempt, timer).ConfigureAwait(false);
-                    if (response.IsSuccessful) return response.Value;
+                    var attempt = await func(retryCount, timer.Elapsed).ConfigureAwait(false);
+                    if (attempt.IsSuccessful) return attempt.Value;
 
-                    var retryDelay = policy.RetryDelay(attempt, timer.Elapsed);
-                    if (response.ShouldRetry && retryDelay.HasValue) {
-                        onRetry?.Invoke(attempt, retryDelay.Value);
+                    var retryDelay = policy.RetryDelay(retryCount, timer.Elapsed);
+                    onRetry?.Invoke(null, retryCount, retryDelay);
+                    if (attempt.ShouldRetry && retryDelay.HasValue) {
                         await Task.Delay(retryDelay.Value, cancellationToken).ConfigureAwait(false);
                     } else {
-                        onFinal?.Invoke(attempt);
-                        return response.Value;
+                        onFailure?.Invoke();
+                        return attempt.Value;
                     }
                 } catch (Exception ex) {
-                    onException?.Invoke(ex);
-                    onFinal?.Invoke(attempt);
-                    return default(T);
-                }
-            }
-        }
-
-        public static async Task<T> TryAsync<T>(
-            this IRetry policy, 
-            Func<int, Stopwatch, Task<RetryAttempt<T>>> action, 
-            Action<int, TimeSpan> onRetry, 
-            Action<int> onFinal, 
-            Action<Exception, int, TimeSpan> onException, 
-            Action<Exception, int> onFinalException, 
-            CancellationToken cancellationToken)
-        {
-            var timer = new Stopwatch();
-            timer.Start();
-            for (var attempt = 0;; attempt++) {
-                cancellationToken.ThrowIfCancellationRequested();
-                try {
-                    var response = await action(attempt, timer).ConfigureAwait(false);
-                    if (response.IsSuccessful) return response.Value;
-
-                    var retryDelay = policy.RetryDelay(attempt, timer.Elapsed);
-                    if (response.ShouldRetry && retryDelay.HasValue) {
-                        onRetry?.Invoke(attempt, retryDelay.Value);
+                    var retryDelay = policy.RetryDelay(retryCount, timer.Elapsed);
+                    onRetry?.Invoke(ex, retryCount, retryDelay);
+                    if (retryDelay.HasValue) {
                         await Task.Delay(retryDelay.Value, cancellationToken).ConfigureAwait(false);
                     } else {
-                        onFinal?.Invoke(attempt);
-                        return response.Value;
+                        onFailure?.Invoke();
+                        throw ex.PrepareForRethrow();
                     }
-                } catch (Exception ex) {
-                    await policy.CatchAsync(onException, onFinalException, attempt, timer, ex, cancellationToken).ConfigureAwait(false);
                 }
-            }
-        }
-
-        private static async Task CatchAsync(
-            this IRetry policy, 
-            Action<Exception, int, TimeSpan> onException, 
-            Action<Exception, int> onFinalException, 
-            int attempt, 
-            Stopwatch timer, 
-            Exception ex, 
-            CancellationToken cancellationToken)
-        {
-            var retryDelay = policy.RetryDelay(attempt, timer.Elapsed);
-            if (retryDelay.HasValue) {
-                onException?.Invoke(ex, attempt, retryDelay.Value);
-                await Task.Delay(retryDelay.Value, cancellationToken).ConfigureAwait(false);
-            } else {
-                onFinalException?.Invoke(ex, attempt);
-                throw ex.PrepareForRethrow();
             }
         }
 
@@ -388,14 +326,12 @@ namespace KafkaClient.Common
         /// <summary>
         /// Attempts to prepare the exception for re-throwing by preserving the stack trace. The returned exception should be immediately thrown.
         /// </summary>
-        /// <param name="exception">The exception. May not be <c>null</c>.</param>
         /// <returns>The <see cref="Exception"/> that was passed into this method.</returns>
         public static Exception PrepareForRethrow(this Exception exception)
         {
-            ExceptionDispatchInfo.Capture(exception).Throw();
-
-            // The code cannot ever get here. We just return a value to work around a badly-designed API (ExceptionDispatchInfo.Throw):
-            //  https://connect.microsoft.com/VisualStudio/feedback/details/689516/exceptiondispatchinfo-api-modifications (http://www.webcitation.org/6XQ7RoJmO)
+            if (exception != null) {
+                ExceptionDispatchInfo.Capture(exception).Throw();
+            }
             return exception;
         }
 

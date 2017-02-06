@@ -12,9 +12,15 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class DeleteTopicsRequest : Request, IRequest<DeleteTopicsResponse>, IEquatable<DeleteTopicsRequest>
     {
-        public override string ToString() => $"{{Api:{ApiKey},Topics:[{Topics.ToStrings()}],Timeout:{Timeout}}}";
+        public override string ToString() => $"{{Api:{ApiKey},topics:[{topics.ToStrings()}],timeout:{timeout}}}";
 
-        public override string ShortString() => Topics.Count == 1 ? $"{ApiKey} {Topics[0]}" : ApiKey.ToString();
+        public override string ShortString() => topics.Count == 1 ? $"{ApiKey} {topics[0]}" : ApiKey.ToString();
+
+        protected override void EncodeBody(IKafkaWriter writer, IRequestContext context)
+        {
+            writer.Write(topics, true)
+                  .Write((int) timeout.TotalMilliseconds);
+        }
 
         public DeleteTopicsRequest(params string[] topics)
             : this(topics, null)
@@ -24,17 +30,17 @@ namespace KafkaClient.Protocol
         public DeleteTopicsRequest(IEnumerable<string> topics, TimeSpan? timeout = null)
             : base(ApiKey.DeleteTopics)
         {
-            Topics = ImmutableList<string>.Empty.AddNotNullRange(topics);
-            Timeout = timeout ?? TimeSpan.Zero;
+            this.topics = ImmutableList<string>.Empty.AddNotNullRange(topics);
+            this.timeout = timeout ?? TimeSpan.Zero;
         }
 
-        public IImmutableList<string> Topics { get; }
+        public IImmutableList<string> topics { get; }
 
         /// <summary>
         /// The time in ms to wait for a topic to be completely deleted on the controller node. 
         /// Values &lt;= 0 will trigger topic deletion and return immediately
         /// </summary>
-        public TimeSpan Timeout { get; }
+        public TimeSpan timeout { get; }
 
         #region Equality
 
@@ -48,28 +54,18 @@ namespace KafkaClient.Protocol
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
             return base.Equals(other) 
-                && Topics.HasEqualElementsInOrder(other.Topics)
-                && Timeout.Equals(other.Timeout);
+                && topics.HasEqualElementsInOrder(other.topics)
+                && timeout.Equals(other.timeout);
         }
 
         public override int GetHashCode()
         {
             unchecked {
                 int hashCode = base.GetHashCode();
-                hashCode = (hashCode * 397) ^ (Topics?.Count.GetHashCode() ?? 0);
-                hashCode = (hashCode * 397) ^ Timeout.GetHashCode();
+                hashCode = (hashCode * 397) ^ (topics?.Count.GetHashCode() ?? 0);
+                hashCode = (hashCode * 397) ^ timeout.GetHashCode();
                 return hashCode;
             }
-        }
-
-        public static bool operator ==(DeleteTopicsRequest left, DeleteTopicsRequest right)
-        {
-            return Equals(left, right);
-        }
-
-        public static bool operator !=(DeleteTopicsRequest left, DeleteTopicsRequest right)
-        {
-            return !Equals(left, right);
         }
 
         #endregion

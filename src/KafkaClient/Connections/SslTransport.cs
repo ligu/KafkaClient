@@ -138,14 +138,13 @@ namespace KafkaClient.Connections
         {
             var timer = new Stopwatch();
             var totalBytesRead = 0;
-            var bytesToRead = buffer.Count;
             try {
                 await _readSemaphore.LockAsync( // serialize receiving on a given transport
                     async () => {
-                        _configuration.OnReading?.Invoke(_endpoint, bytesToRead);
+                        _configuration.OnReading?.Invoke(_endpoint, buffer.Count);
                         timer.Start();
-                        while (totalBytesRead < bytesToRead && !cancellationToken.IsCancellationRequested) {
-                            var bytesRemaining = bytesToRead - totalBytesRead;
+                        while (totalBytesRead < buffer.Count && !cancellationToken.IsCancellationRequested) {
+                            var bytesRemaining = buffer.Count - totalBytesRead;
                             _log.Verbose(() => LogEvent.Create($"Reading ({bytesRemaining}? bytes) from {_endpoint}"));
                             _configuration.OnReadingBytes?.Invoke(_endpoint, bytesRemaining);
                             var bytesRead = await _stream.ReadAsync(buffer.Array, buffer.Offset + totalBytesRead, bytesRemaining, cancellationToken).ConfigureAwait(false);
@@ -158,7 +157,7 @@ namespace KafkaClient.Connections
                     }, cancellationToken).ConfigureAwait(false);
             } catch (Exception ex) {
                 timer.Stop();
-                _configuration.OnReadFailed?.Invoke(_endpoint, bytesToRead, timer.Elapsed, ex);
+                _configuration.OnReadFailed?.Invoke(_endpoint, buffer.Count, timer.Elapsed, ex);
                 if (_disposeCount > 0) throw new ObjectDisposedException(nameof(SslTransport));
                 throw;
             }

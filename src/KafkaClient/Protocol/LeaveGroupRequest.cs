@@ -15,22 +15,28 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class LeaveGroupRequest : Request, IRequest<LeaveGroupResponse>, IGroupMember, IEquatable<LeaveGroupRequest>
     {
-        public override string ToString() => $"{{Api:{ApiKey},GroupId:{GroupId},MemberId:{MemberId}}}";
+        public override string ToString() => $"{{Api:{ApiKey},group_id:{group_id},member_id:{member_id}}}";
 
-        public override string ShortString() => $"{ApiKey} {GroupId} {MemberId}";
+        public override string ShortString() => $"{ApiKey} {group_id} {member_id}";
+
+        protected override void EncodeBody(IKafkaWriter writer, IRequestContext context)
+        {
+            writer.Write(group_id)
+                  .Write(member_id);
+        }
 
         /// <inheritdoc />
         public LeaveGroupRequest(string groupId, string memberId) : base(ApiKey.LeaveGroup)
         {
-            GroupId = groupId;
-            MemberId = memberId;
+            group_id = groupId;
+            member_id = memberId;
         }
 
         /// <inheritdoc />
-        public string GroupId { get; }
+        public string group_id { get; }
 
         /// <inheritdoc />
-        public string MemberId { get; }
+        public string member_id { get; }
 
         #region Equality
 
@@ -46,8 +52,8 @@ namespace KafkaClient.Protocol
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
             return base.Equals(other) 
-                   && string.Equals(GroupId, other.GroupId) 
-                   && string.Equals(MemberId, other.MemberId);
+                   && string.Equals(group_id, other.group_id) 
+                   && string.Equals(member_id, other.member_id);
         }
 
         /// <inheritdoc />
@@ -55,22 +61,10 @@ namespace KafkaClient.Protocol
         {
             unchecked {
                 int hashCode = base.GetHashCode();
-                hashCode = (hashCode*397) ^ (GroupId?.GetHashCode() ?? 0);
-                hashCode = (hashCode*397) ^ (MemberId?.GetHashCode() ?? 0);
+                hashCode = (hashCode*397) ^ (group_id?.GetHashCode() ?? 0);
+                hashCode = (hashCode*397) ^ (member_id?.GetHashCode() ?? 0);
                 return hashCode;
             }
-        }
-
-        /// <inheritdoc />
-        public static bool operator ==(LeaveGroupRequest left, LeaveGroupRequest right)
-        {
-            return Equals(left, right);
-        }
-
-        /// <inheritdoc />
-        public static bool operator !=(LeaveGroupRequest left, LeaveGroupRequest right)
-        {
-            return !Equals(left, right);
         }
         
         #endregion

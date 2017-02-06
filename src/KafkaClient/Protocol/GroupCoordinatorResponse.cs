@@ -12,9 +12,9 @@ namespace KafkaClient.Protocol
     ///
     /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
     /// </summary>
-    public class GroupCoordinatorResponse : Broker, IResponse, IEquatable<GroupCoordinatorResponse>
+    public class GroupCoordinatorResponse : Server, IResponse, IEquatable<GroupCoordinatorResponse>
     {
-        public override string ToString() => $"{{ErrorCode:{ErrorCode},NodeId:{BrokerId},Host:'{Host}',Port:{Port}}}";
+        public override string ToString() => $"{{ErrorCode:{ErrorCode},NodeId:{Id},Host:'{Host}',Port:{Port}}}";
 
         public GroupCoordinatorResponse(ErrorCode errorCode, int coordinatorId, string host, int port)
             : base(coordinatorId, host, port)
@@ -50,18 +50,6 @@ namespace KafkaClient.Protocol
             unchecked {
                 return (base.GetHashCode()*397) ^ (int) ErrorCode;
             }
-        }
-
-        /// <inheritdoc />
-        public static bool operator ==(GroupCoordinatorResponse left, GroupCoordinatorResponse right)
-        {
-            return Equals(left, right);
-        }
-
-        /// <inheritdoc />
-        public static bool operator !=(GroupCoordinatorResponse left, GroupCoordinatorResponse right)
-        {
-            return !Equals(left, right);
         }
     }
 }

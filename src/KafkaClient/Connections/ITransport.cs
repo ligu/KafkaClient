@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 namespace KafkaClient.Connections
 {
     /// <summary>
-    /// The transport represents the lowest level TCP stream connection to a Kafka broker.
+    /// The transport represents the lowest level TCP stream connection to a Kafka server.
     /// The Read and Write deal with bytes over the network transport, and coordination of them must be managed externally.
     /// </summary>
     public interface ITransport : IDisposable

@@ -10,55 +10,56 @@ using KafkaClient.Protocol;
 namespace KafkaClient
 {
     /// <summary>
-    /// Provides access to Brokers for a topic (and partition) as well as topic metadata.
+    /// Provides access to Connections for a topic (and partition) or group, as well as metadata for topics and groups.
+    /// This is the common cache for all connections and routing to those connections.
     /// </summary>
     public interface IRouter : IAsyncDisposable
     {
         /// <summary>
-        /// Get a broker for a specific groupId, from the cache.
+        /// Get a connection for a specific groupId, from the cache.
         /// </summary>
-        /// <param name="groupId">The group to select a broker for.</param>
-        /// <returns>A broker for the given group.</returns>
-        /// <exception cref="CachedMetadataException">Thrown if the given groupId does not exist.</exception>
-        GroupBroker GetGroupBroker(string groupId);
+        /// <param name="groupId">The group to select a connection for.</param>
+        /// <returns>A connection tied to the given group.</returns>
+        /// <exception cref="RoutingException">Thrown if the given groupId does not exist.</exception>
+        GroupConnection GetGroupConnection(string groupId);
 
         /// <summary>
-        /// Get a broker for a specific groupId.
+        /// Get a connection for a specific groupId.
         /// </summary>
-        /// <param name="groupId">The group to select a broker for.</param>
+        /// <param name="groupId">The group to select a connection for.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns>A broker for the given group.</returns>
+        /// <returns>A connection tied to the given group.</returns>
         /// <remarks>
         /// This method will check the cache first, and if the group is missing it will initiate a call to the kafka servers, updating the cache with the resulting metadata.
         /// </remarks>
-        /// <exception cref="CachedMetadataException">Thrown if the given groupId does not exist even after a refresh.</exception>
-        Task<GroupBroker> GetGroupBrokerAsync(string groupId, CancellationToken cancellationToken);
+        /// <exception cref="RoutingException">Thrown if the given groupId does not exist even after a refresh.</exception>
+        Task<GroupConnection> GetGroupConnectionAsync(string groupId, CancellationToken cancellationToken);
 
         /// <summary>
-        /// Get a broker for a specific topic and partitionId, from the cache.
+        /// Get a connection for a specific topic and partitionId, from the cache.
         /// </summary>
-        /// <param name="topicName">The topic name to select a broker for.</param>
-        /// <param name="partitionId">The exact partition to select a broker for.</param>
-        /// <returns>A broker route for the given partition of the given topic.</returns>
+        /// <param name="topicName">The topic name to select a connection for.</param>
+        /// <param name="partitionId">The exact partition to select a connection for.</param>
+        /// <returns>A connection tied to the given partition of the given topic.</returns>
         /// <remarks>
         /// This function does not use any selector criteria. If the given partitionId does not exist an exception will be thrown.
         /// </remarks>
-        /// <exception cref="CachedMetadataException">Thrown if the given topic or partitionId does not exist for the given topic.</exception>
-        TopicBroker GetTopicBroker(string topicName, int partitionId);
+        /// <exception cref="RoutingException">Thrown if the given topic or partitionId does not exist for the given topic.</exception>
+        TopicConnection GetTopicConnection(string topicName, int partitionId);
 
         /// <summary>
-        /// Get a broker for a specific topic and partitionId.
+        /// Get a connection for a specific topic and partitionId.
         /// </summary>
-        /// <param name="topicName">The topic name to select a broker for.</param>
-        /// <param name="partitionId">The exact partition to select a broker for.</param>
+        /// <param name="topicName">The topic name to select a connection for.</param>
+        /// <param name="partitionId">The exact partition to select a connection for.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns>A broker route for the given partition of the given topic.</returns>
+        /// <returns>A connection tied to the given partition of the given topic.</returns>
         /// <remarks>
         /// This function does not use any selector criteria. This method will check the cache first, and if the topic and partition
         /// is missing it will initiate a call to the kafka servers, updating the cache with the resulting metadata.
         /// </remarks>
-        /// <exception cref="CachedMetadataException">Thrown if the given topic or partitionId does not exist for the given topic even after a refresh.</exception>
-        Task<TopicBroker> GetTopicBrokerAsync(string topicName, int partitionId, CancellationToken cancellationToken);
+        /// <exception cref="RoutingException">Thrown if the given topic or partitionId does not exist for the given topic even after a refresh.</exception>
+        Task<TopicConnection> GetTopicConnectionAsync(string topicName, int partitionId, CancellationToken cancellationToken);
 
         /// <summary>
         /// Returns known member assignments for the given consumer group. If a generationId is also specified, this will also have to match.
@@ -70,13 +71,13 @@ namespace KafkaClient
         IImmutableDictionary<string, IMemberAssignment> GetGroupMemberAssignment(string groupId, int? generationId = null);
 
         /// <summary>
-        /// Returns a Group metadata for the given consumer group.
+        /// Returns the metadata for the given consumer group.
         /// </summary>
         /// <remarks>
         /// The group metadata returned is from what is currently in the cache. To ensure data is not too stale, 
         /// use <see cref="GetGroupMetadataAsync(string, CancellationToken)"/>.
         /// </remarks>
-        /// <exception cref="CachedMetadataException">Thrown if the group metadata does not exist in the cache.</exception>
+        /// <exception cref="RoutingException">Thrown if the group metadata does not exist in the cache.</exception>
         DescribeGroupsResponse.Group GetGroupMetadata(string groupId);
 
         /// <summary>
@@ -87,7 +88,7 @@ namespace KafkaClient
         /// The group metadata returned is from what is currently in the cache. To ensure data is not too stale,  
         /// use <see cref="GetGroupMetadataAsync(IEnumerable&lt;string&gt;, CancellationToken)"/>.
         /// </remarks>
-        /// <exception cref="CachedMetadataException">Thrown if the group metadata does not exist in the cache.</exception>
+        /// <exception cref="RoutingException">Thrown if the group metadata does not exist in the cache.</exception>
         IImmutableList<DescribeGroupsResponse.Group> GetGroupMetadata(IEnumerable<string> groupIds);
 
         /// <summary>
@@ -116,7 +117,7 @@ namespace KafkaClient
         /// The topic metadata returned is from what is currently in the cache. To ensure data is not too stale, 
         /// use <see cref="GetTopicMetadataAsync(string, CancellationToken)"/>.
         /// </remarks>
-        /// <exception cref="CachedMetadataException">Thrown if the topic metadata does not exist in the cache.</exception>
+        /// <exception cref="RoutingException">Thrown if the topic metadata does not exist in the cache.</exception>
         MetadataResponse.Topic GetTopicMetadata(string topicName);
 
         /// <summary>
@@ -127,7 +128,7 @@ namespace KafkaClient
         /// The topic metadata returned is from what is currently in the cache. To ensure data is not too stale,  
         /// use <see cref="GetTopicMetadataAsync(IEnumerable&lt;string&gt;, CancellationToken)"/>.
         /// </remarks>
-        /// <exception cref="CachedMetadataException">Thrown if the topic metadata does not exist in the cache.</exception>
+        /// <exception cref="RoutingException">Thrown if the topic metadata does not exist in the cache.</exception>
         IImmutableList<MetadataResponse.Topic> GetTopicMetadata(IEnumerable<string> topicNames);
 
         /// <summary>
@@ -154,15 +155,15 @@ namespace KafkaClient
         Task<IImmutableList<MetadataResponse.Topic>> GetTopicMetadataAsync(IEnumerable<string> topicNames, CancellationToken cancellationToken);
 
         /// <summary>
-        /// Force a call to the kafka servers to refresh brokers for the given group.
+        /// Force a call to the kafka servers to refresh server metadata for the given group.
         /// </summary>
         /// <param name="groupId">The group name to refresh metadata for.</param>
         /// <param name="ignoreCacheExpiry">True to ignore the local cache expiry and force the call to the server.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <remarks>
-        /// This method will ignore the cache and initiate a call to the kafka servers for the given group, updating the cache with the resulting brokers.
+        /// This method will ignore the cache and initiate a call to the kafka servers for the given group, updating the cache with the resulting servers.
         /// </remarks>
-        Task RefreshGroupBrokerAsync(string groupId, bool ignoreCacheExpiry, CancellationToken cancellationToken);
+        Task RefreshGroupConnectionAsync(string groupId, bool ignoreCacheExpiry, CancellationToken cancellationToken);
 
         /// <summary>
         /// Force a call to the kafka servers to refresh metadata for the given group.
@@ -238,20 +239,21 @@ namespace KafkaClient
         IRouterConfiguration Configuration { get; }
 
         /// <summary>
-        /// The list of currently configured connections (one per broker).
+        /// The list of currently configured connections (one per server, even if multiple have been created).
         /// </summary>
         /// <remarks>
-        /// Not all results are necessarily live, although they would need to have been at some point. Use <see cref="TryRestore"/> to recreate, if needed.
+        /// Not all results are necessarily live, although they would need to have been at some point. Use <see cref="TryRestore"/> to renew, if needed.
         /// </remarks>
         IEnumerable<IConnection> Connections { get; }
 
         /// <summary>
-        /// Most group membership rebalancing need to happen on distinct connections. This acts to get a new connection for a given member.
+        /// Most group membership rebalancing needs to happen on distinct connections. This acts to get a new connection for a given member, distinct from
+        /// other connections used by the group for rebalancing.
         /// </summary>
         Task<IConnection> GetConnectionAsync(string groupId, string memberId, CancellationToken cancellationToken);
 
         /// <summary>
-        /// Returns the connection back to the router, to be reused by other members as needed
+        /// Returns the connection back to the router, to be reused by other members of the group as needed.
         /// </summary>
         void ReturnConnection(string groupId, string memberId, IConnection connection);
 

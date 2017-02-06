@@ -14,7 +14,7 @@ namespace KafkaClient.Connections
             new Dictionary<ApiKey, short> {
                 {ApiKey.Produce, 0},
                 {ApiKey.Fetch, 0},
-                {ApiKey.Offset, 0},
+                {ApiKey.Offsets, 0},
                 {ApiKey.Metadata, 0},
                 {ApiKey.OffsetCommit, 1},
                 {ApiKey.OffsetFetch, 1},
@@ -29,7 +29,7 @@ namespace KafkaClient.Connections
             new Dictionary<ApiKey, short> {
                 {ApiKey.Produce, 1},
                 {ApiKey.Fetch, 1},
-                {ApiKey.Offset, 0},
+                {ApiKey.Offsets, 0},
                 {ApiKey.Metadata, 0},
                 {ApiKey.OffsetCommit, 2},
                 {ApiKey.OffsetFetch, 1},
@@ -51,7 +51,7 @@ namespace KafkaClient.Connections
             new Dictionary<ApiKey, short> {
                 {ApiKey.Produce, 2},
                 {ApiKey.Fetch, 2},
-                {ApiKey.Offset, 0},
+                {ApiKey.Offsets, 0},
                 {ApiKey.Metadata, 1},
                 {ApiKey.OffsetCommit, 2},
                 {ApiKey.OffsetFetch, 1},
@@ -74,7 +74,7 @@ namespace KafkaClient.Connections
             new Dictionary<ApiKey, short> {
                 {ApiKey.Produce, 2},
                 {ApiKey.Fetch, 3},
-                {ApiKey.Offset, 1},
+                {ApiKey.Offsets, 1},
                 {ApiKey.Metadata, 2},
                 {ApiKey.OffsetCommit, 2},
                 {ApiKey.OffsetFetch, 1},

@@ -18,8 +18,8 @@ namespace KafkaClient.Tests
             }
 
             var context = new RequestContext(17, version, "Test-Request", encoders, encoder?.ProtocolType);
-            var data = KafkaEncoder.Encode(context, request);
-            var decoded = KafkaDecoder.Decode<T>(data.Skip(4), context);
+            var bytes = request.ToBytes(context);
+            var decoded = KafkaDecoder.Decode<T>(bytes.Skip(4), context);
 
             if (forComparison == null) {
                 forComparison = request;
@@ -29,7 +29,8 @@ namespace KafkaClient.Tests
             var original = forComparison.ToString();
             var final = decoded.ToString();
             Assert.That(original, Is.EqualTo(final), "ToString equality");
-            Assert.That(decoded.Equals(final), Is.False); // general test for equality
+            Assert.That(decoded.Equals(final), Is.False); // general equality test for sanity
+            Assert.That(decoded.Equals(decoded), Is.True); // general equality test for sanity
             Assert.That(forComparison.Equals(decoded), $"Original\n{original}\nFinal\n{final}");
         }
 
@@ -52,6 +53,7 @@ namespace KafkaClient.Tests
             var final = decoded.ToString();
             Assert.That(original, Is.EqualTo(final), "ToString equality");
             Assert.That(decoded.Equals(final), Is.False); // general test for equality
+            Assert.That(decoded.Equals(decoded), Is.True); // general equality test for sanity
             Assert.That(forComparison.Equals(decoded), $"Original\n{original}\nFinal\n{final}");
             Assert.That(forComparison.Errors.HasEqualElementsInOrder(decoded.Errors), "Errors");
         }
@@ -60,7 +62,7 @@ namespace KafkaClient.Tests
         {
             if (typeof(T) == typeof(ProduceResponse)) return ApiKey.Produce;
             if (typeof(T) == typeof(FetchResponse)) return ApiKey.Fetch;
-            if (typeof(T) == typeof(OffsetResponse)) return ApiKey.Offset;
+            if (typeof(T) == typeof(OffsetsResponse)) return ApiKey.Offsets;
             if (typeof(T) == typeof(MetadataResponse)) return ApiKey.Metadata;
             if (typeof(T) == typeof(OffsetCommitResponse)) return ApiKey.OffsetCommit;
             if (typeof(T) == typeof(OffsetFetchResponse)) return ApiKey.OffsetFetch;

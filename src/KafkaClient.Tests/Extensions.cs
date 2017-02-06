@@ -37,7 +37,7 @@ namespace KafkaClient.Tests
             var topicName = TestConfig.TopicName(name);
             try {
                 await router.SendToAnyAsync(new CreateTopicsRequest(new [] { new CreateTopicsRequest.Topic(topicName, partitions, 1) }, TimeSpan.FromSeconds(1)), CancellationToken.None);
-            } catch (RequestException ex) when (ex.ErrorCode == ErrorCode.TopicAlreadyExists) {
+            } catch (RequestException ex) when (ex.ErrorCode == ErrorCode.TOPIC_ALREADY_EXISTS) {
                 // ignore already exists
             }
             try {
@@ -53,10 +53,10 @@ namespace KafkaClient.Tests
             var topicName = TestConfig.TopicName(name);
             try {
                 var response = await router.SendToAnyAsync(new DeleteTopicsRequest(new [] { topicName }, TimeSpan.FromMilliseconds(500)), CancellationToken.None);
-                if (response.Errors.Any(e => e == ErrorCode.RequestTimedOut)) {
+                if (response.Errors.Any(e => e == ErrorCode.REQUEST_TIMED_OUT)) {
                     Assert.Inconclusive("Cannot validate when topic remains");
                 }
-            } catch (RequestException ex) when (ex.ErrorCode == ErrorCode.TopicAlreadyExists) {
+            } catch (RequestException ex) when (ex.ErrorCode == ErrorCode.TOPIC_ALREADY_EXISTS) {
                 // ignore already exists
             }
         }
@@ -67,19 +67,19 @@ namespace KafkaClient.Tests
             await router.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
         }
 
-        public static Task<IMessageBatch> FetchBatchAsync(this IConsumer consumer, OffsetResponse.Topic offset, int batchSize, CancellationToken cancellationToken)
+        public static Task<IMessageBatch> FetchBatchAsync(this IConsumer consumer, OffsetsResponse.Topic offset, int batchSize, CancellationToken cancellationToken)
         {
-            return consumer.FetchBatchAsync(offset.TopicName, offset.PartitionId, offset.Offset, cancellationToken, batchSize);
+            return consumer.FetchBatchAsync(offset.topic, offset.partition_id, offset.Offset, cancellationToken, batchSize);
         }
 
-        public static Task<int> FetchAsync(this IConsumer consumer, Func<IMessageBatch, CancellationToken, Task> onMessagesAsync, OffsetResponse.Topic offset, int batchSize, CancellationToken cancellationToken)
+        public static Task<int> FetchAsync(this IConsumer consumer, Func<IMessageBatch, CancellationToken, Task> onMessagesAsync, OffsetsResponse.Topic offset, int batchSize, CancellationToken cancellationToken)
         {
-            return consumer.FetchAsync(onMessagesAsync, offset.TopicName, offset.PartitionId, offset.Offset, cancellationToken, batchSize);
+            return consumer.FetchAsync(onMessagesAsync, offset.topic, offset.partition_id, offset.Offset, cancellationToken, batchSize);
         }
 
-        public static Task<int> FetchAsync(this IConsumer consumer, Func<Message, CancellationToken, Task> onMessageAsync, OffsetResponse.Topic offset, int batchSize, CancellationToken cancellationToken)
+        public static Task<int> FetchAsync(this IConsumer consumer, Func<Message, CancellationToken, Task> onMessageAsync, OffsetsResponse.Topic offset, int batchSize, CancellationToken cancellationToken)
         {
-            return consumer.FetchAsync(onMessageAsync, offset.TopicName, offset.PartitionId, offset.Offset, cancellationToken, batchSize);
+            return consumer.FetchAsync(onMessageAsync, offset.topic, offset.partition_id, offset.Offset, cancellationToken, batchSize);
         }
 
         public static byte[] ToBytes(this string value)

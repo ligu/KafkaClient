@@ -39,11 +39,11 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class MetadataResponse : IResponse, IEquatable<MetadataResponse>
     {
-        public override string ToString() => $"{{Brokers:[{Brokers.ToStrings()}],Topics:[{Topics.ToStrings()}],ClusterId:{ClusterId},ControllerId:{ControllerId}}}";
+        public override string ToString() => $"{{Servers:[{Brokers.ToStrings()}],Topics:[{Topics.ToStrings()}],ClusterId:{ClusterId},ControllerId:{ControllerId}}}";
 
-        public MetadataResponse(IEnumerable<Broker> brokers = null, IEnumerable<Topic> topics = null, int? controllerId = null, string clusterId = null)
+        public MetadataResponse(IEnumerable<Server> brokers = null, IEnumerable<Topic> topics = null, int? controllerId = null, string clusterId = null)
         {
-            Brokers = ImmutableList<Broker>.Empty.AddNotNullRange(brokers);
+            Brokers = ImmutableList<Server>.Empty.AddNotNullRange(brokers);
             Topics = ImmutableList<Topic>.Empty.AddNotNullRange(topics);
             ControllerId = controllerId;
             ClusterId = clusterId;
@@ -52,7 +52,7 @@ namespace KafkaClient.Protocol
 
         public IImmutableList<ErrorCode> Errors { get; }
 
-        public IImmutableList<Broker> Brokers { get; }
+        public IImmutableList<Server> Brokers { get; }
         public int? ControllerId { get; }
         public string ClusterId { get; }
         public IImmutableList<Topic> Topics { get; }
@@ -88,25 +88,13 @@ namespace KafkaClient.Protocol
             }
         }
 
-        /// <inheritdoc />
-        public static bool operator ==(MetadataResponse left, MetadataResponse right)
-        {
-            return Equals(left, right);
-        }
-
-        /// <inheritdoc />
-        public static bool operator !=(MetadataResponse left, MetadataResponse right)
-        {
-            return !Equals(left, right);
-        }
-
         #endregion
 
         public class Topic : IEquatable<Topic>
         {
             public override string ToString() => $"{{TopicName:{TopicName},ErrorCode:{ErrorCode},Partitions:[{Partitions.ToStrings()}],IsInternal:{IsInternal}}}";
 
-            public Topic(string topicName, ErrorCode errorCode = ErrorCode.None, IEnumerable<Partition> partitions = null, bool? isInternal = null)
+            public Topic(string topicName, ErrorCode errorCode = ErrorCode.NONE, IEnumerable<Partition> partitions = null, bool? isInternal = null)
             {
                 ErrorCode = errorCode;
                 TopicName = topicName;
@@ -152,18 +140,6 @@ namespace KafkaClient.Protocol
                 }
             }
 
-            /// <inheritdoc />
-            public static bool operator ==(Topic left, Topic right)
-            {
-                return Equals(left, right);
-            }
-
-            /// <inheritdoc />
-            public static bool operator !=(Topic left, Topic right)
-            {
-                return !Equals(left, right);
-            }
-
             #endregion
         }
 
@@ -171,7 +147,7 @@ namespace KafkaClient.Protocol
         {
             public override string ToString() => $"{{PartitionId:{PartitionId},ErrorCode:{ErrorCode},LeaderId:{LeaderId},Replicas:[{Replicas.ToStrings()}],Isr:[{Isrs.ToStrings()}]}}";
 
-            public Partition(int partitionId, int leaderId, ErrorCode errorCode = ErrorCode.None, IEnumerable<int> replicas = null, IEnumerable<int> isrs = null)
+            public Partition(int partitionId, int leaderId, ErrorCode errorCode = ErrorCode.NONE, IEnumerable<int> replicas = null, IEnumerable<int> isrs = null)
             {
                 ErrorCode = errorCode;
                 PartitionId = partitionId;
@@ -236,18 +212,6 @@ namespace KafkaClient.Protocol
                     hashCode = (hashCode*397) ^ (Isrs?.Count.GetHashCode() ?? 0);
                     return hashCode;
                 }
-            }
-
-            /// <inheritdoc />
-            public static bool operator ==(Partition left, Partition right)
-            {
-                return Equals(left, right);
-            }
-
-            /// <inheritdoc />
-            public static bool operator !=(Partition left, Partition right)
-            {
-                return !Equals(left, right);
             }
         }
 

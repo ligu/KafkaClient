@@ -40,7 +40,7 @@ namespace KafkaClient.Performance
                               "topic", 
                               partitionId, 
                               500,
-                              ErrorCode.None,
+                              ErrorCode.NONE,
                               Enumerable.Range(1, Messages)
                                         .Select(i => new Message(GenerateMessageBytes(), new ArraySegment<byte>(), (byte) Codec, version: MessageVersion))
                           )));

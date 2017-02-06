@@ -3,6 +3,34 @@
   "version": 2,
   "targets": {
     ".NETCoreApp,Version=v1.0": {
+      "AgileObjects.NetStandardPolyfills/0.1.2": {
+        "type": "package",
+        "dependencies": {
+          "NETStandard.Library": "1.6.0",
+          "System.Reflection.TypeExtensions": "4.1.0"
+        },
+        "compile": {
+          "lib/netstandard1.0/AgileObjects.NetStandardPolyfills.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard1.0/AgileObjects.NetStandardPolyfills.dll": {}
+        }
+      },
+      "AgileObjects.ReadableExpressions/1.8.2": {
+        "type": "package",
+        "dependencies": {
+          "AgileObjects.NetStandardPolyfills": "0.1.2",
+          "NETStandard.Library": "1.6.0",
+          "System.Dynamic.Runtime": "4.0.11",
+          "System.Reflection.TypeExtensions": "4.1.0"
+        },
+        "compile": {
+          "lib/netstandard1.0/AgileObjects.ReadableExpressions.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard1.0/AgileObjects.ReadableExpressions.dll": {}
+        }
+      },
       "Castle.Core/4.0.0-beta001": {
         "type": "package",
         "dependencies": {
@@ -2846,6 +2874,27 @@
       }
     },
     ".NETFramework,Version=v4.6.2": {
+      "AgileObjects.NetStandardPolyfills/0.1.2": {
+        "type": "package",
+        "compile": {
+          "lib/net40/AgileObjects.NetStandardPolyfills.dll": {}
+        },
+        "runtime": {
+          "lib/net40/AgileObjects.NetStandardPolyfills.dll": {}
+        }
+      },
+      "AgileObjects.ReadableExpressions/1.8.2": {
+        "type": "package",
+        "dependencies": {
+          "AgileObjects.NetStandardPolyfills": "0.1.2"
+        },
+        "compile": {
+          "lib/net40/AgileObjects.ReadableExpressions.dll": {}
+        },
+        "runtime": {
+          "lib/net40/AgileObjects.ReadableExpressions.dll": {}
+        }
+      },
       "Castle.Core/4.0.0-beta001": {
         "type": "package",
         "compile": {
@@ -3931,6 +3980,32 @@
     }
   },
   "libraries": {
+    "AgileObjects.NetStandardPolyfills/0.1.2": {
+      "sha512": "twSHleen1Q0YDqWARYyxPTguVJ/NcZKzWL8iz5LuOhqPGEAeli3xLeYmg+4Vqvj4SAAixs+ed4Mv1R42duewVA==",
+      "type": "package",
+      "path": "AgileObjects.NetStandardPolyfills/0.1.2",
+      "files": [
+        "AgileObjects.NetStandardPolyfills.0.1.2.nupkg.sha512",
+        "AgileObjects.NetStandardPolyfills.nuspec",
+        "lib/net40/AgileObjects.NetStandardPolyfills.dll",
+        "lib/net40/AgileObjects.NetStandardPolyfills.xml",
+        "lib/netstandard1.0/AgileObjects.NetStandardPolyfills.dll",
+        "lib/netstandard1.0/AgileObjects.NetStandardPolyfills.xml"
+      ]
+    },
+    "AgileObjects.ReadableExpressions/1.8.2": {
+      "sha512": "i9NaTcILewP1GM9K8Ji8FCeWYE8BVHlYTe6uXiaXUpASKycfJ7AIpbaGvDnrGhtz2oU6UwME4QXDcCNdlPzVpg==",
+      "type": "package",
+      "path": "AgileObjects.ReadableExpressions/1.8.2",
+      "files": [
+        "AgileObjects.ReadableExpressions.1.8.2.nupkg.sha512",
+        "AgileObjects.ReadableExpressions.nuspec",
+        "lib/net40/AgileObjects.ReadableExpressions.dll",
+        "lib/net40/AgileObjects.ReadableExpressions.xml",
+        "lib/netstandard1.0/AgileObjects.ReadableExpressions.dll",
+        "lib/netstandard1.0/AgileObjects.ReadableExpressions.xml"
+      ]
+    },
     "Castle.Core/4.0.0-beta001": {
       "sha512": "AhlzkJEGZddWgUj2Vub2h2p171eETkQzymd4ZSgcxQBZaxgsFSJjQ7I6fLs86nS39+xxsZR3eXaH86DWVrfurA==",
       "type": "package",
@@ -11010,6 +11085,7 @@
   },
   "projectFileDependencyGroups": {
     "": [
+      "AgileObjects.ReadableExpressions >= 1.8.2",
       "KafkaClient",
       "KafkaClient.Testing",
       "NSubstitute >= 2.0.0-rc",

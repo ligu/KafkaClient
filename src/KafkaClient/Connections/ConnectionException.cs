@@ -1,4 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
+using KafkaClient.Common;
 
 namespace KafkaClient.Connections
 {
@@ -8,27 +11,24 @@ namespace KafkaClient.Connections
     public class ConnectionException : KafkaException
     {
         public ConnectionException(Endpoint endpoint)
-            : base($"Lost connection to {endpoint}")
+            : base($"Failure on connection to {endpoint}")
         {
-            Endpoint = endpoint;
+            _endpoints = ImmutableList<Endpoint>.Empty.Add(endpoint);
         }
 
-        public ConnectionException(Endpoint endpoint, Exception innerException)
-            : base($"Lost connection to {endpoint}", innerException)
+        public ConnectionException(IList<Endpoint> endpoints, Exception innerException)
+            : base($"Failure on connection to {endpoints.ToStrings()}", innerException)
         {
-            Endpoint = endpoint;
+            _endpoints = ImmutableList<Endpoint>.Empty.AddRange(endpoints);
         }
 
         public ConnectionException(string message)
             : base(message)
         {
+            _endpoints = ImmutableList<Endpoint>.Empty;
         }
 
-        public ConnectionException(string message, Exception innerException)
-            : base(message, innerException)
-        {
-        }
-
-        public Endpoint Endpoint { get; set; }
+        // ReSharper disable once NotAccessedField.Local -- for debugging
+        private readonly ImmutableList<Endpoint> _endpoints;
     }
 }

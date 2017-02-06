@@ -1,21 +1,19 @@
-﻿namespace KafkaClient.Protocol
+﻿using KafkaClient.Connections;
+
+namespace KafkaClient.Protocol
 {
     /// <summary>
     /// An exception caused by a Kafka Request for fetching (FetchRequest, FetchOffset, etc)
     /// </summary>
     public class FetchOutOfRangeException : RequestException
     {
-        public FetchOutOfRangeException(string message)
-            : base(message)
+        public FetchOutOfRangeException(FetchRequest.Topic topic, ErrorCode errorCode, Endpoint endpoint)
+            : base(ApiKey.Fetch, errorCode, endpoint, topic.ToString())
         {
+            _topic = topic;
         }
 
-        public FetchOutOfRangeException(FetchRequest.Topic topic, ApiKey apiKey, ErrorCode errorCode)
-            : base(apiKey, errorCode, topic.ToString())
-        {
-            Topic = topic;
-        }
-
-        public FetchRequest.Topic Topic { get; }
+        // ReSharper disable once NotAccessedField.Local -- for debugging
+        private readonly FetchRequest.Topic _topic;
     }
 }

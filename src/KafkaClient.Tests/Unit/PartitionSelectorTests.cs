@@ -10,7 +10,7 @@ using NUnit.Framework;
 namespace KafkaClient.Tests.Unit
 {
     [TestFixture]
-    public class DefaultPartitionSelectorTests
+    public class PartitionSelectorTests
     {
         private MetadataResponse.Topic _topicA;
         private MetadataResponse.Topic _topicB;
@@ -18,11 +18,11 @@ namespace KafkaClient.Tests.Unit
         [SetUp]
         public void Setup()
         {
-            _topicA = new MetadataResponse.Topic("a", ErrorCode.None, new [] {
+            _topicA = new MetadataResponse.Topic("a", ErrorCode.NONE, new [] {
                                             new MetadataResponse.Partition(0, 0),
                                             new MetadataResponse.Partition(1, 1),
                                         });
-            _topicB = new MetadataResponse.Topic("b", ErrorCode.None, new [] {
+            _topicB = new MetadataResponse.Topic("b", ErrorCode.NONE, new [] {
                                             new MetadataResponse.Partition(0, 0),
                                             new MetadataResponse.Partition(1, 1),
                                         });
@@ -31,7 +31,8 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public void RoundRobinShouldRollOver()
         {
-            var selector = new PartitionSelector();
+            RoundRobinPartitionSelector.Singleton.Reset();
+            var selector = RoundRobinPartitionSelector.Singleton;
 
             var first = selector.Select(_topicA, new ArraySegment<byte>());
             var second = selector.Select(_topicA, new ArraySegment<byte>());
@@ -45,10 +46,10 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public void RoundRobinShouldHandleMultiThreadedRollOver()
         {
-            var selector = new PartitionSelector();
+            RoundRobinPartitionSelector.Singleton.Reset();
             var bag = new ConcurrentBag<MetadataResponse.Partition>();
 
-            Parallel.For(0, 100, x => bag.Add(selector.Select(_topicA, new ArraySegment<byte>())));
+            Parallel.For(0, 100, x => bag.Add(RoundRobinPartitionSelector.Singleton.Select(_topicA, new ArraySegment<byte>())));
 
             Assert.That(bag.Count(x => x.PartitionId == 0), Is.EqualTo(50));
             Assert.That(bag.Count(x => x.PartitionId == 1), Is.EqualTo(50));
@@ -57,7 +58,8 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public void RoundRobinShouldTrackEachTopicSeparately()
         {
-            var selector = new PartitionSelector();
+            RoundRobinPartitionSelector.Singleton.Reset();
+            var selector = RoundRobinPartitionSelector.Singleton;
 
             var a1 = selector.Select(_topicA, new ArraySegment<byte>());
             var b1 = selector.Select(_topicB, new ArraySegment<byte>());
@@ -74,8 +76,8 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public void RoundRobinShouldEvenlyDistributeAcrossManyPartitions()
         {
+            RoundRobinPartitionSelector.Singleton.Reset();
             const int TotalPartitions = 100;
-            var selector = new PartitionSelector();
             var partitions = new List<MetadataResponse.Partition>();
             for (int i = 0; i < TotalPartitions; i++)
             {
@@ -84,7 +86,7 @@ namespace KafkaClient.Tests.Unit
             var topic = new MetadataResponse.Topic("a", partitions: partitions);
 
             var bag = new ConcurrentBag<MetadataResponse.Partition>();
-            Parallel.For(0, TotalPartitions * 3, x => bag.Add(selector.Select(topic, new ArraySegment<byte>())));
+            Parallel.For(0, TotalPartitions * 3, x => bag.Add(RoundRobinPartitionSelector.Singleton.Select(topic, new ArraySegment<byte>())));
 
             var eachPartitionHasThree = bag.GroupBy(x => x.PartitionId).Count();
 
@@ -122,7 +124,19 @@ namespace KafkaClient.Tests.Unit
                                               new MetadataResponse.Partition(999, 1) 
                                           });
 
-            Assert.Throws<CachedMetadataException>(() => selector.Select(topic, CreateKeyForPartition(1)));
+            Assert.Throws<RoutingException>(() => selector.Select(topic, CreateKeyForPartition(1)));
+        }
+
+        [Test]
+        public void PartitionSelectionOnEmptyKeyHashShouldNotFail()
+        {
+            var selector = new PartitionSelector();
+            var topic = new MetadataResponse.Topic("badPartition", partitions: new [] {
+                                              new MetadataResponse.Partition(0, 0),
+                                              new MetadataResponse.Partition(999, 1) 
+                                          });
+
+            Assert.That(selector.Select(topic, new ArraySegment<byte>()), Is.Not.Null);
         }
 
         [Test]
@@ -130,7 +144,14 @@ namespace KafkaClient.Tests.Unit
         {
             var selector = new PartitionSelector();
             var topic = new MetadataResponse.Topic("emptyPartition");
-            Assert.Throws<CachedMetadataException>(() => selector.Select(topic, CreateKeyForPartition(1)));
+            Assert.Throws<RoutingException>(() => selector.Select(topic, CreateKeyForPartition(1)));
+        }
+
+        [Test]
+        public void RoundRobinShouldThrowExceptionWhenPartitionsAreEmpty()
+        {
+            var topic = new MetadataResponse.Topic("emptyPartition");
+            Assert.Throws<RoutingException>(() => RoundRobinPartitionSelector.Singleton.Select(topic, CreateKeyForPartition(1)));
         }
     }
 }

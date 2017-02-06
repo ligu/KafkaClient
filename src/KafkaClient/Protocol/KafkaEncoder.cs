@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
-using System.Threading;
 using KafkaClient.Assignment;
 using KafkaClient.Common;
 
@@ -22,7 +21,7 @@ namespace KafkaClient.Protocol
                     return (T)ProduceResponse(context, bytes);
                 case ApiKey.Fetch:
                     return (T)FetchResponse(context, bytes);
-                case ApiKey.Offset:
+                case ApiKey.Offsets:
                     return (T)OffsetResponse(context, bytes);
                 case ApiKey.Metadata:
                     return (T)MetadataResponse(context, bytes);
@@ -57,461 +56,9 @@ namespace KafkaClient.Protocol
             }
         }
 
-        #region Encode
-
-        public static ArraySegment<byte> Encode(IRequestContext context, IRequest request)
-        {
-            switch (request.ApiKey) {
-                case ApiKey.Produce:
-                    return EncodeRequest(context, (ProduceRequest) request);
-                case ApiKey.Fetch:
-                    return EncodeRequest(context, (FetchRequest) request);
-                case ApiKey.Offset:
-                    return EncodeRequest(context, (OffsetRequest) request);
-                case ApiKey.Metadata:
-                    return EncodeRequest(context, (MetadataRequest) request);
-                case ApiKey.OffsetCommit:
-                    return EncodeRequest(context, (OffsetCommitRequest) request);
-                case ApiKey.OffsetFetch:
-                    return EncodeRequest(context, (OffsetFetchRequest) request);
-                case ApiKey.GroupCoordinator:
-                    return EncodeRequest(context, (GroupCoordinatorRequest) request);
-                case ApiKey.JoinGroup:
-                    return EncodeRequest(context, (JoinGroupRequest) request);
-                case ApiKey.Heartbeat:
-                    return EncodeRequest(context, (HeartbeatRequest) request);
-                case ApiKey.LeaveGroup:
-                    return EncodeRequest(context, (LeaveGroupRequest) request);
-                case ApiKey.SyncGroup:
-                    return EncodeRequest(context, (SyncGroupRequest) request);
-                case ApiKey.DescribeGroups:
-                    return EncodeRequest(context, (DescribeGroupsRequest) request);
-                case ApiKey.ListGroups:
-                    return EncodeRequest(context, (ListGroupsRequest) request);
-                case ApiKey.SaslHandshake:
-                    return EncodeRequest(context, (SaslHandshakeRequest) request);
-                case ApiKey.ApiVersions:
-                    return EncodeRequest(context, (ApiVersionsRequest) request);
-                case ApiKey.CreateTopics:
-                    return EncodeRequest(context, (CreateTopicsRequest) request);
-                case ApiKey.DeleteTopics:
-                    return EncodeRequest(context, (DeleteTopicsRequest) request);
-
-                default:
-                    using (var writer = EncodeHeader(context, request)) {
-                        return writer.ToSegment();
-                    }
-            }
-        }
+        #region Decode
 
         private const int MessageHeaderSize = 12;
-
-        /// <summary>
-        /// Encodes a collection of messages, in order.
-        /// </summary>
-        /// <param name="writer">The writer</param>
-        /// <param name="messages">The collection of messages to encode together.</param>
-        public static IKafkaWriter Write(this IKafkaWriter writer, IEnumerable<Message> messages)
-        {
-            foreach (var message in messages) {
-                writer.Write(0L);
-                using (writer.MarkForLength()) {
-                    writer.Write(message);
-                }
-            }
-            return writer;
-        }
-
-        /// <summary>
-        /// Encodes a message object
-        /// </summary>
-        /// <param name="writer">The writer</param>
-        /// <param name="message">Message data to encode.</param>
-        /// <returns>Encoded byte[] representation of the message object.</returns>
-        /// <remarks>
-        /// Format:
-        /// Crc (Int32), MagicByte (Byte), Attribute (Byte), Key (Byte[]), Value (Byte[])
-        /// </remarks>
-        public static IKafkaWriter Write(this IKafkaWriter writer, Message message)
-        {
-            using (writer.MarkForCrc()) {
-                writer.Write(message.MessageVersion)
-                      .Write((byte)0);
-                if (message.MessageVersion >= 1) {
-                    writer.Write(message.Timestamp.GetValueOrDefault(DateTimeOffset.UtcNow).ToUnixTimeMilliseconds());
-                }
-                writer.Write(message.Key)
-                      .Write(message.Value);
-            }
-            return writer;
-        }
-
-        /// <summary>
-        /// From Documentation:
-        /// The replica id indicates the node id of the replica initiating this request. Normal client consumers should always specify this as -1 as they have no node id.
-        /// Other brokers set this to be their own node id. The value -2 is accepted to allow a non-broker to issue fetch requests as if it were a replica broker for debugging purposes.
-        ///
-        /// Kafka Protocol implementation:
-        /// https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol
-        /// </summary>
-        private const int ReplicaId = -1;
-
-        private static ArraySegment<byte> EncodeRequest(IRequestContext context, ProduceRequest request)
-        {
-            var totalCompressedBytes = 0;
-            var groupedPayloads = (from p in request.Topics
-                                   group p by new
-                                   {
-                                       p.TopicName,
-                                       p.PartitionId,
-                                       p.Codec
-                                   } into tpc
-                                   select tpc).ToList();
-
-            using (var writer = EncodeHeader(context, request)) {
-                writer.Write(request.Acks)
-                      .Write((int)request.Timeout.TotalMilliseconds)
-                      .Write(groupedPayloads.Count);
-
-                foreach (var groupedPayload in groupedPayloads) {
-                    var payloads = groupedPayload.ToList();
-                    writer.Write(groupedPayload.Key.TopicName)
-                          .Write(payloads.Count)
-                          .Write(groupedPayload.Key.PartitionId);
-
-                    var compressedBytes = Write(writer, payloads.SelectMany(x => x.Messages), groupedPayload.Key.Codec);
-                    Interlocked.Add(ref totalCompressedBytes, compressedBytes);
-                }
-
-                var segment = writer.ToSegment();
-                context.OnProduceRequestMessages?.Invoke(request.Topics.Sum(_ => _.Messages.Count), segment.Count, totalCompressedBytes);
-                return segment;
-            }
-        }
-
-        public static int Write(this IKafkaWriter writer, IEnumerable<Message> messages, MessageCodec codec)
-        {
-            if (codec == MessageCodec.None) {
-                using (writer.MarkForLength()) {
-                    writer.Write(messages);
-                }
-                return 0;
-            }
-            using (var messageWriter = new KafkaWriter()) {
-                messageWriter.Write(messages);
-                var messageSet = messageWriter.ToSegment(false);
-
-                using (writer.MarkForLength()) { // messageset
-                    writer.Write(0L); // offset
-                    using (writer.MarkForLength()) { // message
-                        using (writer.MarkForCrc()) {
-                            writer.Write((byte)0) // message version
-                                    .Write((byte)codec) // attribute
-                                    .Write(-1); // key  -- null, so -1 length
-                            using (writer.MarkForLength()) { // value
-                                var initialPosition = writer.Position;
-                                writer.WriteCompressed(messageSet, codec);
-                                var compressedMessageLength = writer.Position - initialPosition;
-                                return messageSet.Count - compressedMessageLength;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        private static ArraySegment<byte> EncodeRequest(IRequestContext context, FetchRequest request)
-        {
-            using (var writer = EncodeHeader(context, request)) {
-                var topicGroups = request.Topics.GroupBy(x => x.TopicName).ToList();
-                writer.Write(ReplicaId)
-                      .Write((int)Math.Min(int.MaxValue, request.MaxWaitTime.TotalMilliseconds))
-                      .Write(request.MinBytes);
-
-                if (context.ApiVersion >= 3) {
-                    writer.Write(request.MaxBytes);
-                }
-
-                writer.Write(topicGroups.Count);
-                foreach (var topicGroup in topicGroups) {
-                    var partitions = topicGroup.GroupBy(x => x.PartitionId).ToList();
-                    writer.Write(topicGroup.Key)
-                          .Write(partitions.Count);
-
-                    foreach (var partition in partitions) {
-                        foreach (var fetch in partition) {
-                            writer.Write(partition.Key)
-                                  .Write(fetch.Offset)
-                                  .Write(fetch.MaxBytes);
-                        }
-                    }
-                }
-
-                return writer.ToSegment();
-            }
-        }
-
-        private static ArraySegment<byte> EncodeRequest(IRequestContext context, OffsetRequest request)
-        {
-            using (var writer = EncodeHeader(context, request)) {
-                var topicGroups = request.Topics.GroupBy(x => x.TopicName).ToList();
-                writer.Write(ReplicaId)
-                      .Write(topicGroups.Count);
-
-                foreach (var topicGroup in topicGroups) {
-                    var partitions = topicGroup.GroupBy(x => x.PartitionId).ToList();
-                    writer.Write(topicGroup.Key)
-                          .Write(partitions.Count);
-
-                    foreach (var partition in partitions) {
-                        foreach (var offset in partition) {
-                            writer.Write(partition.Key)
-                                  .Write(offset.Timestamp);
-
-                            if (context.ApiVersion == 0) {
-                                writer.Write(offset.MaxOffsets);
-                            }
-                        }
-                    }
-                }
-
-                return writer.ToSegment();
-            }
-        }
-
-        private static ArraySegment<byte> EncodeRequest(IRequestContext context, MetadataRequest request)
-        {
-            using (var writer = EncodeHeader(context, request)) {
-                writer.Write(request.Topics, true);
-
-                return writer.ToSegment();
-            }
-        }
-
-        private static ArraySegment<byte> EncodeRequest(IRequestContext context, OffsetCommitRequest request)
-        {
-            using (var writer = EncodeHeader(context, request)) {
-                writer.Write(request.GroupId);
-                if (context.ApiVersion >= 1) {
-                    writer.Write(request.GenerationId)
-                          .Write(request.MemberId);
-                }
-                if (context.ApiVersion >= 2) {
-                    if (request.OffsetRetention.HasValue) {
-                        writer.Write((long) request.OffsetRetention.Value.TotalMilliseconds);
-                    } else {
-                        writer.Write(-1L);
-                    }
-                }
-
-                var topicGroups = request.Topics.GroupBy(x => x.TopicName).ToList();
-                writer.Write(topicGroups.Count);
-
-                foreach (var topicGroup in topicGroups) {
-                    var partitions = topicGroup.GroupBy(x => x.PartitionId).ToList();
-                    writer.Write(topicGroup.Key)
-                          .Write(partitions.Count);
-
-                    foreach (var partition in partitions) {
-                        foreach (var commit in partition) {
-                            writer.Write(partition.Key)
-                                  .Write(commit.Offset);
-                            if (context.ApiVersion == 1) {
-                                writer.Write(commit.TimeStamp.GetValueOrDefault(-1));
-                            }
-                            writer.Write(commit.Metadata);
-                        }
-                    }
-                }
-                return writer.ToSegment();
-            }
-        }
-
-        private static ArraySegment<byte> EncodeRequest(IRequestContext context, OffsetFetchRequest request)
-        {
-            using (var writer = EncodeHeader(context, request)) {
-                var topicGroups = request.Topics.GroupBy(x => x.TopicName).ToList();
-
-                writer.Write(request.GroupId)
-                      .Write(topicGroups.Count);
-
-                foreach (var topicGroup in topicGroups) {
-                    var partitions = topicGroup.GroupBy(x => x.PartitionId).ToList();
-                    writer.Write(topicGroup.Key)
-                          .Write(partitions.Count);
-
-                    foreach (var partition in partitions) {
-                        foreach (var offset in partition) {
-                            writer.Write(offset.PartitionId);
-                        }
-                    }
-                }
-
-                return writer.ToSegment();
-            }
-        }
-
-        private static ArraySegment<byte> EncodeRequest(IRequestContext context, GroupCoordinatorRequest request)
-        {
-            using (var writer = EncodeHeader(context, request)) {
-                writer.Write(request.GroupId);
-                return writer.ToSegment();
-            }
-        }
-
-        private static ArraySegment<byte> EncodeRequest(IRequestContext context, JoinGroupRequest request)
-        {
-            using (var writer = EncodeHeader(context, request)) {
-                writer.Write(request.GroupId)
-                      .Write((int)request.SessionTimeout.TotalMilliseconds);
-
-                if (context.ApiVersion >= 1) {
-                    writer.Write((int) request.RebalanceTimeout.TotalMilliseconds);
-                }
-                writer.Write(request.MemberId)
-                      .Write(request.ProtocolType)
-                      .Write(request.GroupProtocols.Count);
-
-                var encoder = context.GetEncoder(request.ProtocolType);
-                foreach (var protocol in request.GroupProtocols) {
-                    writer.Write(protocol.Name)
-                          .Write(protocol.Metadata, encoder);
-                }
-
-                return writer.ToSegment();
-            }
-        }
-
-        private static ArraySegment<byte> EncodeRequest(IRequestContext context, HeartbeatRequest request)
-        {
-            using (var writer = EncodeHeader(context, request)) {
-                return writer
-                    .Write(request.GroupId)
-                    .Write(request.GenerationId)
-                    .Write(request.MemberId)
-                    .ToSegment();
-            }
-        }
-
-        private static ArraySegment<byte> EncodeRequest(IRequestContext context, LeaveGroupRequest request)
-        {
-            using (var writer = EncodeHeader(context, request)) {
-                return writer
-                    .Write(request.GroupId)
-                    .Write(request.MemberId)
-                    .ToSegment();
-            }
-        }
-
-        private static ArraySegment<byte> EncodeRequest(IRequestContext context, SyncGroupRequest request)
-        {
-            using (var writer = EncodeHeader(context, request)) {
-                writer.Write(request.GroupId)
-                    .Write(request.GenerationId)
-                    .Write(request.MemberId)
-                    .Write(request.GroupAssignments.Count);
-
-                var encoder = context.GetEncoder(context.ProtocolType);
-                foreach (var assignment in request.GroupAssignments) {
-                    writer.Write(assignment.MemberId)
-                          .Write(assignment.MemberAssignment, encoder);
-                }
-
-                return writer.ToSegment();
-            }
-        }
-
-        private static ArraySegment<byte> EncodeRequest(IRequestContext context, DescribeGroupsRequest request)
-        {
-            using (var writer = EncodeHeader(context, request)) {
-                writer.Write(request.GroupIds.Count);
-
-                foreach (var groupId in request.GroupIds) {
-                    writer.Write(groupId);
-                }
-
-                return writer.ToSegment();
-            }
-        }
-
-        private static ArraySegment<byte> EncodeRequest(IRequestContext context, ListGroupsRequest request)
-        {
-            using (var writer = EncodeHeader(context, request)) {
-                return writer.ToSegment();
-            }
-        }
-
-        private static ArraySegment<byte> EncodeRequest(IRequestContext context, SaslHandshakeRequest request)
-        {
-            using (var writer = EncodeHeader(context, request)) {
-                writer.Write(request.Mechanism);
-                return writer.ToSegment();
-            }
-        }
-
-        private static ArraySegment<byte> EncodeRequest(IRequestContext context, ApiVersionsRequest request)
-        {
-            using (var writer = EncodeHeader(context, request)) {
-                return writer.ToSegment();
-            }
-        }
-
-        private static ArraySegment<byte> EncodeRequest(IRequestContext context, CreateTopicsRequest request)
-        {
-            using (var writer = EncodeHeader(context, request)) {
-                writer.Write(request.Topics.Count);
-                foreach (var topic in request.Topics) {
-                    writer.Write(topic.TopicName)
-                          .Write(topic.NumberOfPartitions)
-                          .Write(topic.ReplicationFactor)
-                          .Write(topic.ReplicaAssignments.Count);
-                    foreach (var assignment in topic.ReplicaAssignments) {
-                        writer.Write(assignment.PartitionId)
-                              .Write(assignment.Replicas);
-                    }
-                    writer.Write(topic.Configs.Count);
-                    foreach (var config in topic.Configs) {
-                        writer.Write(config.Key)
-                              .Write(config.Value);
-                    }
-                }
-                writer.Write((int)request.Timeout.TotalMilliseconds);
-                return writer.ToSegment();
-            }
-        }
-
-        private static ArraySegment<byte> EncodeRequest(IRequestContext context, DeleteTopicsRequest request)
-        {
-            using (var writer = EncodeHeader(context, request)) {
-                writer.Write(request.Topics, true)
-                      .Write((int) request.Timeout.TotalMilliseconds);
-                return writer.ToSegment();
-            }
-        }
-
-
-        /// <summary>
-        /// Encode the common head for kafka request.
-        /// </summary>
-        /// <remarks>
-        /// Request Header => api_key api_version correlation_id client_id 
-        ///  api_key => INT16             -- The id of the request type.
-        ///  api_version => INT16         -- The version of the API.
-        ///  correlation_id => INT32      -- A user-supplied integer value that will be passed back with the response.
-        ///  client_id => NULLABLE_STRING -- A user specified identifier for the client making the request.
-        /// </remarks>
-        private static IKafkaWriter EncodeHeader(IRequestContext context, IRequest request)
-        {
-            return new KafkaWriter()
-                .Write((short)request.ApiKey)
-                .Write(context.ApiVersion.GetValueOrDefault())
-                .Write(context.CorrelationId)
-                .Write(context.ClientId);
-        }
-
-        #endregion
-
-        #region Decode
 
         /// <summary>
         /// Decode a byte[] that represents a collection of messages.
@@ -557,7 +104,7 @@ namespace KafkaClient.Protocol
         {
             var crc = reader.ReadUInt32();
             var crcHash = reader.ReadCrc(messageSize - 4);
-            if (crc != crcHash) throw new CrcValidationException("Buffer did not match CRC validation.") { Crc = crc, CalculatedCrc = crcHash };
+            if (crc != crcHash) throw new CrcValidationException(crc, crcHash);
 
             var messageVersion = reader.ReadByte();
             var attribute = reader.ReadByte();
@@ -647,7 +194,7 @@ namespace KafkaClient.Protocol
         private static IResponse OffsetResponse(IRequestContext context, ArraySegment<byte> payload)
         {
             using (var reader = new KafkaReader(payload)) {
-                var topics = new List<OffsetResponse.Topic>();
+                var topics = new List<OffsetsResponse.Topic>();
                 var topicCount = reader.ReadInt32();
                 for (var t = 0; t < topicCount; t++) {
                     var topicName = reader.ReadString();
@@ -661,23 +208,23 @@ namespace KafkaClient.Protocol
                             var offsetsCount = reader.ReadInt32();
                             for (var o = 0; o < offsetsCount; o++) {
                                 var offset = reader.ReadInt64();
-                                topics.Add(new OffsetResponse.Topic(topicName, partitionId, errorCode, offset));
+                                topics.Add(new OffsetsResponse.Topic(topicName, partitionId, errorCode, offset));
                             }
                         } else {
                             var timestamp = reader.ReadInt64();
                             var offset = reader.ReadInt64();
-                            topics.Add(new OffsetResponse.Topic(topicName, partitionId, errorCode, offset, DateTimeOffset.FromUnixTimeMilliseconds(timestamp)));
+                            topics.Add(new OffsetsResponse.Topic(topicName, partitionId, errorCode, offset, DateTimeOffset.FromUnixTimeMilliseconds(timestamp)));
                         }
                     }
                 }
-                return new OffsetResponse(topics);
+                return new OffsetsResponse(topics);
             }
         }
 
         private static IResponse MetadataResponse(IRequestContext context, ArraySegment<byte> payload)
         {
             using (var reader = new KafkaReader(payload)) {
-                var brokers = new Broker[reader.ReadInt32()];
+                var brokers = new Server[reader.ReadInt32()];
                 for (var b = 0; b < brokers.Length; b++) {
                     var brokerId = reader.ReadInt32();
                     var host = reader.ReadString();
@@ -687,7 +234,7 @@ namespace KafkaClient.Protocol
                         rack = reader.ReadString();
                     }
 
-                    brokers[b] = new Broker(brokerId, host, port, rack);
+                    brokers[b] = new Server(brokerId, host, port, rack);
                 }
 
                 string clusterId = null;

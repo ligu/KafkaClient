@@ -50,37 +50,41 @@ namespace KafkaClient
             metadataInvalid = false;
             if (_response == null) return _request.ExpectResponse ? RetryAttempt<T>.Retry : new RetryAttempt<T>(null);
 
-            var errors = _response.Errors.Where(e => e != ErrorCode.None).ToList();
+            var errors = _response.Errors.Where(e => !e.IsSuccess()).ToList();
             if (errors.Count == 0) return new RetryAttempt<T>(_response);
 
             var shouldRetry = errors.Any(e => e.IsRetryable());
             metadataInvalid = errors.All(e => e.IsFromStaleMetadata());
             _log.Warn(() => LogEvent.Create($"{_request.ApiKey} response contained errors (attempt {attempt}): {string.Join(" ", errors)}"));
 
-            if (!shouldRetry) ThrowExtractedException(attempt);
+            if (!shouldRetry) ThrowExtractedException();
             return RetryAttempt<T>.Retry;
-        }
-
-        public void MetadataRetry(int attempt, TimeSpan retry)
-        {
-            bool? ignored;
-            MetadataRetry(attempt, null, out ignored);
         }
 
         private bool TryReconnect(Exception exception) => exception is ObjectDisposedException && (_router?.TryRestore(_connection, _cancellationToken) ?? false);
 
-        public void MetadataRetry(int attempt, Exception exception, out bool? retry)
+        public void OnRetry(Exception exception, out bool? shouldRetry)
         {
-            retry = true;
+            shouldRetry = true;
             if (exception != null) {
                 if (!TryReconnect(exception) && !exception.IsPotentiallyRecoverableByMetadataRefresh()) throw exception.PrepareForRethrow();
-                retry = null; // ie. the state of the metadata is unknown
+                shouldRetry = null; // ie. the state of the metadata is unknown
+                if (!(exception is OperationCanceledException)) {
+                    _log.Debug(() => LogEvent.Create(exception));
+                }
             }
-            _log.Debug(() => LogEvent.Create(exception, $"Retrying request {_request.ApiKey} (attempt {attempt})"));
         }
 
-        public void ThrowExtractedException(int attempt)
+        public void LogAttempt(int retryAttempt)
         {
+            if (retryAttempt > 0) {
+                _log.Debug(() => LogEvent.Create($"Retrying request {_request.ApiKey} (attempt {retryAttempt})"));
+            }
+        }
+
+        public void ThrowExtractedException()
+        {
+            if (_response == null || _response.Errors.All(e => e.IsSuccess())) return;
             throw ResponseException;
         }
 

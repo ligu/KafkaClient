@@ -52,7 +52,7 @@ namespace KafkaClient.Performance
         [Benchmark]
         public ArraySegment<byte> Encode()
         {
-            return KafkaEncoder.Encode(new RequestContext(1, Version), _request);
+            return _request.ToBytes(new RequestContext(1, Version));
         }
     }
 }

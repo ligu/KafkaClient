@@ -34,7 +34,7 @@ namespace KafkaClient.Tests.Special
                                               "topic", 
                                               partitionId, 
                                               500,
-                                              ErrorCode.None,
+                                              ErrorCode.NONE,
                                               Enumerable.Range(1, messages)
                                                         .Select(i => new Message(GenerateMessageBytes(messageSize), new ArraySegment<byte>(), (byte) codec, version: messageVersion))
                                           )));
@@ -84,7 +84,7 @@ namespace KafkaClient.Tests.Special
                                 Level = codec == MessageCodec.None ? "-" : level.ToString(),
                                 Messages = messages,
                                 MessageSize = messageSize,
-                                Bytes = KafkaEncoder.Encode(new RequestContext(1, version), request).Count
+                                Bytes = request.ToBytes(new RequestContext(1, version)).Count
                             };
                             results.Add(result);
                         }

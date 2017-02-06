@@ -42,7 +42,7 @@ namespace KafkaClient.Testing
         {
             if (typeof(T) == typeof(ProduceRequest)) return (T)ProduceRequest(context, bytes);
             if (typeof(T) == typeof(FetchRequest)) return (T)FetchRequest(context, bytes);
-            if (typeof(T) == typeof(OffsetRequest)) return (T)OffsetRequest(context, bytes);
+            if (typeof(T) == typeof(OffsetsRequest)) return (T)OffsetRequest(context, bytes);
             if (typeof(T) == typeof(MetadataRequest)) return (T)MetadataRequest(context, bytes);
             if (typeof(T) == typeof(OffsetCommitRequest)) return (T)OffsetCommitRequest(context, bytes);
             if (typeof(T) == typeof(OffsetFetchRequest)) return (T)OffsetFetchRequest(context, bytes);
@@ -73,7 +73,7 @@ namespace KafkaClient.Testing
                 var isEncoded = 
                    TryEncodeResponse(writer, context, response as ProduceResponse)
                 || TryEncodeResponse(writer, context, response as FetchResponse)
-                || TryEncodeResponse(writer, context, response as OffsetResponse)
+                || TryEncodeResponse(writer, context, response as OffsetsResponse)
                 || TryEncodeResponse(writer, context, response as MetadataResponse)
                 || TryEncodeResponse(writer, context, response as OffsetCommitResponse)
                 || TryEncodeResponse(writer, context, response as OffsetFetchResponse)
@@ -155,7 +155,7 @@ namespace KafkaClient.Testing
                 // ReSharper disable once UnusedVariable
                 var replicaId = reader.ReadInt32(); // expect -1
 
-                var topics = new List<OffsetRequest.Topic>();
+                var topics = new List<OffsetsRequest.Topic>();
                 var offsetCount = reader.ReadInt32();
                 for (var i = 0; i < offsetCount; i++) {
                     var topicName = reader.ReadString();
@@ -169,10 +169,10 @@ namespace KafkaClient.Testing
                             maxOffsets = reader.ReadInt32();
                         }
 
-                        topics.Add(new OffsetRequest.Topic(topicName, partitionId, time, maxOffsets));
+                        topics.Add(new OffsetsRequest.Topic(topicName, partitionId, time, maxOffsets));
                     }
                 }
-                return new OffsetRequest(topics);
+                return new OffsetsRequest(topics);
             }
         }
 
@@ -445,7 +445,7 @@ namespace KafkaClient.Testing
         {
             if (response == null) return false;
 
-            var groupedTopics = response.Topics.GroupBy(t => t.TopicName).ToList();
+            var groupedTopics = response.Topics.GroupBy(t => t.topic).ToList();
             writer.Write(groupedTopics.Count);
             foreach (var topic in groupedTopics) {
                 var partitions = topic.ToList();
@@ -453,7 +453,7 @@ namespace KafkaClient.Testing
                 writer.Write(topic.Key)
                     .Write(partitions.Count);
                 foreach (var partition in partitions) {
-                    writer.Write(partition.PartitionId)
+                    writer.Write(partition.partition_id)
                         .Write(partition.ErrorCode)
                         .Write(partition.Offset);
                     if (context.ApiVersion >= 2) {
@@ -474,7 +474,7 @@ namespace KafkaClient.Testing
             if (context.ApiVersion >= 1) {
                 writer.Write((int?)response.ThrottleTime?.TotalMilliseconds ?? 0);
             }
-            var groupedTopics = response.Topics.GroupBy(t => t.TopicName).ToList();
+            var groupedTopics = response.Topics.GroupBy(t => t.topic).ToList();
             writer.Write(groupedTopics.Count);
             foreach (var topic in groupedTopics) {
                 var partitions = topic.ToList();
@@ -482,7 +482,7 @@ namespace KafkaClient.Testing
                 writer.Write(topic.Key)
                     .Write(partitions.Count); // partitionsPerTopic
                 foreach (var partition in partitions) {
-                    writer.Write(partition.PartitionId)
+                    writer.Write(partition.partition_id)
                         .Write(partition.ErrorCode)
                         .Write(partition.HighWaterMark);
 
@@ -500,11 +500,11 @@ namespace KafkaClient.Testing
             return true;
         }
 
-        private static bool TryEncodeResponse(IKafkaWriter writer, IRequestContext context, OffsetResponse response)
+        private static bool TryEncodeResponse(IKafkaWriter writer, IRequestContext context, OffsetsResponse response)
         {
             if (response == null) return false;
 
-            var groupedTopics = response.Topics.GroupBy(t => t.TopicName).ToList();
+            var groupedTopics = response.Topics.GroupBy(t => t.topic).ToList();
             writer.Write(groupedTopics.Count);
             foreach (var topic in groupedTopics) {
                 var partitions = topic.ToList();
@@ -512,7 +512,7 @@ namespace KafkaClient.Testing
                 writer.Write(topic.Key)
                     .Write(partitions.Count);
                 foreach (var partition in partitions) {
-                    writer.Write(partition.PartitionId)
+                    writer.Write(partition.partition_id)
                         .Write(partition.ErrorCode);
                     if (context.ApiVersion == 0) {
                         writer.Write(1)
@@ -532,7 +532,7 @@ namespace KafkaClient.Testing
 
             writer.Write(response.Brokers.Count);
             foreach (var broker in response.Brokers) {
-                writer.Write(broker.BrokerId)
+                writer.Write(broker.Id)
                     .Write(broker.Host)
                     .Write(broker.Port);
                 if (context.ApiVersion >= 1) {
@@ -573,14 +573,14 @@ namespace KafkaClient.Testing
         {
             if (response == null) return false;
 
-            var groupedTopics = response.Topics.GroupBy(t => t.TopicName).ToList();
+            var groupedTopics = response.Topics.GroupBy(t => t.topic).ToList();
             writer.Write(groupedTopics.Count);
             foreach (var topic in groupedTopics) {
                 var partitions = topic.ToList();
                 writer.Write(topic.Key)
                     .Write(partitions.Count); // partitionsPerTopic
                 foreach (var partition in partitions) {
-                    writer.Write(partition.PartitionId)
+                    writer.Write(partition.partition_id)
                         .Write(partition.ErrorCode);
                 }
             }
@@ -591,14 +591,14 @@ namespace KafkaClient.Testing
         {
             if (response == null) return false;
 
-            var groupedTopics = response.Topics.GroupBy(t => t.TopicName).ToList();
+            var groupedTopics = response.Topics.GroupBy(t => t.topic).ToList();
             writer.Write(groupedTopics.Count);
             foreach (var topic in groupedTopics) {
                 var partitions = topic.ToList();
                 writer.Write(topic.Key)
                     .Write(partitions.Count); // partitionsPerTopic
                 foreach (var partition in partitions) {
-                    writer.Write(partition.PartitionId)
+                    writer.Write(partition.partition_id)
                         .Write(partition.Offset)
                         .Write(partition.MetaData)
                         .Write(partition.ErrorCode);
@@ -612,7 +612,7 @@ namespace KafkaClient.Testing
             if (response == null) return false;
 
             writer.Write(response.ErrorCode)
-                .Write(response.BrokerId)
+                .Write(response.Id)
                 .Write(response.Host)
                 .Write(response.Port);
             return true;

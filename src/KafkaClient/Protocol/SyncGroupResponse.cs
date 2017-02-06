@@ -52,18 +52,6 @@ namespace KafkaClient.Protocol
                 return ((int) ErrorCode*397) ^ (MemberAssignment?.GetHashCode() ?? 0);
             }
         }
-
-        /// <inheritdoc />
-        public static bool operator ==(SyncGroupResponse left, SyncGroupResponse right)
-        {
-            return Equals(left, right);
-        }
-
-        /// <inheritdoc />
-        public static bool operator !=(SyncGroupResponse left, SyncGroupResponse right)
-        {
-            return !Equals(left, right);
-        }
         
         #endregion
     }

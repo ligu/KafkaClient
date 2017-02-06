@@ -82,23 +82,11 @@ namespace KafkaClient.Protocol
             }
         }
 
-        /// <inheritdoc />
-        public static bool operator ==(ProduceResponse left, ProduceResponse right)
-        {
-            return Equals(left, right);
-        }
-
-        /// <inheritdoc />
-        public static bool operator !=(ProduceResponse left, ProduceResponse right)
-        {
-            return !Equals(left, right);
-        }
-
         #endregion
 
         public class Topic : TopicResponse, IEquatable<Topic>
         {
-            public override string ToString() => $"{{TopicName:{TopicName},PartitionId:{PartitionId},ErrorCode:{ErrorCode},Offset:{Offset},Timestamp:{Timestamp}}}";
+            public override string ToString() => $"{{TopicName:{topic},PartitionId:{partition_id},ErrorCode:{ErrorCode},Offset:{Offset},Timestamp:{Timestamp}}}";
 
             public Topic(string topic, int partitionId, ErrorCode errorCode, long offset, DateTimeOffset? timestamp = null)
                 : base(topic, partitionId, errorCode)
@@ -144,16 +132,6 @@ namespace KafkaClient.Protocol
                     hashCode = (hashCode*397) ^ Timestamp.GetHashCode();
                     return hashCode;
                 }
-            }
-
-            public static bool operator ==(Topic left, Topic right)
-            {
-                return Equals(left, right);
-            }
-
-            public static bool operator !=(Topic left, Topic right)
-            {
-                return !Equals(left, right);
             }
 
             #endregion

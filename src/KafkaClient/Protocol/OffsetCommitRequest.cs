@@ -1,28 +1,29 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using KafkaClient.Common;
 
 namespace KafkaClient.Protocol
 {
     /// <summary>
-    /// OffsetCommitRequest => GroupId *GroupGenerationId *MemberId *RetentionTime [TopicData]
-    ///  *GroupGenerationId, MemberId is only version 1 (0.8.2) and above
-    ///  *RetentionTime is only version 2 (0.9.0) and above
-    ///  GroupId => string                  -- The consumer group id.
-    ///  GroupGenerationId => int32         -- The generation of the consumer group.
-    ///  MemberId => string                 -- The consumer id assigned by the group coordinator.
-    ///  RetentionTime => int64             -- Time period in ms to retain the offset.
+    /// OffsetCommitRequest => group_id *generation_id *member_id *retention_time [topics]
+    ///  *generation_id, member_id is only version 1 (0.8.2) and above
+    ///  *retention_time is only version 2 (0.9.0) and above
+    ///  group_id => STRING                 -- The consumer group id.
+    ///  generation_id => INT32             -- The generation of the consumer group.
+    ///  member_id => STRING                -- The consumer id assigned by the group coordinator.
+    ///  retention_time => INT64            -- Time period in ms to retain the offset.
     /// 
-    ///  TopicData => TopicName [PartitionData]
-    ///   TopicName => string               -- The topic to commit.
+    ///  topics => TopicName [partitions]
+    ///   topic => STRING                   -- The topic to commit.
     /// 
-    ///   PartitionData => Partition Offset *TimeStamp Metadata
+    ///   partitions => partition_id offset *timestamp metadata
     ///    *TimeStamp is only version 1 (0.8.2)
-    ///    Partition => int32               -- The partition id.
-    ///    Offset => int64                  -- message offset to be committed.
-    ///    Timestamp => int64               -- Commit timestamp.
-    ///    Metadata => string               -- Any associated metadata the client wants to keep
+    ///    partition_id => INT32            -- The partition id.
+    ///    offset => INT64                  -- message offset to be committed.
+    ///    timestamp => INT64               -- Commit timestamp.
+    ///    metadata => NULLABLE_STRING      -- Any associated metadata the client wants to keep
     ///
     /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
     /// Class that represents the api call to commit a specific set of offsets for a given topic.  The offset is saved under the
@@ -30,23 +31,59 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class OffsetCommitRequest : GroupRequest, IRequest<OffsetCommitResponse>, IEquatable<OffsetCommitRequest>
     {
-        public override string ToString() => $"{{Api:{ApiKey},GroupId:{GroupId},MemberId:{MemberId},GenerationId:{GenerationId},Topics:[{Topics.ToStrings()}],RetentionTime:{OffsetRetention}}}";
+        public override string ToString() => $"{{Api:{ApiKey},group_id:{group_id},member_id:{member_id},generation_id:{generation_id},topics:[{topics.ToStrings()}],retention_time:{retention_time}}}";
 
-        public override string ShortString() => $"{ApiKey} {GroupId} {MemberId}";
+        public override string ShortString() => $"{ApiKey} {group_id} {member_id}";
 
-        public OffsetCommitRequest(string groupId, IEnumerable<Topic> offsetCommits, string memberId = null, int generationId = -1, TimeSpan? offsetRetention = null) 
+        protected override void EncodeBody(IKafkaWriter writer, IRequestContext context)
+        {
+            writer.Write(group_id);
+            if (context.ApiVersion >= 1) {
+                writer.Write(generation_id)
+                        .Write(member_id);
+            }
+            if (context.ApiVersion >= 2) {
+                if (retention_time.HasValue) {
+                    writer.Write((long) retention_time.Value.TotalMilliseconds);
+                } else {
+                    writer.Write(-1L);
+                }
+            }
+
+            var topicGroups = topics.GroupBy(x => x.topic).ToList();
+            writer.Write(topicGroups.Count);
+
+            foreach (var topicGroup in topicGroups) {
+                var partitions = topicGroup.GroupBy(x => x.partition_id).ToList();
+                writer.Write(topicGroup.Key)
+                        .Write(partitions.Count);
+
+                foreach (var partition in partitions) {
+                    foreach (var commit in partition) {
+                        writer.Write(partition.Key)
+                                .Write(commit.offset);
+                        if (context.ApiVersion == 1) {
+                            writer.Write(commit.timeStamp.GetValueOrDefault(-1));
+                        }
+                        writer.Write(commit.metadata);
+                    }
+                }
+            }
+        }
+
+        public OffsetCommitRequest(string groupId, IEnumerable<Topic> offsetCommits, string memberId = null, int generationId = -1, TimeSpan? retentionTime = null) 
             : base(ApiKey.OffsetCommit, groupId, memberId ?? "", generationId)
         {
-            OffsetRetention = offsetRetention;
-            Topics = ImmutableList<Topic>.Empty.AddNotNullRange(offsetCommits);
+            retention_time = retentionTime;
+            topics = ImmutableList<Topic>.Empty.AddNotNullRange(offsetCommits);
         }
 
         /// <summary>
         /// Time period to retain the offset.
         /// </summary>
-        public TimeSpan? OffsetRetention { get; }
+        public TimeSpan? retention_time { get; }
 
-        public IImmutableList<Topic> Topics { get; }
+        public IImmutableList<Topic> topics { get; }
 
         #region Equality
 
@@ -62,8 +99,8 @@ namespace KafkaClient.Protocol
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
             return base.Equals(other) 
-                && OffsetRetention.Equals(other.OffsetRetention) 
-                && Topics.HasEqualElementsInOrder(other.Topics);
+                && retention_time.Equals(other.retention_time) 
+                && topics.HasEqualElementsInOrder(other.topics);
         }
 
         /// <inheritdoc />
@@ -71,55 +108,43 @@ namespace KafkaClient.Protocol
         {
             unchecked {
                 int hashCode = base.GetHashCode();
-                hashCode = (hashCode*397) ^ OffsetRetention.GetHashCode();
-                hashCode = (hashCode*397) ^ (Topics?.Count.GetHashCode() ?? 0);
+                hashCode = (hashCode*397) ^ retention_time.GetHashCode();
+                hashCode = (hashCode*397) ^ (topics?.Count.GetHashCode() ?? 0);
                 return hashCode;
             }
-        }
-
-        /// <inheritdoc />
-        public static bool operator ==(OffsetCommitRequest left, OffsetCommitRequest right)
-        {
-            return Equals(left, right);
-        }
-
-        /// <inheritdoc />
-        public static bool operator !=(OffsetCommitRequest left, OffsetCommitRequest right)
-        {
-            return !Equals(left, right);
         }
 
         #endregion
 
         public class Topic : TopicPartition, IEquatable<Topic>
         {
-            public override string ToString() => $"{{TopicName:{TopicName},PartitionId:{PartitionId},TimeStamp:{TimeStamp},Offset:{Offset},Metadata:{Metadata}}}";
+            public override string ToString() => $"{{topic:{topic},partition_id:{partition_id},timeStamp:{timeStamp},offset:{offset},metadata:{metadata}}}";
 
             public Topic(string topicName, int partitionId, long offset, string metadata = null, long? timeStamp = null) 
                 : base(topicName, partitionId)
             {
                 if (offset < -1L) throw new ArgumentOutOfRangeException(nameof(offset), offset, "value must be >= -1");
 
-                Offset = offset;
-                TimeStamp = timeStamp;
-                Metadata = metadata;
+                this.offset = offset;
+                this.timeStamp = timeStamp;
+                this.metadata = metadata;
             }
 
             /// <summary>
             /// The offset number to commit as completed.
             /// </summary>
-            public long Offset { get; }
+            public long offset { get; }
 
             /// <summary>
             /// If the time stamp field is set to -1, then the broker sets the time stamp to the receive time before committing the offset.
             /// Only version 1 (0.8.2)
             /// </summary>
-            public long? TimeStamp { get; }
+            public long? timeStamp { get; }
 
             /// <summary>
             /// Descriptive metadata about this commit.
             /// </summary>
-            public string Metadata { get; }
+            public string metadata { get; }
 
             public override bool Equals(object obj)
             {
@@ -131,30 +156,19 @@ namespace KafkaClient.Protocol
                 if (ReferenceEquals(null, other)) return false;
                 if (ReferenceEquals(this, other)) return true;
                 return base.Equals(other) 
-                    && Offset == other.Offset 
-                    && string.Equals(Metadata, other.Metadata);
+                    && offset == other.offset 
+                    && string.Equals(metadata, other.metadata);
             }
 
             public override int GetHashCode()
             {
                 unchecked {
                     int hashCode = base.GetHashCode();
-                    hashCode = (hashCode*397) ^ Offset.GetHashCode();
-                    hashCode = (hashCode*397) ^ (Metadata?.GetHashCode() ?? 0);
+                    hashCode = (hashCode*397) ^ offset.GetHashCode();
+                    hashCode = (hashCode*397) ^ (metadata?.GetHashCode() ?? 0);
                     return hashCode;
                 }
             }
-
-            public static bool operator ==(Topic left, Topic right)
-            {
-                return Equals(left, right);
-            }
-
-            public static bool operator !=(Topic left, Topic right)
-            {
-                return !Equals(left, right);
-            }
         }
-
     }
 }

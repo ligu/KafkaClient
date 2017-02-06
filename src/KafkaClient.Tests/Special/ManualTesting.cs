@@ -21,26 +21,26 @@ namespace KafkaClient.Tests.Special
         {
             // Disable auto topic create in our server
             var expectedTopic = Guid.NewGuid().ToString();
-            var router = await TestConfig.Options.CreateRouterAsync();
+            var router = await TestConfig.IntegrationOptions.CreateRouterAsync();
             var response = router.GetMetadataAsync(new MetadataRequest(expectedTopic), CancellationToken.None);
             var topic = (await response).Topics.FirstOrDefault();
 
             Assert.That(topic, Is.Not.Null);
             Assert.That(topic.TopicName, Is.EqualTo(expectedTopic));
-            Assert.That(topic.ErrorCode, Is.EqualTo((int)ErrorCode.None));
+            Assert.That(topic.ErrorCode, Is.EqualTo((int)ErrorCode.NONE));
         }
 
         [Test]
         public async Task ManualConsumerFailure()
         {
             var topicName = "TestTopicIssue13-3R-1P";
-            using (var router = await TestConfig.Options.CreateRouterAsync()) {
-                var consumer = new Consumer(await TestConfig.Options.CreateRouterAsync(), new ConsumerConfiguration(maxPartitionFetchBytes: 10000));
+            using (var router = await TestConfig.IntegrationOptions.CreateRouterAsync()) {
+                var consumer = new Consumer(await TestConfig.IntegrationOptions.CreateRouterAsync(), new ConsumerConfiguration(maxPartitionFetchBytes: 10000));
                 var offset = await router.GetTopicOffsetAsync(topicName, 0, CancellationToken.None);
 
                 var producer = new Producer(router);
-                var send = SandMessageForever(producer, offset.TopicName, offset.PartitionId);
-                var read = ReadMessageForever(consumer, offset.TopicName, offset.PartitionId, offset.Offset);
+                var send = SandMessageForever(producer, offset.topic, offset.partition_id);
+                var read = ReadMessageForever(consumer, offset.topic, offset.partition_id, offset.Offset);
                 await Task.WhenAll(send, read);
             }
         }

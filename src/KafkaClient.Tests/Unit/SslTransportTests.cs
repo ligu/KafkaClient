@@ -19,12 +19,10 @@ namespace KafkaClient.Tests.Unit
         public void CreatingSslTransportWithoutSslConfigurationThrowsException()
         {
             var config = new ConnectionConfiguration(sslConfiguration: null);
-            try {
-                using (new SslTransport(TestConfig.ServerEndpoint(), config, TestConfig.Log)) { }
-                Assert.Fail("Should have thrown ArgumentOutOfRangeException");
-            } catch (ArgumentOutOfRangeException) {
-                // expected
-            }
+            Assert.Throws<ArgumentOutOfRangeException>(
+                () => {
+                    using (new SslTransport(TestConfig.ServerEndpoint(), config, TestConfig.Log)) { }
+                });
         }
 
         //[Test]

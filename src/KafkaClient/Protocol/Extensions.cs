@@ -18,42 +18,39 @@ namespace KafkaClient.Protocol
         {
             var exceptions = new List<Exception>();
             if (response != null) {
-                foreach (var errorCode in response.Errors.Where(e => e != ErrorCode.None)) {
+                foreach (var errorCode in response.Errors.Where(e => !e.IsSuccess())) {
                     exceptions.Add(ExtractException(request, errorCode, endpoint));
                 }
             }
-            if (exceptions.Count == 0) return new RequestException(request.ApiKey, ErrorCode.None) { Endpoint = endpoint };
+            if (exceptions.Count == 0) return new RequestException(request.ApiKey, ErrorCode.NONE, endpoint);
             if (exceptions.Count == 1) return exceptions[0];
             return new AggregateException(exceptions);
         }
 
         public static Exception ExtractException(this IRequest request, ErrorCode errorCode, Endpoint endpoint) 
         {
-            var exception = ExtractFetchException(request as FetchRequest, errorCode) ??
-                            ExtractMemberException(request, errorCode)??
-                            new RequestException(request.ApiKey, errorCode);
-            exception.Endpoint = endpoint;
-            return exception;
+            return ExtractFetchException(request as FetchRequest, errorCode, endpoint) ??
+                   ExtractMemberException(request, errorCode, endpoint) ??
+                   new RequestException(request.ApiKey, errorCode, endpoint);
         }
 
-        private static MemberRequestException ExtractMemberException(IRequest request, ErrorCode errorCode)
+        private static MemberRequestException ExtractMemberException(IRequest request, ErrorCode errorCode, Endpoint endpoint)
         {
             var member = request as IGroupMember;
             if (member != null && 
-                (errorCode == ErrorCode.UnknownMemberId ||
-                errorCode == ErrorCode.IllegalGeneration || 
-                errorCode == ErrorCode.InconsistentGroupProtocol))
+                (errorCode == ErrorCode.UNKNOWN_MEMBER_ID ||
+                errorCode == ErrorCode.ILLEGAL_GENERATION || 
+                errorCode == ErrorCode.INCONSISTENT_GROUP_PROTOCOL))
             {
-                return new MemberRequestException(member, request.ApiKey, errorCode);
+                return new MemberRequestException(member, request.ApiKey, errorCode, endpoint);
             }
             return null;
         } 
 
-        private static FetchOutOfRangeException ExtractFetchException(FetchRequest request, ErrorCode errorCode)
+        private static FetchOutOfRangeException ExtractFetchException(FetchRequest request, ErrorCode errorCode, Endpoint endpoint)
         {
-            if (errorCode == ErrorCode.OffsetOutOfRange && request?.Topics?.Count == 1) {
-                var fetch = request.Topics.First();
-                return new FetchOutOfRangeException(fetch, request.ApiKey, errorCode);
+            if (errorCode == ErrorCode.OFFSET_OUT_OF_RANGE && request?.topics?.Count == 1) {
+                return new FetchOutOfRangeException(request.topics.First(), errorCode, endpoint);
             }
             return null;
         }        
@@ -112,6 +109,48 @@ namespace KafkaClient.Protocol
             return writer;
         }
 
+        public static IKafkaWriter Write(this IKafkaWriter writer, IEnumerable<Message> messages)
+        {
+            foreach (var message in messages) {
+                writer.Write(0L);
+                using (writer.MarkForLength()) {
+                    message.WriteTo(writer);
+                }
+            }
+            return writer;
+        }
+
+        public static int Write(this IKafkaWriter writer, IEnumerable<Message> messages, MessageCodec codec)
+        {
+            if (codec == MessageCodec.None) {
+                using (writer.MarkForLength()) {
+                    writer.Write(messages);
+                }
+                return 0;
+            }
+            using (var messageWriter = new KafkaWriter()) {
+                messageWriter.Write(messages);
+                var messageSet = messageWriter.ToSegment(false);
+
+                using (writer.MarkForLength()) { // messageset
+                    writer.Write(0L); // offset
+                    using (writer.MarkForLength()) { // message
+                        using (writer.MarkForCrc()) {
+                            writer.Write((byte)0) // message version
+                                    .Write((byte)codec) // attribute
+                                    .Write(-1); // key  -- null, so -1 length
+                            using (writer.MarkForLength()) { // value
+                                var initialPosition = writer.Position;
+                                writer.WriteCompressed(messageSet, codec);
+                                var compressedMessageLength = writer.Position - initialPosition;
+                                return messageSet.Count - compressedMessageLength;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         #endregion
 
         #region Decoding
@@ -123,7 +162,7 @@ namespace KafkaClient.Protocol
 
         public static bool IsSuccess(this ErrorCode code)
         {
-            return code == ErrorCode.None;
+            return code == ErrorCode.NONE;
         }
 
         /// <summary>
@@ -131,28 +170,28 @@ namespace KafkaClient.Protocol
         /// </summary>
         public static bool IsRetryable(this ErrorCode code)
         {
-            return code == ErrorCode.CorruptMessage
-                || code == ErrorCode.UnknownTopicOrPartition
-                || code == ErrorCode.LeaderNotAvailable
-                || code == ErrorCode.NotLeaderForPartition
-                || code == ErrorCode.RequestTimedOut
-                || code == ErrorCode.NetworkException
-                || code == ErrorCode.GroupLoadInProgress
-                || code == ErrorCode.GroupCoordinatorNotAvailable
-                || code == ErrorCode.NotCoordinatorForGroup
-                || code == ErrorCode.NotEnoughReplicas
-                || code == ErrorCode.NotEnoughReplicasAfterAppend
-                || code == ErrorCode.NotController;
+            return code == ErrorCode.CORRUPT_MESSAGE
+                || code == ErrorCode.UNKNOWN_TOPIC_OR_PARTITION
+                || code == ErrorCode.LEADER_NOT_AVAILABLE
+                || code == ErrorCode.NOT_LEADER_FOR_PARTITION
+                || code == ErrorCode.REQUEST_TIMED_OUT
+                || code == ErrorCode.NETWORK_EXCEPTION
+                || code == ErrorCode.GROUP_LOAD_IN_PROGRESS
+                || code == ErrorCode.GROUP_COORDINATOR_NOT_AVAILABLE
+                || code == ErrorCode.NOT_COORDINATOR_FOR_GROUP
+                || code == ErrorCode.NOT_ENOUGH_REPLICAS
+                || code == ErrorCode.NOT_ENOUGH_REPLICAS_AFTER_APPEND
+                || code == ErrorCode.NOT_CONTROLLER;
         }
 
         public static bool IsFromStaleMetadata(this ErrorCode code)
         {
-            return code == ErrorCode.UnknownTopicOrPartition
-                || code == ErrorCode.LeaderNotAvailable
-                || code == ErrorCode.NotLeaderForPartition
-                || code == ErrorCode.GroupLoadInProgress
-                || code == ErrorCode.GroupCoordinatorNotAvailable
-                || code == ErrorCode.NotCoordinatorForGroup;
+            return code == ErrorCode.UNKNOWN_TOPIC_OR_PARTITION
+                || code == ErrorCode.LEADER_NOT_AVAILABLE
+                || code == ErrorCode.NOT_LEADER_FOR_PARTITION
+                || code == ErrorCode.GROUP_LOAD_IN_PROGRESS
+                || code == ErrorCode.GROUP_COORDINATOR_NOT_AVAILABLE
+                || code == ErrorCode.NOT_COORDINATOR_FOR_GROUP;
         }
 
         #endregion
@@ -165,16 +204,16 @@ namespace KafkaClient.Protocol
         /// <param name="router">The router which provides the route and metadata.</param>
         /// <param name="topicName">Name of the topic to get offset information from.</param>
         /// <param name="maxOffsets">How many to get, at most.</param>
-        /// <param name="offsetTime">These are best described by <see cref="OffsetRequest.Topic.Timestamp"/></param>
+        /// <param name="offsetTime">These are best described by <see cref="OffsetsRequest.Topic.timestamp"/></param>
         /// <param name="cancellationToken"></param>
-        public static async Task<IImmutableList<OffsetResponse.Topic>> GetTopicOffsetsAsync(this IRouter router, string topicName, int maxOffsets, long offsetTime, CancellationToken cancellationToken)
+        public static async Task<IImmutableList<OffsetsResponse.Topic>> GetTopicOffsetsAsync(this IRouter router, string topicName, int maxOffsets, long offsetTime, CancellationToken cancellationToken)
         {
             bool? metadataInvalid = false;
-            var offsets = new Dictionary<int, OffsetResponse.Topic>();
-            RoutedTopicRequest<OffsetResponse>[] routedTopicRequests = null;
+            var offsets = new Dictionary<int, OffsetsResponse.Topic>();
+            RoutedTopicRequest<OffsetsResponse>[] routedTopicRequests = null;
 
             return await router.Configuration.SendRetry.TryAsync(
-                async (attempt, timer) => {
+                async (retryAttempt, elapsed) => {
                     metadataInvalid = await router.RefreshTopicMetadataIfInvalidAsync(topicName, metadataInvalid, cancellationToken).ConfigureAwait(false);
 
                     var topicMetadata = await router.GetTopicMetadataAsync(topicName, cancellationToken).ConfigureAwait(false);
@@ -183,29 +222,27 @@ namespace KafkaClient.Protocol
                         .Where(_ => !offsets.ContainsKey(_.PartitionId)) // skip partitions already successfully retrieved
                         .GroupBy(x => x.LeaderId)
                         .Select(partitions => 
-                            new RoutedTopicRequest<OffsetResponse>(
-                                new OffsetRequest(partitions.Select(_ => new OffsetRequest.Topic(topicName, _.PartitionId, offsetTime, maxOffsets))), 
+                            new RoutedTopicRequest<OffsetsResponse>(
+                                new OffsetsRequest(partitions.Select(_ => new OffsetsRequest.Topic(topicName, _.PartitionId, offsetTime, maxOffsets))), 
                                 topicName, 
                                 partitions.Select(_ => _.PartitionId).First(), 
                                 router.Log))
                         .ToArray();
 
                     await Task.WhenAll(routedTopicRequests.Select(_ => _.SendAsync(router, cancellationToken))).ConfigureAwait(false);
-                    var responses = routedTopicRequests.Select(_ => _.MetadataRetryResponse(attempt, out metadataInvalid)).ToArray();
+                    var responses = routedTopicRequests.Select(_ => _.MetadataRetryResponse(retryAttempt, out metadataInvalid)).ToArray();
                     foreach (var response in responses.Where(_ => _.IsSuccessful)) {
                         foreach (var offsetTopic in response.Value.Topics) {
-                            offsets[offsetTopic.PartitionId] = offsetTopic;
+                            offsets[offsetTopic.partition_id] = offsetTopic;
                         }
                     }
 
                     return responses.All(_ => _.IsSuccessful) 
-                        ? new RetryAttempt<IImmutableList<OffsetResponse.Topic>>(offsets.Values.ToImmutableList()) 
-                        : RetryAttempt<IImmutableList<OffsetResponse.Topic>>.Retry;
+                        ? new RetryAttempt<IImmutableList<OffsetsResponse.Topic>>(offsets.Values.ToImmutableList()) 
+                        : RetryAttempt<IImmutableList<OffsetsResponse.Topic>>.Retry;
                 },
-                routedTopicRequests.MetadataRetry,
-                routedTopicRequests.ThrowExtractedException,
-                (ex, attempt, retry) => routedTopicRequests.MetadataRetry(attempt, ex, out metadataInvalid),
-                null, // do nothing on final exception -- will be rethrown
+                (ex, retryAttempt, retryDelay) => routedTopicRequests.MetadataRetry(ex, out metadataInvalid),
+                routedTopicRequests.ThrowExtractedException, 
                 cancellationToken).ConfigureAwait(false);
         }
 
@@ -215,9 +252,9 @@ namespace KafkaClient.Protocol
         /// <param name="router">The router which provides the route and metadata.</param>
         /// <param name="topicName">Name of the topic to get offset information from.</param>
         /// <param name="cancellationToken"></param>
-        public static Task<IImmutableList<OffsetResponse.Topic>> GetTopicOffsetsAsync(this IRouter router, string topicName, CancellationToken cancellationToken)
+        public static Task<IImmutableList<OffsetsResponse.Topic>> GetTopicOffsetsAsync(this IRouter router, string topicName, CancellationToken cancellationToken)
         {
-            return router.GetTopicOffsetsAsync(topicName, OffsetRequest.Topic.DefaultMaxOffsets, OffsetRequest.Topic.LatestTime, cancellationToken);
+            return router.GetTopicOffsetsAsync(topicName, OffsetsRequest.Topic.DefaultMaxOffsets, OffsetsRequest.Topic.LatestTime, cancellationToken);
         }
 
         /// <summary>
@@ -227,21 +264,21 @@ namespace KafkaClient.Protocol
         /// <param name="topicName">Name of the topic to get offset information from.</param>
         /// <param name="partitionId">The partition to get offsets for.</param>
         /// <param name="maxOffsets">How many to get, at most.</param>
-        /// <param name="offsetTime">These are best described by <see cref="OffsetRequest.Topic.Timestamp"/></param>
+        /// <param name="offsetTime">These are best described by <see cref="OffsetsRequest.Topic.timestamp"/></param>
         /// <param name="cancellationToken"></param>
-        public static async Task<OffsetResponse.Topic> GetTopicOffsetAsync(this IRouter router, string topicName, int partitionId, int maxOffsets, long offsetTime, CancellationToken cancellationToken)
+        public static async Task<OffsetsResponse.Topic> GetTopicOffsetAsync(this IRouter router, string topicName, int partitionId, int maxOffsets, long offsetTime, CancellationToken cancellationToken)
         {
-            var request = new OffsetRequest(new OffsetRequest.Topic(topicName, partitionId));
+            var request = new OffsetsRequest(new OffsetsRequest.Topic(topicName, partitionId));
             var response = await router.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
-            return response.Topics.SingleOrDefault(t => t.TopicName == topicName && t.PartitionId == partitionId);
+            return response.Topics.SingleOrDefault(t => t.topic == topicName && t.partition_id == partitionId);
         }
 
         /// <summary>
         /// Get offsets for a single partitions of a given topic.
         /// </summary>
-        public static Task<OffsetResponse.Topic> GetTopicOffsetAsync(this IRouter router, string topicName, int partitionId, CancellationToken cancellationToken)
+        public static Task<OffsetsResponse.Topic> GetTopicOffsetAsync(this IRouter router, string topicName, int partitionId, CancellationToken cancellationToken)
         {
-            return router.GetTopicOffsetAsync(topicName, partitionId, OffsetRequest.Topic.DefaultMaxOffsets, OffsetRequest.Topic.LatestTime, cancellationToken);
+            return router.GetTopicOffsetAsync(topicName, partitionId, OffsetsRequest.Topic.DefaultMaxOffsets, OffsetsRequest.Topic.LatestTime, cancellationToken);
         }
 
         /// <summary>
@@ -256,7 +293,7 @@ namespace KafkaClient.Protocol
         {
             var request = new OffsetFetchRequest(groupId, new TopicPartition(topicName, partitionId));
             var response = await router.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
-            return response.Topics.SingleOrDefault(t => t.TopicName == topicName && t.PartitionId == partitionId);
+            return response.Topics.SingleOrDefault(t => t.topic == topicName && t.partition_id == partitionId);
         }
 
         #endregion

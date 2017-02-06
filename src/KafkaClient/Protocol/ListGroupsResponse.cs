@@ -18,7 +18,7 @@ namespace KafkaClient.Protocol
     {
         public override string ToString() => $"{{ErrorCode:{ErrorCode},Groups:[{Groups.ToStrings()}]}}";
 
-        public ListGroupsResponse(ErrorCode errorCode = ErrorCode.None, IEnumerable<Group> groups = null)
+        public ListGroupsResponse(ErrorCode errorCode = ErrorCode.NONE, IEnumerable<Group> groups = null)
         {
             ErrorCode = errorCode;
             Errors = ImmutableList<ErrorCode>.Empty.Add(ErrorCode);
@@ -59,18 +59,6 @@ namespace KafkaClient.Protocol
             }
         }
 
-        /// <inheritdoc />
-        public static bool operator ==(ListGroupsResponse left, ListGroupsResponse right)
-        {
-            return Equals(left, right);
-        }
-
-        /// <inheritdoc />
-        public static bool operator !=(ListGroupsResponse left, ListGroupsResponse right)
-        {
-            return !Equals(left, right);
-        }
-
         #endregion
 
         public class Group : IEquatable<Group>
@@ -109,18 +97,6 @@ namespace KafkaClient.Protocol
                 unchecked {
                     return ((GroupId?.GetHashCode() ?? 0)*397) ^ (ProtocolType?.GetHashCode() ?? 0);
                 }
-            }
-
-            /// <inheritdoc />
-            public static bool operator ==(Group left, Group right)
-            {
-                return Equals(left, right);
-            }
-
-            /// <inheritdoc />
-            public static bool operator !=(Group left, Group right)
-            {
-                return !Equals(left, right);
             }
             
             #endregion

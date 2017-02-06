@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Linq;
 using KafkaClient.Common;
 using KafkaClient.Protocol;
@@ -8,30 +7,21 @@ namespace KafkaClient
 {
     public class PartitionSelector : IPartitionSelector
     {
-        private readonly ConcurrentDictionary<string, int> _roundRobinTracker = new ConcurrentDictionary<string, int>();
-
         public MetadataResponse.Partition Select(MetadataResponse.Topic topic, ArraySegment<byte> key)
         {
             if (topic == null) throw new ArgumentNullException(nameof(topic));
-            if (topic.Partitions.Count <= 0) throw new CachedMetadataException($"topic/{topic.TopicName} has no partitions.") { TopicName = topic.TopicName };
+            if (topic.Partitions.Count == 0) throw new RoutingException($"No partitions to choose on {topic}.");
 
-            long partitionId;
-            var partitions = topic.Partitions;
             if (key.Count == 0) {
-                // use round robin
-                var paritionIndex = _roundRobinTracker.AddOrUpdate(topic.TopicName, p => 0, (s, i) => (i + 1) % partitions.Count);
-                return partitions[paritionIndex];
-            } else {
-                // use key hash
-                partitionId = Crc32.Compute(key) % partitions.Count;
-                var partition = partitions.FirstOrDefault(x => x.PartitionId == partitionId);
-                if (partition != null) return partition;
+                return RoundRobinPartitionSelector.Singleton.Select(topic, key);
             }
 
-            throw new CachedMetadataException($"Hash function return partition/{partitionId}, but the available partitions are {string.Join(",", partitions.Select(x => x.PartitionId))}") {
-                TopicName = topic.TopicName,
-                Partition = (int)partitionId
-            };
+            // use key hash
+            var partitionId = Crc32.Compute(key) % topic.Partitions.Count;
+            var partition = topic.Partitions.FirstOrDefault(x => x.PartitionId == partitionId);
+            if (partition != null) return partition;
+
+            throw new RoutingException($"Hash function return partition {partitionId}, but the available partitions are {string.Join(",", topic.Partitions.Select(x => x.PartitionId))}");
         }
     }
 }

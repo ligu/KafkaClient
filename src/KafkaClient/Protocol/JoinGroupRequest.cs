@@ -42,19 +42,38 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class JoinGroupRequest : Request, IRequest<JoinGroupResponse>, IGroupMember, IEquatable<JoinGroupRequest>
     {
-        public override string ToString() => $"{{Api:{ApiKey},GroupId:{GroupId},MemberId:{MemberId},SessionTimeout:{SessionTimeout},RebalanceTimeout:{RebalanceTimeout},ProtocolType:{ProtocolType},GroupProtocols:[{GroupProtocols.ToStrings()}]}}";
+        public override string ToString() => $"{{Api:{ApiKey},group_id:{group_id},member_id:{member_id},session_timeout:{session_timeout},rebalance_timeout:{rebalance_timeout},protocol_type:{protocol_type},group_protocols:[{group_protocols.ToStrings()}]}}";
 
-        public override string ShortString() => $"{ApiKey} {GroupId} {MemberId}";
+        public override string ShortString() => $"{ApiKey} {group_id} {member_id}";
+
+        protected override void EncodeBody(IKafkaWriter writer, IRequestContext context)
+        {
+            writer.Write(group_id)
+                    .Write((int)session_timeout.TotalMilliseconds);
+
+            if (context.ApiVersion >= 1) {
+                writer.Write((int) rebalance_timeout.TotalMilliseconds);
+            }
+            writer.Write(member_id)
+                    .Write(protocol_type)
+                    .Write(group_protocols.Count);
+
+            var encoder = context.GetEncoder(protocol_type);
+            foreach (var protocol in group_protocols) {
+                writer.Write(protocol.protocol_name)
+                        .Write(protocol.protocol_metadata, encoder);
+            }
+        }
 
         public JoinGroupRequest(string groupId, TimeSpan sessionTimeout, string memberId, string protocolType, IEnumerable<GroupProtocol> groupProtocols, TimeSpan? rebalanceTimeout = null) 
             : base(ApiKey.JoinGroup)
         {
-            GroupId = groupId;
-            SessionTimeout = sessionTimeout;
-            RebalanceTimeout = rebalanceTimeout ?? SessionTimeout;
-            MemberId = memberId ?? "";
-            ProtocolType = protocolType;
-            GroupProtocols = ImmutableList<GroupProtocol>.Empty.AddNotNullRange(groupProtocols);
+            group_id = groupId;
+            session_timeout = sessionTimeout;
+            rebalance_timeout = rebalanceTimeout ?? session_timeout;
+            member_id = memberId ?? "";
+            protocol_type = protocolType;
+            group_protocols = ImmutableList<GroupProtocol>.Empty.AddNotNullRange(groupProtocols);
         }
 
         /// <summary>
@@ -66,23 +85,23 @@ namespace KafkaClient.Protocol
         /// to this duration to rejoin, but note that if the session timeout is lower than the rebalance timeout, the client must still continue 
         /// to send heartbeats.
         /// </summary>
-        public TimeSpan SessionTimeout { get; }
+        public TimeSpan session_timeout { get; }
 
         /// <summary>
         /// Once a rebalance begins, each client has up to this duration to rejoin, but note that if the session timeout is lower than the rebalance 
         /// timeout, the client must still continue to send heartbeats.
         /// </summary>
-        public TimeSpan RebalanceTimeout { get; }
+        public TimeSpan rebalance_timeout { get; }
 
-        public IImmutableList<GroupProtocol> GroupProtocols { get; }
+        public IImmutableList<GroupProtocol> group_protocols { get; }
         /// <inheritdoc />
-        public string GroupId { get; }
-
-        /// <inheritdoc />
-        public string MemberId { get; }
+        public string group_id { get; }
 
         /// <inheritdoc />
-        public string ProtocolType { get; }
+        public string member_id { get; }
+
+        /// <inheritdoc />
+        public string protocol_type { get; }
 
         #region Equality
 
@@ -98,11 +117,11 @@ namespace KafkaClient.Protocol
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
             return base.Equals(other) 
-                && SessionTimeout.Equals(other.SessionTimeout) 
-                && RebalanceTimeout.Equals(other.RebalanceTimeout) 
-                && string.Equals(GroupId, other.GroupId) 
-                && string.Equals(MemberId, other.MemberId)
-                && GroupProtocols.HasEqualElementsInOrder(other.GroupProtocols);
+                && session_timeout.Equals(other.session_timeout) 
+                && rebalance_timeout.Equals(other.rebalance_timeout) 
+                && string.Equals(group_id, other.group_id) 
+                && string.Equals(member_id, other.member_id)
+                && group_protocols.HasEqualElementsInOrder(other.group_protocols);
         }
 
         /// <inheritdoc />
@@ -110,40 +129,28 @@ namespace KafkaClient.Protocol
         {
             unchecked {
                 int hashCode = base.GetHashCode();
-                hashCode = (hashCode*397) ^ SessionTimeout.GetHashCode();
-                hashCode = (hashCode*397) ^ RebalanceTimeout.GetHashCode();
-                hashCode = (hashCode*397) ^ (GroupProtocols?.Count.GetHashCode() ?? 0);
-                hashCode = (hashCode*397) ^ (GroupId?.GetHashCode() ?? 0);
-                hashCode = (hashCode*397) ^ (MemberId?.GetHashCode() ?? 0);
+                hashCode = (hashCode*397) ^ session_timeout.GetHashCode();
+                hashCode = (hashCode*397) ^ rebalance_timeout.GetHashCode();
+                hashCode = (hashCode*397) ^ (group_protocols?.Count.GetHashCode() ?? 0);
+                hashCode = (hashCode*397) ^ (group_id?.GetHashCode() ?? 0);
+                hashCode = (hashCode*397) ^ (member_id?.GetHashCode() ?? 0);
                 return hashCode;
             }
-        }
-
-        /// <inheritdoc />
-        public static bool operator ==(JoinGroupRequest left, JoinGroupRequest right)
-        {
-            return Equals(left, right);
-        }
-
-        /// <inheritdoc />
-        public static bool operator !=(JoinGroupRequest left, JoinGroupRequest right)
-        {
-            return !Equals(left, right);
         }
 
         #endregion
 
         public class GroupProtocol : IEquatable<GroupProtocol>
         {
-            public override string ToString() => $"{{Name:{Name},Metadata:{Metadata}}}";
+            public override string ToString() => $"{{protocol_name:{protocol_name},protocol_metadata:{protocol_metadata}}}";
 
             public GroupProtocol(IMemberMetadata metadata)
             {
-                Metadata = metadata;
+                protocol_metadata = metadata;
             }
 
-            public string Name => Metadata.AssignmentStrategy;
-            public IMemberMetadata Metadata { get; }
+            public string protocol_name => protocol_metadata.AssignmentStrategy;
+            public IMemberMetadata protocol_metadata { get; }
 
             /// <inheritdoc />
             public override bool Equals(object obj)
@@ -156,28 +163,16 @@ namespace KafkaClient.Protocol
             {
                 if (ReferenceEquals(null, other)) return false;
                 if (ReferenceEquals(this, other)) return true;
-                return string.Equals(Name, other.Name) 
-                    && Equals(Metadata, other.Metadata);
+                return string.Equals(protocol_name, other.protocol_name) 
+                    && Equals(protocol_metadata, other.protocol_metadata);
             }
 
             /// <inheritdoc />
             public override int GetHashCode()
             {
                 unchecked {
-                    return ((Name?.GetHashCode() ?? 0)*397) ^ (Metadata?.GetHashCode() ?? 0);
+                    return ((protocol_name?.GetHashCode() ?? 0)*397) ^ (protocol_metadata?.GetHashCode() ?? 0);
                 }
-            }
-
-            /// <inheritdoc />
-            public static bool operator ==(GroupProtocol left, GroupProtocol right)
-            {
-                return Equals(left, right);
-            }
-
-            /// <inheritdoc />
-            public static bool operator !=(GroupProtocol left, GroupProtocol right)
-            {
-                return !Equals(left, right);
             }
         }
 

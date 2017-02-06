@@ -5,12 +5,12 @@ namespace KafkaClient.Protocol
         /// <summary>
         /// The group id.
         /// </summary>
-        string GroupId { get; }
+        string group_id { get; }
 
         /// <summary>
         /// The member id assigned by the group coordinator (ie one of the kafka servers).
         /// In the join group phase, this is empty (ie "") for first timers, but rejoining members should use the same memberId (from previous generations).
         /// </summary>
-        string MemberId { get; }
+        string member_id { get; }
     }
 }

@@ -9,16 +9,16 @@ namespace KafkaClient.Protocol
         {
             if (string.IsNullOrEmpty(groupId)) throw new ArgumentNullException(nameof(groupId));
 
-            GroupId = groupId;
-            MemberId = memberId;
-            GenerationId = generationId;
+            group_id = groupId;
+            member_id = memberId;
+            generation_id = generationId;
         }
 
         /// <inheritdoc />
-        public string GroupId { get; }
+        public string group_id { get; }
 
         /// <inheritdoc />
-        public string MemberId { get; }
+        public string member_id { get; }
 
         /// <summary>
         /// The generation of the group.
@@ -26,10 +26,10 @@ namespace KafkaClient.Protocol
         /// Upon every completion of the join group phase, the coordinator increments a GenerationId for the group. This is returned as a field in the 
         /// response to each member, and is sent in <see cref="HeartbeatRequest"/> and <see cref="OffsetCommitRequest"/>s. When the coordinator rebalances 
         /// a group, the coordinator will send an error code indicating that the member needs to rejoin. If the member does not rejoin before a rebalance 
-        /// completes, then it will have an old generationId, which will cause <see cref="ErrorCode.IllegalGeneration"/> errors when included in 
+        /// completes, then it will have an old generationId, which will cause <see cref="ErrorCode.ILLEGAL_GENERATION"/> errors when included in 
         /// new requests.
         /// </summary>
-        public int GenerationId { get; }
+        public int generation_id { get; }
 
 
         /// <inheritdoc />
@@ -44,9 +44,9 @@ namespace KafkaClient.Protocol
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
             return base.Equals(other) 
-                && string.Equals(GroupId, other.GroupId) 
-                && string.Equals(MemberId, other.MemberId) 
-                && GenerationId == other.GenerationId;
+                && string.Equals(group_id, other.group_id) 
+                && string.Equals(member_id, other.member_id) 
+                && generation_id == other.generation_id;
         }
 
         /// <inheritdoc />
@@ -54,23 +54,11 @@ namespace KafkaClient.Protocol
         {
             unchecked {
                 int hashCode = base.GetHashCode();
-                hashCode = (hashCode*397) ^ (GroupId?.GetHashCode() ?? 0);
-                hashCode = (hashCode*397) ^ (MemberId?.GetHashCode() ?? 0);
-                hashCode = (hashCode*397) ^ GenerationId;
+                hashCode = (hashCode*397) ^ (group_id?.GetHashCode() ?? 0);
+                hashCode = (hashCode*397) ^ (member_id?.GetHashCode() ?? 0);
+                hashCode = (hashCode*397) ^ generation_id;
                 return hashCode;
             }
-        }
-
-        /// <inheritdoc />
-        public static bool operator ==(GroupRequest left, GroupRequest right)
-        {
-            return Equals(left, right);
-        }
-
-        /// <inheritdoc />
-        public static bool operator !=(GroupRequest left, GroupRequest right)
-        {
-            return !Equals(left, right);
         }
     }
 }

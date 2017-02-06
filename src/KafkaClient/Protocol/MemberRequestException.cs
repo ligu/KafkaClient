@@ -1,3 +1,5 @@
+using KafkaClient.Connections;
+
 namespace KafkaClient.Protocol
 {
     /// <summary>
@@ -5,12 +7,13 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class MemberRequestException : RequestException
     {
-        public MemberRequestException(IGroupMember member, ApiKey apiKey, ErrorCode errorCode)
-            : base(apiKey, errorCode, member != null ? $"{{GroupId:{member.GroupId},MemberId:{member.MemberId}}}" : null)
+        public MemberRequestException(IGroupMember member, ApiKey apiKey, ErrorCode errorCode, Endpoint endpoint)
+            : base(apiKey, errorCode, endpoint, member != null ? $"{{GroupId:{member.group_id},MemberId:{member.member_id}}}" : null)
         {
-            Member = member;
+            _member = member;
         }
 
-        public IGroupMember Member { get; }
+        // ReSharper disable once NotAccessedField.Local -- for debugging
+        private readonly IGroupMember _member;
     }
 }

@@ -71,25 +71,13 @@ namespace KafkaClient.Protocol
             }
         }
 
-        /// <inheritdoc />
-        public static bool operator ==(FetchResponse left, FetchResponse right)
-        {
-            return Equals(left, right);
-        }
-
-        /// <inheritdoc />
-        public static bool operator !=(FetchResponse left, FetchResponse right)
-        {
-            return !Equals(left, right);
-        }
-
         #endregion
 
         public class Topic : TopicResponse, IEquatable<Topic>
         {
-            public override string ToString() => $"{{TopicName:{TopicName},PartitionId:{PartitionId},ErrorCode:{ErrorCode},HighwaterMarkOffset:{HighWaterMark},Messages:{Messages.Count}}}";
+            public override string ToString() => $"{{TopicName:{topic},PartitionId:{partition_id},ErrorCode:{ErrorCode},HighwaterMarkOffset:{HighWaterMark},Messages:{Messages.Count}}}";
 
-            public Topic(string topic, int partitionId, long highWaterMark, ErrorCode errorCode = ErrorCode.None, IEnumerable<Message> messages = null)
+            public Topic(string topic, int partitionId, long highWaterMark, ErrorCode errorCode = ErrorCode.NONE, IEnumerable<Message> messages = null)
                 : base(topic, partitionId, errorCode)
             {
                 HighWaterMark = highWaterMark;
@@ -127,16 +115,6 @@ namespace KafkaClient.Protocol
                     hashCode = (hashCode*397) ^ (Messages?.Count.GetHashCode() ?? 0);
                     return hashCode;
                 }
-            }
-
-            public static bool operator ==(Topic left, Topic right)
-            {
-                return Equals(left, right);
-            }
-
-            public static bool operator !=(Topic left, Topic right)
-            {
-                return !Equals(left, right);
             }
 
             #endregion

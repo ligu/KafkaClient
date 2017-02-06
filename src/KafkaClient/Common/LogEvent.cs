@@ -22,7 +22,7 @@ namespace KafkaClient.Common
             return new LogEvent(message, exception, sourceFile, sourceLine > 0 ? sourceLine : (int?)null);
         }
 
-        public LogEvent(string message, Exception exception, string sourceFile, int? sourceLine)
+        private LogEvent(string message, Exception exception, string sourceFile, int? sourceLine)
         {
             Message = message;
             Exception = exception;

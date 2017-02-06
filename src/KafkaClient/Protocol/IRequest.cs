@@ -1,3 +1,5 @@
+using System;
+
 namespace KafkaClient.Protocol
 {
     public interface IRequest<T> : IRequest
@@ -8,7 +10,7 @@ namespace KafkaClient.Protocol
     public interface IRequest
     {
         /// <summary>
-        /// Indicates this request should wait for a response from the broker
+        /// Indicates this request should wait for a response from the server
         /// </summary>
         bool ExpectResponse { get; }
 
@@ -21,5 +23,10 @@ namespace KafkaClient.Protocol
         /// Short version of ToString, for writing only the most relevant information to the logs
         /// </summary>
         string ShortString();
+
+        /// <summary>
+        /// Encoded format of the kafka request, to be sent over tcp. Includes the request header
+        /// </summary>
+        ArraySegment<byte> ToBytes(IRequestContext context);
     }
 }

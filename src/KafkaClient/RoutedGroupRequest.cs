@@ -17,9 +17,9 @@ namespace KafkaClient
             var groupMember = request as IGroupMember;
             if (groupMember != null) {
                 // on JoinGroupRequest, the first request is made with an empty string -- this still needs to go on a separate connection
-                _memberId = groupMember is JoinGroupRequest && groupMember.MemberId == ""
+                _memberId = groupMember is JoinGroupRequest && groupMember.member_id == ""
                     ? Guid.NewGuid().ToString("")
-                    : groupMember.MemberId;
+                    : groupMember.member_id;
             }
         }
 
@@ -30,8 +30,8 @@ namespace KafkaClient
         {
             if (_memberId == null) {
                 // can use any connection
-                var broker = await router.GetGroupBrokerAsync(_groupId, cancellationToken).ConfigureAwait(false);
-                return broker?.Connection;
+                var groupConnection = await router.GetGroupConnectionAsync(_groupId, cancellationToken).ConfigureAwait(false);
+                return groupConnection?.Connection;
             }
             return await router.GetConnectionAsync(_groupId, _memberId, cancellationToken);
         }
