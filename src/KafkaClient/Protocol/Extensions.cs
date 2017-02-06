@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -154,7 +155,119 @@ namespace KafkaClient.Protocol
         #endregion
 
         #region Decoding
-        
+
+        private const int MessageHeaderSize = 12;
+
+        /// <summary>
+        /// Decode a byte[] that represents a collection of messages.
+        /// </summary>
+        /// <param name="reader">The reader</param>
+        /// <param name="codec">The codec of the containing messageset, if any</param>
+        /// <returns>Enumerable representing stream of messages decoded from byte[]</returns>
+        public static IImmutableList<Message> ReadMessages(this IKafkaReader reader, MessageCodec codec = MessageCodec.None)
+        {
+            var expectedLength = reader.ReadInt32();
+            if (!reader.HasBytes(expectedLength)) throw new BufferUnderRunException($"Message set size of {expectedLength} is not fully available (codec {codec}).");
+
+            var messages = ImmutableList<Message>.Empty;
+            var finalPosition = reader.Position + expectedLength;
+            while (reader.Position < finalPosition) {
+                // this checks that we have at least the minimum amount of data to retrieve a header
+                if (reader.HasBytes(MessageHeaderSize) == false) break;
+
+                var offset = reader.ReadInt64();
+                var messageSize = reader.ReadInt32();
+
+                // if the stream does not have enough left in the payload, we got only a partial message
+                if (reader.HasBytes(messageSize) == false) throw new BufferUnderRunException($"Message header size of {MessageHeaderSize} is not fully available (codec {codec}).");
+
+                try {
+                    messages = messages.AddRange(reader.ReadMessage(messageSize, offset));
+                } catch (EndOfStreamException ex) {
+                    throw new BufferUnderRunException($"Message size of {messageSize} is not available (codec {codec}).", ex);
+                }
+            }
+            return messages;
+        }
+
+        /// <summary>
+        /// Decode messages from a payload and assign it a given kafka offset.
+        /// </summary>
+        /// <param name="reader">The reader</param>
+        /// <param name="messageSize">The size of the message, for Crc Hash calculation</param>
+        /// <param name="offset">The offset represting the log entry from kafka of this message.</param>
+        /// <returns>Enumerable representing stream of messages decoded from byte[].</returns>
+        /// <remarks>The return type is an Enumerable as the message could be a compressed message set.</remarks>
+        public static IImmutableList<Message> ReadMessage(this IKafkaReader reader, int messageSize, long offset)
+        {
+            var crc = reader.ReadUInt32();
+            var crcHash = reader.ReadCrc(messageSize - 4);
+            if (crc != crcHash) throw new CrcValidationException(crc, crcHash);
+
+            var messageVersion = reader.ReadByte();
+            var attribute = reader.ReadByte();
+            DateTimeOffset? timestamp = null;
+            if (messageVersion >= 1) {
+                var milliseconds = reader.ReadInt64();
+                if (milliseconds >= 0) {
+                    timestamp = DateTimeOffset.FromUnixTimeMilliseconds(milliseconds);
+                }
+            }
+            var key = reader.ReadBytes();
+            var value = reader.ReadBytes();
+
+            var codec = (MessageCodec)(Message.CodecMask & attribute);
+            if (codec == MessageCodec.None) {
+                return ImmutableList<Message>.Empty.Add(new Message(value, key, attribute, offset, messageVersion, timestamp));
+            }
+            var uncompressedBytes = value.ToUncompressed(codec);
+            using (var messageSetReader = new KafkaReader(uncompressedBytes)) {
+                return messageSetReader.ReadMessages(codec);
+            }
+        }
+
+        public static IResponse ToResponse(this ApiKey apiKey, IRequestContext context, ArraySegment<byte> bytes)
+        {
+            switch (apiKey) {
+                case ApiKey.Produce:
+                    return ProduceResponse.FromBytes(context, bytes);
+                case ApiKey.Fetch:
+                    return FetchResponse.FromBytes(context, bytes);
+                case ApiKey.Offsets:
+                    return OffsetsResponse.FromBytes(context, bytes);
+                case ApiKey.Metadata:
+                    return MetadataResponse.FromBytes(context, bytes);
+                case ApiKey.OffsetCommit:
+                    return OffsetCommitResponse.FromBytes(context, bytes);
+                case ApiKey.OffsetFetch:
+                    return OffsetFetchResponse.FromBytes(context, bytes);
+                case ApiKey.GroupCoordinator:
+                    return GroupCoordinatorResponse.FromBytes(context, bytes);
+                case ApiKey.JoinGroup:
+                    return JoinGroupResponse.FromBytes(context, bytes);
+                case ApiKey.Heartbeat:
+                    return HeartbeatResponse.FromBytes(context, bytes);
+                case ApiKey.LeaveGroup:
+                    return LeaveGroupResponse.FromBytes(context, bytes);
+                case ApiKey.SyncGroup:
+                    return SyncGroupResponse.FromBytes(context, bytes);
+                case ApiKey.DescribeGroups:
+                    return DescribeGroupsResponse.FromBytes(context, bytes);
+                case ApiKey.ListGroups:
+                    return ListGroupsResponse.FromBytes(context, bytes);
+                case ApiKey.SaslHandshake:
+                    return SaslHandshakeResponse.FromBytes(context, bytes);
+                case ApiKey.ApiVersions:
+                    return ApiVersionsResponse.FromBytes(context, bytes);
+                case ApiKey.CreateTopics:
+                    return CreateTopicsResponse.FromBytes(context, bytes);
+                case ApiKey.DeleteTopics:
+                    return DeleteTopicsResponse.FromBytes(context, bytes);
+                default:
+                    throw new NotImplementedException($"Unknown response type {apiKey}");
+            }
+        }
+
         public static ErrorCode ReadErrorCode(this IKafkaReader reader)
         {
             return (ErrorCode) reader.ReadInt16();
@@ -218,21 +331,21 @@ namespace KafkaClient.Protocol
 
                     var topicMetadata = await router.GetTopicMetadataAsync(topicName, cancellationToken).ConfigureAwait(false);
                     routedTopicRequests = topicMetadata
-                        .Partitions
-                        .Where(_ => !offsets.ContainsKey(_.PartitionId)) // skip partitions already successfully retrieved
-                        .GroupBy(x => x.LeaderId)
+                        .partition_metadata
+                        .Where(_ => !offsets.ContainsKey(_.partition_id)) // skip partitions already successfully retrieved
+                        .GroupBy(x => x.leader)
                         .Select(partitions => 
                             new RoutedTopicRequest<OffsetsResponse>(
-                                new OffsetsRequest(partitions.Select(_ => new OffsetsRequest.Topic(topicName, _.PartitionId, offsetTime, maxOffsets))), 
+                                new OffsetsRequest(partitions.Select(_ => new OffsetsRequest.Topic(topicName, _.partition_id, offsetTime, maxOffsets))), 
                                 topicName, 
-                                partitions.Select(_ => _.PartitionId).First(), 
+                                partitions.Select(_ => _.partition_id).First(), 
                                 router.Log))
                         .ToArray();
 
                     await Task.WhenAll(routedTopicRequests.Select(_ => _.SendAsync(router, cancellationToken))).ConfigureAwait(false);
                     var responses = routedTopicRequests.Select(_ => _.MetadataRetryResponse(retryAttempt, out metadataInvalid)).ToArray();
                     foreach (var response in responses.Where(_ => _.IsSuccessful)) {
-                        foreach (var offsetTopic in response.Value.Topics) {
+                        foreach (var offsetTopic in response.Value.responses) {
                             offsets[offsetTopic.partition_id] = offsetTopic;
                         }
                     }
@@ -270,7 +383,7 @@ namespace KafkaClient.Protocol
         {
             var request = new OffsetsRequest(new OffsetsRequest.Topic(topicName, partitionId));
             var response = await router.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
-            return response.Topics.SingleOrDefault(t => t.topic == topicName && t.partition_id == partitionId);
+            return response.responses.SingleOrDefault(t => t.topic == topicName && t.partition_id == partitionId);
         }
 
         /// <summary>
@@ -293,7 +406,7 @@ namespace KafkaClient.Protocol
         {
             var request = new OffsetFetchRequest(groupId, new TopicPartition(topicName, partitionId));
             var response = await router.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
-            return response.Topics.SingleOrDefault(t => t.topic == topicName && t.partition_id == partitionId);
+            return response.responses.SingleOrDefault(t => t.topic == topicName && t.partition_id == partitionId);
         }
 
         #endregion

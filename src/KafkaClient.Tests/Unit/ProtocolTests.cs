@@ -251,9 +251,9 @@ namespace KafkaClient.Tests.Unit
                 topics.Add(new FetchResponse.Topic(topicName + t, partitionId, _randomizer.Next(), errorCode, messages));
             }
             var response = new FetchResponse(topics, version >= 1 ? TimeSpan.FromMilliseconds(throttleTime) : (TimeSpan?)null);
-            var responseWithUpdatedAttribute = new FetchResponse(response.Topics.Select(t => new FetchResponse.Topic(t.topic, t.partition_id, t.HighWaterMark, t.ErrorCode, 
+            var responseWithUpdatedAttribute = new FetchResponse(response.responses.Select(t => new FetchResponse.Topic(t.topic, t.partition_id, t.high_watermark, t.error_code, 
                 t.Messages.Select(m => m.Attribute == 0 ? m : new Message(m.Value, m.Key, 0, m.Offset, m.MessageVersion, m.Timestamp)))), 
-                response.ThrottleTime);
+                response.throttle_time_ms);
 
             response.AssertCanEncodeDecodeResponse(version, forComparison: responseWithUpdatedAttribute);
         }

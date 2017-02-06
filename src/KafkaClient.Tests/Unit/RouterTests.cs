@@ -138,7 +138,7 @@ namespace KafkaClient.Tests.Unit
 
             scenario.Connection1.Add(ApiKey.Metadata, async _ => {
                 var response = await RoutingScenario.DefaultMetadataResponse();
-                return new MetadataResponse(response.Brokers, response.Topics.Select(t => new MetadataResponse.Topic("test2", t.ErrorCode, t.Partitions)));
+                return new MetadataResponse(response.brokers, response.topic_metadata.Select(t => new MetadataResponse.Topic("test2", t.topic_error_code, t.partition_metadata)));
             });
 
             for (int i = 0; i < numberOfCall / 2; i++)
@@ -691,7 +691,7 @@ namespace KafkaClient.Tests.Unit
             await router.GetTopicMetadataAsync(RoutingScenario.TestTopic, CancellationToken.None);
 
             var result = router.GetTopicMetadata(RoutingScenario.TestTopic);
-            Assert.That(result.TopicName, Is.EqualTo(RoutingScenario.TestTopic));
+            Assert.That(result.topic, Is.EqualTo(RoutingScenario.TestTopic));
         }
 
         [Test]
@@ -715,8 +715,8 @@ namespace KafkaClient.Tests.Unit
 
             Assert.AreEqual(1, router.GetTopicMetadata().Count);
             Assert.That(scenario.Connection1[ApiKey.Metadata], Is.EqualTo(1));
-            Assert.That(result1.TopicName, Is.EqualTo(testTopic));
-            Assert.That(result2.TopicName, Is.EqualTo(testTopic));
+            Assert.That(result1.topic, Is.EqualTo(testTopic));
+            Assert.That(result2.topic, Is.EqualTo(testTopic));
         }
 
         [Test]
@@ -743,9 +743,9 @@ namespace KafkaClient.Tests.Unit
             Assert.That(scenario.Connection1[ApiKey.Metadata], Is.EqualTo(1));
             Assert.That(result1.Count, Is.EqualTo(1));
             var testTopic = RoutingScenario.TestTopic;
-            Assert.That(result1[0].TopicName, Is.EqualTo(testTopic));
+            Assert.That(result1[0].topic, Is.EqualTo(testTopic));
             Assert.That(result2.Count, Is.EqualTo(1));
-            Assert.That(result2[0].TopicName, Is.EqualTo(testTopic));
+            Assert.That(result2[0].topic, Is.EqualTo(testTopic));
         }
 
         [Test]
@@ -859,7 +859,7 @@ namespace KafkaClient.Tests.Unit
         public async Task SelectExactPartitionShouldThrowWhenTopicsCollectionIsEmpty()
         {
             var metadataResponse = await RoutingScenario.DefaultMetadataResponse();
-            metadataResponse.Topics.Clear();
+            metadataResponse.topic_metadata.Clear();
 
             var scenario = new RoutingScenario();
 #pragma warning disable 1998
@@ -873,7 +873,7 @@ namespace KafkaClient.Tests.Unit
         public async Task SelectExactPartitionShouldThrowWhenBrokerCollectionIsEmpty()
         {
             var metadataResponse = await RoutingScenario.DefaultMetadataResponse();
-            metadataResponse = new MetadataResponse(topics: metadataResponse.Topics);
+            metadataResponse = new MetadataResponse(topics: metadataResponse.topic_metadata);
 
             var scenario = new RoutingScenario();
 #pragma warning disable 1998

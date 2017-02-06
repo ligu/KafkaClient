@@ -3,11 +3,12 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using KafkaClient.Common;
+// ReSharper disable InconsistentNaming
 
 namespace KafkaClient.Protocol
 {
     /// <summary>
-    /// OffsetFetchRequest => group_id [topics]
+    /// OffsetFetch Request => group_id [topics]
     ///  group_id => STRING     -- The consumer group id.
     ///  topics => topic [partition] 
     ///   topic => STRING       -- The topic to commit.
@@ -43,6 +44,8 @@ namespace KafkaClient.Protocol
                 }
             }
         }
+
+        public OffsetFetchResponse ToResponse(IRequestContext context, ArraySegment<byte> bytes) => OffsetFetchResponse.FromBytes(context, bytes);
 
         public OffsetFetchRequest(string groupId, params TopicPartition[] topics) 
             : this(groupId, (IEnumerable<TopicPartition>)topics)

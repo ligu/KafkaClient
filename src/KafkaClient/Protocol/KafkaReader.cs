@@ -22,6 +22,7 @@ namespace KafkaClient.Protocol
     /// </remarks>
     public class KafkaReader : IKafkaReader
     {
+        public const int ResponseHeaderSize = KafkaWriter.IntegerByteSize + Request.CorrelationSize;
         private const int KafkaNullSize = -1;
         private readonly ArraySegment<byte> _bytes;
 

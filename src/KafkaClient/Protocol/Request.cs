@@ -32,6 +32,8 @@ namespace KafkaClient.Protocol
             }
         }
 
+        public const int CorrelationSize = KafkaWriter.IntegerByteSize;
+
         /// <summary>
         /// Encode the common header for kafka request.
         /// see http://kafka.apache.org/protocol.html#protocol_messages

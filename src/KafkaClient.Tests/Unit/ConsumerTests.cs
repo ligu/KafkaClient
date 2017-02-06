@@ -219,7 +219,7 @@ namespace KafkaClient.Tests.Unit
                                 if (c.GetMethodInfo().Name != nameof(Connection.SendAsync)) return false;
                                 var s = c.GetArguments()[0] as HeartbeatRequest;
                                 if (s == null) return false;
-                                return s.group_id == request.group_id && s.member_id == memberId && s.generation_id == response.GenerationId;
+                                return s.group_id == request.group_id && s.member_id == memberId && s.generation_id == response.generation_id;
                             }), Is.InRange(expectedHeartbeats - 1, expectedHeartbeats + 1));
         }
 

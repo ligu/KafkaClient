@@ -37,7 +37,7 @@ namespace KafkaClient.Tests.Special
                         //So this assertion will never pass
                         //Assert.That(results.Count, Is.EqualTo(amount));
 
-                        Assert.That(results.Any(x => x.ErrorCode != ErrorCode.NONE), Is.False,
+                        Assert.That(results.Any(x => x.error_code != ErrorCode.NONE), Is.False,
                             "Should not have received any results as failures.");
                     }
                 });
@@ -107,7 +107,7 @@ namespace KafkaClient.Tests.Special
 
                         var maxTimeToRun = TimeSpan.FromMilliseconds(timeoutInMs);
                         var stopwatch = new Stopwatch();
-                        var missingMessages = Math.Max(0, totalMessages - (int)offset.Offset);
+                        var missingMessages = Math.Max(0, totalMessages - (int)offset.offset);
                         if (missingMessages > 0) {
                             stopwatch.Start();
                             var sendList = new List<Task>(missingMessages/batchSize);

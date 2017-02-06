@@ -58,12 +58,12 @@ namespace KafkaClient.Common
                 case MessageCodec.Snappy:
 #if DOTNETSTANDARD
                     var length = Snappy.SnappyCodec.GetUncompressedLength(source.Array, source.Offset, source.Count);
-                    var buffer = new byte[KafkaEncoder.IntegerByteSize + length];
+                    var buffer = new byte[KafkaWriter.IntegerByteSize + length];
                     var lengthBytes = length.ToBytes();
                     for (var i = 0; i < lengthBytes.Length; i++) {
                         buffer[i] = lengthBytes[i];
                     }
-                    Snappy.SnappyCodec.Uncompress(source.Array, source.Offset, source.Count, buffer, KafkaEncoder.IntegerByteSize);
+                    Snappy.SnappyCodec.Uncompress(source.Array, source.Offset, source.Count, buffer, KafkaWriter.IntegerByteSize);
                     return new ArraySegment<byte>(buffer);
 #else
                     throw new NotSupportedException("Snappy codec is only supported on .net core");

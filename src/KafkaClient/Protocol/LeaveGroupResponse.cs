@@ -1,28 +1,37 @@
 using System;
 using System.Collections.Immutable;
+// ReSharper disable InconsistentNaming
 
 namespace KafkaClient.Protocol
 {
     /// <summary>
-    /// LeaveGroupResponse => ErrorCode
-    ///   ErrorCode => int16
+    /// LeaveGroup Response => error_code 
+    ///   error_code => INT16
     /// 
     /// see http://kafka.apache.org/protocol.html#protocol_messages
     /// </summary>
     public class LeaveGroupResponse : IResponse, IEquatable<LeaveGroupResponse>
     {
-        public override string ToString() => $"{{ErrorCode:{ErrorCode}}}";
+        public override string ToString() => $"{{error_code:{error_code}}}";
+
+        public static LeaveGroupResponse FromBytes(IRequestContext context, ArraySegment<byte> bytes)
+        {
+            using (var reader = new KafkaReader(bytes)) {
+                var errorCode = (ErrorCode)reader.ReadInt16();
+                return new LeaveGroupResponse(errorCode);
+            }
+        }
 
         public LeaveGroupResponse(ErrorCode errorCode)
         {
-            ErrorCode = errorCode;
-            Errors = ImmutableList<ErrorCode>.Empty.Add(ErrorCode);
+            error_code = errorCode;
+            Errors = ImmutableList<ErrorCode>.Empty.Add(error_code);
         }
 
         /// <inheritdoc />
         public IImmutableList<ErrorCode> Errors { get; }
 
-        public ErrorCode ErrorCode { get; }
+        public ErrorCode error_code { get; }
 
         #region Equality
 
@@ -37,13 +46,13 @@ namespace KafkaClient.Protocol
         {
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
-            return ErrorCode == other.ErrorCode;
+            return error_code == other.error_code;
         }
 
         /// <inheritdoc />
         public override int GetHashCode()
         {
-            return (int) ErrorCode;
+            return (int) error_code;
         }
 
         #endregion

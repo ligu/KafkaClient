@@ -3,28 +3,59 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using KafkaClient.Common;
+// ReSharper disable InconsistentNaming
 
 namespace KafkaClient.Protocol
 {
     /// <summary>
-    /// OffsetResponse => [TopicData]
-    ///  TopicData => TopicName [PartitionData]
-    ///   TopicName => string  -- The name of the topic.
+    /// Offsets Response => [responses]
+    ///  response => topic [partition_responses]
+    ///   topic => STRING  -- The name of the topic.
     /// 
-    ///   PartitionData => Partition ErrorCode *Timestamp *Offset *[Offset]
-    ///    *Timestamp, *Offset only applies to version 1 (Kafka 0.10.1 and higher)
-    ///    *[Offset] only applies to version 0 (Kafka 0.10.0.1 and below)
-    ///    Partition => int32  -- The id of the partition the fetch is for.
-    ///    ErrorCode => int16  -- The error from this partition, if any. Errors are given on a per-partition basis because a given partition may 
-    ///                          be unavailable or maintained on a different host, while others may have successfully accepted the produce request.
-    ///    Timestamp => int64  -- The timestamp associated with the returned offset
-    ///    Offset => int64 -- offset found
+    ///   partition_response => partition_id error_code *timestamp *offset *[offset]
+    ///    *timestamp, *offset only applies to version 1 (Kafka 0.10.1 and higher)
+    ///    *[offset] only applies to version 0 (Kafka 0.10.0.1 and below)
+    ///    partition_id => INT32  -- The id of the partition the fetch is for.
+    ///    error_code => INT16    -- The error from this partition, if any. Errors are given on a per-partition basis because a given partition may 
+    ///                              be unavailable or maintained on a different host, while others may have successfully accepted the produce request.
+    ///    timestamp => INT64     -- The timestamp associated with the returned offset
+    ///    offset => INT64        -- offset found
     /// 
     /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetAPI(AKAListOffset)
     /// </summary>
     public class OffsetsResponse : IResponse, IEquatable<OffsetsResponse>
     {
-        public override string ToString() => $"{{Topics:[{Topics.ToStrings()}]}}";
+        public override string ToString() => $"{{responses:[{responses.ToStrings()}]}}";
+
+        public static OffsetsResponse FromBytes(IRequestContext context, ArraySegment<byte> bytes)
+        {
+            using (var reader = new KafkaReader(bytes)) {
+                var topics = new List<Topic>();
+                var topicCount = reader.ReadInt32();
+                for (var t = 0; t < topicCount; t++) {
+                    var topicName = reader.ReadString();
+
+                    var partitionCount = reader.ReadInt32();
+                    for (var p = 0; p < partitionCount; p++) {
+                        var partitionId = reader.ReadInt32();
+                        var errorCode = (ErrorCode) reader.ReadInt16();
+
+                        if (context.ApiVersion == 0) {
+                            var offsetsCount = reader.ReadInt32();
+                            for (var o = 0; o < offsetsCount; o++) {
+                                var offset = reader.ReadInt64();
+                                topics.Add(new Topic(topicName, partitionId, errorCode, offset));
+                            }
+                        } else {
+                            var timestamp = reader.ReadInt64();
+                            var offset = reader.ReadInt64();
+                            topics.Add(new Topic(topicName, partitionId, errorCode, offset, DateTimeOffset.FromUnixTimeMilliseconds(timestamp)));
+                        }
+                    }
+                }
+                return new OffsetsResponse(topics);
+            }            
+        }
 
         public OffsetsResponse(Topic topic)
             : this(new[] {topic})
@@ -33,13 +64,13 @@ namespace KafkaClient.Protocol
 
         public OffsetsResponse(IEnumerable<Topic> topics = null)
         {
-            Topics = ImmutableList<Topic>.Empty.AddNotNullRange(topics);
-            Errors = ImmutableList<ErrorCode>.Empty.AddRange(Topics.Select(t => t.ErrorCode));
+            responses = ImmutableList<Topic>.Empty.AddNotNullRange(topics);
+            Errors = ImmutableList<ErrorCode>.Empty.AddRange(responses.Select(t => t.error_code));
         }
 
         public IImmutableList<ErrorCode> Errors { get; }
 
-        public IImmutableList<Topic> Topics { get; }
+        public IImmutableList<Topic> responses { get; }
 
         #region Equality
 
@@ -54,38 +85,38 @@ namespace KafkaClient.Protocol
         {
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
-            return Topics.HasEqualElementsInOrder(other.Topics);
+            return responses.HasEqualElementsInOrder(other.responses);
         }
 
         /// <inheritdoc />
         public override int GetHashCode()
         {
-            return Topics?.Count.GetHashCode() ?? 0;
+            return responses?.Count.GetHashCode() ?? 0;
         }
 
         #endregion
 
         public class Topic : TopicResponse, IEquatable<Topic>
         {
-            public override string ToString() => $"{{TopicName:{topic},PartitionId:{partition_id},ErrorCode:{ErrorCode},Offset:{Offset}}}";
+            public override string ToString() => $"{{topic:{topic},partition_id:{partition_id},error_code:{error_code},offset:{offset}}}";
 
             public Topic(string topic, int partitionId, ErrorCode errorCode = ErrorCode.NONE, long offset = -1, DateTimeOffset? timestamp = null) 
                 : base(topic, partitionId, errorCode)
             {
-                Offset = offset;
-                Timestamp = timestamp;
+                this.offset = offset;
+                this.timestamp = timestamp;
             }
 
             /// <summary>
             /// The timestamp associated with the returned offset.
             /// This only applies to version 1 and above.
             /// </summary>
-            public DateTimeOffset? Timestamp { get; set; }
+            public DateTimeOffset? timestamp { get; set; }
 
             /// <summary>
             /// The offset found.
             /// </summary>
-            public long Offset { get; set; }
+            public long offset { get; set; }
 
             #region Equality
 
@@ -99,16 +130,16 @@ namespace KafkaClient.Protocol
                 if (ReferenceEquals(null, other)) return false;
                 if (ReferenceEquals(this, other)) return true;
                 return base.Equals(other) 
-                    && Timestamp?.ToUnixTimeMilliseconds() == other.Timestamp?.ToUnixTimeMilliseconds()
-                    && Offset == other.Offset;
+                    && timestamp?.ToUnixTimeMilliseconds() == other.timestamp?.ToUnixTimeMilliseconds()
+                    && offset == other.offset;
             }
 
             public override int GetHashCode()
             {
                 unchecked {
                     var hashCode = base.GetHashCode();
-                    hashCode = (hashCode*397) ^ (Timestamp?.GetHashCode() ?? 0);
-                    hashCode = (hashCode*397) ^ Offset.GetHashCode();
+                    hashCode = (hashCode*397) ^ (timestamp?.GetHashCode() ?? 0);
+                    hashCode = (hashCode*397) ^ offset.GetHashCode();
                     return hashCode;
                 }
             }

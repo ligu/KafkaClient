@@ -2,27 +2,43 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using KafkaClient.Common;
+// ReSharper disable InconsistentNaming
 
 namespace KafkaClient.Protocol
 {
     /// <summary>
-    /// ListGroupsResponse => ErrorCode Groups
-    ///   ErrorCode => int16
-    ///   Groups => [GroupId ProtocolType]
-    ///     GroupId => string
-    ///     ProtocolType => string
+    /// ListGroups Response => error_code [groups]
+    ///   error_code => INT16
+    ///   group => [group_id protocol_type]
+    ///     group_id => STRING
+    ///     protocol_type => STRING
     ///
     /// From http://kafka.apache.org/protocol.html#protocol_messages
     /// </summary>
     public class ListGroupsResponse : IResponse, IEquatable<ListGroupsResponse>
     {
-        public override string ToString() => $"{{ErrorCode:{ErrorCode},Groups:[{Groups.ToStrings()}]}}";
+        public override string ToString() => $"{{error_code:{error_code},groups:[{groups.ToStrings()}]}}";
+
+        public static ListGroupsResponse FromBytes(IRequestContext context, ArraySegment<byte> bytes)
+        {
+            using (var reader = new KafkaReader(bytes)) {
+                var errorCode = (ErrorCode)reader.ReadInt16();
+                var groups = new ListGroupsResponse.Group[reader.ReadInt32()];
+                for (var g = 0; g < groups.Length; g++) {
+                    var groupId = reader.ReadString();
+                    var protocolType = reader.ReadString();
+                    groups[g] = new ListGroupsResponse.Group(groupId, protocolType);
+                }
+
+                return new ListGroupsResponse(errorCode, groups);
+            }
+        }
 
         public ListGroupsResponse(ErrorCode errorCode = ErrorCode.NONE, IEnumerable<Group> groups = null)
         {
-            ErrorCode = errorCode;
-            Errors = ImmutableList<ErrorCode>.Empty.Add(ErrorCode);
-            Groups = ImmutableList<Group>.Empty.AddNotNullRange(groups);
+            error_code = errorCode;
+            Errors = ImmutableList<ErrorCode>.Empty.Add(error_code);
+            this.groups = ImmutableList<Group>.Empty.AddNotNullRange(groups);
         }
 
         public IImmutableList<ErrorCode> Errors { get; }
@@ -30,9 +46,9 @@ namespace KafkaClient.Protocol
         /// <summary>
         /// The error code.
         /// </summary>
-        public ErrorCode ErrorCode { get; }
+        public ErrorCode error_code { get; }
 
-        public IImmutableList<Group> Groups { get; }
+        public IImmutableList<Group> groups { get; }
 
         #region Equality
 
@@ -47,15 +63,15 @@ namespace KafkaClient.Protocol
         {
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
-            return ErrorCode == other.ErrorCode
-                   && Groups.HasEqualElementsInOrder(other.Groups);
+            return error_code == other.error_code
+                   && groups.HasEqualElementsInOrder(other.groups);
         }
 
         /// <inheritdoc />
         public override int GetHashCode()
         {
             unchecked {
-                return ((int) ErrorCode*397) ^ (Groups?.Count.GetHashCode() ?? 0);
+                return ((int) error_code*397) ^ (groups?.Count.GetHashCode() ?? 0);
             }
         }
 
@@ -63,16 +79,16 @@ namespace KafkaClient.Protocol
 
         public class Group : IEquatable<Group>
         {
-            public override string ToString() => $"{{GroupId:{GroupId},ProtocolType:{ProtocolType}}}";
+            public override string ToString() => $"{{group_id:{group_id},protocol_type:{protocol_type}}}";
 
             public Group(string groupId, string protocolType)
             {
-                GroupId = groupId;
-                ProtocolType = protocolType;
+                group_id = groupId;
+                protocol_type = protocolType;
             }
 
-            public string GroupId { get; }
-            public string ProtocolType { get; }
+            public string group_id { get; }
+            public string protocol_type { get; }
 
             #region Equality
 
@@ -87,15 +103,15 @@ namespace KafkaClient.Protocol
             {
                 if (ReferenceEquals(null, other)) return false;
                 if (ReferenceEquals(this, other)) return true;
-                return string.Equals(GroupId, other.GroupId) 
-                       && string.Equals(ProtocolType, other.ProtocolType);
+                return string.Equals(group_id, other.group_id) 
+                       && string.Equals(protocol_type, other.protocol_type);
             }
 
             /// <inheritdoc />
             public override int GetHashCode()
             {
                 unchecked {
-                    return ((GroupId?.GetHashCode() ?? 0)*397) ^ (ProtocolType?.GetHashCode() ?? 0);
+                    return ((group_id?.GetHashCode() ?? 0)*397) ^ (protocol_type?.GetHashCode() ?? 0);
                 }
             }
             

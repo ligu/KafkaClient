@@ -39,8 +39,8 @@ namespace KafkaClient.Tests.Special
                                                         .Select(i => new Message(GenerateMessageBytes(messageSize), new ArraySegment<byte>(), (byte) codec, version: messageVersion))
                                           )));
                             var bytes = KafkaDecoder.EncodeResponseBytes(new RequestContext(1, version), response);
-                            var decoded = KafkaEncoder.Decode<FetchResponse>(new RequestContext(1, version), ApiKey.Fetch, bytes.Skip(KafkaEncoder.ResponseHeaderSize));
-                            Assert.That(decoded.Topics.Sum(t => t.Messages.Count), Is.EqualTo(response.Topics.Sum(t => t.Messages.Count)));
+                            var decoded = FetchResponse.FromBytes(new RequestContext(1, version), bytes.Skip(KafkaReader.ResponseHeaderSize));
+                            Assert.That(decoded.responses.Sum(t => t.Messages.Count), Is.EqualTo(response.responses.Sum(t => t.Messages.Count)));
                             var result = new {
                                 Codec = codec.ToString(),
                                 Level = codec == MessageCodec.None ? "-" : level.ToString(),

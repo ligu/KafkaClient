@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using KafkaClient.Assignment;
 using KafkaClient.Common;
+// ReSharper disable InconsistentNaming
 
 namespace KafkaClient.Protocol
 {
@@ -36,6 +37,8 @@ namespace KafkaClient.Protocol
                         .Write(assignment.member_assignment, encoder);
             }
         }
+
+        public SyncGroupResponse ToResponse(IRequestContext context, ArraySegment<byte> bytes) => SyncGroupResponse.FromBytes(context, bytes);
 
         /// <inheritdoc />
         public SyncGroupRequest(string groupId, int generationId, string memberId, IEnumerable<GroupAssignment> groupAssignments = null) 

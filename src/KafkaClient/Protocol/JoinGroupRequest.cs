@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using KafkaClient.Assignment;
 using KafkaClient.Common;
+// ReSharper disable InconsistentNaming
 
 namespace KafkaClient.Protocol
 {
@@ -64,6 +65,8 @@ namespace KafkaClient.Protocol
                         .Write(protocol.protocol_metadata, encoder);
             }
         }
+
+        public JoinGroupResponse ToResponse(IRequestContext context, ArraySegment<byte> bytes) => JoinGroupResponse.FromBytes(context, bytes);
 
         public JoinGroupRequest(string groupId, TimeSpan sessionTimeout, string memberId, string protocolType, IEnumerable<GroupProtocol> groupProtocols, TimeSpan? rebalanceTimeout = null) 
             : base(ApiKey.JoinGroup)

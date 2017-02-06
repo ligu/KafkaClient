@@ -102,7 +102,7 @@ namespace KafkaClient
             var topic = await Router.GetTopicMetadataAsync(topicName, cancellationToken);
             var partitionedMessages =
                 from message in messages
-                group message by Configuration.PartitionSelector.Select(topic, message.Key).PartitionId
+                group message by Configuration.PartitionSelector.Select(topic, message.Key).partition_id
                 into partition
                 select new { PartitionId = partition.Key, Messages = partition };
 
@@ -234,7 +234,7 @@ namespace KafkaClient
                         }
                         return;
                     }
-                    var resultTopics = batchResult.Topics.ToImmutableDictionary(t => new TopicPartition(t.topic, t.partition_id));
+                    var resultTopics = batchResult.responses.ToImmutableDictionary(t => new TopicPartition(t.topic, t.partition_id));
                     Router.Log.Debug(() => LogEvent.Create($"Produce response for topics{resultTopics.Keys.Aggregate("", (buffer, p) => $"{buffer} {p}")}"));
 
                     foreach (var topic in batch.ProduceTasksByTopic.Keys.Except(resultTopics.Keys)) {
@@ -256,7 +256,7 @@ namespace KafkaClient
                         foreach (var produceTask in produceTasks) {
                             produceTask.Tcs.SetResult(batch.Acks == 0
                                 ? new ProduceResponse.Topic(topic.topic, topic.partition_id, ErrorCode.NONE, -1)
-                                : new ProduceResponse.Topic(topic.topic, topic.partition_id, topic.ErrorCode, topic.Offset + messageCount - 1, topic.Timestamp));
+                                : new ProduceResponse.Topic(topic.topic, topic.partition_id, topic.error_code, topic.base_offset + messageCount - 1, topic.timestamp));
                         }
                     }
                 } catch (Exception ex) {

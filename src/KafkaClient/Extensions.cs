@@ -457,9 +457,9 @@ namespace KafkaClient
                     var response = await connection.SendAsync(request, cancellationToken).ConfigureAwait(false);
                     if (response == null) return new RetryAttempt<MetadataResponse>(null);
 
-                    var results = response.Brokers
+                    var results = response.brokers
                         .Select(ValidateBroker)
-                        .Union(response.Topics.Select(ValidateTopic))
+                        .Union(response.topic_metadata.Select(ValidateTopic))
                         .Where(r => !r.IsValid.GetValueOrDefault())
                         .ToList();
 
@@ -511,10 +511,10 @@ namespace KafkaClient
 
         private static MetadataResult ValidateTopic(MetadataResponse.Topic topic)
         {
-            var errorCode = topic.ErrorCode;
+            var errorCode = topic.topic_error_code;
             if (errorCode == ErrorCode.NONE) return new MetadataResult(isValid: true);
-            if (errorCode.IsRetryable())     return new MetadataResult(errorCode, null, $"topic/{topic.TopicName} returned error code of {errorCode}: Retrying");
-            return new MetadataResult(errorCode, false, $"topic/{topic.TopicName} returned an error of {errorCode}");
+            if (errorCode.IsRetryable())     return new MetadataResult(errorCode, null, $"topic/{topic.topic} returned error code of {errorCode}: Retrying");
+            return new MetadataResult(errorCode, false, $"topic/{topic.topic} returned an error of {errorCode}");
         }
 
         #endregion

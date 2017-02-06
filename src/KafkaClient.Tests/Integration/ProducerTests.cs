@@ -71,9 +71,9 @@ namespace KafkaClient.Tests.Integration
                 await router.TemporaryTopicAsync(async topicName => {
                     using (var producer = new Producer(router)) {
                         var responseAckLevel0 = await producer.SendMessageAsync(new Message("Ack Level 0"), topicName, 0, new SendMessageConfiguration(acks: 0), CancellationToken.None);
-                        Assert.AreEqual(responseAckLevel0.Offset, -1);
+                        Assert.AreEqual(responseAckLevel0.base_offset, -1);
                         var responseAckLevel1 = await producer.SendMessageAsync(new Message("Ack Level 1"), topicName, 0, new SendMessageConfiguration(acks: 1), CancellationToken.None);
-                        Assert.That(responseAckLevel1.Offset, Is.GreaterThan(-1));
+                        Assert.That(responseAckLevel1.base_offset, Is.GreaterThan(-1));
                     }
                 });
             }
@@ -88,7 +88,7 @@ namespace KafkaClient.Tests.Integration
                         var responseAckLevel1 = await producer.SendMessageAsync(new Message("Ack Level 1"), topicName, 0, new SendMessageConfiguration(acks: 1), CancellationToken.None);
                         var offsetResponse = await producer.Router.GetTopicOffsetsAsync(topicName, CancellationToken.None);
                         var maxOffset = offsetResponse.First(x => x.partition_id == 0);
-                        Assert.AreEqual(responseAckLevel1.Offset, maxOffset.Offset - 1);
+                        Assert.AreEqual(responseAckLevel1.base_offset, maxOffset.offset - 1);
                     }
                 });
             }
@@ -104,7 +104,7 @@ namespace KafkaClient.Tests.Integration
                         var offsetResponse = await router.GetTopicOffsetsAsync(topicName, CancellationToken.None);
                         var maxOffset = offsetResponse.First(x => x.partition_id == 0);
 
-                        Assert.AreEqual(responseAckLevel1.Offset, maxOffset.Offset - 1);
+                        Assert.AreEqual(responseAckLevel1.base_offset, maxOffset.offset - 1);
                     }
                 });
             }
@@ -115,7 +115,7 @@ namespace KafkaClient.Tests.Integration
         {
             var partitionSelector = Substitute.For<IPartitionSelector>();
             partitionSelector.Select(null, new ArraySegment<byte>())
-                             .ReturnsForAnyArgs(_ => _.Arg<MetadataResponse.Topic>().Partitions.Single(p => p.PartitionId == 1));
+                             .ReturnsForAnyArgs(_ => _.Arg<MetadataResponse.Topic>().partition_metadata.Single(p => p.partition_id == 1));
 
             using (var router = await new KafkaOptions(TestConfig.IntegrationUri).CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {

@@ -23,11 +23,11 @@ namespace KafkaClient.Tests.Special
             var expectedTopic = Guid.NewGuid().ToString();
             var router = await TestConfig.IntegrationOptions.CreateRouterAsync();
             var response = router.GetMetadataAsync(new MetadataRequest(expectedTopic), CancellationToken.None);
-            var topic = (await response).Topics.FirstOrDefault();
+            var topic = (await response).topic_metadata.FirstOrDefault();
 
             Assert.That(topic, Is.Not.Null);
-            Assert.That(topic.TopicName, Is.EqualTo(expectedTopic));
-            Assert.That(topic.ErrorCode, Is.EqualTo((int)ErrorCode.NONE));
+            Assert.That(topic.topic, Is.EqualTo(expectedTopic));
+            Assert.That(topic.topic_error_code, Is.EqualTo((int)ErrorCode.NONE));
         }
 
         [Test]
@@ -40,7 +40,7 @@ namespace KafkaClient.Tests.Special
 
                 var producer = new Producer(router);
                 var send = SandMessageForever(producer, offset.topic, offset.partition_id);
-                var read = ReadMessageForever(consumer, offset.topic, offset.partition_id, offset.Offset);
+                var read = ReadMessageForever(consumer, offset.topic, offset.partition_id, offset.offset);
                 await Task.WhenAll(send, read);
             }
         }

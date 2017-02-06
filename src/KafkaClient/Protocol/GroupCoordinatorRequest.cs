@@ -1,4 +1,5 @@
 ﻿using System;
+// ReSharper disable InconsistentNaming
 
 namespace KafkaClient.Protocol
 {
@@ -20,6 +21,8 @@ namespace KafkaClient.Protocol
         {
             writer.Write(group_id);
         }
+
+        public GroupCoordinatorResponse ToResponse(IRequestContext context, ArraySegment<byte> bytes) => GroupCoordinatorResponse.FromBytes(context, bytes);
 
         public GroupCoordinatorRequest(string groupId) 
             : base(ApiKey.GroupCoordinator)

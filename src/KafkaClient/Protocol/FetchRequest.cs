@@ -3,11 +3,12 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using KafkaClient.Common;
+// ReSharper disable InconsistentNaming
 
 namespace KafkaClient.Protocol
 {
     /// <summary>
-    /// FetchRequest => replica_id max_wait_time min_bytes *max_bytes [topics]
+    /// Fetch Request => replica_id max_wait_time min_bytes *max_bytes [topics]
     ///  *max_bytes is only version 3 (0.10.1) and above
     ///  replica_id => INT32    -- The replica id indicates the node id of the replica initiating this request. Normal client consumers should always 
     ///                            specify this as -1 as they have no node id. Other brokers set this to be their own node id. The value -2 is accepted 
@@ -67,6 +68,8 @@ namespace KafkaClient.Protocol
                 }
             }
         }
+
+        public FetchResponse ToResponse(IRequestContext context, ArraySegment<byte> bytes) => FetchResponse.FromBytes(context, bytes);
 
         public FetchRequest(Topic topic, TimeSpan? maxWaitTime = null, int? minBytes = null, int? maxBytes = null) 
             : this (new []{ topic }, maxWaitTime, minBytes, maxBytes)

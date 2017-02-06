@@ -1,4 +1,5 @@
 using System;
+// ReSharper disable InconsistentNaming
 
 namespace KafkaClient.Protocol
 {
@@ -24,6 +25,8 @@ namespace KafkaClient.Protocol
             writer.Write(group_id)
                   .Write(member_id);
         }
+
+        public LeaveGroupResponse ToResponse(IRequestContext context, ArraySegment<byte> bytes) => LeaveGroupResponse.FromBytes(context, bytes);
 
         /// <inheritdoc />
         public LeaveGroupRequest(string groupId, string memberId) : base(ApiKey.LeaveGroup)

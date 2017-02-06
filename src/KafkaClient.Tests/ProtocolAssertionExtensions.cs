@@ -43,7 +43,7 @@ namespace KafkaClient.Tests
 
             var context = new RequestContext(16, version, "Test-Response", encoders, encoder?.ProtocolType);
             var data = KafkaDecoder.EncodeResponseBytes(context, response);
-            var decoded = KafkaEncoder.Decode<T>(context, GetType<T>(), data.Skip(KafkaEncoder.ResponseHeaderSize));
+            var decoded = GetType<T>().ToResponse(context, data.Skip(KafkaReader.ResponseHeaderSize));
 
             if (forComparison == null) {
                 forComparison = response;

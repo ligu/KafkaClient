@@ -1,4 +1,5 @@
 ﻿using System;
+// ReSharper disable InconsistentNaming
 
 namespace KafkaClient.Protocol
 {
@@ -7,13 +8,13 @@ namespace KafkaClient.Protocol
         public TopicResponse(string topicName, int partitionId, ErrorCode errorCode)
             : base(topicName, partitionId)
         {
-            ErrorCode = errorCode;
+            error_code = errorCode;
         }
 
         /// <summary>
         /// Error response code.
         /// </summary>
-        public ErrorCode ErrorCode { get; }
+        public ErrorCode error_code { get; }
 
         #region Equality
 
@@ -27,20 +28,20 @@ namespace KafkaClient.Protocol
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
             return base.Equals(other)
-                && ErrorCode == other.ErrorCode;
+                && error_code == other.error_code;
         }
 
         public override int GetHashCode()
         {
             unchecked {
                 var hashCode = base.GetHashCode();
-                hashCode = (hashCode*397) ^ (int) ErrorCode;
+                hashCode = (hashCode*397) ^ (int) error_code;
                 return hashCode;
             }
         }
 
         #endregion
 
-        public override string ToString() => $"{{TopicName:{topic},PartitionId:{partition_id},ErrorCode:{ErrorCode}}}";
+        public override string ToString() => $"{{topic:{topic},partition_id:{partition_id},error_code:{error_code}}}";
     }
 }

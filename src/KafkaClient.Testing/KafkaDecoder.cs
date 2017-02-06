@@ -445,7 +445,7 @@ namespace KafkaClient.Testing
         {
             if (response == null) return false;
 
-            var groupedTopics = response.Topics.GroupBy(t => t.topic).ToList();
+            var groupedTopics = response.responses.GroupBy(t => t.topic).ToList();
             writer.Write(groupedTopics.Count);
             foreach (var topic in groupedTopics) {
                 var partitions = topic.ToList();
@@ -454,15 +454,15 @@ namespace KafkaClient.Testing
                     .Write(partitions.Count);
                 foreach (var partition in partitions) {
                     writer.Write(partition.partition_id)
-                        .Write(partition.ErrorCode)
-                        .Write(partition.Offset);
+                        .Write(partition.error_code)
+                        .Write(partition.base_offset);
                     if (context.ApiVersion >= 2) {
-                        writer.Write(partition.Timestamp?.ToUnixTimeMilliseconds() ?? -1L);
+                        writer.Write(partition.timestamp?.ToUnixTimeMilliseconds() ?? -1L);
                     }
                 }
             }
             if (context.ApiVersion >= 1) {
-                writer.Write((int?)response.ThrottleTime?.TotalMilliseconds ?? 0);
+                writer.Write((int?)response.throttle_time_ms?.TotalMilliseconds ?? 0);
             }
             return true;
         }
@@ -472,9 +472,9 @@ namespace KafkaClient.Testing
             if (response == null) return false;
 
             if (context.ApiVersion >= 1) {
-                writer.Write((int?)response.ThrottleTime?.TotalMilliseconds ?? 0);
+                writer.Write((int?)response.throttle_time_ms?.TotalMilliseconds ?? 0);
             }
-            var groupedTopics = response.Topics.GroupBy(t => t.topic).ToList();
+            var groupedTopics = response.responses.GroupBy(t => t.topic).ToList();
             writer.Write(groupedTopics.Count);
             foreach (var topic in groupedTopics) {
                 var partitions = topic.ToList();
@@ -483,8 +483,8 @@ namespace KafkaClient.Testing
                     .Write(partitions.Count); // partitionsPerTopic
                 foreach (var partition in partitions) {
                     writer.Write(partition.partition_id)
-                        .Write(partition.ErrorCode)
-                        .Write(partition.HighWaterMark);
+                        .Write(partition.error_code)
+                        .Write(partition.high_watermark);
 
                     if (partition.Messages.Count > 0) {
                         // assume all are the same codec
@@ -504,7 +504,7 @@ namespace KafkaClient.Testing
         {
             if (response == null) return false;
 
-            var groupedTopics = response.Topics.GroupBy(t => t.topic).ToList();
+            var groupedTopics = response.responses.GroupBy(t => t.topic).ToList();
             writer.Write(groupedTopics.Count);
             foreach (var topic in groupedTopics) {
                 var partitions = topic.ToList();
@@ -513,13 +513,13 @@ namespace KafkaClient.Testing
                     .Write(partitions.Count);
                 foreach (var partition in partitions) {
                     writer.Write(partition.partition_id)
-                        .Write(partition.ErrorCode);
+                        .Write(partition.error_code);
                     if (context.ApiVersion == 0) {
                         writer.Write(1)
-                              .Write(partition.Offset);
+                              .Write(partition.offset);
                     } else {
-                        writer.Write(partition.Timestamp?.ToUnixTimeMilliseconds() ?? 0L)
-                            .Write(partition.Offset);
+                        writer.Write(partition.timestamp?.ToUnixTimeMilliseconds() ?? 0L)
+                            .Write(partition.offset);
                     }
                 }
             }
@@ -530,8 +530,8 @@ namespace KafkaClient.Testing
         {
             if (response == null) return false;
 
-            writer.Write(response.Brokers.Count);
-            foreach (var broker in response.Brokers) {
+            writer.Write(response.brokers.Count);
+            foreach (var broker in response.brokers) {
                 writer.Write(broker.Id)
                     .Write(broker.Host)
                     .Write(broker.Port);
@@ -541,16 +541,16 @@ namespace KafkaClient.Testing
             }
 
             if (context.ApiVersion >= 2) {
-                writer.Write(response.ClusterId);
+                writer.Write(response.cluster_id);
             }
             if (context.ApiVersion >= 1) {
-                writer.Write(response.ControllerId.GetValueOrDefault());
+                writer.Write(response.controller_id.GetValueOrDefault());
             }
 
-            var groupedTopics = response.Topics.GroupBy(t => new { t.TopicName, t.ErrorCode, t.IsInternal }).ToList();
+            var groupedTopics = response.topic_metadata.GroupBy(t => new { TopicName = t.topic, ErrorCode = t.topic_error_code, IsInternal = t.is_internal }).ToList();
             writer.Write(groupedTopics.Count);
             foreach (var topic in groupedTopics) {
-                var partitions = topic.SelectMany(_ => _.Partitions).ToList();
+                var partitions = topic.SelectMany(_ => _.partition_metadata).ToList();
 
                 writer.Write(topic.Key.ErrorCode)
                     .Write(topic.Key.TopicName);
@@ -559,11 +559,11 @@ namespace KafkaClient.Testing
                 }
                 writer.Write(partitions.Count); // partitionsPerTopic
                 foreach (var partition in partitions) {
-                    writer.Write(partition.ErrorCode)
-                        .Write(partition.PartitionId)
-                        .Write(partition.LeaderId)
-                        .Write(partition.Replicas)
-                        .Write(partition.Isrs);
+                    writer.Write(partition.partition_error_code)
+                        .Write(partition.partition_id)
+                        .Write(partition.leader)
+                        .Write(partition.replicas)
+                        .Write(partition.isr);
                 }
             }
             return true;
@@ -573,7 +573,7 @@ namespace KafkaClient.Testing
         {
             if (response == null) return false;
 
-            var groupedTopics = response.Topics.GroupBy(t => t.topic).ToList();
+            var groupedTopics = response.responses.GroupBy(t => t.topic).ToList();
             writer.Write(groupedTopics.Count);
             foreach (var topic in groupedTopics) {
                 var partitions = topic.ToList();
@@ -581,7 +581,7 @@ namespace KafkaClient.Testing
                     .Write(partitions.Count); // partitionsPerTopic
                 foreach (var partition in partitions) {
                     writer.Write(partition.partition_id)
-                        .Write(partition.ErrorCode);
+                        .Write(partition.error_code);
                 }
             }
             return true;
@@ -591,7 +591,7 @@ namespace KafkaClient.Testing
         {
             if (response == null) return false;
 
-            var groupedTopics = response.Topics.GroupBy(t => t.topic).ToList();
+            var groupedTopics = response.responses.GroupBy(t => t.topic).ToList();
             writer.Write(groupedTopics.Count);
             foreach (var topic in groupedTopics) {
                 var partitions = topic.ToList();
@@ -599,9 +599,9 @@ namespace KafkaClient.Testing
                     .Write(partitions.Count); // partitionsPerTopic
                 foreach (var partition in partitions) {
                     writer.Write(partition.partition_id)
-                        .Write(partition.Offset)
-                        .Write(partition.MetaData)
-                        .Write(partition.ErrorCode);
+                        .Write(partition.offset)
+                        .Write(partition.metadata)
+                        .Write(partition.error_code);
                 }
             }
             return true;
@@ -611,7 +611,7 @@ namespace KafkaClient.Testing
         {
             if (response == null) return false;
 
-            writer.Write(response.ErrorCode)
+            writer.Write(response.error_code)
                 .Write(response.Id)
                 .Write(response.Host)
                 .Write(response.Port);
@@ -622,17 +622,17 @@ namespace KafkaClient.Testing
         {
             if (response == null) return false;
 
-            writer.Write(response.ErrorCode)
-                .Write(response.GenerationId)
-                .Write(response.GroupProtocol)
-                .Write(response.LeaderId)
-                .Write(response.MemberId)
-                .Write(response.Members.Count);
+            writer.Write(response.error_code)
+                .Write(response.generation_id)
+                .Write(response.group_protocol)
+                .Write(response.leader_id)
+                .Write(response.member_id)
+                .Write(response.members.Count);
 
             var encoder = context.GetEncoder();
-            foreach (var member in response.Members) {
-                writer.Write(member.MemberId)
-                      .Write(member.Metadata, encoder);
+            foreach (var member in response.members) {
+                writer.Write(member.member_id)
+                      .Write(member.member_metadata, encoder);
             }
             return true;
         }
@@ -641,7 +641,7 @@ namespace KafkaClient.Testing
         {
             if (response == null) return false;
 
-            writer.Write(response.ErrorCode);
+            writer.Write(response.error_code);
             return true;
         }
 
@@ -649,8 +649,8 @@ namespace KafkaClient.Testing
         {
             if (response == null) return false;
 
-            writer.Write(response.ErrorCode);
-            writer.Write(response.ErrorCode);
+            writer.Write(response.error_code);
+            writer.Write(response.error_code);
             return true;
         }
 
@@ -659,8 +659,8 @@ namespace KafkaClient.Testing
             if (response == null) return false;
 
             var encoder = context.GetEncoder(context.ProtocolType);
-            writer.Write(response.ErrorCode)
-                   .Write(response.MemberAssignment, encoder);
+            writer.Write(response.error_code)
+                   .Write(response.member_assignment, encoder);
             return true;
         }
 
@@ -668,22 +668,22 @@ namespace KafkaClient.Testing
         {
             if (response == null) return false;
 
-            writer.Write(response.Groups.Count);
-            foreach (var group in response.Groups) {
-                writer.Write(group.ErrorCode)
-                    .Write(group.GroupId)
-                    .Write(group.State)
-                    .Write(group.ProtocolType)
-                    .Write(group.Protocol);
+            writer.Write(response.groups.Count);
+            foreach (var group in response.groups) {
+                writer.Write(group.error_code)
+                    .Write(group.group_id)
+                    .Write(group.state)
+                    .Write(group.protocol_type)
+                    .Write(group.protocol);
 
-                var encoder = context.GetEncoder(group.ProtocolType);
-                writer.Write(group.Members.Count);
-                foreach (var member in group.Members) {
-                    writer.Write(member.MemberId)
-                        .Write(member.ClientId)
-                        .Write(member.ClientHost)
-                        .Write(member.MemberMetadata, encoder)
-                        .Write(member.MemberAssignment, encoder);
+                var encoder = context.GetEncoder(group.protocol_type);
+                writer.Write(group.members.Count);
+                foreach (var member in group.members) {
+                    writer.Write(member.member_id)
+                        .Write(member.client_id)
+                        .Write(member.client_host)
+                        .Write(member.member_metadata, encoder)
+                        .Write(member.member_assignment, encoder);
                 }
             }
             return true;
@@ -693,11 +693,11 @@ namespace KafkaClient.Testing
         {
             if (response == null) return false;
 
-            writer.Write(response.ErrorCode)
-                .Write(response.Groups.Count);
-            foreach (var group in response.Groups) {
-                writer.Write(group.GroupId)
-                    .Write(group.ProtocolType);
+            writer.Write(response.error_code)
+                .Write(response.groups.Count);
+            foreach (var group in response.groups) {
+                writer.Write(group.group_id)
+                    .Write(group.protocol_type);
             }
             return true;
         }
@@ -706,9 +706,9 @@ namespace KafkaClient.Testing
         {
             if (response == null) return false;
 
-            writer.Write(response.ErrorCode)
-                .Write(response.EnabledMechanisms.Count);
-            foreach (var mechanism in response.EnabledMechanisms) {
+            writer.Write(response.error_code)
+                .Write(response.enabled_mechanisms.Count);
+            foreach (var mechanism in response.enabled_mechanisms) {
                 writer.Write(mechanism);
             }
             return true;
@@ -718,12 +718,12 @@ namespace KafkaClient.Testing
         {
             if (response == null) return false;
 
-            writer.Write(response.ErrorCode)
-                .Write(response.SupportedVersions.Count);
-            foreach (var versionSupport in response.SupportedVersions) {
-                writer.Write((short)versionSupport.ApiKey)
-                    .Write(versionSupport.MinVersion)
-                    .Write(versionSupport.MaxVersion);
+            writer.Write(response.error_code)
+                .Write(response.api_versions.Count);
+            foreach (var versionSupport in response.api_versions) {
+                writer.Write((short)versionSupport.api_key)
+                    .Write(versionSupport.min_version)
+                    .Write(versionSupport.max_version);
             }
             return true;
         }

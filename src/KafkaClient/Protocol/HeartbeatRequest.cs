@@ -1,3 +1,6 @@
+using System;
+// ReSharper disable InconsistentNaming
+
 namespace KafkaClient.Protocol
 {
     /// <summary>
@@ -23,6 +26,8 @@ namespace KafkaClient.Protocol
                   .Write(generation_id)
                   .Write(member_id);
         }
+
+        public HeartbeatResponse ToResponse(IRequestContext context, ArraySegment<byte> bytes) => HeartbeatResponse.FromBytes(context, bytes);
 
         /// <inheritdoc />
         public HeartbeatRequest(string groupId, int generationId, string memberId) 

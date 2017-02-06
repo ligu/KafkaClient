@@ -3,11 +3,12 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using KafkaClient.Assignment;
 using KafkaClient.Common;
+// ReSharper disable InconsistentNaming
 
 namespace KafkaClient.Protocol
 {
     /// <summary>
-    /// JoinGroup Response => error_code generation_id group_protocol leader_id member_id [member] 
+    /// JoinGroup Response => error_code generation_id group_protocol leader_id member_id [members] 
     ///   error_code => INT16
     ///   generation_id => INT32   -- The generation of the consumer group.
     ///   group_protocol => STRING -- The group protocol selected by the coordinator (ie AssignmentStrategy)
@@ -31,45 +32,66 @@ namespace KafkaClient.Protocol
     /// </summary>
     public class JoinGroupResponse : IResponse, IEquatable<JoinGroupResponse>
     {
-        public override string ToString() => $"{{ErrorCode:{ErrorCode},GenerationId:{GenerationId},GroupProtocol:{GroupProtocol},LeaderId:{LeaderId},MemberId:{MemberId},Members:[{Members.ToStrings()}]}}";
+        public override string ToString() => $"{{error_code:{error_code},generation_id:{generation_id},group_protocol:{group_protocol},leader_id:{leader_id},member_id:{member_id},members:[{members.ToStrings()}]}}";
+
+        public static JoinGroupResponse FromBytes(IRequestContext context, ArraySegment<byte> bytes)
+        {
+            using (var reader = new KafkaReader(bytes)) {
+                var errorCode = (ErrorCode)reader.ReadInt16();
+                var generationId = reader.ReadInt32();
+                var groupProtocol = reader.ReadString();
+                var leaderId = reader.ReadString();
+                var memberId = reader.ReadString();
+
+                var encoder = context.GetEncoder(context.ProtocolType);
+                var members = new Member[reader.ReadInt32()];
+                for (var m = 0; m < members.Length; m++) {
+                    var id = reader.ReadString();
+                    var metadata = encoder.DecodeMetadata(groupProtocol, reader);
+                    members[m] = new Member(id, metadata);
+                }
+
+                return new JoinGroupResponse(errorCode, generationId, groupProtocol, leaderId, memberId, members);
+            }
+        }
 
         public JoinGroupResponse(ErrorCode errorCode, int generationId, string groupProtocol, string leaderId, string memberId, IEnumerable<Member> members)
         {
-            ErrorCode = errorCode;
-            Errors = ImmutableList<ErrorCode>.Empty.Add(ErrorCode);
-            GenerationId = generationId;
-            GroupProtocol = groupProtocol;
-            LeaderId = leaderId;
-            MemberId = memberId;
-            Members = ImmutableList<Member>.Empty.AddNotNullRange(members);
+            error_code = errorCode;
+            Errors = ImmutableList<ErrorCode>.Empty.Add(error_code);
+            generation_id = generationId;
+            group_protocol = groupProtocol;
+            leader_id = leaderId;
+            member_id = memberId;
+            this.members = ImmutableList<Member>.Empty.AddNotNullRange(members);
         }
 
         /// <inheritdoc />
         public IImmutableList<ErrorCode> Errors { get; }
 
-        public ErrorCode ErrorCode { get; }
+        public ErrorCode error_code { get; }
 
         /// <summary>
         /// The generation counter for completion of the join group phase.
         /// </summary>
-        public int GenerationId { get; }
+        public int generation_id { get; }
 
         /// <summary>
         /// The group protocol selected by the coordinator. Is this the name or the type??
         /// </summary>
-        public string GroupProtocol { get; }
+        public string group_protocol { get; }
 
         /// <summary>
         /// The leader of the group.
         /// </summary>
-        public string LeaderId { get; }
+        public string leader_id { get; }
 
         /// <summary>
         /// The consumer id assigned by the group coordinator.
         /// </summary>
-        public string MemberId { get; }
+        public string member_id { get; }
 
-        public IImmutableList<Member> Members { get; }
+        public IImmutableList<Member> members { get; }
 
         #region Equality
 
@@ -84,24 +106,24 @@ namespace KafkaClient.Protocol
         {
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
-            return ErrorCode == other.ErrorCode 
-                && GenerationId == other.GenerationId 
-                && string.Equals(GroupProtocol, other.GroupProtocol) 
-                && string.Equals(LeaderId, other.LeaderId) 
-                && string.Equals(MemberId, other.MemberId) 
-                && Members.HasEqualElementsInOrder(other.Members);
+            return error_code == other.error_code 
+                && generation_id == other.generation_id 
+                && string.Equals(group_protocol, other.group_protocol) 
+                && string.Equals(leader_id, other.leader_id) 
+                && string.Equals(member_id, other.member_id) 
+                && members.HasEqualElementsInOrder(other.members);
         }
 
         /// <inheritdoc />
         public override int GetHashCode()
         {
             unchecked {
-                var hashCode = (int) ErrorCode;
-                hashCode = (hashCode*397) ^ GenerationId;
-                hashCode = (hashCode*397) ^ (GroupProtocol?.GetHashCode() ?? 0);
-                hashCode = (hashCode*397) ^ (LeaderId?.GetHashCode() ?? 0);
-                hashCode = (hashCode*397) ^ (MemberId?.GetHashCode() ?? 0);
-                hashCode = (hashCode*397) ^ (Members?.Count.GetHashCode() ?? 0);
+                var hashCode = (int) error_code;
+                hashCode = (hashCode*397) ^ generation_id;
+                hashCode = (hashCode*397) ^ (group_protocol?.GetHashCode() ?? 0);
+                hashCode = (hashCode*397) ^ (leader_id?.GetHashCode() ?? 0);
+                hashCode = (hashCode*397) ^ (member_id?.GetHashCode() ?? 0);
+                hashCode = (hashCode*397) ^ (members?.Count.GetHashCode() ?? 0);
                 return hashCode;
             }
         }
@@ -110,16 +132,16 @@ namespace KafkaClient.Protocol
 
         public class Member : IEquatable<Member>
         {
-            public override string ToString() => $"{{MemberId:{MemberId},Metadata:{Metadata}}}";
+            public override string ToString() => $"{{member_id:{member_id},member_metadata:{member_metadata}}}";
 
             public Member(string memberId, IMemberMetadata metadata)
             {
-                MemberId = memberId;
-                Metadata = metadata;
+                member_id = memberId;
+                member_metadata = metadata;
             }
 
-            public string MemberId { get; }
-            public IMemberMetadata Metadata { get; }
+            public string member_id { get; }
+            public IMemberMetadata member_metadata { get; }
 
             #region Equality
 
@@ -134,15 +156,15 @@ namespace KafkaClient.Protocol
             {
                 if (ReferenceEquals(null, other)) return false;
                 if (ReferenceEquals(this, other)) return true;
-                return string.Equals(MemberId, other.MemberId) 
-                    && Equals(Metadata, other.Metadata);
+                return string.Equals(member_id, other.member_id) 
+                    && Equals(member_metadata, other.member_metadata);
             }
 
             /// <inheritdoc />
             public override int GetHashCode()
             {
                 unchecked {
-                    return ((MemberId?.GetHashCode() ?? 0)*397) ^ (Metadata?.GetHashCode() ?? 0);
+                    return ((member_id?.GetHashCode() ?? 0)*397) ^ (member_metadata?.GetHashCode() ?? 0);
                 }
             }
 

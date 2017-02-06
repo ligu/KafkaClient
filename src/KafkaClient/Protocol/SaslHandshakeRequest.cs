@@ -1,4 +1,5 @@
 using System;
+// ReSharper disable InconsistentNaming
 
 namespace KafkaClient.Protocol
 {
@@ -9,6 +10,8 @@ namespace KafkaClient.Protocol
     public class SaslHandshakeRequest : Request, IRequest<SaslHandshakeResponse>, IEquatable<SaslHandshakeRequest>
     {
         public override string ToString() => $"{{Api:{ApiKey},mechanism:{mechanism}}}";
+
+        public SaslHandshakeResponse ToResponse(IRequestContext context, ArraySegment<byte> bytes) => SaslHandshakeResponse.FromBytes(context, bytes);
 
         protected override void EncodeBody(IKafkaWriter writer, IRequestContext context)
         {
