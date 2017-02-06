@@ -13,7 +13,6 @@ namespace KafkaClient.Connections
     {
         private Socket _tcpSocket;
         private Stream _stream;
-        private readonly ReconnectingSocket _socket;
 
         private readonly Endpoint _endpoint;
         private readonly IConnectionConfiguration _configuration;
@@ -21,6 +20,9 @@ namespace KafkaClient.Connections
         private readonly ILog _log;
 
         private int _disposeCount; // = 0;
+        private readonly CancellationTokenSource _disposeToken = new CancellationTokenSource();
+
+        private readonly SemaphoreSlim _connectSemaphore = new SemaphoreSlim(1, 1);
         private readonly SemaphoreSlim _writeSemaphore = new SemaphoreSlim(1, 1);
         private readonly SemaphoreSlim _readSemaphore = new SemaphoreSlim(1, 1);
 
@@ -32,33 +34,103 @@ namespace KafkaClient.Connections
             _endpoint = endpoint;
             _configuration = configuration;
             _log = log;
-            _socket = new ReconnectingSocket(endpoint, configuration, log, true);
+        }
+
+        private Socket CreateSocket()
+        {
+            if (_endpoint.Ip == null) throw new ConnectionException(_endpoint);
+            if (_disposeCount > 0) throw new ObjectDisposedException($"Connection to {_endpoint}");
+
+            var socket = new Socket(_endpoint.Ip.AddressFamily, SocketType.Stream, ProtocolType.Tcp)
+            {
+                Blocking = true,
+                SendTimeout = (int)_configuration.RequestTimeout.TotalMilliseconds,
+                SendBufferSize = _configuration.WriteBufferSize,
+                ReceiveBufferSize = _configuration.ReadBufferSize,
+            };
+
+            if (_configuration.IsTcpKeepalive)
+            {
+                socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
+            }
+
+            return socket;
         }
 
         public async Task ConnectAsync(CancellationToken cancellationToken)
         {
-            var socket = await _socket.ConnectAsync(cancellationToken);
-            if (ReferenceEquals(_tcpSocket, socket)) return;
+            if (_disposeCount > 0) throw new ObjectDisposedException(nameof(SslTransport));
+            if (_tcpSocket?.Connected ?? cancellationToken.IsCancellationRequested) return;
 
-            Interlocked.Exchange(ref _stream, null)?.Dispose();
-            try {
-                _stream = new NetworkStream(socket, true);
-                var sslStream = new SslStream(
-                    _stream,
-                    false,
-                    _sslConfiguration.RemoteCertificateValidationCallback,
-                    _sslConfiguration.LocalCertificateSelectionCallback,
-                    _sslConfiguration.EncryptionPolicy
-                );
-                _stream = sslStream;
-                _log.Verbose(() => LogEvent.Create($"Attempting SSL connection to {_endpoint.Host}, SslProtocol:{_sslConfiguration.EnabledProtocols}, Policy:{_sslConfiguration.EncryptionPolicy}"));
-                await sslStream.AuthenticateAsClientAsync(_endpoint.Host, _sslConfiguration.LocalCertificates, _sslConfiguration.EnabledProtocols, _sslConfiguration.CheckCertificateRevocation).ThrowIfCancellationRequested(cancellationToken).ConfigureAwait(false);
-                _stream = sslStream;
-                _log.Info(() => LogEvent.Create($"Successful SSL connection, SslProtocol:{sslStream.SslProtocol}, KeyExchange:{sslStream.KeyExchangeAlgorithm}.{sslStream.KeyExchangeStrength}, Cipher:{sslStream.CipherAlgorithm}.{sslStream.CipherStrength}, Hash:{sslStream.HashAlgorithm}.{sslStream.HashStrength}, Authenticated:{sslStream.IsAuthenticated}, MutuallyAuthenticated:{sslStream.IsMutuallyAuthenticated}, Encrypted:{sslStream.IsEncrypted}, Signed:{sslStream.IsSigned}"));
-                _tcpSocket = socket;
-            } catch (Exception ex) {
-                _log.Warn(() => LogEvent.Create(ex, "SSL connection failed"));
-                Interlocked.Exchange(ref _stream, null)?.Dispose();
+            using (var cancellation = CancellationTokenSource.CreateLinkedTokenSource(_disposeToken.Token, cancellationToken))
+            {
+                await _connectSemaphore.LockAsync(
+                    async () => {
+                        if (_tcpSocket?.Connected ?? cancellation.Token.IsCancellationRequested) return;
+                        var socket = _tcpSocket ?? CreateSocket();
+                        _tcpSocket = await _configuration.ConnectionRetry.TryAsync(
+                            //action
+                            async (attempt, timer) => {
+                                if (cancellation.Token.IsCancellationRequested) return RetryAttempt<Socket>.Abort;
+
+                                _log.Info(() => LogEvent.Create($"Connecting to {_endpoint}"));
+                                _configuration.OnConnecting?.Invoke(_endpoint, attempt, timer.Elapsed);
+
+                                await socket.ConnectAsync(_endpoint.Ip.Address, _endpoint.Ip.Port).ThrowIfCancellationRequested(cancellation.Token).ConfigureAwait(false);
+                                if (!socket.Connected) return RetryAttempt<Socket>.Retry;
+
+                                _log.Info(() => LogEvent.Create($"Connection established to {_endpoint}"));
+                                _configuration.OnConnected?.Invoke(_endpoint, attempt, timer.Elapsed);
+
+                                _log.Verbose(() => LogEvent.Create($"Attempting SSL connection to {_endpoint.Host}, SslProtocol:{_sslConfiguration.EnabledProtocols}, Policy:{_sslConfiguration.EncryptionPolicy}"));
+                                Interlocked.Exchange(ref _stream, null)?.Dispose();
+                                try
+                                {
+                                    var sslStream = new SslStream(
+                                        new NetworkStream(socket, true),
+                                        false,
+                                        _sslConfiguration.RemoteCertificateValidationCallback,
+                                        _sslConfiguration.LocalCertificateSelectionCallback,
+                                        _sslConfiguration.EncryptionPolicy
+                                    );
+                                    await sslStream.AuthenticateAsClientAsync(_endpoint.Host, _sslConfiguration.LocalCertificates, _sslConfiguration.EnabledProtocols, _sslConfiguration.CheckCertificateRevocation).ThrowIfCancellationRequested(cancellationToken).ConfigureAwait(false);
+                                    _stream = sslStream;
+                                    _tcpSocket = socket;
+                                    _log.Info(() => LogEvent.Create($"Successful SSL connection to {_endpoint.Host}, SslProtocol:{sslStream.SslProtocol}, KeyExchange:{sslStream.KeyExchangeAlgorithm}.{sslStream.KeyExchangeStrength}, Cipher:{sslStream.CipherAlgorithm}.{sslStream.CipherStrength}, Hash:{sslStream.HashAlgorithm}.{sslStream.HashStrength}, Authenticated:{sslStream.IsAuthenticated}, MutuallyAuthenticated:{sslStream.IsMutuallyAuthenticated}, Encrypted:{sslStream.IsEncrypted}, Signed:{sslStream.IsSigned}"));
+                                }
+                                catch (Exception ex)
+                                {
+                                    _log.Warn(() => LogEvent.Create(ex, "SSL connection failed"));
+                                    Interlocked.Exchange(ref _stream, null)?.Dispose();
+                                }
+
+                                return new RetryAttempt<Socket>(socket);
+                            },
+                            (attempt, retry) => _log.Warn(() => LogEvent.Create($"Failed connection to {_endpoint}: Will retry in {retry}")),
+                            attempt => {
+                                _log.Warn(() => LogEvent.Create($"Failed connection to {_endpoint} on attempt {attempt}"));
+                                throw new ConnectionException(_endpoint);
+                            },
+                            (ex, attempt, retry) => {
+                                if (_disposeCount > 0) throw new ObjectDisposedException(nameof(SslTransport), ex);
+                                _log.Warn(() => LogEvent.Create(ex, $"Failed connection to {_endpoint}: Will retry in {retry}"));
+
+                                if (ex is ObjectDisposedException || ex is PlatformNotSupportedException)
+                                {
+                                    //Disconnect();
+                                    _log.Info(() => LogEvent.Create($"Creating new socket to {_endpoint}"));
+                                    socket = CreateSocket();
+                                }
+                            },
+                            (ex, attempt) => {
+                                _log.Warn(() => LogEvent.Create(ex, $"Failed connection to {_endpoint} on attempt {attempt}"));
+                                if (ex is SocketException || ex is PlatformNotSupportedException)
+                                {
+                                    throw new ConnectionException(_endpoint, ex);
+                                }
+                            },
+                            cancellation.Token).ConfigureAwait(false);
+                    }, cancellation.Token).ConfigureAwait(false);
             }
         }
 
@@ -80,13 +152,6 @@ namespace KafkaClient.Connections
                             totalBytesRead += bytesRead;
                             _configuration.OnReadBytes?.Invoke(_endpoint, bytesRemaining, bytesRead, timer.Elapsed);
                             _log.Verbose(() => LogEvent.Create($"Read {bytesRead} bytes from {_endpoint}"));
-
-                            if (bytesRead <= 0 && _socket.Available == 0) {
-                                _socket.Disconnect();
-                                var ex = new ConnectionException(_endpoint);
-                                _configuration.OnDisconnected?.Invoke(_endpoint, ex);
-                                throw ex;
-                            }
                         }
                         timer.Stop();
                         _configuration.OnRead?.Invoke(_endpoint, totalBytesRead, timer.Elapsed);
@@ -119,11 +184,12 @@ namespace KafkaClient.Connections
 
         public void Dispose()
         {
-            if (Interlocked.Increment(ref _disposeCount) != 1) return;
+            if (Interlocked.Increment(ref _disposeCount) > 1) return;
 
             _writeSemaphore.Dispose();
+            _readSemaphore.Dispose();
+            _connectSemaphore.Dispose();
             _stream?.Dispose();
-            _socket.Dispose();
         }
     }
 }
