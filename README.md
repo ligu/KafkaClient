@@ -30,7 +30,7 @@ Code Examples
 -----------
 ##### Producer
 ```csharp
-var options = new KafkaOptions(new Uri("http://SERVER1:9092"), new Uri("http://SERVER2:9092"));
+var options = new KafkaOptions(new Uri("tcp://SERVER1:9092"), new Uri("tcp://SERVER2:9092"));
 
 using(var client = new Producer(options)) {
      await client.SendMessageAsync("TestTopic", new Message("hello world"));
@@ -39,7 +39,7 @@ using(var client = new Producer(options)) {
 
 ##### Consumer
 ```csharp
-var options = new KafkaOptions(new Uri("http://SERVER1:9092"), new Uri("http://SERVER2:9092"));
+var options = new KafkaOptions(new Uri("tcp://SERVER1:9092"), new Uri("tcp://SERVER2:9092"));
 
 using (var router = new BrokerRouter(options)) {
 	var offset = await router.GetTopicOffsetAsync("TestTopic", 0, CancellationToken.None);

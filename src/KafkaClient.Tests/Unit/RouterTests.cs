@@ -327,13 +327,13 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public void BrokerRouterConstructorThrowsException()
         {
-            Assert.ThrowsAsync<ConnectionException>(() => Router.CreateAsync(new Uri("http://noaddress:1")));
+            Assert.ThrowsAsync<ConnectionException>(() => Router.CreateAsync(new Uri("tcp://noaddress:1")));
         }
 
         [Test]
         public async Task BrokerRouterConstructorShouldIgnoreUnresolvableUriWhenAtLeastOneIsGood()
         {
-            var result = await Router.CreateAsync(new [] { new Uri("http://noaddress:1"), new Uri("http://localhost:1") });
+            var result = await Router.CreateAsync(new [] { new Uri("tcp://noaddress:1"), new Uri("tcp://localhost:1") });
         }
 
         #endregion
@@ -345,7 +345,7 @@ namespace KafkaClient.Tests.Unit
             var connections = new List<IConnection>();
             for (var index = 0; index < count; index++) {
                 var connection = Substitute.For<IConnection>();
-                connection.Endpoint.Returns(new Endpoint(new IPEndPoint(IPAddress.Loopback, index), $"http://127.0.0.1:{index}"));
+                connection.Endpoint.Returns(new Endpoint(new IPEndPoint(IPAddress.Loopback, index), "tcp://127.0.0.1"));
                 connections.Add(connection);
             }
             return connections;

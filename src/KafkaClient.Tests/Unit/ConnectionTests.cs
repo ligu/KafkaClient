@@ -39,7 +39,7 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public async Task ThrowsConnectionExceptionOnInvalidEndpoint()
         {
-            var options = new KafkaOptions(new Uri("http://notadomain"));
+            var options = new KafkaOptions(new Uri("tcp://notadomain"));
             await AssertAsync.Throws<ConnectionException>(() => options.CreateConnectionAsync());
         }
 

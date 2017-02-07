@@ -671,7 +671,7 @@ namespace KafkaClient
                             continue; // same as we already have
                         }
 
-                        var endpoint = await Endpoint.ResolveAsync(new Uri($"http://{server.Host}:{server.Port}"), Log);
+                        var endpoint = await Endpoint.ResolveAsync(new Uri($"tcp://{server.Host}:{server.Port}"), Log);
                         serverEndpoints = serverEndpoints.SetItem(server.Id, endpoint);
                         hasNewServer = true;
                     }
