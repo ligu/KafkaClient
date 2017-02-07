@@ -9,4 +9,10 @@ namespace KafkaClient.Protocol
         /// </summary>
         IImmutableList<ErrorCode> Errors { get; }
     }
+
+    public interface IResponse<T> : IResponse
+    {
+        // ReSharper disable once InconsistentNaming
+        IImmutableList<T> responses { get; }
+    }
 }

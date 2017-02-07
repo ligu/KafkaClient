@@ -86,7 +86,7 @@ namespace KafkaClient.Tests.Integration
                 await router.TemporaryTopicAsync(async topicName => {
                     using (var producer = new Producer(router)) {
                         var responseAckLevel1 = await producer.SendMessageAsync(new Message("Ack Level 1"), topicName, 0, new SendMessageConfiguration(acks: 1), CancellationToken.None);
-                        var offsetResponse = await producer.Router.GetTopicOffsetsAsync(topicName, CancellationToken.None);
+                        var offsetResponse = await producer.Router.GetOffsetsAsync(topicName, CancellationToken.None);
                         var maxOffset = offsetResponse.First(x => x.partition_id == 0);
                         Assert.AreEqual(responseAckLevel1.base_offset, maxOffset.offset - 1);
                     }
@@ -101,7 +101,7 @@ namespace KafkaClient.Tests.Integration
                 await router.TemporaryTopicAsync(async topicName => {
                     using (var producer = new Producer(router)) {
                         var responseAckLevel1 = await producer.SendMessagesAsync(new[] { new Message("Ack Level 1"), new Message("Ack Level 1") }, topicName, 0,new SendMessageConfiguration(acks: 1), CancellationToken.None);
-                        var offsetResponse = await router.GetTopicOffsetsAsync(topicName, CancellationToken.None);
+                        var offsetResponse = await router.GetOffsetsAsync(topicName, CancellationToken.None);
                         var maxOffset = offsetResponse.First(x => x.partition_id == 0);
 
                         Assert.AreEqual(responseAckLevel1.base_offset, maxOffset.offset - 1);
@@ -119,7 +119,7 @@ namespace KafkaClient.Tests.Integration
 
             using (var router = await new KafkaOptions(TestConfig.IntegrationUri).CreateRouterAsync()) {
                 await router.TemporaryTopicAsync(async topicName => {
-                var offset = await router.GetTopicOffsetAsync(topicName, 0, CancellationToken.None);
+                var offset = await router.GetOffsetAsync(topicName, 0, CancellationToken.None);
                     using (var producer = new Producer(router, new ProducerConfiguration(partitionSelector: partitionSelector))) {
                         //message should send to PartitionId and not use the key to Select Broker Route !!
                         for (var i = 0; i < 20; i++) {

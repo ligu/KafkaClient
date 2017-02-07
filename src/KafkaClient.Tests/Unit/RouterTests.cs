@@ -314,7 +314,7 @@ namespace KafkaClient.Tests.Unit
         #region Construction
 
         [Test]
-        public void BrokerRouterCanConstruct()
+        public void CanConstruct()
         {
             var connections = CreateConnections(1);
             var factory = CreateFactory(connections);
@@ -325,13 +325,13 @@ namespace KafkaClient.Tests.Unit
         }
 
         [Test]
-        public void BrokerRouterConstructorThrowsException()
+        public void ConstructorThrowsException()
         {
             Assert.ThrowsAsync<ConnectionException>(() => Router.CreateAsync(new Uri("tcp://noaddress:1")));
         }
 
         [Test]
-        public async Task BrokerRouterConstructorShouldIgnoreUnresolvableUriWhenAtLeastOneIsGood()
+        public async Task ConstructorShouldIgnoreUnresolvableUriWhenAtLeastOneIsGood()
         {
             var result = await Router.CreateAsync(new [] { new Uri("tcp://noaddress:1"), new Uri("tcp://localhost:1") });
         }
@@ -361,7 +361,7 @@ namespace KafkaClient.Tests.Unit
         }
 
         [Test]
-        public async Task BrokerRouterUsesFactoryToAddNewBrokers()
+        public async Task UsesFactoryToAddNewServers()
         {
             // Arrange
             var connections = CreateConnections(2);
@@ -384,7 +384,7 @@ namespace KafkaClient.Tests.Unit
         }
 
         [Test]
-        public async Task BrokerRouterUsesFactoryToAddNewBrokersFromGroups()
+        public async Task UsesFactoryToAddNewServersFromGroups()
         {
             // Arrange
             var connections = CreateConnections(2);
@@ -411,7 +411,7 @@ namespace KafkaClient.Tests.Unit
         #region Group
 
         [Test]
-        public async Task GetGroupShouldThrowWhenBrokerCollectionIsEmpty()
+        public async Task GetGroupShouldThrowWhenServerCollectionIsEmpty()
         {
             var scenario = new RoutingScenario();
             var router = scenario.CreateRouter();
@@ -419,7 +419,7 @@ namespace KafkaClient.Tests.Unit
         }
 
         [Test]
-        public async Task BrokerRouteShouldCycleThroughEachBrokerUntilOneIsFoundForGroup()
+        public async Task ShouldCycleThroughEachServerUntilOneIsFoundForGroup()
         {
             var scenario = new RoutingScenario();
             scenario.Connection1.Add(ApiKey.GroupCoordinator, _ => { throw new Exception("some error"); });
@@ -433,7 +433,7 @@ namespace KafkaClient.Tests.Unit
         }
 
         [Test]
-        public async Task BrokerRouteShouldThrowIfCycleCouldNotConnectToAnyServerForGroup()
+        public async Task ShouldThrowIfCycleCouldNotConnectToAnyServerForGroup()
         {
             var scenario = new RoutingScenario();
             scenario.Connection1.Add(ApiKey.GroupCoordinator, _ => { throw new Exception("some error"); });
@@ -447,7 +447,7 @@ namespace KafkaClient.Tests.Unit
         }
 
         [Test]
-        public async Task BrokerRouteShouldReturnGroupFromCache()
+        public async Task ShouldReturnGroupFromCache()
         {
             var scenario = new RoutingScenario();
             var router = scenario.CreateRouter();
@@ -545,7 +545,7 @@ namespace KafkaClient.Tests.Unit
         }
 
         [Test]
-        public async Task ShouldRetryWhenReceiveBrokerIdNegativeOne()
+        public async Task ShouldRetryWhenReceiveServerIdNegativeOne()
         {
             var conn = Substitute.For<IConnection>();
 
@@ -655,7 +655,7 @@ namespace KafkaClient.Tests.Unit
 #pragma warning restore 1998
 
         [Test]
-        public async Task BrokerRouteShouldCycleThroughEachBrokerUntilOneIsFound()
+        public async Task ShouldCycleThroughEachServerUntilOneIsFound()
         {
             var scenario = new RoutingScenario();
             scenario.Connection1.Add(ApiKey.Metadata, _ => { throw new Exception("some error"); });
@@ -669,7 +669,7 @@ namespace KafkaClient.Tests.Unit
         }
 
         [Test]
-        public async Task BrokerRouteShouldThrowIfCycleCouldNotConnectToAnyServer()
+        public async Task ShouldThrowIfCycleCouldNotConnectToAnyServer()
         {
             var scenario = new RoutingScenario();
             scenario.Connection1.Add(ApiKey.Metadata, _ => { throw new ConnectionException("some error"); });
@@ -704,7 +704,7 @@ namespace KafkaClient.Tests.Unit
         }
 
         [Test]
-        public async Task BrokerRouteShouldReturnTopicFromCache()
+        public async Task ShouldReturnTopicFromCache()
         {
             var scenario = new RoutingScenario();
             var router = scenario.CreateRouter();
@@ -720,7 +720,7 @@ namespace KafkaClient.Tests.Unit
         }
 
         [Test]
-        public async Task BrokerRouteShouldThrowNoLeaderElectedForPartition()
+        public async Task ShouldThrowNoLeaderElectedForPartition()
         {
             var scenario = new RoutingScenario {
                 MetadataResponse = RoutingScenario.MetadataResponseWithNotEndToElectLeader
@@ -732,7 +732,7 @@ namespace KafkaClient.Tests.Unit
         }
 
         [Test]
-        public async Task BrokerRouteShouldReturnAllTopicsFromCache()
+        public async Task ShouldReturnAllTopicsFromCache()
         {
             var scenario = new RoutingScenario();
             var router = scenario.CreateRouter();
@@ -763,6 +763,20 @@ namespace KafkaClient.Tests.Unit
         }
 
         [Test]
+        public async Task RefreshTopicsMetadataShouldIgnoreCacheAndAlwaysCauseMetadataRequestAfterExpirationDate()
+        {
+            var scenario = new RoutingScenario { MetadataResponse = RoutingScenario.MetadataResponseWithTwoTopics };
+            var cacheExpiration = TimeSpan.FromMilliseconds(100);
+            var router = scenario.CreateRouter(cacheExpiration);
+            var testTopics = new [] { RoutingScenario.TestTopic, RoutingScenario.TestTopic2 };
+            await router.RefreshTopicMetadataAsync(testTopics, true, CancellationToken.None);
+            Assert.That(scenario.Connection1[ApiKey.Metadata], Is.EqualTo(1));
+            await Task.Delay(cacheExpiration.Add(TimeSpan.FromMilliseconds(1))); // After cache is expired
+            await router.RefreshTopicMetadataAsync(testTopics, true, CancellationToken.None);
+            Assert.That(scenario.Connection1[ApiKey.Metadata], Is.EqualTo(2));
+        }
+
+        [Test]
         public async Task RefreshAllTopicMetadataShouldAlwaysDoRequest()
         {
             var scenario = new RoutingScenario();
@@ -774,7 +788,7 @@ namespace KafkaClient.Tests.Unit
         }
 
         [Test]
-        public async Task SelectBrokerRouteShouldChange()
+        public async Task SelectShouldChange()
         {
             var scenario = new RoutingScenario();
 
@@ -814,6 +828,20 @@ namespace KafkaClient.Tests.Unit
         }
 
         [Test]
+        public async Task SimultaneouslyRefreshTopicsMetadataShouldNotGetDataFromCacheOnSameRequest()
+        {
+            var scenario = new RoutingScenario { MetadataResponse = RoutingScenario.MetadataResponseWithTwoTopics };
+            var router = scenario.CreateRouter();
+
+            var testTopics = new [] { RoutingScenario.TestTopic, RoutingScenario.TestTopic2 };
+            await Task.WhenAll(
+                router.RefreshTopicMetadataAsync(testTopics, true, CancellationToken.None), 
+                router.RefreshTopicMetadataAsync(testTopics, true, CancellationToken.None)
+                ); //do not debug
+            Assert.That(scenario.Connection1[ApiKey.Metadata], Is.EqualTo(2));
+        }
+
+        [Test]
         public async Task SimultaneouslyGetTopicMetadataShouldGetDataFromCacheOnSameRequest()
         {
             var scenario = new RoutingScenario();
@@ -829,7 +857,7 @@ namespace KafkaClient.Tests.Unit
 
         #endregion
 
-        #region SelectBrokerRouteAsync
+        #region SelectAsync
 
         [Test]
         public async Task SelectExactPartitionShouldReturnRequestedPartition()
@@ -870,7 +898,7 @@ namespace KafkaClient.Tests.Unit
         }
 
         [Test]
-        public async Task SelectExactPartitionShouldThrowWhenBrokerCollectionIsEmpty()
+        public async Task SelectExactPartitionShouldThrowWhenServerCollectionIsEmpty()
         {
             var metadataResponse = await RoutingScenario.DefaultMetadataResponse();
             metadataResponse = new MetadataResponse(topics: metadataResponse.topic_metadata);
@@ -890,25 +918,50 @@ namespace KafkaClient.Tests.Unit
         #region GetTopicOffset
 
         [Test]
-        public async Task GetTopicOffsetShouldQueryEachBroker()
+        public async Task GetTopicOffsetsShouldQueryEachServer()
         {
             var scenario = new RoutingScenario();
             var router = scenario.CreateRouter();
 
-            await router.GetTopicOffsetsAsync(RoutingScenario.TestTopic, 2, -1, CancellationToken.None);
+            var results = await router.GetOffsetsAsync(RoutingScenario.TestTopic, 2, -1, CancellationToken.None);
             Assert.That(scenario.Connection1[ApiKey.Offsets], Is.EqualTo(1));
             Assert.That(scenario.Connection2[ApiKey.Offsets], Is.EqualTo(1));
+            Assert.That(results.Count, Is.EqualTo(2));
         }
 
         [Test]
-        public async Task GetTopicOffsetShouldThrowAnyException()
+        public async Task GetGroupOffsetsShouldQueryEachServer()
+        {
+            var scenario = new RoutingScenario();
+            var router = scenario.CreateRouter();
+
+            var results = await router.GetOffsetsAsync(RoutingScenario.TestTopic, RoutingScenario.TestGroup, CancellationToken.None);
+            Assert.That(scenario.Connection1[ApiKey.OffsetFetch], Is.EqualTo(1));
+            Assert.That(scenario.Connection2[ApiKey.OffsetFetch], Is.EqualTo(1));
+            Assert.That(results.Count, Is.EqualTo(2));
+        }
+
+        [Test]
+        public async Task GetTopicOffsetsShouldThrowAnyException()
         {
             var scenario = new RoutingScenario();
             scenario.Connection1.Add(ApiKey.Offsets, _ => { throw new BufferUnderRunException("test 99"); });
             var router = scenario.CreateRouter();
 
             await AssertAsync.Throws<BufferUnderRunException>(
-                () => router.GetTopicOffsetsAsync(RoutingScenario.TestTopic, 2, -1, CancellationToken.None),
+                () => router.GetOffsetsAsync(RoutingScenario.TestTopic, 2, -1, CancellationToken.None),
+                ex => ex.Message.Contains("test 99"));
+        }
+
+        [Test]
+        public async Task GetGroupOffsetsShouldThrowAnyException()
+        {
+            var scenario = new RoutingScenario();
+            scenario.Connection1.Add(ApiKey.OffsetFetch, _ => { throw new BufferUnderRunException("test 99"); });
+            var router = scenario.CreateRouter();
+
+            await AssertAsync.Throws<BufferUnderRunException>(
+                () => router.GetOffsetsAsync(RoutingScenario.TestTopic, RoutingScenario.TestGroup, CancellationToken.None),
                 ex => ex.Message.Contains("test 99"));
         }
 

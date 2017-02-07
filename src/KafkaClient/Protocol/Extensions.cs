@@ -311,102 +311,144 @@ namespace KafkaClient.Protocol
 
         #region Router
 
+        internal static async Task<T> SendToAnyAsync<T>(this IRouter router, IRequest<T> request, CancellationToken cancellationToken, IRequestContext context = null) where T : class, IResponse
+        {
+            Exception lastException = null;
+            var endpoints = new List<Endpoint>();
+            foreach (var connection in router.Connections) {
+                var endpoint = connection.Endpoint;
+                try {
+                    return await connection.SendAsync(request, cancellationToken, context).ConfigureAwait(false);
+                } catch (Exception ex) {
+                    lastException = ex;
+                    endpoints.Add(endpoint);
+                    router.Log.Info(() => LogEvent.Create(ex, $"Failed to contact {endpoint} -> Trying next server"));
+                }
+            }
+
+            throw new ConnectionException(endpoints, lastException);
+        }
+
+        internal static async Task<bool> RefreshGroupMetadataIfInvalidAsync(this IRouter router, string groupId, bool? metadataInvalid, CancellationToken cancellationToken)
+        {
+            if (metadataInvalid.GetValueOrDefault(true)) {
+                // unknown metadata status should not force the issue
+                await router.RefreshGroupConnectionAsync(groupId, metadataInvalid.GetValueOrDefault(), cancellationToken).ConfigureAwait(false);
+            }
+            return false;
+        }
+
+        internal static async Task<bool> RefreshTopicMetadataIfInvalidAsync(this IRouter router, string topicName, bool? metadataInvalid, CancellationToken cancellationToken)
+        {
+            if (metadataInvalid.GetValueOrDefault(true)) {
+                // unknown metadata status should not force the issue
+                await router.RefreshTopicMetadataAsync(topicName, metadataInvalid.GetValueOrDefault(), cancellationToken).ConfigureAwait(false);
+            }
+            return false;
+        }
+
+        internal static void ThrowExtractedException<T>(this RoutedTopicRequest<T>[] routedTopicRequests) where T : class, IResponse
+        {
+            throw routedTopicRequests.Select(_ => _.ResponseException).FlattenAggregates();
+        }
+
+        internal static void MetadataRetry<T>(this IEnumerable<RoutedTopicRequest<T>> brokeredRequests, Exception exception, out bool? shouldRetry) where T : class, IResponse
+        {
+            shouldRetry = null;
+            foreach (var brokeredRequest in brokeredRequests) {
+                bool? requestRetry;
+                brokeredRequest.OnRetry(exception, out requestRetry);
+                if (requestRetry.HasValue) {
+                    shouldRetry = requestRetry;
+                }
+            }
+        }
+
+        internal static bool IsPotentiallyRecoverableByMetadataRefresh(this Exception exception)
+        {
+            return exception is FetchOutOfRangeException
+                || exception is TimeoutException
+                || exception is ConnectionException
+                || exception is RoutingException;
+        }
+
         /// <summary>
-        /// Get offsets for all partitions of a given topic.
+        /// Given a collection of server connections, query for the topic metadata.
         /// </summary>
         /// <param name="router">The router which provides the route and metadata.</param>
-        /// <param name="topicName">Name of the topic to get offset information from.</param>
-        /// <param name="maxOffsets">How many to get, at most.</param>
-        /// <param name="offsetTime">These are best described by <see cref="OffsetsRequest.Topic.timestamp"/></param>
+        /// <param name="request">Metadata request to make</param>
         /// <param name="cancellationToken"></param>
-        public static async Task<IImmutableList<OffsetsResponse.Topic>> GetTopicOffsetsAsync(this IRouter router, string topicName, int maxOffsets, long offsetTime, CancellationToken cancellationToken)
+        /// <remarks>
+        /// Used by <see cref="Router"/> internally. Broken out for better testability, but not intended to be used separately.
+        /// </remarks>
+        /// <returns>MetadataResponse validated to be complete.</returns>
+        internal static async Task<MetadataResponse> GetMetadataAsync(this IRouter router, MetadataRequest request, CancellationToken cancellationToken)
         {
-            bool? metadataInvalid = false;
-            var offsets = new Dictionary<int, OffsetsResponse.Topic>();
-            RoutedTopicRequest<OffsetsResponse>[] routedTopicRequests = null;
-
-            return await router.Configuration.SendRetry.TryAsync(
+            return await router.Configuration.RefreshRetry.TryAsync(
                 async (retryAttempt, elapsed) => {
-                    metadataInvalid = await router.RefreshTopicMetadataIfInvalidAsync(topicName, metadataInvalid, cancellationToken).ConfigureAwait(false);
+                    var connections = router.Connections.ToList();
+                    var connection = connections[retryAttempt % connections.Count];
+                    var response = await connection.SendAsync(request, cancellationToken).ConfigureAwait(false);
+                    if (response == null) return new RetryAttempt<MetadataResponse>(null);
 
-                    var topicMetadata = await router.GetTopicMetadataAsync(topicName, cancellationToken).ConfigureAwait(false);
-                    routedTopicRequests = topicMetadata
-                        .partition_metadata
-                        .Where(_ => !offsets.ContainsKey(_.partition_id)) // skip partitions already successfully retrieved
-                        .GroupBy(x => x.leader)
-                        .Select(partitions => 
-                            new RoutedTopicRequest<OffsetsResponse>(
-                                new OffsetsRequest(partitions.Select(_ => new OffsetsRequest.Topic(topicName, _.partition_id, offsetTime, maxOffsets))), 
-                                topicName, 
-                                partitions.Select(_ => _.partition_id).First(), 
-                                router.Log))
-                        .ToArray();
+                    var results = response.brokers
+                        .Select(ValidateServer)
+                        .Union(response.topic_metadata.Select(ValidateTopic))
+                        .Where(r => !r.IsValid.GetValueOrDefault())
+                        .ToList();
 
-                    await Task.WhenAll(routedTopicRequests.Select(_ => _.SendAsync(router, cancellationToken))).ConfigureAwait(false);
-                    var responses = routedTopicRequests.Select(_ => _.MetadataRetryResponse(retryAttempt, out metadataInvalid)).ToArray();
-                    foreach (var response in responses.Where(_ => _.IsSuccessful)) {
-                        foreach (var offsetTopic in response.Value.responses) {
-                            offsets[offsetTopic.partition_id] = offsetTopic;
-                        }
+                    var exceptions = results.Select(r => r.ToException(connection.Endpoint)).Where(e => e != null).ToList();
+                    if (exceptions.Count == 1) throw exceptions.Single();
+                    if (exceptions.Count > 1) throw new AggregateException(exceptions);
+
+                    if (results.Count == 0) return new RetryAttempt<MetadataResponse>(response);
+                    foreach (var result in results.Where(r => !string.IsNullOrEmpty(r.Message))) {
+                        router.Log.Warn(() => LogEvent.Create(result.Message));
                     }
 
-                    return responses.All(_ => _.IsSuccessful) 
-                        ? new RetryAttempt<IImmutableList<OffsetsResponse.Topic>>(offsets.Values.ToImmutableList()) 
-                        : RetryAttempt<IImmutableList<OffsetsResponse.Topic>>.Retry;
+                    return new RetryAttempt<MetadataResponse>(response, false);
                 },
-                (ex, retryAttempt, retryDelay) => routedTopicRequests.MetadataRetry(ex, out metadataInvalid),
-                routedTopicRequests.ThrowExtractedException, 
+                (ex, retryAttempt, retryDelay) => router.Log.Warn(() => LogEvent.Create(ex, $"Failed metadata request on attempt {retryAttempt}: Will retry in {retryDelay}")),
+                null, // return the failed response above, resulting in the final response
                 cancellationToken).ConfigureAwait(false);
         }
 
-        /// <summary>
-        /// Get offsets for all partitions of a given topic.
-        /// </summary>
-        /// <param name="router">The router which provides the route and metadata.</param>
-        /// <param name="topicName">Name of the topic to get offset information from.</param>
-        /// <param name="cancellationToken"></param>
-        public static Task<IImmutableList<OffsetsResponse.Topic>> GetTopicOffsetsAsync(this IRouter router, string topicName, CancellationToken cancellationToken)
+        private class MetadataResult
         {
-            return router.GetTopicOffsetsAsync(topicName, OffsetsRequest.Topic.DefaultMaxOffsets, OffsetsRequest.Topic.LatestTime, cancellationToken);
+            public bool? IsValid { get; }
+            public string Message { get; }
+            private readonly ErrorCode _errorCode;
+
+            public Exception ToException(Endpoint endpoint)
+            {
+                if (IsValid.GetValueOrDefault(true)) return null;
+
+                if (_errorCode.IsSuccess()) return new ConnectionException(Message);
+                return new RequestException(ApiKey.Metadata, _errorCode, endpoint, Message);
+            }
+
+            public MetadataResult(ErrorCode errorCode = ErrorCode.NONE, bool? isValid = null, string message = null)
+            {
+                Message = message ?? "";
+                _errorCode = errorCode;
+                IsValid = isValid;
+            }
         }
 
-        /// <summary>
-        /// Get offsets for a single partitions of a given topic.
-        /// </summary>
-        /// <param name="router">The router which provides the route and metadata.</param>
-        /// <param name="topicName">Name of the topic to get offset information from.</param>
-        /// <param name="partitionId">The partition to get offsets for.</param>
-        /// <param name="maxOffsets">How many to get, at most.</param>
-        /// <param name="offsetTime">These are best described by <see cref="OffsetsRequest.Topic.timestamp"/></param>
-        /// <param name="cancellationToken"></param>
-        public static async Task<OffsetsResponse.Topic> GetTopicOffsetAsync(this IRouter router, string topicName, int partitionId, int maxOffsets, long offsetTime, CancellationToken cancellationToken)
+        private static MetadataResult ValidateServer(Server server)
         {
-            var request = new OffsetsRequest(new OffsetsRequest.Topic(topicName, partitionId));
-            var response = await router.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
-            return response.responses.SingleOrDefault(t => t.topic == topicName && t.partition_id == partitionId);
+            if (server.Id == -1)                   return new MetadataResult(ErrorCode.UNKNOWN);
+            if (string.IsNullOrEmpty(server.Host)) return new MetadataResult(ErrorCode.NONE, false, "Broker missing host information.");
+            if (server.Port <= 0)                  return new MetadataResult(ErrorCode.NONE, false, "Broker missing port information.");
+            return new MetadataResult(isValid: true);
         }
 
-        /// <summary>
-        /// Get offsets for a single partitions of a given topic.
-        /// </summary>
-        public static Task<OffsetsResponse.Topic> GetTopicOffsetAsync(this IRouter router, string topicName, int partitionId, CancellationToken cancellationToken)
+        private static MetadataResult ValidateTopic(MetadataResponse.Topic topic)
         {
-            return router.GetTopicOffsetAsync(topicName, partitionId, OffsetsRequest.Topic.DefaultMaxOffsets, OffsetsRequest.Topic.LatestTime, cancellationToken);
-        }
-
-        /// <summary>
-        /// Get offsets for a single partitions of a given topic.
-        /// </summary>
-        /// <param name="router">The router which provides the route and metadata.</param>
-        /// <param name="topicName">Name of the topic to get offset information from.</param>
-        /// <param name="partitionId">The partition to get offsets for.</param>
-        /// <param name="groupId">The id of the consumer group</param>
-        /// <param name="cancellationToken"></param>
-        public static async Task<OffsetFetchResponse.Topic> GetTopicOffsetAsync(this IRouter router, string topicName, int partitionId, string groupId, CancellationToken cancellationToken)
-        {
-            var request = new OffsetFetchRequest(groupId, new TopicPartition(topicName, partitionId));
-            var response = await router.SendAsync(request, topicName, partitionId, cancellationToken).ConfigureAwait(false);
-            return response.responses.SingleOrDefault(t => t.topic == topicName && t.partition_id == partitionId);
+            var errorCode = topic.topic_error_code;
+            if (errorCode.IsSuccess())   return new MetadataResult(isValid: true);
+            if (errorCode.IsRetryable()) return new MetadataResult(errorCode, null, $"topic {topic.topic} returned error code of {errorCode}: Retrying");
+            return new MetadataResult(errorCode, false, $"topic {topic.topic} returned an error of {errorCode}");
         }
 
         #endregion

@@ -26,7 +26,7 @@ namespace KafkaClient.Protocol
     /// 
     /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-FetchResponse
     /// </summary>
-    public class FetchResponse : IResponse, IEquatable<FetchResponse>
+    public class FetchResponse : IResponse<FetchResponse.Topic>, IEquatable<FetchResponse>
     {
         public override string ToString() => $"{{throttle_time_ms:{throttle_time_ms},responses:[{responses.ToStrings()}]}}";
 

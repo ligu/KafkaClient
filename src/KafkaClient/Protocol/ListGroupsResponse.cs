@@ -23,11 +23,11 @@ namespace KafkaClient.Protocol
         {
             using (var reader = new KafkaReader(bytes)) {
                 var errorCode = (ErrorCode)reader.ReadInt16();
-                var groups = new ListGroupsResponse.Group[reader.ReadInt32()];
+                var groups = new Group[reader.ReadInt32()];
                 for (var g = 0; g < groups.Length; g++) {
                     var groupId = reader.ReadString();
                     var protocolType = reader.ReadString();
-                    groups[g] = new ListGroupsResponse.Group(groupId, protocolType);
+                    groups[g] = new Group(groupId, protocolType);
                 }
 
                 return new ListGroupsResponse(errorCode, groups);

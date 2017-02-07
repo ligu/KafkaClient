@@ -17,7 +17,7 @@ namespace KafkaClient.Protocol
     ///
     /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetCommit/FetchAPI
     /// </summary>
-    public class OffsetCommitResponse : IResponse, IEquatable<OffsetCommitResponse>
+    public class OffsetCommitResponse : IResponse<TopicResponse>, IEquatable<OffsetCommitResponse>
     {
         public override string ToString() => $"{{responses:[{responses.ToStrings()}]}}";
 

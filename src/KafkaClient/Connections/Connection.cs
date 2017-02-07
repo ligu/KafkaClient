@@ -156,7 +156,7 @@ namespace KafkaClient.Connections
             if (Interlocked.Increment(ref _receiveCount) > 1) return;
 
             try {
-                var header = new byte[KafkaReader.ResponseHeaderSize];
+                var header = new byte[Request.IntegerByteSize + Request.CorrelationSize];
                 AsyncItem asyncItem = null;
                 while (!_disposeToken.IsCancellationRequested) {
                     await Retry // use backoff so we don't take over the CPU when there's a failure
@@ -169,7 +169,7 @@ namespace KafkaClient.Connections
                                 if (asyncItem == null) {
                                     await _transport.ReadBytesAsync(new ArraySegment<byte>(header), _disposeToken.Token).ConfigureAwait(false);
                                     var responseSize = BitConverter.ToInt32(header, 0).ToBigEndian();
-                                    var correlationId = BitConverter.ToInt32(header, KafkaWriter.IntegerByteSize).ToBigEndian();
+                                    var correlationId = BitConverter.ToInt32(header, Request.IntegerByteSize).ToBigEndian();
 
                                     asyncItem = LookupByCorrelateId(correlationId, responseSize);
                                     if (asyncItem.ResponseBytes.Count > 0) {

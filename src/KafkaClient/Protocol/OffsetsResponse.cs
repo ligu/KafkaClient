@@ -23,7 +23,7 @@ namespace KafkaClient.Protocol
     /// 
     /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetAPI(AKAListOffset)
     /// </summary>
-    public class OffsetsResponse : IResponse, IEquatable<OffsetsResponse>
+    public class OffsetsResponse : IResponse<OffsetsResponse.Topic>, IEquatable<OffsetsResponse>
     {
         public override string ToString() => $"{{responses:[{responses.ToStrings()}]}}";
 

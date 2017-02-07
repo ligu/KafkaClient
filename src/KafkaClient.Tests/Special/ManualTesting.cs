@@ -36,7 +36,7 @@ namespace KafkaClient.Tests.Special
             var topicName = "TestTopicIssue13-3R-1P";
             using (var router = await TestConfig.IntegrationOptions.CreateRouterAsync()) {
                 var consumer = new Consumer(await TestConfig.IntegrationOptions.CreateRouterAsync(), new ConsumerConfiguration(maxPartitionFetchBytes: 10000));
-                var offset = await router.GetTopicOffsetAsync(topicName, 0, CancellationToken.None);
+                var offset = await router.GetOffsetAsync(topicName, 0, CancellationToken.None);
 
                 var producer = new Producer(router);
                 var send = SandMessageForever(producer, offset.topic, offset.partition_id);

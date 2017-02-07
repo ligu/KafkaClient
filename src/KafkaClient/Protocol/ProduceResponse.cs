@@ -30,7 +30,7 @@ namespace KafkaClient.Protocol
     /// 
     /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-Messagesets
     /// </summary>
-    public class ProduceResponse : IResponse, IEquatable<ProduceResponse>
+    public class ProduceResponse : IResponse<ProduceResponse.Topic>, IEquatable<ProduceResponse>
     {
         public override string ToString() => $"{{responses:[{responses.ToStrings()}],throttle_time_ms:{throttle_time_ms}}}";
 
@@ -39,7 +39,7 @@ namespace KafkaClient.Protocol
             using (var reader = new KafkaReader(bytes)) {
                 TimeSpan? throttleTime = null;
 
-                var topics = new List<ProduceResponse.Topic>();
+                var topics = new List<Topic>();
                 var topicCount = reader.ReadInt32();
                 for (var i = 0; i < topicCount; i++) {
                     var topicName = reader.ReadString();

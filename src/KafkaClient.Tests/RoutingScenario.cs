@@ -11,6 +11,8 @@ namespace KafkaClient.Tests
     public class RoutingScenario
     {
         public const string TestTopic = "UnitTest";
+        public const string TestTopic2 = "TestTopic";
+        public const string TestGroup = "TestGroup";
 
         private int _offset1;
         public FakeConnection Connection1 { get; }
@@ -36,6 +38,11 @@ namespace KafkaClient.Tests
                         new OffsetsResponse.Topic(TestTopic, 0, ErrorCode.NONE, 0L),
                         new OffsetsResponse.Topic(TestTopic, 0, ErrorCode.NONE, 99L)
                     }) },
+                { ApiKey.OffsetFetch, async _ => new OffsetFetchResponse(
+                    new[] {
+                        new OffsetFetchResponse.Topic(TestTopic, 0, ErrorCode.NONE, 0L, null),
+                        new OffsetFetchResponse.Topic(TestTopic, 0, ErrorCode.NONE, 99L, null)
+                    }) },
                 { ApiKey.Fetch, async _ => {
                         await Task.Delay(500);
                         return null;
@@ -51,6 +58,11 @@ namespace KafkaClient.Tests
                     new[] {
                         new OffsetsResponse.Topic(TestTopic, 1, ErrorCode.NONE, 0L),
                         new OffsetsResponse.Topic(TestTopic, 1, ErrorCode.NONE, 100L)
+                    }) },
+                { ApiKey.OffsetFetch, async _ => new OffsetFetchResponse(
+                    new[] {
+                        new OffsetFetchResponse.Topic(TestTopic, 1, ErrorCode.NONE, 0L, null),
+                        new OffsetFetchResponse.Topic(TestTopic, 1, ErrorCode.NONE, 100L, null)
                     }) },
                 { ApiKey.Fetch, async _ => {
                         await Task.Delay(500);
@@ -84,8 +96,8 @@ namespace KafkaClient.Tests
         {
             return new MetadataResponse(
                 new [] {
-                    new Protocol.Server(0, "localhost", 1),
-                    new Protocol.Server(1, "localhost", 2)
+                    new Server(0, "localhost", 1),
+                    new Server(1, "localhost", 2)
                 },
                 new [] {
                     new MetadataResponse.Topic(TestTopic, 
@@ -93,6 +105,27 @@ namespace KafkaClient.Tests
                             new MetadataResponse.Partition(0, 0, ErrorCode.NONE, new [] { 1 }, new []{ 1 }),
                             new MetadataResponse.Partition(1, 1, ErrorCode.NONE, new [] { 1 }, new []{ 1 }),
                         })
+                });
+        }
+
+        public static async Task<MetadataResponse> MetadataResponseWithTwoTopics()
+        {
+            return new MetadataResponse(
+                new [] {
+                    new Server(0, "localhost", 1),
+                    new Server(1, "localhost", 2)
+                },
+                new [] {
+                    new MetadataResponse.Topic(TestTopic, 
+                        ErrorCode.NONE, new [] {
+                            new MetadataResponse.Partition(0, 0, ErrorCode.NONE, new [] { 1 }, new []{ 1 }),
+                            new MetadataResponse.Partition(1, 1, ErrorCode.NONE, new [] { 1 }, new []{ 1 }),
+                        }),
+                    new MetadataResponse.Topic(TestTopic2, 
+                        ErrorCode.NONE, new [] {
+                            new MetadataResponse.Partition(0, 0, ErrorCode.NONE, new [] { 1 }, new []{ 1 }),
+                            new MetadataResponse.Partition(1, 1, ErrorCode.NONE, new [] { 1 }, new []{ 1 }),
+                        }),
                 });
         }
 
@@ -105,7 +138,7 @@ namespace KafkaClient.Tests
         {
             return new MetadataResponse(
                 new [] {
-                    new Protocol.Server(1, "localhost", 2)
+                    new Server(1, "localhost", 2)
                 },
                 new [] {
                     new MetadataResponse.Topic(TestTopic, 
@@ -120,7 +153,7 @@ namespace KafkaClient.Tests
         {
             return new MetadataResponse(
                 new [] {
-                    new Protocol.Server(1, "localhost", 2)
+                    new Server(1, "localhost", 2)
                 },
                 new [] {
                     new MetadataResponse.Topic(TestTopic, 

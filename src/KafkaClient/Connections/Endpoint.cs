@@ -57,7 +57,7 @@ namespace KafkaClient.Connections
 
         #endregion
 
-        public override string ToString() => $"{Host}:{Ip.Port}";
+        public override string ToString() => $"tcp://{Host}:{Ip.Port}";
 
         public static async Task<Endpoint> ResolveAsync(Uri uri, ILog log)
         {
