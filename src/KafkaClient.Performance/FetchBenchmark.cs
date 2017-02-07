@@ -55,9 +55,9 @@ namespace KafkaClient.Performance
         }
 
         [Benchmark]
-        public FetchResponse Decode()
+        public IResponse Decode()
         {
-            return KafkaEncoder.Decode<FetchResponse>(new RequestContext(1, Version), ApiKey.Fetch, _bytes.Skip(KafkaEncoder.ResponseHeaderSize));
+            return ApiKey.Fetch.ToResponse(new RequestContext(1, Version), _bytes.Skip(Request.IntegerByteSize + Request.CorrelationSize));
         }
     }
 }

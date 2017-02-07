@@ -53,7 +53,7 @@ namespace KafkaClient
                 throw request.ExtractExceptions(response);
             }
 
-            return await FetchBatchAsync(groupId, memberId, generationId, topicName, partitionId, response.Topics[0].Offset + 1, cancellationToken, batchSize).ConfigureAwait(false);
+            return await FetchBatchAsync(groupId, memberId, generationId, topicName, partitionId, response.responses[0].offset + 1, cancellationToken, batchSize).ConfigureAwait(false);
         }
 
         public async Task<IMessageBatch> FetchBatchAsync(string groupId, string memberId, int generationId, string topicName, int partitionId, long offset, CancellationToken cancellationToken, int? batchSize = null)
@@ -106,7 +106,7 @@ namespace KafkaClient
                     topic = new FetchRequest.Topic(topic.topic, topic.partition_id, topic.fetch_offset, maxBytes);
                 }
             }
-            return response?.Topics?.SingleOrDefault()?.Messages?.ToImmutableList() ?? ImmutableList<Message>.Empty;
+            return response?.responses?.SingleOrDefault()?.Messages?.ToImmutableList() ?? ImmutableList<Message>.Empty;
         }
 
         private class MessageBatch : IMessageBatch
@@ -211,7 +211,7 @@ namespace KafkaClient
             var protocols = metadata?.Select(m => new JoinGroupRequest.GroupProtocol(m));
             var request = new JoinGroupRequest(groupId, Configuration.GroupHeartbeat, null, protocolType, protocols, Configuration.GroupRebalanceTimeout);
             var response = await Router.SendAsync(request, groupId, cancellationToken, new RequestContext(protocolType: protocolType), Configuration.GroupCoordinationRetry).ConfigureAwait(false);
-            if (response == null || !response.ErrorCode.IsSuccess()) {
+            if (response == null || !response.error_code.IsSuccess()) {
                 throw request.ExtractExceptions(response);
             }
 

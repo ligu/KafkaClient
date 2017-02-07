@@ -1,3 +1,6 @@
+using System;
+// ReSharper disable InconsistentNaming
+
 namespace KafkaClient.Protocol
 {
     /// <summary>
@@ -11,6 +14,8 @@ namespace KafkaClient.Protocol
     public class ListGroupsRequest : Request, IRequest<ListGroupsResponse>
     {
         public override string ToString() => $"{{Api:{ApiKey}}}";
+
+        public ListGroupsResponse ToResponse(IRequestContext context, ArraySegment<byte> bytes) => ListGroupsResponse.FromBytes(context, bytes);
 
         public ListGroupsRequest() 
             : base(ApiKey.ListGroups)

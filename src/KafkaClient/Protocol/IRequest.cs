@@ -2,9 +2,13 @@ using System;
 
 namespace KafkaClient.Protocol
 {
-    public interface IRequest<T> : IRequest
+    public interface IRequest<out T> : IRequest
         where T : IResponse
     {
+        /// <summary>
+        /// Consume encoded format of the kafka response, received over tcp. Convert to the response object.
+        /// </summary>
+        T ToResponse(IRequestContext context, ArraySegment<byte> bytes);
     }
 
     public interface IRequest
@@ -25,7 +29,7 @@ namespace KafkaClient.Protocol
         string ShortString();
 
         /// <summary>
-        /// Encoded format of the kafka request, to be sent over tcp. Includes the request header
+        /// Produce Encoded format of the kafka request, to be sent over tcp. Includes the request header
         /// </summary>
         ArraySegment<byte> ToBytes(IRequestContext context);
     }

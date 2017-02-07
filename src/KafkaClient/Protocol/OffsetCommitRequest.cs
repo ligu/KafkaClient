@@ -3,11 +3,12 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using KafkaClient.Common;
+// ReSharper disable InconsistentNaming
 
 namespace KafkaClient.Protocol
 {
     /// <summary>
-    /// OffsetCommitRequest => group_id *generation_id *member_id *retention_time [topics]
+    /// OffsetCommit Request => group_id *generation_id *member_id *retention_time [topics]
     ///  *generation_id, member_id is only version 1 (0.8.2) and above
     ///  *retention_time is only version 2 (0.9.0) and above
     ///  group_id => STRING                 -- The consumer group id.
@@ -70,6 +71,8 @@ namespace KafkaClient.Protocol
                 }
             }
         }
+
+        public OffsetCommitResponse ToResponse(IRequestContext context, ArraySegment<byte> bytes) => OffsetCommitResponse.FromBytes(context, bytes);
 
         public OffsetCommitRequest(string groupId, IEnumerable<Topic> offsetCommits, string memberId = null, int generationId = -1, TimeSpan? retentionTime = null) 
             : base(ApiKey.OffsetCommit, groupId, memberId ?? "", generationId)

@@ -38,9 +38,9 @@ namespace KafkaClient.Tests.Unit
             var second = selector.Select(_topicA, new ArraySegment<byte>());
             var third = selector.Select(_topicA, new ArraySegment<byte>());
 
-            Assert.That(first.PartitionId, Is.EqualTo(0));
-            Assert.That(second.PartitionId, Is.EqualTo(1));
-            Assert.That(third.PartitionId, Is.EqualTo(0));
+            Assert.That(first.partition_id, Is.EqualTo(0));
+            Assert.That(second.partition_id, Is.EqualTo(1));
+            Assert.That(third.partition_id, Is.EqualTo(0));
         }
 
         [Test]
@@ -51,8 +51,8 @@ namespace KafkaClient.Tests.Unit
 
             Parallel.For(0, 100, x => bag.Add(RoundRobinPartitionSelector.Singleton.Select(_topicA, new ArraySegment<byte>())));
 
-            Assert.That(bag.Count(x => x.PartitionId == 0), Is.EqualTo(50));
-            Assert.That(bag.Count(x => x.PartitionId == 1), Is.EqualTo(50));
+            Assert.That(bag.Count(x => x.partition_id == 0), Is.EqualTo(50));
+            Assert.That(bag.Count(x => x.partition_id == 1), Is.EqualTo(50));
         }
 
         [Test]
@@ -66,11 +66,11 @@ namespace KafkaClient.Tests.Unit
             var a2 = selector.Select(_topicA, new ArraySegment<byte>());
             var b2 = selector.Select(_topicB, new ArraySegment<byte>());
 
-            Assert.That(a1.PartitionId, Is.EqualTo(0));
-            Assert.That(a2.PartitionId, Is.EqualTo(1));
+            Assert.That(a1.partition_id, Is.EqualTo(0));
+            Assert.That(a2.partition_id, Is.EqualTo(1));
 
-            Assert.That(b1.PartitionId, Is.EqualTo(0));
-            Assert.That(b2.PartitionId, Is.EqualTo(1));
+            Assert.That(b1.partition_id, Is.EqualTo(0));
+            Assert.That(b2.partition_id, Is.EqualTo(1));
         }
 
         [Test]
@@ -88,7 +88,7 @@ namespace KafkaClient.Tests.Unit
             var bag = new ConcurrentBag<MetadataResponse.Partition>();
             Parallel.For(0, TotalPartitions * 3, x => bag.Add(RoundRobinPartitionSelector.Singleton.Select(topic, new ArraySegment<byte>())));
 
-            var eachPartitionHasThree = bag.GroupBy(x => x.PartitionId).Count();
+            var eachPartitionHasThree = bag.GroupBy(x => x.partition_id).Count();
 
             Assert.That(eachPartitionHasThree, Is.EqualTo(TotalPartitions), "Each partition should have received three selections.");
         }
@@ -101,8 +101,8 @@ namespace KafkaClient.Tests.Unit
             var first = selector.Select(_topicA, CreateKeyForPartition(0));
             var second = selector.Select(_topicA, CreateKeyForPartition(1));
 
-            Assert.That(first.PartitionId, Is.EqualTo(0));
-            Assert.That(second.PartitionId, Is.EqualTo(1));
+            Assert.That(first.partition_id, Is.EqualTo(0));
+            Assert.That(second.partition_id, Is.EqualTo(1));
         }
 
         private ArraySegment<byte> CreateKeyForPartition(int partitionId)

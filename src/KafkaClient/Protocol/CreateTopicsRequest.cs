@@ -3,33 +3,34 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using KafkaClient.Common;
+// ReSharper disable InconsistentNaming
 
 namespace KafkaClient.Protocol
 {
     /// <summary>
-    /// CreateTopics Request => [topics] timeout 
-    ///  topics => topic num_partitions replication_factor [replica_assignment] [configs] 
-    ///    topic => STRING
-    ///    num_partitions => INT32
-    ///    replication_factor => INT16
-    ///    replica_assignment => partition_id [replica] 
+    /// CreateTopics Request => [create_topic_requests] timeout 
+    ///  create_topic_requests => topic num_partitions replication_factor [replica_assignment] [configs] 
+    ///    topic => STRING             -- Name for newly created topic.
+    ///    num_partitions => INT32     -- Number of partitions to be created. -1 indicates unset.
+    ///    replication_factor => INT16 -- Replication factor for the topic. -1 indicates unset.
+    ///    replica_assignment => partition_id [replicas] 
     ///      partition_id => INT32
-    ///      replica => INT32
+    ///      replica => INT32          -- The set of all nodes that should host this partition. The first replica in the list is the preferred leader.
     ///    configs => config_key config_value 
-    ///      config_key => STRING
-    ///      config_value => STRING
-    ///  timeout => INT32
+    ///      config_key => STRING      -- Configuration key name
+    ///      config_value => STRING    -- Configuration value
+    ///  timeout => INT32              -- The time in ms to wait for a topic to be completely created on the controller node. Values &lt;= 0 will trigger topic creation and return immediately
     /// </summary>
     public class CreateTopicsRequest : Request, IRequest<CreateTopicsResponse>, IEquatable<CreateTopicsRequest>
     {
-        public override string ToString() => $"{{Api:{ApiKey},topics:[{Topics.ToStrings()}],timeout:{timeout}}}";
+        public override string ToString() => $"{{Api:{ApiKey},create_topic_requests:[{create_topic_requests.ToStrings()}],timeout:{timeout}}}";
 
-        public override string ShortString() => Topics.Count == 1 ? $"{ApiKey} {Topics[0].topic}" : ApiKey.ToString();
+        public override string ShortString() => create_topic_requests.Count == 1 ? $"{ApiKey} {create_topic_requests[0].topic}" : ApiKey.ToString();
 
         protected override void EncodeBody(IKafkaWriter writer, IRequestContext context)
         {
-            writer.Write(Topics.Count);
-            foreach (var topic in Topics) {
+            writer.Write(create_topic_requests.Count);
+            foreach (var topic in create_topic_requests) {
                 writer.Write(topic.topic)
                         .Write(topic.num_partitions)
                         .Write(topic.replication_factor)
@@ -47,6 +48,8 @@ namespace KafkaClient.Protocol
             writer.Write((int)timeout.TotalMilliseconds);
         }
 
+        public CreateTopicsResponse ToResponse(IRequestContext context, ArraySegment<byte> bytes) => CreateTopicsResponse.FromBytes(context, bytes);
+
         public CreateTopicsRequest(params Topic[] topics)
             : this(topics, null)
         {
@@ -55,11 +58,11 @@ namespace KafkaClient.Protocol
         public CreateTopicsRequest(IEnumerable<Topic> topics = null, TimeSpan? timeout = null)
             : base(ApiKey.CreateTopics)
         {
-            Topics = ImmutableList<Topic>.Empty.AddNotNullRange(topics);
+            create_topic_requests = ImmutableList<Topic>.Empty.AddNotNullRange(topics);
             this.timeout = timeout ?? TimeSpan.Zero;
         }
 
-        public IImmutableList<Topic> Topics { get; }
+        public IImmutableList<Topic> create_topic_requests { get; }
 
         /// <summary>
         /// The time in ms to wait for a topic to be completely created on the controller node. Values &lt;= 0 will trigger 
@@ -78,14 +81,14 @@ namespace KafkaClient.Protocol
         {
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
-            return Topics.HasEqualElementsInOrder(other.Topics)
+            return create_topic_requests.HasEqualElementsInOrder(other.create_topic_requests)
                 && timeout.Equals(other.timeout);
         }
 
         public override int GetHashCode()
         {
             unchecked {
-                return ((Topics?.Count.GetHashCode() ?? 0) * 397) ^ timeout.GetHashCode();
+                return ((create_topic_requests?.Count.GetHashCode() ?? 0) * 397) ^ timeout.GetHashCode();
             }
         }
 

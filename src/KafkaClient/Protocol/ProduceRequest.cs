@@ -4,11 +4,12 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using KafkaClient.Common;
+// ReSharper disable InconsistentNaming
 
 namespace KafkaClient.Protocol
 {
     /// <summary>
-    /// ProduceRequest => acks timeout [topics]
+    /// Produce Request => acks timeout [topics]
     ///  acks => INT16           -- This field indicates how many acknowledgements the servers should receive before responding to the request. 
     ///                             If it is 0 the server will not send any response (this is the only case where the server will not reply to 
     ///                             a request). If it is 1, the server will wait the data is written to the local log before sending a response. 
@@ -61,6 +62,8 @@ namespace KafkaClient.Protocol
                 context.OnProduceRequestMessages(topics.Sum(_ => _.Messages.Count), segment.Count, totalCompressedBytes);
             }
         }
+
+        public ProduceResponse ToResponse(IRequestContext context, ArraySegment<byte> bytes) => ProduceResponse.FromBytes(context, bytes);
 
         public ProduceRequest(Topic topic, TimeSpan? timeout = null, short acks = 1)
             : this(new [] { topic }, timeout, acks)

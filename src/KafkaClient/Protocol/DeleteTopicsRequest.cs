@@ -2,13 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using KafkaClient.Common;
+// ReSharper disable InconsistentNaming
 
 namespace KafkaClient.Protocol
 {
     /// <summary>
     /// DeleteTopics Request => [topics] timeout 
-    ///  topics => STRING
-    ///  timeout => INT32
+    ///  topics => STRING -- An array of topics to be deleted.
+    ///  timeout => INT32 -- The time in ms to wait for a topic to be completely deleted on the controller node. Values &lt;= 0 will trigger topic deletion and return immediately
     /// </summary>
     public class DeleteTopicsRequest : Request, IRequest<DeleteTopicsResponse>, IEquatable<DeleteTopicsRequest>
     {
@@ -21,6 +22,8 @@ namespace KafkaClient.Protocol
             writer.Write(topics, true)
                   .Write((int) timeout.TotalMilliseconds);
         }
+
+        public DeleteTopicsResponse ToResponse(IRequestContext context, ArraySegment<byte> bytes) => DeleteTopicsResponse.FromBytes(context, bytes);
 
         public DeleteTopicsRequest(params string[] topics)
             : this(topics, null)

@@ -1,32 +1,44 @@
 using System;
 using System.Collections.Immutable;
 using KafkaClient.Assignment;
+// ReSharper disable InconsistentNaming
 
 namespace KafkaClient.Protocol
 {
     /// <summary>
-    /// SyncGroupResponse => ErrorCode MemberAssignment
-    ///   ErrorCode => int16
-    ///   MemberAssignment => bytes
+    /// SyncGroup Response => error_code member_assignment
+    ///   error_code => INT16
+    ///   member_assignment => BYTES
     /// 
     /// see https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol
     /// </summary>
     public class SyncGroupResponse : IResponse, IEquatable<SyncGroupResponse>
     {
-        public override string ToString() => $"{{ErrorCode:{ErrorCode},MemberAssignment:{MemberAssignment}}}";
+        public override string ToString() => $"{{error_code:{error_code},member_assignment:{member_assignment}}}";
+
+        public static SyncGroupResponse FromBytes(IRequestContext context, ArraySegment<byte> bytes)
+        {
+            using (var reader = new KafkaReader(bytes)) {
+                var errorCode = (ErrorCode)reader.ReadInt16();
+
+                var encoder = context.GetEncoder();
+                var memberAssignment = encoder.DecodeAssignment(reader);
+                return new SyncGroupResponse(errorCode, memberAssignment);
+            }
+        }
 
         public SyncGroupResponse(ErrorCode errorCode, IMemberAssignment memberAssignment)
         {
-            ErrorCode = errorCode;
-            Errors = ImmutableList<ErrorCode>.Empty.Add(ErrorCode);
-            MemberAssignment = memberAssignment;
+            error_code = errorCode;
+            Errors = ImmutableList<ErrorCode>.Empty.Add(error_code);
+            member_assignment = memberAssignment;
         }
 
         /// <inheritdoc />
         public IImmutableList<ErrorCode> Errors { get; }
 
-        public ErrorCode ErrorCode { get; }
-        public IMemberAssignment MemberAssignment { get; }
+        public ErrorCode error_code { get; }
+        public IMemberAssignment member_assignment { get; }
 
         #region Equality
 
@@ -41,15 +53,15 @@ namespace KafkaClient.Protocol
         {
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
-            return ErrorCode == other.ErrorCode 
-                && Equals(MemberAssignment, other.MemberAssignment);
+            return error_code == other.error_code 
+                && Equals(member_assignment, other.member_assignment);
         }
 
         /// <inheritdoc />
         public override int GetHashCode()
         {
             unchecked {
-                return ((int) ErrorCode*397) ^ (MemberAssignment?.GetHashCode() ?? 0);
+                return ((int) error_code*397) ^ (member_assignment?.GetHashCode() ?? 0);
             }
         }
         

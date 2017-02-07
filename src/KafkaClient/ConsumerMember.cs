@@ -22,7 +22,7 @@ namespace KafkaClient
             Log = log ?? consumer.Router?.Log ?? TraceLog.Log;
 
             group_id = request.group_id;
-            member_id = response.MemberId;
+            member_id = response.member_id;
             ProtocolType = request.protocol_type;
 
             OnJoinGroup(response);
@@ -266,15 +266,15 @@ namespace KafkaClient
 
         public void OnJoinGroup(JoinGroupResponse response)
         {
-            if (response.MemberId != member_id) throw new ArgumentOutOfRangeException(nameof(response), $"Member is not valid ({member_id} != {response.MemberId})");
+            if (response.member_id != member_id) throw new ArgumentOutOfRangeException(nameof(response), $"Member is not valid ({member_id} != {response.member_id})");
             if (_disposeCount > 0) throw new ObjectDisposedException($"Consumer {{GroupId:{group_id},MemberId:{member_id}}} is no longer valid");
 
             _joinSemaphore.Lock(
                 () => {
-                    IsLeader = response.LeaderId == member_id;
-                    GenerationId = response.GenerationId;
-                    _groupProtocol = response.GroupProtocol;
-                    _memberMetadata = response.Members.ToImmutableDictionary(member => member.MemberId, member => member.Metadata);
+                    IsLeader = response.leader_id == member_id;
+                    GenerationId = response.generation_id;
+                    _groupProtocol = response.group_protocol;
+                    _memberMetadata = response.members.ToImmutableDictionary(member => member.member_id, member => member.member_metadata);
                     Log.Info(() => LogEvent.Create(GenerationId > 1 
                         ? $"Consumer {member_id} Rejoined {group_id} Generation{GenerationId}"
                         : $"Consumer {member_id} Joined {group_id}"));
@@ -319,8 +319,8 @@ namespace KafkaClient
             }
 
             _syncSemaphore.Lock(() => {
-                _assignment = response.MemberAssignment;
-                var validPartitions = response.MemberAssignment.PartitionAssignments.ToImmutableHashSet();
+                _assignment = response.member_assignment;
+                var validPartitions = response.member_assignment.PartitionAssignments.ToImmutableHashSet();
                 var invalidPartitions = _batches.Where(pair => !validPartitions.Contains(pair.Key)).ToList();
                 foreach (var invalidPartition in invalidPartitions) {
                     invalidPartition.Value.Dispose();

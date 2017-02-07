@@ -106,7 +106,7 @@ namespace KafkaClient.Connections
                 }
             }
 
-            var response = KafkaEncoder.Decode<T>(context, request.ApiKey, receivedBytes);
+            var response = request.ToResponse(context, receivedBytes);
             _log.Debug(() => LogEvent.Create($"{Endpoint} -----> {{Context:{context},\n{request.ApiKey}Response:{response}}}"));
             return response;
         }
@@ -125,12 +125,12 @@ namespace KafkaClient.Connections
                         return await _configuration.ConnectionRetry.TryAsync(
                             async (retryAttempt, elapsed) => {
                                 var response = await SendAsync(new ApiVersionsRequest(), cancellationToken, new RequestContext(version: 0)).ConfigureAwait(false);
-                                if (response.ErrorCode.IsRetryable()) return RetryAttempt<short>.Retry;
-                                if (!response.ErrorCode.IsSuccess()) return RetryAttempt<short>.Abort;
+                                if (response.error_code.IsRetryable()) return RetryAttempt<short>.Retry;
+                                if (!response.error_code.IsSuccess()) return RetryAttempt<short>.Abort;
 
-                                var supportedVersions = response.SupportedVersions.ToImmutableDictionary(
-                                                                _ => _.ApiKey,
-                                                                _ => configuredSupport.UseMaxSupported ? _.MaxVersion : _.MinVersion);
+                                var supportedVersions = response.api_versions.ToImmutableDictionary(
+                                                                _ => _.api_key,
+                                                                _ => configuredSupport.UseMaxSupported ? _.max_version : _.min_version);
                                 _versionSupport = new VersionSupport(supportedVersions);
                                 return new RetryAttempt<short>(_versionSupport.GetVersion(apiKey).GetValueOrDefault());
                             },
@@ -156,7 +156,7 @@ namespace KafkaClient.Connections
             if (Interlocked.Increment(ref _receiveCount) > 1) return;
 
             try {
-                var header = new byte[KafkaEncoder.ResponseHeaderSize];
+                var header = new byte[Request.IntegerByteSize + Request.CorrelationSize];
                 AsyncItem asyncItem = null;
                 while (!_disposeToken.IsCancellationRequested) {
                     await Retry // use backoff so we don't take over the CPU when there's a failure
@@ -169,13 +169,13 @@ namespace KafkaClient.Connections
                                 if (asyncItem == null) {
                                     await _transport.ReadBytesAsync(new ArraySegment<byte>(header), _disposeToken.Token).ConfigureAwait(false);
                                     var responseSize = BitConverter.ToInt32(header, 0).ToBigEndian();
-                                    var correlationId = BitConverter.ToInt32(header, KafkaEncoder.IntegerByteSize).ToBigEndian();
+                                    var correlationId = BitConverter.ToInt32(header, Request.IntegerByteSize).ToBigEndian();
 
                                     asyncItem = LookupByCorrelateId(correlationId, responseSize);
                                     if (asyncItem.ResponseBytes.Count > 0) {
-                                        _log.Error(LogEvent.Create($"Request id {correlationId} matched a previous response ({asyncItem.ResponseBytes.Count + KafkaEncoder.CorrelationSize} of {responseSize + KafkaEncoder.CorrelationSize} bytes), now overwriting with {responseSize}? bytes"));
+                                        _log.Error(LogEvent.Create($"Request id {correlationId} matched a previous response ({asyncItem.ResponseBytes.Count + Request.CorrelationSize} of {responseSize + Request.CorrelationSize} bytes), now overwriting with {responseSize}? bytes"));
                                     }
-                                    asyncItem.ResponseBytes = new ArraySegment<byte>(new byte[responseSize - KafkaEncoder.CorrelationSize]);
+                                    asyncItem.ResponseBytes = new ArraySegment<byte>(new byte[responseSize - Request.CorrelationSize]);
                                 }
 
                                 // reading the body
@@ -340,13 +340,13 @@ namespace KafkaClient.Connections
             internal void ResponseCompleted(ILog log)
             {
                 if (Request is UnknownRequest) {
-                    log.Info(() => LogEvent.Create($"Received {ResponseBytes.Count + KafkaEncoder.CorrelationSize} bytes (id {Context.CorrelationId})"));
+                    log.Info(() => LogEvent.Create($"Received {ResponseBytes.Count + Protocol.Request.CorrelationSize} bytes (id {Context.CorrelationId})"));
                     return;
                 }
-                log.Info(() => LogEvent.Create($"Received {ApiKey} response (id {Context.CorrelationId}, {ResponseBytes.Count + KafkaEncoder.CorrelationSize} bytes)"));
+                log.Info(() => LogEvent.Create($"Received {ApiKey} response (id {Context.CorrelationId}, {ResponseBytes.Count + Protocol.Request.CorrelationSize} bytes)"));
                 if (!ReceiveTask.TrySetResult(ResponseBytes)) {
                     log.Debug(() => {
-                        var result = KafkaEncoder.Decode<IResponse>(Context, ApiKey, ResponseBytes);
+                        var result = ApiKey.ToResponse(Context, ResponseBytes);
                         return LogEvent.Create($"Timed out -----> (timed out or otherwise errored in client) {{Context:{Context},\n{ApiKey}Response:{result}}}");
                     });
                 }

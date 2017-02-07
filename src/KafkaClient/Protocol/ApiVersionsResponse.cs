@@ -2,27 +2,45 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using KafkaClient.Common;
+// ReSharper disable InconsistentNaming
 
 namespace KafkaClient.Protocol
 {
     /// <summary>
-    /// ApiVersionsResponse => ErrorCode [ApiKey MinVersion MaxVersion]
-    ///  ErrorCode => int16  -- The error code.
-    ///  ApiKey => int16     -- The Api Key.
-    ///  MinVersion => int16 -- The minimum supported version.
-    ///  MaxVersion => int16 -- The maximum supported version.
+    /// ApiVersions Response => error_code [api_versions]
+    ///  error_code => INT16   -- The error code.
+    ///  api_version => api_key min_version max_version 
+    ///   api_key => INT16     -- The Api Key.
+    ///   min_version => INT16 -- The minimum supported version.
+    ///   max_version => INT16 -- The maximum supported version.
     ///
     /// From http://kafka.apache.org/protocol.html#protocol_messages
     /// </summary>
     public class ApiVersionsResponse : IResponse, IEquatable<ApiVersionsResponse>
     {
-        public override string ToString() => $"{{ErrorCode:{ErrorCode},Apis:[{SupportedVersions.ToStrings()}]}}";
+        public override string ToString() => $"{{error_code:{error_code},api_versions:[{api_versions.ToStrings()}]}}";
+
+        public static ApiVersionsResponse FromBytes(IRequestContext context, ArraySegment<byte> bytes)
+        {
+            using (var reader = new KafkaReader(bytes)) {
+                var errorCode = (ErrorCode)reader.ReadInt16();
+
+                var apiKeys = new VersionSupport[reader.ReadInt32()];
+                for (var i = 0; i < apiKeys.Length; i++) {
+                    var apiKey = (ApiKey)reader.ReadInt16();
+                    var minVersion = reader.ReadInt16();
+                    var maxVersion = reader.ReadInt16();
+                    apiKeys[i] = new VersionSupport(apiKey, minVersion, maxVersion);
+                }
+                return new ApiVersionsResponse(errorCode, apiKeys);
+            }
+        }
 
         public ApiVersionsResponse(ErrorCode errorCode = ErrorCode.NONE, IEnumerable<VersionSupport> supportedVersions = null)
         {
-            ErrorCode = errorCode;
-            Errors = ImmutableList<ErrorCode>.Empty.Add(ErrorCode);
-            SupportedVersions = ImmutableList<VersionSupport>.Empty.AddNotNullRange(supportedVersions);
+            error_code = errorCode;
+            Errors = ImmutableList<ErrorCode>.Empty.Add(error_code);
+            api_versions = ImmutableList<VersionSupport>.Empty.AddNotNullRange(supportedVersions);
         }
 
         public IImmutableList<ErrorCode> Errors { get; }
@@ -30,9 +48,9 @@ namespace KafkaClient.Protocol
         /// <summary>
         /// The error code.
         /// </summary>
-        public ErrorCode ErrorCode { get; }
+        public ErrorCode error_code { get; }
 
-        public IImmutableList<VersionSupport> SupportedVersions { get; }
+        public IImmutableList<VersionSupport> api_versions { get; }
 
         #region Equality
 
@@ -47,15 +65,15 @@ namespace KafkaClient.Protocol
         {
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
-            return ErrorCode == other.ErrorCode
-                && SupportedVersions.HasEqualElementsInOrder(other.SupportedVersions);
+            return error_code == other.error_code
+                && api_versions.HasEqualElementsInOrder(other.api_versions);
         }
 
         /// <inheritdoc />
         public override int GetHashCode()
         {
             unchecked {
-                return ((int) ErrorCode*397) ^ (SupportedVersions?.Count.GetHashCode() ?? 0);
+                return ((int) error_code*397) ^ (api_versions?.Count.GetHashCode() ?? 0);
             }
         }
 
@@ -63,29 +81,29 @@ namespace KafkaClient.Protocol
 
         public class VersionSupport : IEquatable<VersionSupport>
         {
-            public override string ToString() => $"{{ApiKey:{ApiKey},MinVersion:{MinVersion},MaxVersion:{MaxVersion}}}";
+            public override string ToString() => $"{{api_key:{api_key},min_version:{min_version},max_version:{max_version}}}";
 
             public VersionSupport(ApiKey apiKey, short minVersion, short maxVersion)
             {
-                ApiKey = apiKey;
-                MinVersion = minVersion;
-                MaxVersion = maxVersion;
+                api_key = apiKey;
+                min_version = minVersion;
+                max_version = maxVersion;
             }
 
             /// <summary>
             /// API key.
             /// </summary>
-            public ApiKey ApiKey { get; } 
+            public ApiKey api_key { get; } 
 
             /// <summary>
             /// Minimum supported version.
             /// </summary>
-            public short MinVersion { get; }
+            public short min_version { get; }
 
             /// <summary>
             /// Maximum supported version.
             /// </summary>
-            public short MaxVersion { get; }
+            public short max_version { get; }
 
             #region Equality
 
@@ -98,15 +116,15 @@ namespace KafkaClient.Protocol
             {
                 if (ReferenceEquals(null, other)) return false;
                 if (ReferenceEquals(this, other)) return true;
-                return ApiKey == other.ApiKey && MinVersion == other.MinVersion && MaxVersion == other.MaxVersion;
+                return api_key == other.api_key && min_version == other.min_version && max_version == other.max_version;
             }
 
             public override int GetHashCode()
             {
                 unchecked {
-                    var hashCode = (int) ApiKey;
-                    hashCode = (hashCode*397) ^ MinVersion.GetHashCode();
-                    hashCode = (hashCode*397) ^ MaxVersion.GetHashCode();
+                    var hashCode = (int) api_key;
+                    hashCode = (hashCode*397) ^ min_version.GetHashCode();
+                    hashCode = (hashCode*397) ^ max_version.GetHashCode();
                     return hashCode;
                 }
             }

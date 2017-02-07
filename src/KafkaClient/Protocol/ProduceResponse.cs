@@ -3,35 +3,71 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using KafkaClient.Common;
+// ReSharper disable InconsistentNaming
 
 namespace KafkaClient.Protocol
 {
     /// <summary>
-    /// ProduceResponse => [Response] *ThrottleTime
-    ///  *ThrottleTime is only version 1 (0.9.0) and above
+    /// Produce Response => [response] *throttle_time_ms
+    ///  *throttle_time_ms is only version 1 (0.9.0) and above
     /// 
-    ///  Response => TopicName [PartitionResponse]
-    ///   TopicName => string  -- The topic this response entry corresponds to.
+    ///  response => topic [partition_responses]
+    ///   topic => STRING          -- The topic this response entry corresponds to.
     /// 
-    ///   PartitionResponse => Partition ErrorCode Offset *Timestamp
+    ///   partition_responses => partition_id error_code base_offset *timestamp 
     ///    *Timestamp is only version 2 (0.10.0) and above
-    ///    Partition => int32  -- The partition this response entry corresponds to.
-    ///    ErrorCode => int16  -- The error from this partition, if any. Errors are given on a per-partition basis because a given partition may be 
-    ///                             unavailable or maintained on a different host, while others may have successfully accepted the produce request.
-    ///    Offset => int64     -- The offset assigned to the first message in the message set appended to this partition.
-    ///    Timestamp => int64  -- If LogAppendTime is used for the topic, this is the timestamp assigned by the broker to the message set. 
-    ///                           All the messages in the message set have the same timestamp.
-    ///                           If CreateTime is used, this field is always -1. The producer can assume the timestamp of the messages in the 
-    ///                           produce request has been accepted by the broker if there is no error code returned.
-    ///                          Unit is milliseconds since beginning of the epoch (midnight Jan 1, 1970 (UTC)).
-    ///  ThrottleTime => int32 -- Duration in milliseconds for which the request was throttled due to quota violation. 
-    ///                           (Zero if the request did not violate any quota).
+    ///    partition_id => INT32   -- The partition this response entry corresponds to.
+    ///    error_code => INT16     -- The error from this partition, if any. Errors are given on a per-partition basis because a given partition may be 
+    ///                               unavailable or maintained on a different host, while others may have successfully accepted the produce request.
+    ///    base_offset => INT64    -- The offset assigned to the first message in the message set appended to this partition.
+    ///    timestamp => INT64      -- If LogAppendTime is used for the topic, this is the timestamp assigned by the broker to the message set. 
+    ///                               All the messages in the message set have the same timestamp.
+    ///                               If CreateTime is used, this field is always -1. The producer can assume the timestamp of the messages in the 
+    ///                               produce request has been accepted by the broker if there is no error code returned.
+    ///                               Unit is milliseconds since beginning of the epoch (midnight Jan 1, 1970 (UTC)).
+    ///  throttle_time_ms => INT32 -- Duration in milliseconds for which the request was throttled due to quota violation. 
+    ///                               (Zero if the request did not violate any quota).
     /// 
     /// From https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-Messagesets
     /// </summary>
-    public class ProduceResponse : IResponse, IEquatable<ProduceResponse>
+    public class ProduceResponse : IResponse<ProduceResponse.Topic>, IEquatable<ProduceResponse>
     {
-        public override string ToString() => $"{{Topics:[{Topics.ToStrings()}],ThrottleTime:{ThrottleTime}}}";
+        public override string ToString() => $"{{responses:[{responses.ToStrings()}],throttle_time_ms:{throttle_time_ms}}}";
+
+        public static ProduceResponse FromBytes(IRequestContext context, ArraySegment<byte> bytes)
+        {
+            using (var reader = new KafkaReader(bytes)) {
+                TimeSpan? throttleTime = null;
+
+                var topics = new List<Topic>();
+                var topicCount = reader.ReadInt32();
+                for (var i = 0; i < topicCount; i++) {
+                    var topicName = reader.ReadString();
+
+                    var partitionCount = reader.ReadInt32();
+                    for (var j = 0; j < partitionCount; j++) {
+                        var partitionId = reader.ReadInt32();
+                        var errorCode = (ErrorCode) reader.ReadInt16();
+                        var offset = reader.ReadInt64();
+                        DateTimeOffset? timestamp = null;
+
+                        if (context.ApiVersion >= 2) {
+                            var milliseconds = reader.ReadInt64();
+                            if (milliseconds >= 0) {
+                                timestamp = DateTimeOffset.FromUnixTimeMilliseconds(milliseconds);
+                            }
+                        }
+
+                        topics.Add(new Topic(topicName, partitionId, errorCode, offset, timestamp));
+                    }
+                }
+
+                if (context.ApiVersion >= 1) {
+                    throttleTime = TimeSpan.FromMilliseconds(reader.ReadInt32());
+                }
+                return new ProduceResponse(topics, throttleTime);
+            }
+        }
 
         public ProduceResponse(Topic topic, TimeSpan? throttleTime = null)
             : this (new []{ topic }, throttleTime)
@@ -40,20 +76,20 @@ namespace KafkaClient.Protocol
 
         public ProduceResponse(IEnumerable<Topic> topics = null, TimeSpan? throttleTime = null)
         {
-            Topics = ImmutableList<Topic>.Empty.AddNotNullRange(topics);
-            Errors = ImmutableList<ErrorCode>.Empty.AddRange(Topics.Select(t => t.ErrorCode));
-            ThrottleTime = throttleTime;
+            responses = ImmutableList<Topic>.Empty.AddNotNullRange(topics);
+            Errors = ImmutableList<ErrorCode>.Empty.AddRange(responses.Select(t => t.error_code));
+            throttle_time_ms = throttleTime;
         }
 
         public IImmutableList<ErrorCode> Errors { get; }
 
-        public IImmutableList<Topic> Topics { get; }
+        public IImmutableList<Topic> responses { get; }
 
         /// <summary>
         /// Duration in milliseconds for which the request was throttled due to quota violation. 
         /// (Zero if the request did not violate any quota). Only version 1 (0.9.0) and above.
         /// </summary>
-        public TimeSpan? ThrottleTime { get; }
+        public TimeSpan? throttle_time_ms { get; }
 
         #region Equality
 
@@ -68,16 +104,16 @@ namespace KafkaClient.Protocol
         {
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
-            return Topics.HasEqualElementsInOrder(other.Topics) 
-                && (int?)ThrottleTime?.TotalMilliseconds == (int?)other.ThrottleTime?.TotalMilliseconds;
+            return responses.HasEqualElementsInOrder(other.responses) 
+                && (int?)throttle_time_ms?.TotalMilliseconds == (int?)other.throttle_time_ms?.TotalMilliseconds;
         }
 
         /// <inheritdoc />
         public override int GetHashCode()
         {
             unchecked {
-                var hashCode = Topics?.Count.GetHashCode() ?? 0;
-                hashCode = (hashCode*397) ^ ThrottleTime.GetHashCode();
+                var hashCode = responses?.Count.GetHashCode() ?? 0;
+                hashCode = (hashCode*397) ^ throttle_time_ms.GetHashCode();
                 return hashCode;
             }
         }
@@ -86,19 +122,19 @@ namespace KafkaClient.Protocol
 
         public class Topic : TopicResponse, IEquatable<Topic>
         {
-            public override string ToString() => $"{{TopicName:{topic},PartitionId:{partition_id},ErrorCode:{ErrorCode},Offset:{Offset},Timestamp:{Timestamp}}}";
+            public override string ToString() => $"{{topic:{topic},partition_id:{partition_id},error_code:{error_code},base_offset:{base_offset},timestamp:{timestamp}}}";
 
             public Topic(string topic, int partitionId, ErrorCode errorCode, long offset, DateTimeOffset? timestamp = null)
                 : base(topic, partitionId, errorCode)
             {
-                Offset = offset;
-                Timestamp = timestamp.HasValue && timestamp.Value.ToUnixTimeMilliseconds() >= 0 ? timestamp : null;
+                base_offset = offset;
+                this.timestamp = timestamp.HasValue && timestamp.Value.ToUnixTimeMilliseconds() >= 0 ? timestamp : null;
             }
 
             /// <summary>
             /// The offset number to commit as completed.
             /// </summary>
-            public long Offset { get; }
+            public long base_offset { get; }
 
             /// <summary>
             /// If LogAppendTime is used for the topic, this is the timestamp assigned by the broker to the message set. 
@@ -106,7 +142,7 @@ namespace KafkaClient.Protocol
             /// If CreateTime is used, this field is always -1. The producer can assume the timestamp of the messages in the 
             /// produce request has been accepted by the broker if there is no error code returned.
             /// </summary>
-            public DateTimeOffset? Timestamp { get; }
+            public DateTimeOffset? timestamp { get; }
 
             #region Equality
 
@@ -120,16 +156,16 @@ namespace KafkaClient.Protocol
                 if (ReferenceEquals(null, other)) return false;
                 if (ReferenceEquals(this, other)) return true;
                 return base.Equals(other) 
-                    && Offset == other.Offset 
-                    && Timestamp.Equals(other.Timestamp);
+                    && base_offset == other.base_offset 
+                    && timestamp.Equals(other.timestamp);
             }
 
             public override int GetHashCode()
             {
                 unchecked {
                     int hashCode = base.GetHashCode();
-                    hashCode = (hashCode*397) ^ Offset.GetHashCode();
-                    hashCode = (hashCode*397) ^ Timestamp.GetHashCode();
+                    hashCode = (hashCode*397) ^ base_offset.GetHashCode();
+                    hashCode = (hashCode*397) ^ timestamp.GetHashCode();
                     return hashCode;
                 }
             }

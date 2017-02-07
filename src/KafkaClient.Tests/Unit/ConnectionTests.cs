@@ -39,7 +39,7 @@ namespace KafkaClient.Tests.Unit
         [Test]
         public async Task ThrowsConnectionExceptionOnInvalidEndpoint()
         {
-            var options = new KafkaOptions(new Uri("http://notadomain"));
+            var options = new KafkaOptions(new Uri("tcp://notadomain"));
             await AssertAsync.Throws<ConnectionException>(() => options.CreateConnectionAsync());
         }
 
@@ -401,7 +401,7 @@ namespace KafkaClient.Tests.Unit
                 {
                     server.OnConnected = () => TestConfig.Log.Info(() => LogEvent.Create("Client connected..."));
                     server.OnReceivedAsync = async data => {
-                        var requestContext = KafkaDecoder.DecodeHeader(data.Skip(KafkaEncoder.IntegerByteSize));
+                        var requestContext = KafkaDecoder.DecodeHeader(data.Skip(Request.IntegerByteSize));
                         await server.SendDataAsync(MessageHelper.CreateMetadataResponse(requestContext, "Test"));
                     };
 
@@ -424,7 +424,7 @@ namespace KafkaClient.Tests.Unit
             using (var conn = new Connection(endpoint, new ConnectionConfiguration(requestTimeout: TimeSpan.FromSeconds(1000), versionSupport: VersionSupport.Kafka10), log: TestConfig.Log))
             {
                 server.OnReceivedAsync = async data => {
-                    context = KafkaDecoder.DecodeHeader(data.Skip(KafkaEncoder.IntegerByteSize));
+                    context = KafkaDecoder.DecodeHeader(data.Skip(Request.IntegerByteSize));
                     await server.SendDataAsync(KafkaDecoder.EncodeResponseBytes(context, new FetchResponse()));
                 };
 
@@ -446,7 +446,7 @@ namespace KafkaClient.Tests.Unit
             {
                 var apiVersion = (short)3;
                 server.OnReceivedAsync = async data => {
-                    var context = KafkaDecoder.DecodeHeader(data.Skip(KafkaEncoder.IntegerByteSize));
+                    var context = KafkaDecoder.DecodeHeader(data.Skip(Request.IntegerByteSize));
                     if (firstCorrelation < 0)
                     {
                         firstCorrelation = context.CorrelationId;
@@ -483,7 +483,7 @@ namespace KafkaClient.Tests.Unit
             using (var conn = new Connection(endpoint, new ConnectionConfiguration(requestTimeout: TimeSpan.FromSeconds(3), versionSupport: VersionSupport.Kafka8.Dynamic()), log: TestConfig.Log))
             {
                 server.OnReceivedAsync = async data => {
-                    var fullHeader = KafkaDecoder.DecodeFullHeader(data.Skip(KafkaEncoder.IntegerByteSize));
+                    var fullHeader = KafkaDecoder.DecodeFullHeader(data.Skip(Request.IntegerByteSize));
                     var context = fullHeader.Item1;
                     switch (fullHeader.Item2) {
                         case ApiKey.ApiVersions:
@@ -542,7 +542,7 @@ namespace KafkaClient.Tests.Unit
                 await Task.WhenAny(server.ClientConnected, Task.Delay(TimeSpan.FromSeconds(3)));
 
                 server.OnReceivedAsync = async data => {
-                    var context = KafkaDecoder.DecodeHeader(data.Skip(KafkaEncoder.IntegerByteSize));
+                    var context = KafkaDecoder.DecodeHeader(data.Skip(Request.IntegerByteSize));
                     await Task.Delay(timeout);
                     await server.SendDataAsync(KafkaDecoder.EncodeResponseBytes(context, new MetadataResponse()));
                 };
@@ -578,7 +578,7 @@ namespace KafkaClient.Tests.Unit
             using (var server = new TcpServer(endpoint.Ip.Port, TestConfig.Log))
             using (var conn = new Connection(endpoint, new ConnectionConfiguration(requestTimeout: TimeSpan.FromMilliseconds(5)), TestConfig.Log)) {
                 server.OnReceivedAsync = data => {
-                    var context = KafkaDecoder.DecodeHeader(data.Skip(KafkaEncoder.IntegerByteSize));
+                    var context = KafkaDecoder.DecodeHeader(data.Skip(Request.IntegerByteSize));
                     correlationId = context.CorrelationId;
                     return Task.FromResult(0);
                 };
@@ -605,7 +605,7 @@ namespace KafkaClient.Tests.Unit
         {
             var buffer = new byte[8];
             var stream = new MemoryStream(buffer);
-            stream.Write(KafkaEncoder.CorrelationSize.ToBytes(), 0, 4);
+            stream.Write(Request.CorrelationSize.ToBytes(), 0, 4);
             stream.Write(id.ToBytes(), 0, 4);
             return buffer;
         }

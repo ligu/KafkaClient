@@ -24,7 +24,7 @@ namespace KafkaClient.Tests
 
         public static Endpoint ServerEndpoint()
         {
-            return new Endpoint(new IPEndPoint(IPAddress.Loopback, ServerPort()), "localhost");
+            return new Endpoint(new IPEndPoint(IPAddress.Loopback, ServerPort()), "tcp://localhost");
         }
 
         public static int ServerPort()
@@ -35,7 +35,7 @@ namespace KafkaClient.Tests
             }
         }
 
-        public static Uri IntegrationUri { get; } = new Uri("http://kafka1:9092");
+        public static Uri IntegrationUri { get; } = new Uri("tcp://kafka1:9092");
 
         public static KafkaOptions Options { get; } = new KafkaOptions(
             IntegrationUri,

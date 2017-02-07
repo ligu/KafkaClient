@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using KafkaClient.Common;
+// ReSharper disable InconsistentNaming
 
 namespace KafkaClient.Protocol
 {
@@ -21,6 +22,8 @@ namespace KafkaClient.Protocol
         {
             writer.Write(topics, true);
         }
+
+        public MetadataResponse ToResponse(IRequestContext context, ArraySegment<byte> bytes) => MetadataResponse.FromBytes(context, bytes);
 
         public MetadataRequest(string topic)
             : this (new []{topic})

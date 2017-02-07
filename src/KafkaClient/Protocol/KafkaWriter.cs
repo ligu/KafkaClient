@@ -12,7 +12,7 @@ namespace KafkaClient.Protocol
         public KafkaWriter()
         {
             _stream = new MemoryStream();
-            Write(KafkaEncoder.IntegerByteSize); //pre-allocate space for buffer length
+            Write((int) Request.IntegerByteSize); //pre-allocate space for buffer length
         }
 
         public IKafkaWriter Write(bool value)
@@ -86,7 +86,7 @@ namespace KafkaClient.Protocol
                 WriteLength(0);
                 return ToSegment(0);
             }
-            return ToSegment(KafkaEncoder.IntegerByteSize);
+            return ToSegment((int) Request.IntegerByteSize);
         }
 
         private ArraySegment<byte> ToSegment(int offset)
@@ -105,7 +105,7 @@ namespace KafkaClient.Protocol
 
         private void WriteLength(int offset)
         {
-            var length = (int)_stream.Length - (offset + KafkaEncoder.IntegerByteSize); 
+            var length = (int)_stream.Length - (offset + Request.IntegerByteSize); 
             _stream.Position = offset;
             Write(length);
         }
@@ -114,7 +114,7 @@ namespace KafkaClient.Protocol
         {
             uint crc;
             ArraySegment<byte> segment;
-            var computeFrom = offset + KafkaEncoder.IntegerByteSize;
+            var computeFrom = offset + Request.IntegerByteSize;
             if (!_stream.TryGetBuffer(out segment)) {
                 // the stream is a memorystream, always owning its own buffer
                 throw new NotSupportedException();
@@ -128,14 +128,14 @@ namespace KafkaClient.Protocol
         public IDisposable MarkForLength()
         {
             var markerPosition = (int)_stream.Position;
-            _stream.Seek(KafkaEncoder.IntegerByteSize, SeekOrigin.Current); //pre-allocate space for marker
+            _stream.Seek(Request.IntegerByteSize, SeekOrigin.Current); //pre-allocate space for marker
             return new WriteAt(this, WriteLength, markerPosition);
         }
 
         public IDisposable MarkForCrc()
         {
             var markerPosition = (int)_stream.Position;
-            _stream.Seek(KafkaEncoder.IntegerByteSize, SeekOrigin.Current); //pre-allocate space for marker
+            _stream.Seek(Request.IntegerByteSize, SeekOrigin.Current); //pre-allocate space for marker
             return new WriteAt(this, WriteCrc, markerPosition);
         }
 

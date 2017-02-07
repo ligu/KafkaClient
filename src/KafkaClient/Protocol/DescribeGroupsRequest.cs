@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using KafkaClient.Common;
+// ReSharper disable InconsistentNaming
 
 namespace KafkaClient.Protocol
 {
@@ -24,6 +25,8 @@ namespace KafkaClient.Protocol
         {
             writer.Write(group_ids, true);
         }
+
+        public DescribeGroupsResponse ToResponse(IRequestContext context, ArraySegment<byte> bytes) => DescribeGroupsResponse.FromBytes(context, bytes);
 
         public DescribeGroupsRequest(params string[] groupIds) 
             : this((IEnumerable<string>) groupIds)
