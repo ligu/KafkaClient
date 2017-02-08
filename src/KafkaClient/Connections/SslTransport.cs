@@ -12,7 +12,7 @@ namespace KafkaClient.Connections
     public class SslTransport : ITransport
     {
         private Socket _tcpSocket;
-        private Stream _stream;
+        private SslStream _stream;
 
         private readonly Endpoint _endpoint;
         private readonly IConnectionConfiguration _configuration;
@@ -20,6 +20,7 @@ namespace KafkaClient.Connections
         private readonly ILog _log;
 
         private int _disposeCount; // = 0;
+        private int _disconnectCount; // = 0;
         private readonly CancellationTokenSource _disposeToken = new CancellationTokenSource();
 
         private readonly SemaphoreSlim _connectSemaphore = new SemaphoreSlim(1, 1);
@@ -55,6 +56,49 @@ namespace KafkaClient.Connections
             }
 
             return socket;
+        }
+
+        public async void Disconnect(bool isConnecting, CancellationToken cancellationToken)
+        {
+            if (Interlocked.Increment(ref _disconnectCount) > 1)
+            {
+                Interlocked.Decrement(ref _disconnectCount);
+                return;
+            }
+
+            Action disconnectAction = () =>
+            {
+                try
+                {
+                    if (_stream == null) return;
+                    _log.Verbose(() => LogEvent.Create($"Disposing transport to {_endpoint}"));
+                    _stream.Dispose();
+                    _log.Info(() => LogEvent.Create($"Disposed transport to {_endpoint}"));
+                }
+                catch (Exception ex)
+                {
+                    _log.Info(() => LogEvent.Create(ex, $"Failed disposing transport to {_endpoint}"));
+                }
+                finally
+                {
+                    _tcpSocket = null;
+                    _stream = null;
+                }
+            };
+
+            try
+            {
+                if (isConnecting)
+                    disconnectAction();
+                else
+                {
+                    await _connectSemaphore.LockAsync(async () => { disconnectAction(); }, cancellationToken);
+                }
+            }
+            finally
+            {
+                Interlocked.Decrement(ref _disconnectCount);
+            }
         }
 
         public async Task ConnectAsync(CancellationToken cancellationToken)
@@ -112,7 +156,7 @@ namespace KafkaClient.Connections
 
                                 if (ex is ObjectDisposedException || ex is PlatformNotSupportedException)
                                 {
-                                    //Disconnect();
+                                    Disconnect(true, cancellationToken);
                                     _log.Info(() => LogEvent.Create($"Creating new socket to {_endpoint}"));
                                     socket = CreateSocket();
                                 }
@@ -121,8 +165,11 @@ namespace KafkaClient.Connections
                                 _log.Warn(() => LogEvent.Create($"Failed connection to {_endpoint}"));
                                 throw new ConnectionException(_endpoint);
                             },
-                            cancellation.Token).ConfigureAwait(false);
-                    }, cancellation.Token).ConfigureAwait(false);
+                            cancellation.Token
+                        ).ConfigureAwait(false);
+                    },
+                    cancellation.Token
+                ).ConfigureAwait(false);
             }
         }
 
@@ -131,7 +178,7 @@ namespace KafkaClient.Connections
             var timer = new Stopwatch();
             var totalBytesRead = 0;
             try {
-                await _readSemaphore.LockAsync( // serialize receiving on a given transport
+                await _readSemaphore.LockAsync(
                     async () => {
                         _configuration.OnReading?.Invoke(_endpoint, buffer.Count);
                         timer.Start();
@@ -143,6 +190,14 @@ namespace KafkaClient.Connections
                             totalBytesRead += bytesRead;
                             _configuration.OnReadBytes?.Invoke(_endpoint, bytesRemaining, bytesRead, timer.Elapsed);
                             _log.Verbose(() => LogEvent.Create($"Read {bytesRead} bytes from {_endpoint}"));
+
+                            if (bytesRead <= 0)
+                            {
+                                Disconnect(false, cancellationToken);
+                                var ex = new ConnectionException(_endpoint);
+                                _configuration.OnDisconnected?.Invoke(_endpoint, ex);
+                                throw ex;
+                            }
                         }
                         timer.Stop();
                         _configuration.OnRead?.Invoke(_endpoint, totalBytesRead, timer.Elapsed);
@@ -177,6 +232,7 @@ namespace KafkaClient.Connections
         {
             if (Interlocked.Increment(ref _disposeCount) > 1) return;
 
+            _disposeToken.Cancel();
             _writeSemaphore.Dispose();
             _readSemaphore.Dispose();
             _connectSemaphore.Dispose();
