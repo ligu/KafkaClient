@@ -145,7 +145,7 @@ namespace KafkaClient.Connections
                                 catch (Exception ex)
                                 {
                                     _log.Warn(() => LogEvent.Create(ex, "SSL connection failed"));
-                                    Interlocked.Exchange(ref _stream, null)?.Dispose();
+                                    throw ex;
                                 }
 
                                 return new RetryAttempt<Socket>(socket);
@@ -153,13 +153,9 @@ namespace KafkaClient.Connections
                             (ex, attempt, retry) => {
                                 if (_disposeCount > 0) throw new ObjectDisposedException(nameof(SslTransport), ex);
                                 _log.Warn(() => LogEvent.Create(ex, $"Failed connection to {_endpoint}: Will retry in {retry}"));
-
-                                if (ex is ObjectDisposedException || ex is PlatformNotSupportedException)
-                                {
-                                    Disconnect(true, cancellationToken);
-                                    _log.Info(() => LogEvent.Create($"Creating new socket to {_endpoint}"));
-                                    socket = CreateSocket();
-                                }
+                                Disconnect(true, cancellationToken);
+                                _log.Info(() => LogEvent.Create($"Creating new socket to {_endpoint}"));
+                                socket = CreateSocket();
                             },
                             () => {
                                 _log.Warn(() => LogEvent.Create($"Failed connection to {_endpoint}"));
