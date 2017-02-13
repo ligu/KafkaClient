@@ -167,7 +167,16 @@ namespace KafkaClient.Connections
 
                                 // reading the header
                                 if (asyncItem == null) {
-                                    await _transport.ReadBytesAsync(new ArraySegment<byte>(header), _disposeToken.Token).ConfigureAwait(false);
+                                    try
+                                    {
+                                        await _transport.ReadBytesAsync(new ArraySegment<byte>(header), _disposeToken.Token).ConfigureAwait(false);
+                                    }
+                                    catch (ConnectionException)
+                                    {
+                                        //This happens when the server side terminates the connection because of inactivity.
+                                        //Since the reconnection is automated, we dont need to do anything, just retry later.
+                                        return new RetryAttempt<bool>(true);
+                                    }
                                     var responseSize = BitConverter.ToInt32(header, 0).ToBigEndian();
                                     var correlationId = BitConverter.ToInt32(header, Request.IntegerByteSize).ToBigEndian();
 
