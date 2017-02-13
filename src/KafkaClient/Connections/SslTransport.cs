@@ -40,7 +40,7 @@ namespace KafkaClient.Connections
         private Socket CreateSocket()
         {
             if (_endpoint.Ip == null) throw new ConnectionException(_endpoint);
-            if (_disposeCount > 0) throw new ObjectDisposedException($"Connection to {_endpoint}");
+            if (_disposeCount > 0) throw new ObjectDisposedException($"Connection to {_endpoint}:{_endpoint.Ip.Port}");
 
             var socket = new Socket(_endpoint.Ip.AddressFamily, SocketType.Stream, ProtocolType.Tcp)
             {
@@ -71,13 +71,13 @@ namespace KafkaClient.Connections
                 try
                 {
                     if (_stream == null) return;
-                    _log.Verbose(() => LogEvent.Create($"Disposing transport to {_endpoint}"));
+                    _log.Verbose(() => LogEvent.Create($"Disposing transport to {_endpoint}:{_endpoint.Ip.Port}"));
                     _stream.Dispose();
-                    _log.Info(() => LogEvent.Create($"Disposed transport to {_endpoint}"));
+                    _log.Info(() => LogEvent.Create($"Disposed transport to {_endpoint}:{_endpoint.Ip.Port}"));
                 }
                 catch (Exception ex)
                 {
-                    _log.Info(() => LogEvent.Create(ex, $"Failed disposing transport to {_endpoint}"));
+                    _log.Info(() => LogEvent.Create(ex, $"Failed disposing transport to {_endpoint}:{_endpoint.Ip.Port}"));
                 }
                 finally
                 {
@@ -117,16 +117,16 @@ namespace KafkaClient.Connections
                             async (attempt, elapsed) => {
                                 if (cancellation.Token.IsCancellationRequested) return RetryAttempt<Socket>.Abort;
 
-                                _log.Verbose(() => LogEvent.Create($"Connecting to {_endpoint}"));
+                                _log.Verbose(() => LogEvent.Create($"Connecting to {_endpoint}:{_endpoint.Ip.Port}"));
                                 _configuration.OnConnecting?.Invoke(_endpoint, attempt, elapsed);
 
                                 await socket.ConnectAsync(_endpoint.Ip.Address, _endpoint.Ip.Port).ThrowIfCancellationRequested(cancellation.Token).ConfigureAwait(false);
                                 if (!socket.Connected) return RetryAttempt<Socket>.Retry;
 
-                                _log.Verbose(() => LogEvent.Create($"Connection established to {_endpoint}"));
+                                _log.Verbose(() => LogEvent.Create($"Connection established to {_endpoint}:{_endpoint.Ip.Port}"));
                                 _configuration.OnConnected?.Invoke(_endpoint, attempt, elapsed);
 
-                                _log.Verbose(() => LogEvent.Create($"Attempting SSL connection to {_endpoint.Host}, SslProtocol:{_sslConfiguration.EnabledProtocols}, Policy:{_sslConfiguration.EncryptionPolicy}"));
+                                _log.Verbose(() => LogEvent.Create($"Attempting SSL connection to {_endpoint.Host}:{_endpoint.Ip.Port}, SslProtocol:{_sslConfiguration.EnabledProtocols}, Policy:{_sslConfiguration.EncryptionPolicy}"));
                                 Interlocked.Exchange(ref _stream, null)?.Dispose();
                                 try
                                 {
@@ -140,7 +140,7 @@ namespace KafkaClient.Connections
                                     await sslStream.AuthenticateAsClientAsync(_endpoint.Host, _sslConfiguration.LocalCertificates, _sslConfiguration.EnabledProtocols, _sslConfiguration.CheckCertificateRevocation).ThrowIfCancellationRequested(cancellationToken).ConfigureAwait(false);
                                     _stream = sslStream;
                                     _tcpSocket = socket;
-                                    _log.Info(() => LogEvent.Create($"Successful SSL connection to {_endpoint.Host}, SslProtocol:{sslStream.SslProtocol}, KeyExchange:{sslStream.KeyExchangeAlgorithm}.{sslStream.KeyExchangeStrength}, Cipher:{sslStream.CipherAlgorithm}.{sslStream.CipherStrength}, Hash:{sslStream.HashAlgorithm}.{sslStream.HashStrength}, Authenticated:{sslStream.IsAuthenticated}, MutuallyAuthenticated:{sslStream.IsMutuallyAuthenticated}, Encrypted:{sslStream.IsEncrypted}, Signed:{sslStream.IsSigned}"));
+                                    _log.Info(() => LogEvent.Create($"Successful SSL connection to {_endpoint.Host}:{_endpoint.Ip.Port}, SslProtocol:{sslStream.SslProtocol}, KeyExchange:{sslStream.KeyExchangeAlgorithm}.{sslStream.KeyExchangeStrength}, Cipher:{sslStream.CipherAlgorithm}.{sslStream.CipherStrength}, Hash:{sslStream.HashAlgorithm}.{sslStream.HashStrength}, Authenticated:{sslStream.IsAuthenticated}, MutuallyAuthenticated:{sslStream.IsMutuallyAuthenticated}, Encrypted:{sslStream.IsEncrypted}, Signed:{sslStream.IsSigned}"));
                                 }
                                 catch (Exception ex)
                                 {
@@ -152,13 +152,13 @@ namespace KafkaClient.Connections
                             },
                             (ex, attempt, retry) => {
                                 if (_disposeCount > 0) throw new ObjectDisposedException(nameof(SslTransport), ex);
-                                _log.Warn(() => LogEvent.Create(ex, $"Failed connection to {_endpoint}: Will retry in {retry}"));
+                                _log.Warn(() => LogEvent.Create(ex, $"Failed connection to {_endpoint}:{_endpoint.Ip.Port}, will retry in {retry}"));
                                 Disconnect(true, cancellationToken);
                                 _log.Verbose(() => LogEvent.Create($"Creating new socket to {_endpoint}"));
                                 socket = CreateSocket();
                             },
                             () => {
-                                _log.Warn(() => LogEvent.Create($"Failed connection to {_endpoint}"));
+                                _log.Warn(() => LogEvent.Create($"Failed connection to {_endpoint}:{_endpoint.Ip.Port}"));
                                 throw new ConnectionException(_endpoint);
                             },
                             cancellation.Token
