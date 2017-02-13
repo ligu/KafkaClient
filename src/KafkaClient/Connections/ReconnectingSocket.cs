@@ -79,11 +79,11 @@ namespace KafkaClient.Connections
                                 if (cancellation.Token.IsCancellationRequested) return RetryAttempt<Socket>.Abort;
 
                                 if (socket == null) {
-                                    _log.Info(() => LogEvent.Create($"Creating new socket to {_endpoint}"));
+                                    _log.Verbose(() => LogEvent.Create($"Creating new socket to {_endpoint}"));
                                     socket = CreateSocket();
                                 }
 
-                                _log.Info(() => LogEvent.Create($"Connecting to {_endpoint}"));
+                                _log.Verbose(() => LogEvent.Create($"Connecting to {_endpoint}"));
                                 _configuration.OnConnecting?.Invoke(_endpoint, retryAttempt, elapsed);
 
                                 await socket.ConnectAsync(_endpoint.Ip.Address, _endpoint.Ip.Port).ThrowIfCancellationRequested(cancellation.Token).ConfigureAwait(false);
