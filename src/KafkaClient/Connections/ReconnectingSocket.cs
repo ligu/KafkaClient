@@ -31,7 +31,7 @@ namespace KafkaClient.Connections
 
         private Socket CreateSocket()
         {
-            if (_disposeCount > 0) throw new ObjectDisposedException($"Connection to {_endpoint}:{_endpoint.Ip.Port}");
+            if (_disposeCount > 0) throw new ObjectDisposedException($"Connection to {_endpoint}");
 
             var socket = new Socket(_endpoint.Ip.AddressFamily, SocketType.Stream, ProtocolType.Tcp) {
                 Blocking = _isBlocking,
@@ -52,7 +52,7 @@ namespace KafkaClient.Connections
             try {
                 Interlocked.CompareExchange(ref _socket, socket, null);
                 if (socket == null) return;
-                _log.Info(() => LogEvent.Create($"Disposing transport to {_endpoint}:{_endpoint.Ip.Port}"));
+                _log.Info(() => LogEvent.Create($"Disposing transport to {_endpoint}"));
                 using (socket) {
                     if (socket.Connected) {
                         socket.Shutdown(SocketShutdown.Both);
@@ -79,23 +79,23 @@ namespace KafkaClient.Connections
                                 if (cancellation.Token.IsCancellationRequested) return RetryAttempt<Socket>.Abort;
 
                                 if (socket == null) {
-                                    _log.Verbose(() => LogEvent.Create($"Creating new socket to {_endpoint}:{_endpoint.Ip.Port}"));
+                                    _log.Verbose(() => LogEvent.Create($"Creating new socket to {_endpoint}"));
                                     socket = CreateSocket();
                                 }
 
-                                _log.Verbose(() => LogEvent.Create($"Connecting to {_endpoint}:{_endpoint.Ip.Port}"));
+                                _log.Verbose(() => LogEvent.Create($"Connecting to {_endpoint}"));
                                 _configuration.OnConnecting?.Invoke(_endpoint, retryAttempt, elapsed);
 
                                 await socket.ConnectAsync(_endpoint.Ip.Address, _endpoint.Ip.Port).ThrowIfCancellationRequested(cancellation.Token).ConfigureAwait(false);
                                 if (!socket.Connected) return RetryAttempt<Socket>.Retry;
 
-                                _log.Info(() => LogEvent.Create($"Connection established to {_endpoint}:{_endpoint.Ip.Port}"));
+                                _log.Info(() => LogEvent.Create($"Connection established to {_endpoint}"));
                                 _configuration.OnConnected?.Invoke(_endpoint, retryAttempt, elapsed);
                                 return new RetryAttempt<Socket>(socket);
                             },
                             (ex, retryAttempt, retryDelay) => {
                                 if (_disposeCount > 0) throw new ObjectDisposedException(nameof(ReconnectingSocket), ex);
-                                _log.Warn(() => LogEvent.Create(ex, $"Failed connection to {_endpoint}:{_endpoint.Ip.Port} on retry {retryAttempt}: Will retry in {retryDelay}"));
+                                _log.Warn(() => LogEvent.Create(ex, $"Failed connection to {_endpoint} on retry {retryAttempt}: Will retry in {retryDelay}"));
 
                                 if (ex is ObjectDisposedException || ex is PlatformNotSupportedException) {
                                     Disconnect(socket);
